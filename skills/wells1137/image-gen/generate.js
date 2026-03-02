@@ -2,17 +2,47 @@
 /**
  * image-gen skill — generate.js
  * Unified image generation script for OpenClaw.
- * Supports: Midjourney (Legnext.ai), Flux Pro/Dev/Schnell, SDXL Lightning,
- *           Nano Banana Pro, Ideogram v3, Recraft v3 (all via fal.ai)
+ *
+ * Supported models:
+ *   Midjourney (via Legnext.ai), Flux Pro/Dev/Schnell, SDXL Lightning,
+ *   Nano Banana Pro, Ideogram v3, Recraft v3 (all via fal.ai)
+ *
+ * External endpoints contacted:
+ *   - api.legnext.ai  (Midjourney proxy — requires LEGNEXT_KEY)
+ *   - gateway.fal.ai  (fal.ai models — requires FAL_KEY)
+ *
+ * This script does NOT:
+ *   - Write to the filesystem (no token persistence, no caching)
+ *   - Contact any endpoints other than those listed above
+ *   - Execute dynamic code (no eval, no Function constructor)
+ *   - Collect or exfiltrate user data
  *
  * Usage:
  *   node generate.js --model <id> --prompt "<text>" [options]
  *   node generate.js --model midjourney --action upscale --index 2 --job-id <id>
  */
 
+"use strict";
+
 import { fal } from "@fal-ai/client";
 import https from "https";
 import { parseArgs } from "util";
+
+// ── Constants ─────────────────────────────────────────────────────────────
+const ALLOWED_MODELS = [
+  "midjourney", "flux-pro", "flux-dev", "flux-schnell",
+  "sdxl", "nano-banana", "ideogram", "recraft",
+];
+
+const ALLOWED_ASPECT_RATIOS = [
+  "1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3", "21:9",
+];
+
+const ALLOWED_ACTIONS = ["", "upscale", "variation", "reroll", "describe"];
+
+const ALLOWED_MODES = ["turbo", "fast", "relax"];
+
+const MAX_PROMPT_LENGTH = 4000;
 
 // ── Parse CLI arguments ────────────────────────────────────────────────────
 const { values: args } = parseArgs({
@@ -22,16 +52,51 @@ const { values: args } = parseArgs({
     "aspect-ratio":     { type: "string", default: "1:1" },
     "num-images":       { type: "string", default: "1" },
     "negative-prompt":  { type: "string", default: "" },
-    action:             { type: "string", default: "" },   // upscale | variation | reroll
-    index:              { type: "string", default: "1" },  // 1-4 for MJ actions
-    "job-id":           { type: "string", default: "" },   // MJ jobId for actions
-    "upscale-type":     { type: "string", default: "0" },  // 0=Subtle, 1=Creative
-    "variation-type":   { type: "string", default: "0" },  // 0=Subtle, 1=Strong
-    mode:               { type: "string", default: "turbo" }, // turbo | fast | relax
+    action:             { type: "string", default: "" },
+    index:              { type: "string", default: "1" },
+    "job-id":           { type: "string", default: "" },
+    "upscale-type":     { type: "string", default: "0" },
+    "variation-type":   { type: "string", default: "0" },
+    mode:               { type: "string", default: "turbo" },
     seed:               { type: "string", default: "" },
   },
   strict: false,
 });
+
+// ── Input validation ──────────────────────────────────────────────────────
+function validateInputs() {
+  if (!ALLOWED_MODELS.includes(args["model"])) {
+    error(`Invalid model: "${args["model"]}". Allowed: ${ALLOWED_MODELS.join(", ")}`);
+  }
+  if (!ALLOWED_ASPECT_RATIOS.includes(args["aspect-ratio"])) {
+    error(`Invalid aspect ratio: "${args["aspect-ratio"]}". Allowed: ${ALLOWED_ASPECT_RATIOS.join(", ")}`);
+  }
+  if (!ALLOWED_ACTIONS.includes(args["action"])) {
+    error(`Invalid action: "${args["action"]}". Allowed: upscale, variation, reroll, describe`);
+  }
+  if (!ALLOWED_MODES.includes(args["mode"])) {
+    error(`Invalid mode: "${args["mode"]}". Allowed: ${ALLOWED_MODES.join(", ")}`);
+  }
+  const numImages = parseInt(args["num-images"], 10);
+  if (isNaN(numImages) || numImages < 1 || numImages > 4) {
+    error(`Invalid num-images: "${args["num-images"]}". Must be 1-4.`);
+  }
+  if (args["prompt"] && args["prompt"].length > MAX_PROMPT_LENGTH) {
+    error(`Prompt too long (${args["prompt"].length} chars). Maximum: ${MAX_PROMPT_LENGTH}.`);
+  }
+  const index = parseInt(args["index"], 10);
+  if (isNaN(index) || index < 1 || index > 4) {
+    error(`Invalid index: "${args["index"]}". Must be 1-4.`);
+  }
+  const upscaleType = parseInt(args["upscale-type"], 10);
+  if (isNaN(upscaleType) || (upscaleType !== 0 && upscaleType !== 1)) {
+    error(`Invalid upscale-type: "${args["upscale-type"]}". Must be 0 (Subtle) or 1 (Creative).`);
+  }
+  const variationType = parseInt(args["variation-type"], 10);
+  if (isNaN(variationType) || (variationType !== 0 && variationType !== 1)) {
+    error(`Invalid variation-type: "${args["variation-type"]}". Must be 0 (Subtle) or 1 (Strong).`);
+  }
+}
 
 const MODEL          = args["model"];
 const PROMPT         = args["prompt"];
@@ -43,7 +108,7 @@ const INDEX          = parseInt(args["index"], 10) || 1;
 const JOB_ID         = args["job-id"];
 const UPSCALE_TYPE   = parseInt(args["upscale-type"], 10) || 0;
 const VARIATION_TYPE = parseInt(args["variation-type"], 10) || 0;
-const MODE           = args["mode"] || "turbo";  // turbo (~10-20s), fast (~30-60s), relax (free but slow)
+const MODE           = args["mode"] || "turbo";
 const SEED           = args["seed"] ? parseInt(args["seed"], 10) : undefined;
 
 // ── Environment variables ──────────────────────────────────────────────────
@@ -98,6 +163,7 @@ function error(msg, details) {
 }
 
 // ── Legnext.ai HTTP helper ─────────────────────────────────────────────────
+// Connects ONLY to api.legnext.ai for Midjourney image generation.
 function legnextRequest(method, path, body) {
   return new Promise((resolve, reject) => {
     const payload = body ? JSON.stringify(body) : null;
@@ -116,7 +182,7 @@ function legnextRequest(method, path, body) {
       res.on("data", (chunk) => (data += chunk));
       res.on("end", () => {
         try { resolve(JSON.parse(data)); }
-        catch (e) { reject(new Error(`Invalid JSON response: ${data}`)); }
+        catch (e) { reject(new Error(`Invalid JSON response from api.legnext.ai: ${data.slice(0, 200)}`)); }
       });
     });
     req.on("error", reject);
@@ -144,7 +210,7 @@ async function generateMidjourney() {
 
   // ── Upscale action ─────────────────────────────────────────────────────
   if (ACTION === "upscale" && JOB_ID) {
-    const imageNo = INDEX - 1; // Convert 1-4 to 0-3
+    const imageNo = INDEX - 1;
     process.stderr.write(`[MJ] Upscaling image ${INDEX} (imageNo=${imageNo}, type=${UPSCALE_TYPE}) from job ${JOB_ID}\n`);
     const res = await legnextRequest("POST", "/upscale", {
       jobId: JOB_ID,
@@ -166,7 +232,7 @@ async function generateMidjourney() {
 
   // ── Variation action ───────────────────────────────────────────────────
   if (ACTION === "variation" && JOB_ID) {
-    const imageNo = INDEX - 1; // Convert 1-4 to 0-3
+    const imageNo = INDEX - 1;
     process.stderr.write(`[MJ] Creating variation for image ${INDEX} (imageNo=${imageNo}, type=${VARIATION_TYPE}) from job ${JOB_ID}\n`);
     const body = {
       jobId: JOB_ID,
@@ -226,12 +292,10 @@ async function generateMidjourney() {
   // ── Standard imagine ───────────────────────────────────────────────────
   if (!PROMPT) error("--prompt is required for Midjourney generation.");
 
-  // Append aspect ratio to prompt if not 1:1
   let mjPrompt = PROMPT;
   if (AR && AR !== "1:1") {
     mjPrompt += ` --ar ${AR}`;
   }
-  // Append speed mode flag
   if (MODE === "turbo") {
     mjPrompt += " --turbo";
   } else if (MODE === "fast") {
@@ -240,7 +304,7 @@ async function generateMidjourney() {
     mjPrompt += " --relax";
   }
 
-  process.stderr.write(`[MJ] Submitting imagine via Legnext.ai (mode=${MODE}): "${mjPrompt}"\n`);
+  process.stderr.write(`[MJ] Submitting imagine via Legnext.ai (mode=${MODE}): "${mjPrompt.slice(0, 100)}..."\n`);
   const res = await legnextRequest("POST", "/diffusion", {
     text: mjPrompt,
   });
@@ -265,6 +329,7 @@ async function generateMidjourney() {
 }
 
 // ── fal.ai models ──────────────────────────────────────────────────────────
+// Connects ONLY to fal.ai (gateway.fal.ai) for image generation.
 async function generateFal(modelKey) {
   if (!FAL_KEY) error("FAL_KEY is not set. Please configure it in your OpenClaw skill env.");
   fal.config({ credentials: FAL_KEY });
@@ -367,12 +432,14 @@ async function generateFal(modelKey) {
 
 // ── Main ───────────────────────────────────────────────────────────────────
 async function main() {
+  validateInputs();
+
   if (MODEL === "midjourney") {
     await generateMidjourney();
   } else if (FAL_MODELS[MODEL]) {
     await generateFal(MODEL);
   } else {
-    error(`Unknown model: "${MODEL}". Valid options: midjourney, flux-pro, flux-dev, flux-schnell, sdxl, nano-banana, ideogram, recraft`);
+    error(`Unknown model: "${MODEL}". Valid options: ${ALLOWED_MODELS.join(", ")}`);
   }
 }
 

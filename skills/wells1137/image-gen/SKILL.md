@@ -20,6 +20,26 @@ This skill enables you to generate images using a variety of state-of-the-art AI
 
 ---
 
+## Security & Transparency
+
+This skill contacts **only** the following external endpoints, which are necessary for image generation:
+
+| Endpoint | Purpose | Required Key |
+|---|---|---|
+| `api.legnext.ai` | Midjourney image generation proxy | `LEGNEXT_KEY` |
+| `gateway.fal.ai` | fal.ai models (Flux, SDXL, Ideogram, Recraft, etc.) | `FAL_KEY` |
+
+This skill does **NOT**:
+- Write to the local filesystem (no token persistence, no caching, no log files)
+- Contact any endpoints other than those listed above
+- Execute dynamic code (`eval`, `Function` constructor, or similar)
+- Collect, store, or exfiltrate user data
+- Require network access beyond the two endpoints above
+
+All input parameters are validated against strict allow-lists before any API call is made.
+
+---
+
 ## Model Selection Guide
 
 When the user does not specify a model, use this guide to pick the best one:
@@ -64,11 +84,12 @@ node {baseDir}/generate.js \
 
 **Parameters:**
 - `--model`: One of `midjourney`, `flux-pro`, `flux-dev`, `flux-schnell`, `sdxl`, `nano-banana`, `ideogram`, `recraft`
-- `--prompt`: The image generation prompt (required)
-- `--aspect-ratio`: Output aspect ratio, e.g. `16:9`, `1:1`, `9:16`, `4:3`, `3:4` (default: `1:1`)
+- `--prompt`: The image generation prompt (required, max 4000 chars)
+- `--aspect-ratio`: Output aspect ratio — `1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `3:2`, `2:3`, `21:9` (default: `1:1`)
 - `--num-images`: Number of images to generate, 1-4 (default: `1`, Midjourney always returns 4)
 - `--negative-prompt`: Things to avoid in the image (not supported by Midjourney)
 - `--mode`: Midjourney speed mode: `turbo` (default, ~10-20s, requires Pro/Mega plan), `fast` (~30-60s), `relax` (free but slow)
+- `--seed`: Seed for reproducible results (optional, integer)
 
 **Example:**
 ```bash

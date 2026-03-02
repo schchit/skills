@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-03-02
+
+### Security
+- **Added strict input validation** for all CLI parameters (model, aspect-ratio, action, mode, num-images, index, upscale-type, variation-type) against explicit allow-lists. Invalid inputs are now rejected before any API call is made.
+- **Added prompt length limit** (max 4000 characters) to prevent abuse.
+- **Added `"use strict"` directive** to enforce stricter JavaScript parsing.
+- **Added Security & Transparency section** to SKILL.md, explicitly documenting all external endpoints contacted and behaviors the skill does NOT perform.
+- **Added security documentation** to CONTRIBUTING.md with endpoint and behavior transparency.
+
+### Fixed
+- **Updated CONTRIBUTING.md**: Replaced all outdated TTAPI_KEY references with LEGNEXT_KEY (provider was switched in v1.1.0).
+- **Updated model table** in CONTRIBUTING.md to correctly show Legnext.ai as the Midjourney provider.
+- **Truncated prompt in stderr logging** to avoid leaking full prompts in logs.
+
+### Changed
+- **Improved error messages** with more descriptive validation feedback.
+- **Added explicit code comments** documenting which external endpoints each function connects to.
+
+---
+
 ## [1.2.0] - 2026-02-25
 
 ### Changed
