@@ -69,8 +69,8 @@ laravel-cloud <resource> <action> [args...]
 # List all applications
 laravel-cloud apps list
 
-# Create an application
-laravel-cloud apps create --name "my-app" --region us-east-1
+# Create an application (requires --repository)
+laravel-cloud apps create --name "my-app" --region us-east-1 --repository owner/repo
 
 # List environments for an app
 laravel-cloud envs list <app-id>
@@ -101,12 +101,18 @@ laravel-cloud org get
 laravel-cloud regions list
 
 # Manage databases
+# NOTE: Creating a cluster auto-creates a "main" database (schema).
+# Use that default — don't create an extra one. Wire the "main" schema
+# to your environment via: envs update <env-id> --database-schema-id <main-schema-id>
+# To find the schema ID: databases cluster <cluster-id> (with ?include=schemas)
 laravel-cloud databases clusters
-laravel-cloud databases cluster-create --name my-db --type neon-serverless-postgres --region us-east-1
+# DB types: laravel_mysql_84, laravel_mysql_8, neon_serverless_postgres_16/17/18, aws_rds_mysql_8, aws_rds_postgres_18
+laravel-cloud databases cluster-create --name my-db --type laravel_mysql_84 --region us-east-1 --size db-flex.m-1vcpu-512mb --storage 5
 
 # Manage caches
 laravel-cloud caches list
-laravel-cloud caches create --name my-cache --type valkey --region us-east-1 --size cache.t3.micro
+# Cache types: upstash_redis (sizes: 250mb, 1gb, ...) or laravel_valkey (sizes: valkey-pro.250mb, ...)
+laravel-cloud caches create --name my-cache --type laravel_valkey --region us-east-1 --size valkey-pro.250mb
 
 # Object storage
 laravel-cloud buckets list

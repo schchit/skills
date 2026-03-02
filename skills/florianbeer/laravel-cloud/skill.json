@@ -1,6 +1,6 @@
 {
   "name": "laravel-cloud",
-  "version": "1.1.0",
+  "version": "1.2.2",
   "description": "Manage Laravel Cloud infrastructure via API — apps, environments, deployments, databases, caches, domains, scaling, commands, storage, and WebSockets.",
   "author": "florianbeer",
   "setup": {

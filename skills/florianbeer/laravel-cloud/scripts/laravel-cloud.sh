@@ -6,6 +6,21 @@ set -euo pipefail
 BASE="https://cloud.laravel.com/api"
 CREDS="${HOME}/.openclaw/credentials/laravel-cloud/config.json"
 
+# If token is a 1Password reference (op://...), resolve it first.
+# If resolution fails, treat it as unset so we can fall back to creds file.
+if [[ -n "${LARAVEL_CLOUD_API_TOKEN:-}" ]] && [[ "${LARAVEL_CLOUD_API_TOKEN}" == op://* ]]; then
+  if command -v op >/dev/null 2>&1; then
+    _resolved_token="$(op read "${LARAVEL_CLOUD_API_TOKEN}" 2>/dev/null || true)"
+    if [[ -n "${_resolved_token}" ]]; then
+      LARAVEL_CLOUD_API_TOKEN="${_resolved_token}"
+    else
+      unset LARAVEL_CLOUD_API_TOKEN
+    fi
+  else
+    unset LARAVEL_CLOUD_API_TOKEN
+  fi
+fi
+
 [[ -z "${LARAVEL_CLOUD_API_TOKEN:-}" ]] && [[ -f "$CREDS" ]] && \
   LARAVEL_CLOUD_API_TOKEN=$(jq -r '.token // empty' "$CREDS" 2>/dev/null || true)
 : "${LARAVEL_CLOUD_API_TOKEN:?Set LARAVEL_CLOUD_API_TOKEN or create $CREDS with {\"token\":\"...\"}}"
@@ -56,14 +71,16 @@ cmd_apps() {
     list)   api GET /applications ;;
     get)    [[ ${1:-} ]] || die "app-id required"; api GET "/applications/$1" ;;
     create)
-      local n=$(flag name "$@") r=$(flag region "$@")
-      [[ $n && $r ]] || die "usage: apps create --name NAME --region REGION"
-      api POST /applications "$(jb name="$n" region="$r")" ;;
+      local n=$(flag name "$@") r=$(flag region "$@") repo=$(flag repository "$@") scp=$(flag source-control "$@")
+      : "${scp:=github}"
+      [[ $n && $r && $repo ]] || die "usage: apps create --name NAME --region REGION --repository owner/repo [--source-control github|gitlab|bitbucket]"
+      local body; body="$(jb name="$n" region="$r" repository="$repo" source_control_provider_type="$scp")"
+      api POST /applications "$body" ;;
     update)
       [[ ${1:-} ]] || die "app-id required"; local id=$1; shift
       api PATCH "/applications/$id" "$(jb name="$(flag name "$@")" slack_channel="$(flag slack-channel "$@")")" ;;
     delete) [[ ${1:-} ]] || die "app-id required"; api DELETE "/applications/$1" ;;
-    *) echo "apps: list | get <id> | create --name N --region R | update <id> [--name N] [--slack-channel C] | delete <id>" ;;
+    *) echo "apps: list | get <id> | create --name N --region R --repository owner/repo [--source-control github|gitlab|bitbucket] | update <id> [--name N] [--slack-channel C] | delete <id>" ;;
   esac
 }
 
@@ -82,12 +99,18 @@ cmd_envs() {
         "$(jb name="$n" branch="$b" cluster_id="$(flag cluster-id "$@")")" ;;
     update)
       [[ ${1:-} ]] || die "env-id required"; local id=$1; shift
-      api PATCH "/environments/$id" "$(jb \
+      local body; body="$(jb \
         php_major_version="$(flag php-version "$@")" node_version="$(flag node-version "$@")" \
         build_command="$(flag build-command "$@")" deploy_command="$(flag deploy-command "$@")" \
         database_schema_id="$(flag database-schema-id "$@")" \
         cache_id="$(flag cache-id "$@")" \
-        websocket_application_id="$(flag websocket-app-id "$@")")" ;;
+        websocket_application_id="$(flag websocket-app-id "$@")")"
+      local fk=$(flag filesystem-key "$@") fd=$(flag filesystem-disk "$@")
+      if [[ -n "$fk" ]]; then
+        : "${fd:=s3}"
+        body="$(echo "$body" | jq --arg k "$fk" --arg d "$fd" '. + {filesystem_keys: [{id: $k, disk: $d, is_default_disk: true}]}')"
+      fi
+      api PATCH "/environments/$id" "$body" ;;
     delete)  [[ ${1:-} ]] || die "env-id required"; api DELETE "/environments/$1" ;;
     start)   [[ ${1:-} ]] || die "env-id required"; api POST "/environments/$1/start" '{}' ;;
     stop)    [[ ${1:-} ]] || die "env-id required"; api POST "/environments/$1/stop" '{}' ;;
@@ -236,10 +259,11 @@ cmd_databases() {
     cluster-create)
       local n=$(flag name "$@") t=$(flag type "$@") r=$(flag region "$@")
       [[ $n && $t && $r ]] || die "usage: databases cluster-create --name N --type T --region R [--size S] [--storage N] [--public true|false] [--scheduled-snapshots true|false] [--retention-days N] [--cluster-id ID]"
+      local ss=$(flag scheduled-snapshots "$@") rd=$(flag retention-days "$@")
       local cfg=$(jb size="$(flag size "$@")" storage:int="$(flag storage "$@")" \
         is_public:bool="$(flag public "$@")" \
-        uses_scheduled_snapshots:bool="$(flag scheduled-snapshots "$@")" \
-        retention_days:int="$(flag retention-days "$@")")
+        uses_scheduled_snapshots:bool="${ss:-true}" \
+        retention_days:int="${rd:-1}")
       api POST /databases/clusters "$(jq -n \
         --arg name "$n" --arg type "$t" --arg region "$r" \
         --argjson config "$cfg" \
@@ -290,11 +314,16 @@ cmd_caches() {
     types) api GET /caches/types ;;
     create)
       local n=$(flag name "$@") t=$(flag type "$@") r=$(flag region "$@") s=$(flag size "$@")
-      [[ $n && $t && $r && $s ]] || die "usage: caches create --name N --type T --region R --size S"
+      [[ $n && $t && $r && $s ]] || die "usage: caches create --name N --type T --region R --size S [--auto-upgrade true] [--public false] [--eviction-policy P]"
       local au=$(flag auto-upgrade "$@") ip=$(flag public "$@")
-      api POST /caches "$(jb name="$n" type="$t" region="$r" size="$s" \
+      local body; body="$(jb name="$n" type="$t" region="$r" size="$s" \
         eviction_policy="$(flag eviction-policy "$@")" \
-        auto_upgrade_enabled:bool="${au:-true}" is_public:bool="${ip:-false}")" ;;
+        auto_upgrade_enabled:bool="${au:-true}")"
+      # Upstash rejects is_public; all other types require it
+      if [[ "$t" != "upstash_redis" ]]; then
+        body="$(echo "$body" | jq --argjson p "$(echo "${ip:-false}" | jq -R 'if . == "true" then true else false end')" '. + {is_public: $p}')"
+      fi
+      api POST /caches "$body" ;;
     update)
       [[ ${1:-} ]] || die "cache-id required"; local id=$1; shift
       api PATCH "/caches/$id" "$(jb size="$(flag size "$@")" \
@@ -317,14 +346,17 @@ cmd_buckets() {
     list)   api GET /buckets ;;
     get)    [[ ${1:-} ]] || die "bucket-id required"; api GET "/buckets/$1" ;;
     create)
-      local n=$(flag name "$@") r=$(flag region "$@")
-      [[ $n && $r ]] || die "usage: buckets create --name N --region R"
-      api POST /buckets "$(jb name="$n" region="$r")" ;;
+      local n=$(flag name "$@") r=$(flag region "$@") vis=$(flag visibility "$@") jur=$(flag jurisdiction "$@")
+      local kn=$(flag key-name "$@") kp=$(flag key-permission "$@")
+      : "${vis:=private}" "${jur:=default}" "${kp:=read_write}"
+      [[ -z "$kn" ]] && kn="${n}-key"
+      [[ $n && $r ]] || die "usage: buckets create --name N --region R [--visibility private|public] [--jurisdiction default|eu] [--key-name N] [--key-permission read_write|read_only]"
+      api POST /buckets "$(jb name="$n" region="$r" visibility="$vis" jurisdiction="$jur" key_name="$kn" key_permission="$kp")" ;;
     update)
       [[ ${1:-} ]] || die "bucket-id required"; local id=$1; shift
       api PATCH "/buckets/$id" "$(jb name="$(flag name "$@")")" ;;
     delete) [[ ${1:-} ]] || die "bucket-id required"; api DELETE "/buckets/$1" ;;
-    *) echo "buckets: list | get <id> | create --name N --region R | update <id> [--name N] | delete <id>" ;;
+    *) echo "buckets: list | get <id> | create --name N --region R [--visibility private|public] [--jurisdiction default|eu] [--key-name N] [--key-permission read_write|read_only] | update <id> [--name N] | delete <id>" ;;
   esac
 }
 
@@ -337,14 +369,14 @@ cmd_bucket_keys() {
     create)
       [[ ${1:-} ]] || die "bucket-id required"; local bid=$1; shift
       local n=$(flag name "$@"); [[ $n ]] || die "--name required"
-      api POST "/buckets/$bid/keys" "$(jb name="$n" \
-        can_read:bool="$(flag read "$@")" can_write:bool="$(flag write "$@")")" ;;
+      local perm=$(flag permission "$@")
+      api POST "/buckets/$bid/keys" "$(jb name="$n" permission="${perm:-read_write}")" ;;
     update)
       [[ ${1:-} ]] || die "key-id required"; local id=$1; shift
       api PATCH "/bucket-keys/$id" "$(jb name="$(flag name "$@")" \
-        can_read:bool="$(flag read "$@")" can_write:bool="$(flag write "$@")")" ;;
+        permission="$(flag permission "$@")")" ;;
     delete) [[ ${1:-} ]] || die "key-id required"; api DELETE "/bucket-keys/$1" ;;
-    *) echo "bucket-keys: list <bucket-id> | get <id> | create <bucket-id> --name N [--read true] [--write true] | update <id> [...] | delete <id>" ;;
+    *) echo "bucket-keys: list <bucket-id> | get <id> | create <bucket-id> --name N [--permission read_write|read_only] | update <id> [--name N] [--permission P] | delete <id>" ;;
   esac
 }
 
