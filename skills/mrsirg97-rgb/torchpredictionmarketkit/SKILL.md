@@ -1,6 +1,6 @@
 ---
 name: torch-prediction-market-bot
-version: "2.0.2"
+version: "2.0.3"
 description: Autonomous vault-based prediction market bot for Torch Market on Solana. Creates binary prediction markets as Torch tokens — the bonding curve provides price discovery, the treasury accumulates value from trading fees, and the vault manages positions. Each market has an oracle (price feed or manual) and resolves at a deadline. The agent keypair is generated in-process -- disposable, holds nothing of value. All SOL routes through the vault. The human principal creates the vault, funds it, links the agent, and retains full control. Built on torchsdk v3.7.23 and the Torch Market protocol.
 license: MIT
 disable-model-invocation: true
@@ -35,11 +35,11 @@ metadata:
     install:
       - id: torch-prediction-market-kit
         kind: npm
-        package: torch-prediction-market-kit@^2.0.1
+        package: torch-prediction-market-kit@^2.0.2
         flags: []
         label: "Install Torch Prediction Market Kit (npm, optional -- SDK is bundled in lib/torchsdk/ and bot source is bundled under lib/kit on clawhub)"
   author: torch-market
-  version: "2.0.2"
+  version: "2.0.3"
   clawhub: https://clawhub.ai/mrsirg97-rgb/torch-prediction-market-kit
   kit-source: https://github.com/mrsirg97-rgb/torch-prediction-market-kit
   website: https://torch.market
@@ -169,7 +169,7 @@ If the agent keypair is compromised, the attacker gets dust and vault access tha
 ### 1. Install
 
 ```bash
-npm install torch-prediction-market-kit@2.0.1
+npm install torch-prediction-market-kit@2.0.2
 ```
 
 Or use the bundled source from ClawHub — the Torch SDK is included in `lib/torchsdk/` and the bot source is in `lib/kit/`.
@@ -297,10 +297,23 @@ interface MarketDefinition {
   name: string                // token name (max 32 chars)
   oracle: Oracle              // how the market resolves
   deadline: number            // unix timestamp (seconds)
-  initialLiquidityLamports: number  // SOL to seed bonding curve (in lamports)
-  metadataUri: string         // token metadata URI
+  initialLiquidityLamports: number  // SOL to seed bonding curve (in lamports, max 10 SOL)
+  metadataUri: string         // token metadata URI (allowlisted domains only)
 }
 ```
+
+### Input Validation
+
+All pending markets are validated on load. Markets with invalid inputs are rejected before any on-chain action.
+
+| Field | Constraint | Rejected Example |
+|-------|-----------|-----------------|
+| `id` | Must be unique across all markets | Duplicate `"sol-200-mar"` |
+| `metadataUri` | Domain must be in allowlist: `arweave.net`, `gateway.irys.xyz`, `ipfs.io`, `cloudflare-ipfs.com`, `nftstorage.link`, `dweb.link` | `https://evil.com/payload.json` |
+| `initialLiquidityLamports` | Max 10 SOL (10,000,000,000 lamports), non-negative | `50000000000` (50 SOL) |
+| `oracle.asset` | Must be in allowlist of known CoinGecko IDs (solana, bitcoin, ethereum, etc.) | `"arbitrary-string"` |
+
+These constraints ensure a compromised `markets.json` cannot trigger arbitrary URI fetches, drain the vault, or make unintended API calls.
 
 ---
 
