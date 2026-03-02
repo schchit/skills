@@ -1,23 +1,26 @@
 ---
 name: fact-checker
-version: 1.0.1
-description: |
-  Verify claims, numbers, and facts in markdown drafts against source data.
+version: 1.0.2
+description: Verify factual claims in content using web search and source cross-referencing. Use when reviewing content for accuracy before publishing.
 metadata:
   {
-    "openclaw": {
-      "emoji": "🔍",
-      "requires": { "bins": ["python3"] },
-      "network": { "outbound": false, "reason": "All verification is done against local files and APIs. No external network calls." }
-    }
-  }
-  Use when: reviewing blog posts, reports, or documentation for accuracy
-  before publication. Cross-references against FINDINGS.md, live APIs,
-  scored run files, memory logs, and git history.
-allowed-tools:
-  - Read
-  - exec
+      "openclaw": {
+            "emoji": "\u2705",
+            "requires": {
+                  "bins": [
+                        "python3"
+                  ],
+                  "env": []
+            },
+            "primaryEnv": null,
+            "network": {
+                  "outbound": true,
+                  "reason": "Searches the web to verify factual claims. Uses Tavily or web_search."
+            }
+      }
+}
 ---
+
 
 # Fact-Checker: Verify Markdown Claims Against Source Data
 
