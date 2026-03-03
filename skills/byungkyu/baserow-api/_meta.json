@@ -1,0 +1,11 @@
+{
+  "owner": "byungkyu",
+  "slug": "baserow-api",
+  "displayName": "Baserow",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772482193817,
+    "commit": null
+  },
+  "history": []
+}
