@@ -10,12 +10,26 @@ Use this skill to instrument OpenClaw requests with Drip so usage is traceable a
 ## Prerequisites
 
 - `DRIP_API_KEY` configured
-- `DRIP_BASE_URL` configured when not using Drip default API base
+- `DRIP_BASE_URL` configured to your official trusted Drip API domain
 - `DRIP_WORKFLOW_ID` configured for `POST /v1/runs`
 - `OPENCLAW_DEFAULT_CUSTOMER_ID` configured if requests may omit explicit `customerId`
 - `OPENCLAW_TELEMETRY_FAIL_OPEN` configured to match your policy (`true` for fail-open, `false` for fail-closed)
 - A valid `customerId` for the requesting user/tenant
 - OpenClaw runtime hook points for request start/end and tool-call boundaries
+
+## Required Credentials (Authoritative)
+
+- Required env vars:
+  - `DRIP_API_KEY` (primary credential)
+  - `DRIP_BASE_URL` (trusted Drip API host)
+  - `DRIP_WORKFLOW_ID`
+- Optional env vars:
+  - `OPENCLAW_DEFAULT_CUSTOMER_ID`
+  - `OPENCLAW_TELEMETRY_FAIL_OPEN`
+  - `OPENCLAW_BILL_SKILL_CALLS`
+
+Provider keys like `BRAVE_API_KEY` or `GOOGLE_API_KEY` are not required by this billing skill itself.
+Only provide them if your own agent runtime directly calls those providers.
 
 ## ClawHub Deployment Contract
 
@@ -23,7 +37,7 @@ Use this skill to instrument OpenClaw requests with Drip so usage is traceable a
 - Resolve `customerId` from ClawHub tenant/user identity at runtime.
 - Pass stable idempotency keys for events and usage writes to avoid double charges on retries.
 - Set `allow_implicit_invocation: false` in `agents/openai.yaml` so this skill only runs when explicitly invoked.
-- If using MCP delivery, replace `dependencies.tools[0].url` in `agents/openai.yaml` with your real Drip MCP host.
+- Verify `DRIP_BASE_URL` points to an official trusted Drip endpoint before enabling production traffic.
 
 ## ClawHub Runtime Settings (Recommended)
 
@@ -40,6 +54,22 @@ For each OpenClaw request:
 2. After each external tool/API call, emit `POST /v1/events`
 3. If billable, emit `POST /v1/usage` (or `/v1/usage/async`)
 4. End run with `PATCH /v1/runs/:id`
+
+## Telemetry Data Minimization (MUST)
+
+Only send the minimum execution metadata needed for billing and diagnostics:
+
+- Allowed metadata fields:
+  - `integration`, `requestId`, `provider`, `endpoint`, `statusCode`, `latencyMs`, `queryHash`, `tokens`
+  - `source`, `action`, `tenantId`, `requesterId`, `runId`, `workflowId`, `error`
+- Prohibited metadata fields:
+  - raw query text
+  - raw prompts or model outputs
+  - authorization headers
+  - API keys, passwords, secrets
+  - full request/response payload bodies
+
+If query context is required, send only `queryHash` (sha256), never raw query text.
 
 ## SDK Option (Recommended)
 

@@ -4,22 +4,51 @@ skill:
   description: "Instrument OpenClaw requests with Drip run/event/usage telemetry."
   invocation_mode: "explicit_only"
 
+registry:
+  primary_credential: "DRIP_API_KEY"
+  required_env_vars:
+    - "DRIP_API_KEY"
+    - "DRIP_BASE_URL"
+    - "DRIP_WORKFLOW_ID"
+  optional_env_vars:
+    - "OPENCLAW_DEFAULT_CUSTOMER_ID"
+    - "OPENCLAW_TELEMETRY_FAIL_OPEN"
+    - "OPENCLAW_BILL_SKILL_CALLS"
+
 runtime:
   model: "gpt-5"
   timeout_ms: 60000
   retries: 2
   fail_open_telemetry: true
 
+credentials:
+  primary_env_var: "DRIP_API_KEY"
+  required_env_vars:
+    - "DRIP_API_KEY"
+    - "DRIP_BASE_URL"
+    - "DRIP_WORKFLOW_ID"
+  optional_env_vars:
+    - "OPENCLAW_DEFAULT_CUSTOMER_ID"
+    - "OPENCLAW_TELEMETRY_FAIL_OPEN"
+    - "OPENCLAW_BILL_SKILL_CALLS"
+
 environment:
   required:
     - "DRIP_API_KEY"
+    - "DRIP_BASE_URL"
     - "DRIP_WORKFLOW_ID"
   optional:
-    - "DRIP_BASE_URL"
     - "OPENCLAW_DEFAULT_CUSTOMER_ID"
     - "OPENCLAW_TELEMETRY_FAIL_OPEN"
-    - "BRAVE_API_KEY"
-    - "GOOGLE_API_KEY"
+    - "OPENCLAW_BILL_SKILL_CALLS"
+
+provenance:
+  vendor: "Drip"
+  homepage: "https://drippay.dev"
+  api_base_url_env_var: "DRIP_BASE_URL"
+  trusted_api_hosts:
+    - "api.drippay.dev"
+    - "drip-app-hlunj.ondigitalocean.app"
 
 identity_mapping:
   request_id_priority:
@@ -62,6 +91,33 @@ billing_meters:
   - "google_api_calls"
   - "openclaw_track_usage_calls"
   - "openclaw_record_run_calls"
+
+telemetry:
+  allowlist_fields:
+    - "integration"
+    - "requestId"
+    - "provider"
+    - "endpoint"
+    - "statusCode"
+    - "latencyMs"
+    - "queryHash"
+    - "tokens"
+    - "error"
+    - "source"
+    - "action"
+    - "tenantId"
+    - "requesterId"
+    - "runId"
+    - "workflowId"
+  prohibited_fields:
+    - "raw query text"
+    - "raw prompts"
+    - "raw model outputs"
+    - "authorization headers"
+    - "api keys"
+    - "passwords"
+    - "secrets"
+  query_policy: "Hash-only (sha256); never send raw query text."
 
 verification:
   checks:

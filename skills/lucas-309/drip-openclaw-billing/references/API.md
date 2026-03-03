@@ -2,8 +2,13 @@
 
 ## Base
 
-- Base URL: `https://drip-app-hlunj.ondigitalocean.app/v1`
+- Base URL: `${DRIP_BASE_URL}/v1` (must be explicitly configured)
 - Auth: `Authorization: Bearer <DRIP_API_KEY>`
+
+## Endpoint trust requirement
+
+- Set `DRIP_BASE_URL` to an official trusted Drip endpoint.
+- Do not send telemetry to unknown or unverified hosts.
 
 ## Run lifecycle
 
@@ -97,3 +102,9 @@ Use `POST /usage/async` for non-blocking billing.
 - Build idempotency keys from stable parts:
   - event: `openclaw_<runId>_<actionName>_<requestId-or-sequence>:event`
   - usage: `openclaw_<runId>_<actionName>_<requestId-or-sequence>:usage`
+
+## Telemetry minimization
+
+- Send only minimum fields required for billing and diagnostics.
+- Do not send raw prompts, raw outputs, raw query text, credentials, or full request/response bodies.
+- Use `queryHash` instead of raw query text.
