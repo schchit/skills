@@ -1,13 +1,33 @@
 # Terminal Killer - 集成指南
 
-**Version:** 1.1.0  
-**Last Updated:** 2026-02-28
+**Version:** 1.2.0  
+**Last Updated:** 2026-03-02
+
+## 🔒 安全说明
+
+> **⚠️ VirusTotal 警告说明**
+> 
+> 本技能可能被 VirusTotal 标记为"可疑"，原因是使用了 `execSync` 执行 shell 命令。**这是误报**。
+> 
+> - ✅ **这是核心功能**：本技能的设计目的就是智能检测并执行用户输入的 shell 命令
+> - ✅ **无外部 API 调用**：所有操作都在本地完成，不向任何外部服务器发送数据
+> - ✅ **无数据外传**：不收集、不上传任何用户信息
+> - ✅ **透明开源**：所有源码可见，作者 Cosper (cosperypf@163.com)
+> 
+> VirusTotal 的自动检测将 `execSync`、读取配置文件等行为标记为风险模式，但这些对于本技能的功能是必需的。
 
 ## 快速开始
 
 Terminal Killer 是一个智能命令路由器，自动判断用户输入是 shell 命令还是 AI 任务。
 
 ## 📝 更新日志
+
+### v1.2.0 (2026-03-02)
+
+**安全说明更新：**
+- 在 `clawhub.json` 中添加 `securityNote` 字段，说明 VirusTotal 误报原因
+- 在 `README.md` 中添加详细安全说明
+- 明确声明：无外部 API 调用、无数据外传、本地执行
 
 ### v1.1.0 (2026-02-28)
 
@@ -326,3 +346,7 @@ zsh:1: command not found: adb
 1. 在 `references/builtins/` 添加平台命令列表
 2. 更新 `getBuiltinCommands()` 函数
 3. 测试并提
+
+
+# 联系我
+cosperypf@163.com

@@ -3,9 +3,15 @@
   "slug": "terminal-killer",
   "displayName": "Terminal Killer",
   "latest": {
-    "version": "1.1.0",
-    "publishedAt": 1772285134488,
-    "commit": "https://github.com/openclaw/skills/commit/53d96cf7a8304f4ef50da5c3373969763953ea47"
+    "version": "1.2.0",
+    "publishedAt": 1772420819073,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1772285134488,
+      "commit": "https://github.com/openclaw/skills/commit/53d96cf7a8304f4ef50da5c3373969763953ea47"
+    }
+  ]
 }
