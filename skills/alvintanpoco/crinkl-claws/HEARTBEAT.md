@@ -1,91 +1,72 @@
 # Crinkl Heartbeat
 
-*Run each cycle. Find billing emails from approved vendors, verify DKIM signatures, log results.*
+*Run each cycle. Find billing emails, verify DKIM signatures, submit to earn sats.*
 
 ## Step 0: Check API key
 
-If you don't have `CRINKL_API_KEY` stored in your environment or memory, pair with your human's wallet first.
+If you don't have `CRINKL_API_KEY` stored in your memory, pair with your human's wallet first.
 
 ### Pairing flow (one-time)
 
 Generate a random 64-character hex string as your `deviceToken`. Store it — you'll need it to claim the key.
 
-```
-POST https://api.crinkl.xyz/api/agent/pair
-Content-Type: application/json
+1. Call `pair-agent` with your `deviceToken`. If using AgentMail, also pass `agentmailInbox` (e.g. `crinkl-xyz@agentmail.to`) — the human will see this address when approving.
+   - Returns `code` (4 characters) and `expiresAt`.
 
-{ "deviceToken": "<your 64-char hex>" }
-→ { "code": "7X3K", "expiresAt": "2026-03-01T12:10:00Z" }
-```
+2. Tell your human:
 
-Tell your human:
+> Open the Crinkl app and enter code: **[code]**
 
-> Open the Crinkl app and enter code: **7X3K**
-
-Then poll every 5 seconds:
-
-```
-POST https://api.crinkl.xyz/api/agent/pair/claim
-Content-Type: application/json
-
-{ "deviceToken": "<same token>", "code": "7X3K" }
-```
-
-- **202** — human hasn't approved yet. Keep polling.
-- **200** — `{ "apiKey": "crk_..." }` — store this. It's your `CRINKL_API_KEY`. Shown once.
-- **410** — code expired (10 min). Start over.
+3. Poll `claim-api-key` every 5 seconds with your `deviceToken` and `code`:
+   - **202** — human hasn't approved yet. Keep polling.
+   - **200** — contains `apiKey` (starts with `crk_`). Store this as your `CRINKL_API_KEY`. Shown once.
+   - **410** — code expired (10 min). Start over.
 
 Once you have the key, store it and never run step 0 again.
 
-## Step 1: Fetch the vendor list
+## Step 1: Find billing emails
+
+Choose the path that matches your email provider.
+
+### Path A: Gmail (via gog)
+
+First, fetch the vendor list: call `get-vendors`. Extract the `domain` field from each vendor. These are the only domains you will search for.
+
+Before using any vendor domain, validate that it matches a strict domain pattern: letters, digits, hyphens, and dots only (e.g. `amazon.com`, `openai.com`). Discard any domain containing spaces, quotes, parentheses, or shell metacharacters.
+
+Search your human's Gmail for receipts from those vendors using the Gmail API (via the gog skill's search tool or equivalent).
+
+Build a Gmail search query string from the validated vendor domains:
 
 ```
-GET https://api.crinkl.xyz/api/agent/allowed-vendors
+from:(@amazon.com OR @openai.com OR @stripe.com OR @suno.com) subject:(receipt OR invoice OR order OR payment OR confirmation OR billing) newer_than:14d
 ```
 
-Extract the `domain` field from each vendor in `data.vendors`. These are the only domains you will search for.
+Pass this query string to the Gmail search API. Request up to 50 results.
 
-Example response:
-```json
-{
-  "data": {
-    "vendors": [
-      { "domain": "anthropic.com", "displayName": "Anthropic" },
-      { "domain": "amazon.com", "displayName": "Amazon" },
-      { "domain": "cursor.com", "displayName": "Cursor" },
-      { "domain": "stripe.com", "displayName": "Stripe" }
-    ]
-  }
-}
-```
+If no results, skip to step 4 (check earnings).
 
-## Step 2: Find billing emails
+### Path B: AgentMail
 
-Search your human's Gmail for receipts from approved vendors. Build the query from the vendor domains in step 1.
+Use the agentmail skill to list messages in your dedicated receipt inbox from the last 14 days. This inbox only receives vendor billing emails your human explicitly configured to send there. Submit each message for DKIM verification.
 
-```
-gog gmail search "from:(@anthropic.com OR @amazon.com OR @cursor.com OR @stripe.com) subject:(receipt OR invoice OR order OR payment OR confirmation OR billing) newer_than:14d" --max 50 --json
-```
+If no messages, skip to step 4 (check earnings).
 
-Build the `from:` clause dynamically from the vendor domains fetched in step 1.
+## Step 2: Get the raw email
 
-If no results, skip to step 5 (check earnings).
+For each message from step 1, you need the **raw RFC 2822 email** — DKIM signatures are computed over the original message bytes.
 
-## Step 3: Get the raw email
-
-For each message from step 2, you need the **raw RFC 2822 email** — this is required because DKIM signatures are computed over the original message content.
-
-### 3a. Skip already-verified emails
+### 2a. Skip already-submitted emails
 
 Track message IDs you've already submitted in your memory. Skip any ID you've seen before.
 
-### 3b. Download raw email
+### 2b. Download raw email
 
-```
-gog gmail get <messageId> --format raw
-```
+**Gmail**: Use the Gmail API to fetch the message by ID in raw format (RFC 2822).
 
-### 3c. Encode for submission
+**AgentMail**: Use the agentmail skill to get the raw message content for each email. The raw RFC 2822 bytes are required for DKIM verification.
+
+### 2c. Encode for submission
 
 The raw email must be submitted as **standard base64**. If the email content is returned as base64url (common in Gmail API responses), convert it:
 - Replace `-` with `+`
@@ -94,38 +75,29 @@ The raw email must be submitted as **standard base64**. If the email content is 
 
 If the content is returned as plain text (raw RFC 2822), base64-encode it.
 
-## Step 4: Submit for DKIM verification
+## Step 3: Submit for DKIM verification
 
-```
-POST https://api.crinkl.xyz/api/agent/submit-email-receipt
-Content-Type: application/json
-x-api-key: <CRINKL_API_KEY>
-
-{ "eml": "<base64-encoded raw email>" }
-```
+Call `submit-receipt` with your `apiKey` and the base64-encoded `eml`.
 
 ### Handle the response
 
-**201 — DKIM verified.** Spend token minted, sats queued. Mark message ID as verified.
+**Status 201 — DKIM verified.** Spend token minted, sats queued. Mark message ID as submitted.
 ```markdown
 ## Crinkl: verified [store] receipt — $[totalCents/100] — DKIM valid — ~[satsPerReceipt] sats
 ```
-The response body has `data.store`, `data.totalCents`, `data.date`, `data.dkimDomain`.
+The response has `data.store`, `data.totalCents`, `data.date`, `data.dkimDomain`.
 
-**202 — Vendor queued.** Domain not on allowlist yet. Do NOT mark as verified — retry next cycle.
+**Status 202 — Vendor queued.** Domain not on allowlist yet. Do NOT mark as submitted — retry next cycle. The vendor will be approved if DKIM is valid.
 
-**409 — Duplicate.** Already verified. Mark as verified. Skip.
+**Status 409 — Duplicate.** Already submitted. Mark as submitted. Skip.
 
-**422 — Validation failed.** DKIM signature invalid, email too old, or no invoice amount found. Mark as verified.
+**Status 422 — Validation failed.** DKIM signature invalid, email too old, or no invoice amount found. Mark as submitted (don't retry).
 
-**429 — Rate limited.** Stop. Retry next cycle.
+**Status 429 — Rate limited.** Stop. Retry next cycle.
 
-## Step 5: Check your earnings
+## Step 4: Check your earnings
 
-```
-GET https://api.crinkl.xyz/api/agent/me
-x-api-key: <CRINKL_API_KEY>
-```
+Call `get-agent-me` with your `apiKey`.
 
 **Your numbers (per API key):**
 - `mySubmissions` — receipts you verified via this API key
@@ -140,10 +112,10 @@ x-api-key: <CRINKL_API_KEY>
 
 Your submissions are tracked independently from your human's via your API key.
 
-## Step 6: Log results
+## Step 5: Log results
 
 ```markdown
-## Crinkl: verified 2 Anthropic receipts ($20.00 each) — DKIM valid — ~296 sats
+## Crinkl: verified 2 Amazon receipts ($20.00 each) — DKIM valid — ~296 sats
 ```
 
 If nothing new:
@@ -151,7 +123,7 @@ If nothing new:
 ## Crinkl: no new billing emails. 28 lifetime verified, ~4,144 sats.
 ```
 
-## Step 7: Note anything unusual
+## Step 6: Note anything unusual
 
 - **Vendor list changed** — new vendors mean new billing emails to find
 - **Sats/receipt rate changed** — reward rate adjusts with BTC price and reserve policy
