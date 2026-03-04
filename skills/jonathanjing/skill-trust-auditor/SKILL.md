@@ -1,18 +1,33 @@
 ---
 name: skill-trust-auditor
-description: "Audit a ClawHub skill for security risks BEFORE installation. Use when: (1) user is about to install a ClawHub skill, (2) user asks if a skill is safe, (3) reviewing skills for enterprise deployment. NOT for: auditing your own workspace files, general code review, or non-ClawHub scripts."
+description: "Audit a ClawHub skill for security risks BEFORE installation."
+version: "1.1.3"
 metadata:
   {
     "openclaw": {
       "emoji": "🛡️",
-      "requires": { "anyBins": ["python3", "clawhub"] }
+      "requires": {
+        "bins": ["python3"],
+        "anyBins": ["clawhub"]
+      }
     }
   }
 ---
 
 # Skill Trust Auditor
 
-Audit any ClawHub skill for security risks before installation. Produces a Trust Score (0-100) and flags dangerous patterns. Created in response to the ClawHavoc incident (Feb 2026, 341 malicious skills).
+Audit any ClawHub skill for security risks before installation.
+
+## 🛠️ Installation
+
+### 1. Ask OpenClaw (Recommended)
+Tell OpenClaw: *"Install the skill-trust-auditor skill."* The agent will handle the installation and configuration automatically.
+
+### 2. Manual Installation (CLI)
+If you prefer the terminal, run:
+```bash
+clawhub install skill-trust-auditor
+```
 
 ## Setup (first run only)
 

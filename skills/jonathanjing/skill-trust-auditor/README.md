@@ -2,7 +2,16 @@
 
 **Audit any ClawHub skill for security risks BEFORE you install it.**
 
-Created in response to the **ClawHavoc incident** (Feb 2026, 341 malicious skills uploaded to ClawHub). Think of it as VirusTotal for Agent skills.
+## 🛠️ Installation
+
+### 1. Ask OpenClaw (Recommended)
+Tell OpenClaw: *"Install the skill-trust-auditor skill."* The agent will handle the installation and configuration automatically.
+
+### 2. Manual Installation (CLI)
+If you prefer the terminal, run:
+```bash
+clawhub install skill-trust-auditor
+```
 
 ## What it does
 
