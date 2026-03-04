@@ -2,7 +2,7 @@
 
 [English](README.md) | [中文](README_CN.md)
 
-A comprehensive professional storyboard and prompt director for **Jimeng Seedance 2.0**. This skill guides you from a simple idea to a "movie-grade" video generation prompt, leveraging Seedance's full multimodal power.
+A comprehensive professional storyboard and prompt director for **Jimeng Seedance 2.0**. Optimized for **Claude Code, Cursor, and OpenClaw**, this skill guides you from a simple idea to a "movie-grade" video generation prompt, leveraging Seedance's full multimodal power.
 
 ## ✨ Key Features
 
