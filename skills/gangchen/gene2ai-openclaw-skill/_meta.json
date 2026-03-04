@@ -3,9 +3,15 @@
   "slug": "gene2ai-openclaw-skill",
   "displayName": "Gene2ai",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1772454557062,
-    "commit": "https://github.com/openclaw/skills/commit/401f772177f8b237bb5f2b9e5da9d1b5cf25d76e"
+    "version": "0.1.1",
+    "publishedAt": 1772605355311,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1772454557062,
+      "commit": "https://github.com/openclaw/skills/commit/401f772177f8b237bb5f2b9e5da9d1b5cf25d76e"
+    }
+  ]
 }
