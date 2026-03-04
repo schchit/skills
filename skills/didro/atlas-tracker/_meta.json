@@ -3,9 +3,15 @@
   "slug": "atlas-tracker",
   "displayName": "Atlas Tracker",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1772226395070,
-    "commit": "https://github.com/openclaw/skills/commit/d96f282635ca529f594c650c35e0c338c7165390"
+    "version": "1.0.5",
+    "publishedAt": 1772522616761,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1772226395070,
+      "commit": "https://github.com/openclaw/skills/commit/d96f282635ca529f594c650c35e0c338c7165390"
+    }
+  ]
 }

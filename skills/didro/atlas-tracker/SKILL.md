@@ -1,6 +1,6 @@
 ---
 name: atlas-tracker
-description: Work with Atlas Tracker (RedForester) mindmaps via MCP tools. Use when reading, creating, or updating nodes and branches in Atlas Tracker maps — including navigating map structure, creating solution trees, updating node properties, and managing typed nodes. Requires at_read_branch, at_create_branch, at_update_branch, at_get_node_types, at_read_attachments tools (provided by the Atlas Tracker OpenClaw plugin).
+description: Work with Atlas Tracker (RedForester) mindmaps via MCP tools. Use when reading, creating, or updating nodes and branches in Atlas Tracker maps — including navigating map structure, creating solution trees, updating node properties, managing typed nodes, creating link nodes, uploading files to nodes, and working with node comments. Requires at_read_branch, at_create_branch, at_update_branch, at_get_node_types, at_read_attachments, at_create_link_node, at_upload_file, at_get_comments, at_add_comment, at_delete_comment, at_update_comment tools (provided by the Atlas Tracker OpenClaw plugin).
 ---
 
 # Atlas Tracker Skill
@@ -148,6 +148,41 @@ Use `at_create_branch` with nested `children[]` to create the full tree in one c
 ### Update node content
 1. `at_read_branch` to get current node id and properties
 2. `at_update_branch` with `update: [{id, typeProperties: {key: "<html_value>"}}]`
+
+### Create a link node (shortcut/reference)
+A link node is a reference to an existing node — it appears in the map as a shortcut to the original. Useful for showing the same node in multiple places without duplicating it.
+```
+at_create_link_node(nodeUrl, originalNodeId)
+```
+- `nodeUrl` — URL of the parent where the link node should appear
+- `originalNodeId` — UUID of the existing node to reference
+
+Example: place a reference to node `abc-123` under parent node `def-456`:
+```
+at_create_link_node(
+  "https://app.redforester.com/mindmap?mapid=<mapId>&nodeid=def-456",
+  "abc-123"
+)
+```
+
+### Upload a file to a node
+Attach any file (PDF, Excel, Word, image) to an AT node:
+```
+at_upload_file(nodeUrl, filePath)
+```
+- `filePath` — absolute local path to the file
+- Uploads via `PUT /api/files`, then attaches as a type_id=10 property
+- Adds to existing files — does not overwrite
+
+### Work with comments
+```
+at_get_comments(nodeUrl)           → list all comments (with thread structure)
+at_add_comment(nodeUrl, text, replyToCommentId?)  → add comment or reply to thread
+at_update_comment(nodeUrl, commentId, text)       → edit comment text
+at_delete_comment(nodeUrl, commentId)             → delete comment
+```
+
+---
 
 ## Reference Files
 
