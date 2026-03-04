@@ -3,11 +3,16 @@
   "slug": "send-token",
   "displayName": "Send Token",
   "latest": {
-    "version": "0.1.1",
-    "publishedAt": 1772374878851,
-    "commit": "https://github.com/openclaw/skills/commit/c5b424cab39884180e8d34da880d9867a93b76df"
+    "version": "0.1.2",
+    "publishedAt": 1772574886801,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.1.1",
+      "publishedAt": 1772374878851,
+      "commit": "https://github.com/openclaw/skills/commit/c5b424cab39884180e8d34da880d9867a93b76df"
+    },
     {
       "version": "0.1.0",
       "publishedAt": 1772374796694,

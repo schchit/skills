@@ -1,6 +1,6 @@
 ---
 name: send-token
-description: Transfer tokens on Solana or Base (EVM). Use when the user wants to send, transfer, or pay tokens. Supports native coins (SOL, ETH) and tokens (USDC) by name, plus arbitrary tokens by mint/contract address. Covers "send SOL", "transfer USDC", "send tokens", "pay someone", "send ETH on Base", "transfer to address".
+description: Transfer tokens on Solana or Base. Use when the user wants to send, transfer, or pay tokens. Supports native coins (SOL, ETH) and tokens (USDC) by name, plus arbitrary tokens by mint/contract address. Covers "send SOL", "transfer USDC", "send tokens", "pay someone", "send ETH on Base", "transfer to address".
 user-invocable: true
 disable-model-invocation: false
 allowed-tools: ["Bash(npx @openant-ai/cli@latest wallet send *)", "Bash(npx @openant-ai/cli@latest wallet balance*)", "Bash(npx @openant-ai/cli@latest wallet addr*)", "Bash(npx @openant-ai/cli@latest status*)"]
@@ -8,7 +8,7 @@ allowed-tools: ["Bash(npx @openant-ai/cli@latest wallet send *)", "Bash(npx @ope
 
 # Sending Tokens on OpenAnt
 
-Use the `npx @openant-ai/cli@latest` CLI to transfer tokens on Solana or Base (EVM). Supports native coins (SOL, ETH), named tokens (USDC), and arbitrary tokens by mint/contract address.
+Use the `npx @openant-ai/cli@latest` CLI to transfer tokens on Solana or Base. Supports native coins (SOL, ETH), named tokens (USDC), and arbitrary tokens by mint/contract address.
 
 **Always append `--json`** to every command for structured, parseable output.
 
@@ -31,7 +31,7 @@ npx @openant-ai/cli@latest wallet send <chain> <token> <amount> <to> [--json] [-
 
 | Argument | Description |
 |----------|-------------|
-| `chain` | Target chain: `solana` (or `sol`), `base` (or `eth`, `evm`) |
+| `chain` | Target chain: `solana` (or `sol`), `base` (or `eth`) |
 | `token` | Token: `sol`, `eth`, `usdc`, or a mint/contract address |
 | `amount` | Amount in display units (e.g. `10` = 10 USDC, `0.5` = 0.5 SOL) |
 | `to` | Destination address (Solana pubkey or EVM 0x address) |
@@ -48,9 +48,9 @@ npx @openant-ai/cli@latest wallet send <chain> <token> <amount> <to> [--json] [-
 | Chain | Named tokens | Native coin |
 |-------|-------------|-------------|
 | `solana` / `sol` | `usdc`, or any SPL mint address | `sol` |
-| `base` / `eth` / `evm` | `usdc`, or any ERC20 contract address | `eth` |
+| `base` / `eth` | `usdc`, or any ERC20 contract address | `eth` |
 
-For arbitrary tokens, pass the mint address (Solana) or contract address (EVM) directly as the `token` argument.
+For arbitrary tokens, pass the mint address (Solana) or contract address (Base) directly as the `token` argument.
 
 ## Examples
 
@@ -88,7 +88,7 @@ npx @openant-ai/cli@latest wallet send base usdc 50 0xAbCdEf... --json
 npx @openant-ai/cli@latest wallet send solana 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU 25 7xKabc123... --json
 ```
 
-### Send arbitrary ERC20 by contract address
+### Send arbitrary ERC20 on Base by contract address
 
 ```bash
 npx @openant-ai/cli@latest wallet send base 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913 10 0xAbCdEf... --json
@@ -119,7 +119,7 @@ Read-only commands (`status`, `wallet balance`, `wallet addresses`) can be execu
 ## NEVER
 
 - **NEVER send without the user explicitly confirming the destination address** — blockchain transfers are irreversible. Show the full address and ask the user to verify it before executing.
-- **NEVER send Solana tokens to an EVM address, or vice versa** — the chains are incompatible. Solana addresses are base58 strings (32–44 chars), EVM addresses start with `0x`. If the address format doesn't match the chain, stop and clarify with the user.
+- **NEVER send Solana tokens to a Base address, or vice versa** — the chains are incompatible. Solana addresses are base58 strings (32–44 chars), Base addresses start with `0x`. If the address format doesn't match the chain, stop and clarify with the user.
 - **NEVER assume the displayed balance accounts for gas** — Solana transactions require a small SOL fee (~0.000005 SOL); Base transactions require ETH for gas. If the user is sending their entire balance, leave a small reserve or the transaction will fail.
 - **NEVER infer the chain from the token alone** — USDC exists on both Solana and Base. Always confirm which chain the user intends before sending.
 - **NEVER send to an address the user typed casually without double-checking** — if the user typed the address in the middle of a sentence or abbreviated it, ask them to paste the full address again to confirm.
@@ -134,7 +134,7 @@ Read-only commands (`status`, `wallet balance`, `wallet addresses`) can be execu
 
 - "No Turnkey credentials found" — Run `authenticate-openant` skill first
 - "Insufficient balance" / "Attempt to debit" — Wallet lacks funds; check `wallet balance`
-- "Unknown chain" — Only `solana` and `base` are supported
-- "No EVM wallet found" / "No Solana wallet found" — Re-login to provision wallets
+- "Unknown chain" — Supported: `sol`, `base`, `eth`
+- "No Base wallet found" / "No Solana wallet found" — Re-login to provision wallets
 - "Cannot read decimals for mint" — Invalid or non-existent token mint address
 - Transaction simulation failed — Check balance and recipient address validity
