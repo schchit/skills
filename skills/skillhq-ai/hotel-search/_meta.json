@@ -1,0 +1,11 @@
+{
+  "owner": "skillhq-ai",
+  "slug": "hotel-search",
+  "displayName": "Google Hotels",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1772618602851,
+    "commit": null
+  },
+  "history": []
+}
