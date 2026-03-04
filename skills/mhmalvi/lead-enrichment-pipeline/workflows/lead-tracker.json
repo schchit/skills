@@ -1,11 +1,5 @@
 {
-  "updatedAt": "2026-02-18T18:15:59.999Z",
-  "createdAt": "2026-02-18T18:15:59.999Z",
-  "id": "QChZkwH2H3fJY9Xp",
   "name": "Lead Tracker — Enriched Pipeline",
-  "description": null,
-  "active": true,
-  "isArchived": false,
   "nodes": [
     {
       "parameters": {
@@ -232,11 +226,5 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "meta": null,
-  "pinData": null,
-  "versionId": "7c4cec68-a808-4549-9654-72c28397bceb",
-  "activeVersionId": "7c4cec68-a808-4549-9654-72c28397bceb",
-  "versionCounter": 11,
-  "triggerCount": 1,
-  "tags": []
+  "meta": null
 }

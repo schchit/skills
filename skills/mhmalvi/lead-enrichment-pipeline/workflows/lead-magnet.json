@@ -1,11 +1,5 @@
 {
-  "updatedAt": "2026-02-17T22:44:31.000Z",
-  "createdAt": "2026-02-17T01:47:47.197Z",
-  "id": "jMaMue1UlYBj77gx",
   "name": "Lead Magnet Download Form",
-  "description": null,
-  "active": true,
-  "isArchived": false,
   "nodes": [
     {
       "parameters": {
@@ -336,36 +330,5 @@
     "availableInMCP": false,
     "errorWorkflow": "giNAXrg0oK2y3Q7d"
   },
-  "meta": null,
-  "pinData": {},
-  "versionId": "3ad8bc96-39f1-49fd-8958-b41a53c6d845",
-  "activeVersionId": "3ad8bc96-39f1-49fd-8958-b41a53c6d845",
-  "versionCounter": 63,
-  "triggerCount": 1,
-  "tags": [
-    {
-      "updatedAt": "2026-02-17T23:05:31.644Z",
-      "createdAt": "2026-02-17T23:05:31.644Z",
-      "id": "1yICTZeB3klJFYAE",
-      "name": "Lead Gen"
-    },
-    {
-      "updatedAt": "2026-02-17T23:05:31.816Z",
-      "createdAt": "2026-02-17T23:05:31.816Z",
-      "id": "JYrNxtf2FRHRMW8a",
-      "name": "Production"
-    },
-    {
-      "updatedAt": "2026-02-17T23:05:31.599Z",
-      "createdAt": "2026-02-17T23:05:31.599Z",
-      "id": "OmIMMlN4VpTdmGSH",
-      "name": "Aethon Core"
-    },
-    {
-      "updatedAt": "2026-02-17T23:05:31.526Z",
-      "createdAt": "2026-02-17T23:05:31.526Z",
-      "id": "RKoWkV72uXPgu54V",
-      "name": "P0 — Critical"
-    }
-  ]
+  "meta": null
 }
