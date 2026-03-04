@@ -36,7 +36,7 @@ def check_blender():
             if r.returncode == 0:
                 ver = r.stdout.split("\n")[0]
                 return True, ver, path
-        except:
+        except Exception:
             continue
     return False, None, None
 
@@ -64,10 +64,14 @@ def check_cloud_api_symbols():
     issues = []
     try:
         from bambu_lab_cloud_api import BambuClient
+        from bambu_lab_cloud_api import BambuAuthenticator
         c_methods = dir(BambuClient)
-        for method in ["login", "get_device_list"]:
+        for method in ["get_device_list"]:
             if method not in c_methods:
                 issues.append(f"BambuClient missing .{method}()")
+        a_methods = dir(BambuAuthenticator)
+        if "login" not in a_methods:
+            issues.append("BambuAuthenticator missing .login()")
     except ImportError:
         issues.append("bambu-lab-cloud-api not installed (needed for Cloud mode)")
     except Exception as e:
@@ -103,6 +107,13 @@ def main():
         status = f"✅ {ver}" if ok else f"⚠️ not installed ({info['purpose']})"
         print(f"  {name:20s} {status}")
     
+
+    # Check pygltflib (fast texture extraction)
+    try:
+        import pygltflib
+        print("  pygltflib: ✅")
+    except ImportError:
+        print("  pygltflib: ❌ (pip3 install pygltflib — fast texture extraction)")
     print("\nBlender:")
     ok, ver, path = check_blender()
     if ok:
@@ -142,6 +153,14 @@ def main():
             print(f"  ⚠️ {issue}")
     else:
         print("  ✅ bambu-lab-cloud-api symbols verified")
+
+    print("\nPreview rendering:")
+    blender_ok2, blender_ver2, _ = check_blender()
+    if blender_ok2:
+        print(f"  ✅ Blender (required for preview + colorize)")
+    else:
+        print("  ❌ Blender not found (brew install --cask blender) — needed for preview + colorize")
+
 
     print("\nSearch backend:")
     search_ok, search_pkg = check_search_backend()

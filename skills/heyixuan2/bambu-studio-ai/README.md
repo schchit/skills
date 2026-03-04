@@ -38,13 +38,14 @@ Full-stack Bambu Lab 3D printing skill for [OpenClaw](https://github.com/opencla
 | 🖨️ **Printer Control** | Status, print, pause, resume, cancel, speed, light, G-code |
 | 🔎 **Model Search** | Search Printables, MakerWorld, Thingiverse, Thangs for existing models |
 | 🎨 **AI 3D Generation** | Text-to-3D and Image-to-3D via Meshy, Tripo3D, Printpal, or 3D AI Studio |
-| 🎨 **Multi-Color AMS** | Auto-detect AMS filaments, GLB→OBJ+MTL color pipeline for multi-color printing |
-| 🔆 **AI Color Optimization** | Delight (shadow removal) + CIELAB nearest-neighbor + shadow-aware mapping + texture smoothing |
+| 🎨 **Multi-Color AMS** | Auto-detect colors from texture, vertex-color OBJ pipeline for ≤8-color AMS printing |
+| 🔆 **AI Shadow Handling** | No shadow removal needed — pixel-level HSV family classification bypasses baked lighting entirely |
 | 🔍 **11-Point Analysis** | Printability check: walls, overhangs, tolerance, infill, layer height, floating parts |
 | 🔧 **Auto Mesh Repair** | Fix non-manifold edges, holes, bad normals, tiered by severity |
 | 📏 **Auto Orient & Scale** | Optimal print orientation (stable poses), auto unit detection (m→mm) |
-| 🔄 **Format Conversion** | Auto GLB→STL (single-color) or GLB→OBJ+MTL (multi-color) |
+| 🔄 **Format Conversion** | Auto GLB→STL (single-color) or GLB→vertex-color OBJ (multi-color) |
 | 📸 **Camera** | RTSP snapshots from printer camera (LAN mode, all models incl. H2D) |
+| 📷 **Model Preview** | HQ rendered preview via Blender (turntable, front/side/top views) |
 | 🤖 **AI Print Monitoring** | Periodic snapshots → anomaly detection → auto-pause on failure |
 | 📦 **AMS Management** | Auto-detect filament colors/types via `bambu.py info` |
 | ⚙️ **CLI Slicing** | OrcaSlicer backend, auto profile merging, quality presets, 3MF output |
@@ -105,7 +106,7 @@ All 9 current Bambu Lab models:
 
 ## Model Requirements
 
-This skill has 700+ lines of instructions with multi-step branching flows. The AI model running it needs to reliably follow complex instructions.
+This skill has ~400 lines of instructions with multi-step branching flows. The AI model running it needs to reliably follow complex instructions.
 
 | Tier | Models | Notes |
 |------|--------|-------|
@@ -137,7 +138,17 @@ brew install --cask bambu-studio  # Required for model preview before printing
 
 ---
 
+## Quick Start
+
+```bash
+python3 scripts/doctor.py          # Verify all dependencies
+python3 scripts/search.py "vase"   # Search for models
+python3 scripts/bambu.py status    # Check printer status
+```
+
 ## Setup
+
+> 💡 Run `python3 scripts/doctor.py` to verify all dependencies before first use.
 
 No CLI wizard — your OpenClaw agent handles setup through conversation:
 
@@ -169,7 +180,7 @@ First login requires email verification code. Token is cached for 24 hours.
 
 ## The Full Pipeline
 
-Here's what happens when you say "make me an iPhone 15 Pro Max case and print it":
+Here's what happens when you say "make me an iPhone 16 Pro Max case and print it":
 
 ```
 You: "Print me an iPhone 16 Pro Max case"
@@ -491,18 +502,18 @@ python3 scripts/bambu.py info                      # Printer hardware info
 python3 scripts/bambu.py notify --message "Done!"  # Send notification
 python3 scripts/bambu.py speed silent              # Quiet mode (night)
 python3 scripts/bambu.py speed standard            # Normal
-
-# Slicing
-python3 scripts/slice.py model.stl                 # Slice with auto-detect
-python3 scripts/slice.py model.stl --orient        # Auto-orient + slice
-python3 scripts/slice.py model.stl --quality fine  # 0.12mm layer height
-python3 scripts/slice.py --list-profiles           # Show available profiles
 python3 scripts/bambu.py speed sport               # Fast
 python3 scripts/bambu.py speed ludicrous           # Maximum
 python3 scripts/bambu.py light on|off              # Chamber light
 python3 scripts/bambu.py ams                       # AMS filament status
 python3 scripts/bambu.py snapshot                  # Camera photo
 python3 scripts/bambu.py gcode "G28"               # Send G-code
+
+# Slicing
+python3 scripts/slice.py model.stl                 # Slice with auto-detect
+python3 scripts/slice.py model.stl --orient        # Auto-orient + slice
+python3 scripts/slice.py model.stl --quality fine  # 0.12mm layer height
+python3 scripts/slice.py --list-profiles           # Show available profiles
 ```
 
 ### 3D Generation
@@ -528,6 +539,11 @@ python3 scripts/analyze.py model.3mf --render                           # With p
 ### Print Monitoring
 
 ```bash
+# Preview
+python3 scripts/preview.py model.stl                          # Quick preview (matplotlib)
+python3 scripts/preview.py model.stl --hq                     # HQ render (Blender)
+python3 scripts/preview.py model.stl --hq --output render.png # Custom output path
+
 python3 scripts/monitor.py --once                  # Single check
 python3 scripts/monitor.py --interval 300          # Every 5 min (standard)
 python3 scripts/monitor.py --interval 1800         # Every 30 min (light)
@@ -622,14 +638,16 @@ bambu-studio-ai/
 │   ├── bambu-cloud-api.md      — Cloud API reference
 │   ├── 3d-generation-apis.md   — 3D provider API endpoints
 │   ├── 3d-prompt-guide.md      — Prompt engineering for 3D models
-│   └── model-specs.md          — All 9 printer specifications
+│   ├── model-specs.md          — All 9 printer specifications
+│   └── bambu_filament_colors.json — Bambu Lab 43-color filament palette
 ├── requirements.txt            — Python dependencies
 └── scripts/
     ├── bambu.py                — Printer control (Cloud + LAN, token caching)
     ├── generate.py             — AI 3D generation (4 providers, auto-convert, prompt enhancement)
     ├── analyze.py              — 11-point printability analysis + mesh repair
-    ├── colorize.py             — Multi-color pipeline (AO delight, CIELAB NN, OBJ+MTL export)
+    ├── colorize.py             — Multi-color pipeline v4 (pixel classify → greedy select → vertex color OBJ)
     ├── monitor.py              — Smart print monitor (anomaly detection, notifications)
+    ├── preview.py              — Model preview renderer (matplotlib quick / Blender HQ)
     ├── slice.py                — CLI slicer (OrcaSlicer backend, auto profile merging)
     ├── search.py               — Model search (MakerWorld, Printables, Thingiverse, Thangs)
     ├── doctor.py               — Dependency doctor (verify all deps + API symbols)
@@ -649,7 +667,81 @@ PRs welcome! Areas that need help:
 
 ---
 
+## How We Handle AI-Generated Model Shadows
+
+AI 3D models have baked lighting in textures. Instead of removing shadows (fragile), we **bypass them**: HSV classification groups pixels by hue, which is unaffected by shadows (shadows change brightness, not hue).
+
+<details>
+<summary>📖 Technical Deep Dive</summary>
+
+
+AI 3D generation services (Tripo, Meshy, etc.) bake lighting directly into model textures. A "black" character body might actually be RGB(58,59,63) — dark gray with baked ambient occlusion. Traditional approaches try to *remove* these shadows (delight/albedo extraction), but this is fragile and introduces artifacts.
+
+### Our Approach: Classify First, Color Later
+
+Instead of fighting baked lighting, we **bypass it entirely** with pixel-level color family classification:
+
+```
+Traditional (v1-v3, abandoned):
+  Texture → [Remove shadows] → CIELAB match to 43 Bambu colors → Material OBJ
+  Problem: shadow removal is imperfect → false colors at boundaries
+
+v4 (current):
+  Texture → [Classify pixels by HSV family] → [Greedy select by area] → [CIELAB assign] → Vertex-color OBJ
+  Key insight: shadows don't change HUE, only VALUE — HSV classification is shadow-immune
+```
+
+**Why it works:** A baked shadow on a red surface makes it darker red (lower V), but it's still *red* (same H). HSV family classification groups all reds together regardless of brightness. The shadow pixels get assigned to the "red" family alongside the bright pixels, and the representative color (median) naturally reflects the true material color.
+
+### Pipeline Steps
+
+| Step | What | Time |
+|------|------|------|
+| 1. Extract texture | pygltflib parses GLB binary (no Blender) | <1s |
+| 2. Classify pixels | Each of ~4M pixels → HSV → 12 color families | <1s |
+| 3. Greedy select | Largest family → median color → exclude family group → repeat (≤8) | <1s |
+| 4. Per-pixel assign | Every pixel → CIELAB distance → nearest selected color | 2-3s |
+| 5. Quantize texture | Build N-color PNG + preview | <1s |
+| 6. Vertex colors | Blender: subdivide → UV sample → sRGB→linear → vertex color → OBJ | 1-2min |
+
+### Color Family Groups (mutual exclusion)
+
+When a family is selected, its partner is excluded to prevent wasting color slots:
+
+| Group | Families | Example |
+|-------|----------|---------|
+| Dark | black ↔ dark_gray | Mickey's body: all dark pixels → one slot |
+| Light | light_gray ↔ white | Gloves/face highlights → one slot |
+| Warm | orange ↔ yellow | Shoes: gold/brown → one slot |
+| Red | red ↔ pink | Shorts + skin tones → one slot |
+| Cool | green ↔ cyan | Patrick's shorts → one slot |
+| Blue | blue ↔ purple | Decorative patterns → one slot |
+
+### Why Not Remove Shadows?
+
+We tried three shadow removal approaches before abandoning them all:
+
+1. **AO Delight** (v0.11-0.18): Bake ambient occlusion → divide texture by AO → "remove" shadows. Problem: division amplifies noise, creates false bright spots, dark filament colors get washed out.
+
+2. **Intrinsic Albedo Extraction** (v0.19-0.22): Cycles EMIT bake → pure material color without lighting. Problem: subtle color shifts from texture filtering, brightness stretch introduces hue drift.
+
+3. **Zero Processing** (experiment): Map raw texture directly to Bambu colors. Result: surprisingly good — proved the complex pipelines were hurting more than helping. But still limited to 43 Bambu colors.
+
+**Conclusion:** The problem was never "how to remove shadows" — it was "how to classify colors *despite* shadows." HSV family classification solves this because shadows affect V (value/brightness) but not H (hue). No delight, no albedo extraction, no shadow-aware mapping. Just classify and assign.
+
+</details>
+
+
 ## Version History
+
+| Version | Changes |
+|---------|--------|
+| **0.22.4** | Colorize: vertex color snap (exact N colors in OBJ), bmesh auto-repair (merge doubles, fix normals, delete loose), post-export non-manifold = 0 |
+| **0.22.3** | Colorize: achromatic constraint (shadow pixels blocked from black, V<0.2 exempt), 2% min threshold for small color families, 5-pass majority vote boundary smoothing, island cleanup (1000px) + median filter, doctor.py syntax fix |
+| **0.22.2** | preview.py rewrite: Blender-only rendering (removed matplotlib), TRACK_TO auto-aim, PBR texture auto-load, dynamic lighting, EEVEE 4.x/5.x compat, --views all (2×2 grid). Audit fixes P1-P4. |
+| **0.22.1** | Colorize v4 rewrite: pixel HSV family classification + greedy area-based color selection + per-pixel CIELAB assign + vertex-color OBJ export. No shadow removal needed — HSV classification bypasses baked lighting. pygltflib texture extraction (no Blender for Step 1). sRGB→linear fix for accurate vertex colors. Audit fixes: --colors validation, low-V achromatic, UV None check, path injection, dead code cleanup. 1118→573 lines. |
+| **0.22.0** | Intrinsic Albedo Extraction replaces AO delight — eliminates false colors (orange/copper/silver) at shadow boundaries. 3-step pipeline: Cycles DIFFUSE COLOR bake + per-channel brightness recovery + white point recovery. Chrominance-weighted CIELAB (L\*=0.1). Region majority cleanup (numpy). 22 bare except→Exception fixes. |
+| **0.21.1** | `preview.py` — model preview renderer (matplotlib quick + Blender HQ). SKILL.md rewritten (875→294 lines) with full workflow spec. `doctor.py` checks matplotlib. Blender engine compat (EEVEE/EEVEE_NEXT). Path-safe Blender scripts (json.dumps escaping). | Full manifest metadata restored (env, secrets, install, security, network access, persistence declarations) for ClawHub audit compliance.
 
 | Version | Changes |
 |---------|---------|
