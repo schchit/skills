@@ -4,6 +4,28 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
+## [3.1.0] - 2026-03-04
+
+### 新增
+- ✨ 配置向导：首次使用时自动提示配置 GitCode API Token
+- ✨ 配置文件支持：使用独立配置文件 `config/gitcode.conf`（更安全）
+- ✨ 环境变量支持：可通过 `GITCODE_API_TOKEN` 环境变量配置
+- 📝 安装后脚本：安装完成后自动提示配置步骤
+- 📝 配置模板：提供 `config/gitcode.conf.example` 模板文件
+- 🔒 安全增强：配置文件权限自动设置为 600
+
+### 变更
+- 🔄 Token 配置从 TOOLS.md 迁移到技能内部配置文件
+- 🔄 gitcode-api.sh 新增 `setup` 命令用于配置向导
+- 📝 更新文档，强调配置步骤
+
+### 移除
+- ❌ 移除对 TOOLS.md 的依赖（Token 配置）
+
+### 优化
+- 🔒 Token 不再硬编码在脚本中
+- 🔧 配置优先级：环境变量 > 配置文件 > 默认值
+
 ## [3.0.0] - 2026-03-04
 
 ### 新增

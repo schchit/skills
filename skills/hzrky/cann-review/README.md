@@ -1,6 +1,6 @@
-# CANN Runtime 代码审查技能
+# CANN 代码审查技能
 
-自动审查 GitCode 上的 CANN runtime 项目 PR，检查内存泄漏、安全漏洞和代码可读性。
+自动审查 GitCode 上的 CANN 项目 PR，检查内存泄漏、安全漏洞和代码可读性。
 
 ## ✨ 特性
 
@@ -12,8 +12,51 @@
 
 ## 📦 安装
 
-1. 确保 OpenClaw 已配置 GitCode API Token（已在 TOOLS.md 中配置）
-2. 技能位于：`~/.openclaw/workspace/skills/cann-review/`
+### 1. 安装技能
+
+```bash
+clawhub install cann-review
+```
+
+### 2. 配置 GitCode API Token
+
+**首次使用必须配置 Token：**
+
+```bash
+cd ~/.openclaw/workspace/skills/cann-review
+./gitcode-api.sh setup
+```
+
+按提示输入你的 GitCode API Token。
+
+<details>
+<summary>📖 如何获取 Token？</summary>
+
+1. 访问 https://gitcode.com/setting/token-classic
+2. 点击"生成新令牌"
+3. 选择权限：`api`, `write_repository`
+4. 复制生成的 Token
+
+</details>
+
+<details>
+<summary>🔧 其他配置方法</summary>
+
+**方法 2：手动配置**
+
+```bash
+cp config/gitcode.conf.example config/gitcode.conf
+nano config/gitcode.conf
+# 设置 GITCODE_API_TOKEN=your_token_here
+```
+
+**方法 3：环境变量**
+
+```bash
+export GITCODE_API_TOKEN=your_token_here
+```
+
+</details>
 
 ## 🚀 使用方法
 
@@ -75,14 +118,29 @@ task: "cann-review auto"
 
 ## ⚙️ 配置
 
-### API Token
+### 配置文件
 
-在 `TOOLS.md` 中配置：
+配置文件位于：`~/.openclaw/workspace/skills/cann-review/config/gitcode.conf`
 
-```markdown
-### GitCode
-- **Personal Access Token**: `your-token-here`
-- **API Base URL**: `https://api.gitcode.com/api/v5`
+```bash
+# 查看当前配置
+cat ~/.openclaw/workspace/skills/cann-review/config/gitcode.conf
+```
+
+### 环境变量（可选）
+
+也可以通过环境变量配置：
+
+```bash
+export GITCODE_API_TOKEN=your_token_here
+export GITCODE_API_BASE=https://api.gitcode.com/api/v5  # 可选
+```
+
+### 重新配置
+
+```bash
+cd ~/.openclaw/workspace/skills/cann-review
+./gitcode-api.sh setup
 ```
 
 ### 审查阈值

@@ -3,11 +3,16 @@
   "slug": "cann-review",
   "displayName": "Cann Review",
   "latest": {
-    "version": "3.0.0",
-    "publishedAt": 1772590200717,
-    "commit": "https://github.com/openclaw/skills/commit/1a2bb3684acd06a424869e04e15a00c01390dfb4"
+    "version": "3.2.0",
+    "publishedAt": 1772620226058,
+    "commit": null
   },
   "history": [
+    {
+      "version": "3.0.0",
+      "publishedAt": 1772590200717,
+      "commit": "https://github.com/openclaw/skills/commit/1a2bb3684acd06a424869e04e15a00c01390dfb4"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1772458814243,

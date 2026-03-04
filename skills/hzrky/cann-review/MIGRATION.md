@@ -83,15 +83,32 @@ curl -X POST \
 
 ### 步骤 2：配置 Token
 
-编辑 `~/.openclaw/workspace/TOOLS.md`：
+**v3.0 使用独立的配置文件（更安全）：**
+
+```bash
+cd ~/.openclaw/workspace/skills/cann-review
+./gitcode-api.sh setup
+```
+
+或手动配置：
+
+```bash
+cp config/gitcode.conf.example config/gitcode.conf
+nano config/gitcode.conf
+# 设置 GITCODE_API_TOKEN=your_token_here
+```
+
+**v2.x 使用 TOOLS.md（不推荐）：**
 
 ```markdown
 ### GitCode
 - **Personal Access Token**: `your-token-here`
-- **API Base URL**: `https://api.gitcode.com/api/v5`
-- **获取地址**: https://gitcode.com/setting/token-classic
-- **权限**: api, write_repository
 ```
+
+**为什么改变？**
+- ✅ **更安全**：配置文件权限为 600，仅当前用户可读
+- ✅ **更灵活**：每个技能独立配置，不污染全局 TOOLS.md
+- ✅ **更简单**：提供配置向导，一键设置
 
 ### 步骤 3：更新技能
 

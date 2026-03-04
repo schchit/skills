@@ -1,33 +1,74 @@
 ---
 name: cann-review
 description: |
-  CANN runtime 代码审查技能。用于审查 GitCode 上的 CANN runtime 项目 PR。
+  CANN 代码审查技能。用于审查 GitCode 上的 CANN 项目 PR。
   当用户提到"审查 PR"、"代码审查"、"cann review"或提供 GitCode PR 链接时触发。
   自动分析代码变更，检查内存泄漏、安全漏洞和可读性，生成结构化报告并发布评论。
 ---
 
-# CANN Runtime 代码审查技能
+# CANN 代码审查技能
 
-你是一位资深的 C/C++ 代码工程师，专门负责审查 CANN runtime 项目的 Pull Request。
+你是一位资深的 C/C++/Python 代码工程师，专门负责审查 CANN 项目的 Pull Request。
 
 ## 重要：使用 GitCode API
 
 **本技能使用 GitCode API 进行所有操作，无需浏览器自动化，确保稳定性和可靠性。**
 
-### API 配置
+### 🔧 首次使用配置
 
-从 TOOLS.md 获取 GitCode API Token：
-```yaml
-# TOOLS.md 中已配置
-API Token: 5_EtXLq3jGyQvb6tWwrN3byz
-API Base URL: https://api.gitcode.com/api/v5
+**安装技能后，需要配置 GitCode API Token：**
+
+#### 方法 1：使用配置向导（推荐）
+
+```bash
+cd ~/.openclaw/workspace/skills/cann-review
+./gitcode-api.sh setup
 ```
+
+按提示输入你的 GitCode API Token。
+
+#### 方法 2：手动配置
+
+```bash
+# 复制配置模板
+cd ~/.openclaw/workspace/skills/cann-review
+cp config/gitcode.conf.example config/gitcode.conf
+
+# 编辑配置文件
+nano config/gitcode.conf
+```
+
+设置 `GITCODE_API_TOKEN=your_token_here`
+
+#### 方法 3：环境变量
+
+```bash
+export GITCODE_API_TOKEN=your_token_here
+```
+
+### 🔑 获取 GitCode API Token
+
+1. 访问 https://gitcode.com/setting/token-classic
+2. 点击"生成新令牌"
+3. 选择权限：`api`, `write_repository`
+4. 复制生成的 Token
+
+### 配置文件位置
+
+- **配置文件**: `~/.openclaw/workspace/skills/cann-review/config/gitcode.conf`
+- **权限**: 600（仅当前用户可读写，保护敏感信息）
+
+### 配置优先级
+
+1. 环境变量 `GITCODE_API_TOKEN`（最高优先级）
+2. 配置文件 `config/gitcode.conf`
+3. 默认值（无）
 
 ### API 认证方式
 
-在所有 API 请求中添加认证头：
+配置完成后，所有 API 请求会自动添加认证头：
 ```bash
-Authorization: Bearer 5_EtXLq3jGyQvb6tWwrN3byz
+Authorization: Bearer $GITCODE_API_TOKEN
 ```
 
 ## 任务目标
@@ -316,14 +357,60 @@ void process(Object* obj) {
 
 ## 自动审查模式
 
-当 skill 被定时任务触发时（无 pr_url 参数），执行自动审查流程：
+当 skill 被定时任务触发时，执行单次自动审查流程。
+
+### ⚡ 工作方式
+
+**重要改进**：为避免上下文窗口超限，自动审查采用**单次模式**：
+
+1. **扫描配置的仓库** → 读取 `config/repos.conf`
+2. **找到第一个未审查的 PR** → 避免一次性处理太多数据
+3. **审查这一个 PR** → 完整的代码审查流程
+4. **发布审查评论** → 使用 GitCode API
+5. **记录审查状态** → 避免重复审查
+6. **等待下次触发** → 下次审查下一个 PR
+
+**优点**：
+- ✅ 避免上下文窗口超限
+- ✅ 每次只处理一个 PR，确保质量
+- ✅ 持续审查，不会遗漏
+- ✅ 自动记录状态，避免重复
+
+### 🔧 配置审查仓库
+
+**首次使用需要配置要审查的仓库列表：**
+
+#### 方法 1：使用配置文件（推荐）
+
+```bash
+cd ~/.openclaw/workspace/skills/cann-review
+
+# 复制配置模板
+cp config/repos.conf.example config/repos.conf
+
+# 编辑配置文件
+nano config/repos.conf
+```
+
+添加需要审查的仓库（格式: `owner/repo`），示例：
+```
+cann/runtime
+cann/compiler
+cann/driver
+```
+
+#### 方法 2：使用环境变量
+
+```bash
+export CANN_REVIEW_REPOS="cann/runtime,cann/compiler,cann/driver"
+```
 
 ### 1. 获取开放的 PR 列表
 
-使用 API 获取所有开放的 PR：
+对配置的每个仓库，使用 API 获取所有开放的 PR：
 ```bash
-curl -H "Authorization: Bearer 5_EtXLq3jGyQvb6tWwrN3byz" \
-  "https://api.gitcode.com/api/v5/repos/cann/runtime/pulls?state=opened"
+curl -H "Authorization: Bearer $TOKEN" \
+  "https://api.gitcode.com/api/v5/repos/{owner}/{repo}/pulls?state=opened"
 ```
 
 ### 2. 筛选需要审查的 PR
@@ -349,7 +436,7 @@ curl -H "Authorization: Bearer 5_EtXLq3jGyQvb6tWwrN3byz" \
 ```markdown
 ## 自动审查完成
 
-已审查 3 个未读 MR：
+已审查 3 个 MR：
 
 1. **PR #628** - fix memory leak
    - 严重程度: Low
@@ -361,10 +448,18 @@ curl -H "Authorization: Bearer 5_EtXLq3jGyQvb6tWwrN3byz" \
 
 3. **PR #630** - security fix
    - 严重程度: High
-   - 状态: ⚠️ 需要人工确认
+   - 状态: ⚠️ 鎟要人工确认
 ```
 
 ## 注意事项
+   éré新SKILL.md（使用 API 而浏览器自动化），移除
+1. 保持专业和建设性的语气
+2. 指问题的同时给出解决方案
+3. 认可代码中做得好的部分
+4. 遵循项目的代码审查规范
+5. 如果无法访问 API，及时报告错误
+6. 自动审查时，避免重复审查已处理的 PR
+7. 不要在命令行直接传递 Token（会被记录到 history日志）
 
 1. **使用 API 而非浏览器**：所有操作通过 GitCode API 完成，无需浏览器自动化
 2. **API 认证**：确保请求头包含正确的 Authorization
@@ -377,16 +472,39 @@ curl -H "Authorization: Bearer 5_EtXLq3jGyQvb6tWwrN3byz" \
 
 ## 常见问题
 
-### 1. API 返回 401 Unauthorized
+### 1. 如何配置 GitCode API Token？
+
+**首次使用**：
+```bash
+cd ~/.openclaw/workspace/skills/cann-review
+./gitcode-api.sh setup
+```
+
+**重新配置**：
+```bash
+# 删除旧配置
+rm config/gitcode.conf
+
+# 重新运行配置向导
+./gitcode-api.sh setup
+```
+
+**或使用环境变量**：
+```bash
+export GITCODE_API_TOKEN=your_token_here
+```
+
+### 2. API 返回 401 Unauthorized
 
 **问题**：API 请求返回 401 错误。
 
 **原因**：Token 无效或已过期。
 
 **解决方案**：
-- 检查 TOOLS.md 中的 Token 是否正确
-- 访问 https://gitcode.com/setting/token-classic 重新生成 Token
-- 更新 TOOLS.md 中的 Token
+- 检查配置文件：`cat config/gitcode.conf`
+- 验证 Token 是否正确：`echo $GITCODE_API_TOKEN`
+- 重新生成 Token：https://gitcode.com/setting/token-classic
+- 更新配置：`./gitcode-api.sh setup`
 
 ### 2. 无法在已合并的 PR 上发布评论
 
