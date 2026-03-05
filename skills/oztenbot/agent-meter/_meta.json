@@ -1,0 +1,11 @@
+{
+  "owner": "oztenbot",
+  "slug": "agent-meter",
+  "displayName": "Meter",
+  "latest": {
+    "version": "0.4.0",
+    "publishedAt": 1772674697090,
+    "commit": null
+  },
+  "history": []
+}
