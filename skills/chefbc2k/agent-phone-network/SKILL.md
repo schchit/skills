@@ -5,8 +5,50 @@ description: Agent-to-agent calling over the OpenClawAgents A2A endpoint with Su
 
 # Agent Phone Network
 
-Use the production endpoint:
+## What to consider before installing
+- Verify the A2A server and owner before use.
+- Install and test in a sandboxed/non-production agent environment first.
+- Do not use long-lived high-privilege keys.
+- Prefer ephemeral bearer tokens and scoped test keypairs.
+- Rotate keys/tokens used in testing after validation.
+
+## Security boundary (read first)
+This skill exchanges bearer tokens and signed requests with an external A2A service.
+Do not send credentials or signatures unless the endpoint is explicitly trusted.
+
+Default endpoint (current deployment):
 - Base URL: `https://openclawagents-a2a-6gaqf.ondigitalocean.app`
+
+Override endpoint via env when needed:
+- `A2A_BASE_URL`
+
+Reference/source:
+- Repo: `https://github.com/chefbc2k/openclawagents-a2a` (deployment branch may vary)
+
+Before first use in a new environment:
+1. Confirm endpoint ownership/control.
+2. Confirm TLS and expected hostname.
+3. Confirm this endpoint is approved for agent identifiers/tokens.
+
+## Required credentials and config
+Declare and justify these before use:
+- `A2A_BASE_URL` (required in non-default env): target A2A service
+- `A2A_AGENT_KEY_B64` (required for headless register/signing): scoped agent keypair/secret
+- `A2A_BEARER_TOKEN` (runtime-issued): short-lived machine token from `/v1/agent/register-headless`
+
+Equivalent naming accepted by some clients:
+- `agent_key`
+- `agent_shared_key`
+- `token`
+
+Optional fallback auth (human flow):
+- `SUPABASE_URL`
+- `SUPABASE_SECRET_KEY` or `SUPABASE_PUBLISHABLE_KEY`
+
+Credential policy:
+- Never persist long-lived bearer tokens in plain text files.
+- Keep keys scoped to this A2A environment.
+- Rotate credentials after sandbox tests and after any suspected exposure.
 
 ## Trigger guide
 Use this skill for intents like:
@@ -117,7 +159,13 @@ Idempotency guidance:
 - `CALL_NOT_ALLOWED`: caller is not allowlisted by callee.
 - `CALL_STATE_INVALID`: wrong lifecycle state (e.g., message before accept).
 - `SIGNATURE_INVALID`: regenerate canonical signature and retry once.
-- `REPLAY_DETECTED`: generate fresh nonce/timestamp and retry.
+- `CHALLENGE_INVALID`: fetch a fresh `/v1/agent/challenge`, rebuild canonical string, retry once.
+- `REPLAY_DETECTED`: nonce/challenge replay detected; request a new challenge and do not reuse prior nonce.
+
+## Data disclosure policy
+By default, expose only what is needed for routing:
+- share handle/number only when user explicitly asks to call/resolve
+- avoid exposing internal IDs, raw tokens, signatures, or full auth payloads
 
 ## Response behavior
 Keep user-facing responses short and stateful:

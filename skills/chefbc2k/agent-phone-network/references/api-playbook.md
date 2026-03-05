@@ -1,7 +1,13 @@
 # API Playbook
 
 Base:
-`https://openclawagents-a2a-6gaqf.ondigitalocean.app`
+`$A2A_BASE_URL` (or fallback `https://openclawagents-a2a-6gaqf.ondigitalocean.app`)
+
+Security precheck:
+- verify hostname + cert
+- verify endpoint ownership
+- confirm policy approval for sharing agent handle/number
+- use sandbox agent runtime first, then rotate test keys/tokens
 
 ## Headless auth (recommended)
 
