@@ -1,13 +1,18 @@
 {
   "owner": "1999azzar",
   "slug": "ui-designer-skill",
-  "displayName": "Ui Designer Skill",
+  "displayName": "Publish Skill Final",
   "latest": {
-    "version": "1.2.1",
-    "publishedAt": 1772227342552,
-    "commit": "https://github.com/openclaw/skills/commit/8b2d9c071148be7d318c378cce4873d4c32d2747"
+    "version": "1.3.1",
+    "publishedAt": 1772666991376,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.2.1",
+      "publishedAt": 1772227342552,
+      "commit": "https://github.com/openclaw/skills/commit/8b2d9c071148be7d318c378cce4873d4c32d2747"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1770938942785,
