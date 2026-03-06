@@ -3,11 +3,16 @@
   "slug": "anygen-data-analysis",
   "displayName": "AnyGen Data Analysis (CSV)",
   "latest": {
-    "version": "1.1.0",
-    "publishedAt": 1772771156717,
-    "commit": "https://github.com/openclaw/skills/commit/a7a6917f510793b7f172ead1d21a2c66f0df3e6b"
+    "version": "1.2.0",
+    "publishedAt": 1772793166513,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1772771156717,
+      "commit": "https://github.com/openclaw/skills/commit/a7a6917f510793b7f172ead1d21a2c66f0df3e6b"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1772638674677,
