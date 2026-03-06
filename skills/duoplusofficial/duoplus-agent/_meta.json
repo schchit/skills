@@ -1,0 +1,11 @@
+{
+  "owner": "duoplusofficial",
+  "slug": "duoplus-agent",
+  "displayName": "Duoplus Agent",
+  "latest": {
+    "version": "1.0.3",
+    "publishedAt": 1772763088743,
+    "commit": null
+  },
+  "history": []
+}

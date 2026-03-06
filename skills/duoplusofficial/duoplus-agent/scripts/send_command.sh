@@ -1,0 +1,48 @@
+#!/bin/bash
+# SECURITY MANIFEST:
+#   Environment variables accessed: none
+#   External endpoints called: none (local ADB only)
+#   Local files read: none
+#   Local files written: none
+set -euo pipefail
+
+# 发送命令到安卓设备
+# 用法: send_command.sh <DEVICE_ID> <ACTION_JSON>
+# 示例: send_command.sh 192.168.1.100:5555 '{"action_name":"GO_TO_HOME","params":{}}'
+
+DEVICE_ID="${1:?Usage: send_command.sh <DEVICE_ID> <ACTION_JSON>}"
+ACTION_JSON="${2:?Usage: send_command.sh <DEVICE_ID> <ACTION_JSON>}"
+
+BROADCAST_ACTION="com.duoplus.service.PROCESS_DATA"
+TASK_ID="openclaw-$(date +%s)-$$"
+MD5="openclaw-md5"
+
+# 从 ACTION_JSON 中提取 action_name 和 params，构建完整 payload
+# 如果传入的是完整 JSON（包含 task_type），直接使用
+if echo "$ACTION_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); assert 'task_type' in d" 2>/dev/null; then
+  FULL_JSON="$ACTION_JSON"
+else
+  # 提取 action_name 和 params
+  ACTION_NAME=$(echo "$ACTION_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin).get('action_name',''))")
+  PARAMS=$(echo "$ACTION_JSON" | python3 -c "import sys,json; import json as j; print(j.dumps(json.load(sys.stdin).get('params',{})))")
+
+  FULL_JSON=$(python3 -c "
+import json
+print(json.dumps({
+    'task_type': 'ai',
+    'action': 'execute',
+    'task_id': '$TASK_ID',
+    'md5': '$MD5',
+    'action_name': '$ACTION_NAME',
+    'params': json.loads('$PARAMS')
+}))
+")
+fi
+
+# Base64 编码
+BASE64=$(echo -n "$FULL_JSON" | base64 -w 0 2>/dev/null || echo -n "$FULL_JSON" | base64)
+
+# 发送广播
+echo "Sending to device $DEVICE_ID:"
+echo "  Action: $FULL_JSON"
+adb -s "$DEVICE_ID" shell am broadcast -a "$BROADCAST_ACTION" --es message "$BASE64"
