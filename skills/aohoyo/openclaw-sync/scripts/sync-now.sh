@@ -47,7 +47,7 @@ echo -e "${BLUE}正在同步到云端...${NC}"
 echo "目标路径: $remote_path"
 echo ""
 
-# 执行同步
+# 执行同步（使用sync，保持云端和本地完全一致）
 /home/node/bin/rclone sync "$workspace_dir/" "$remote_path" \
   --include-from "$sync_list" \
   --config "$RCLONE_CONF" \

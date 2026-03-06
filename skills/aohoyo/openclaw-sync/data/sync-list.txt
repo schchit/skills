@@ -1,25 +1,24 @@
 # OpenClaw 同步文件列表
-# 格式：每行一个文件或目录模式
+# 同步整个工作空间，只排除特定文件
 
-# 核心数据（必须同步）
-MEMORY.md
-memory/
-USER.md
-IDENTITY.md
-SOUL.md
-AGENTS.md
-TOOLS.md
-HEARTBEAT.md
+# 包含所有文件和目录
+**
 
-# 技能配置
-skills/*/config.json
-skills/*/config/*.json
-skills/*/_meta.json
+# 排除版本控制
+.git/**
 
-# 自定义工具和脚本
-tools/
-*.sh
+# 排除 Node 依赖
+node_modules/**
 
-# 维护文档
-服务器维护方案.md
-维护日志.md
+# 排除临时文件
+*.tmp
+*.temp
+*.log
+
+# 排除备份文件
+*.bak
+*.backup
+
+# 排除操作系统文件
+.DS_Store
+Thumbs.db
