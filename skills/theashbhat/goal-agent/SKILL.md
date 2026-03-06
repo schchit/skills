@@ -1,8 +1,12 @@
-# goal-agent
-
-**Description:** Scaffold a self-learning goal-oriented agent. Set a goal, define a metric, and the agent iterates toward it — measuring, learning, and adapting its strategy at every heartbeat until the goal is met.
-
 ---
+name: goal-agent
+description: >
+  Scaffold a self-learning goal-oriented agent. Set a goal, define a metric, and the
+  agent iterates toward it — measuring, learning, and adapting its strategy at every
+  heartbeat until the goal is met.
+---
+
+# goal-agent
 
 ## Overview
 
@@ -29,7 +33,7 @@ The goal-agent skill creates a workspace that turns an OpenClaw agent into a foc
 ```bash
 bash ~/clawd/skills/goal-agent/scripts/scaffold.sh \
   --goal "Increase daily active users to 100" \
-  --metric "curl -s https://myapp.com/api/stats | jq '.dau'" \
+  --metric "cat /tmp/my-metric.json | jq '.dau'" \
   --target 100 \
   --direction up \
   --constraints "Do not modify the database schema. Stay within $50/day budget." \
@@ -109,6 +113,20 @@ bash ~/clawd/skills/goal-agent/scripts/scaffold.sh \
   --constraints "Only post authentic content. No follow-for-follow schemes." \
   --output-dir ~/clawd/goals/twitter-growth
 ```
+
+---
+
+## Safety & Sandboxing
+
+**Before activating a goal-agent loop, review these guidelines:**
+
+- **Review generated files before activating.** Always read the generated `HEARTBEAT.md` and `evaluate.sh` before copying them into your workspace. Confirm the metric command and constraints are what you intended.
+- **Use `--constraints` to limit scope.** The agent will only take actions within the constraints you define. Be explicit: "Only modify files in ~/myproject/src", "Do not make network requests", "Do not delete files".
+- **Set a low `--max-iterations` for first runs.** Start with 5-10 to observe behavior before allowing longer runs.
+- **Prefer dedicated VMs for autonomous goals.** Use `spawn-agent` to isolate goal-agents from your main workspace. This limits blast radius if the agent takes unexpected actions.
+- **Metric commands should be read-only.** The `--metric` command should only *measure* — never modify state. Use simple commands like `cat`, `wc`, `jq`, `grep`.
+- **The "Act" step is constrained by text, not code.** The agent follows the constraints you set in `--constraints`, but there is no programmatic sandbox. For high-stakes goals, combine with filesystem permissions, network egress controls, or a restricted user account.
+- **Monitor early iterations.** Check `GOAL.md` history after the first few heartbeats to verify the agent is behaving as expected.
 
 ---
 
