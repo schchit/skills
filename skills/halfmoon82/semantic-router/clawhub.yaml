@@ -2,12 +2,16 @@
 # Semantic Router v7.7 - Phase 3 Stability Enhancement
 
 name: semantic-router
-version: 7.7.0
+version: 7.9.0
 
 metadata:
   title: "Semantic Router — 让你的 AI 代理学会自己选模型"
+  powered_by: "halfmoon82"
+  attribution: "🔷 Powered by halfmoon82 🔷"
   description: |
     根据对话内容自动选择最合适的模型。不需要手动切换，不需要记命令。
+    
+    🔷 Powered by halfmoon82 🔷
     
     核心能力：
     🛡️ 系统消息过滤 — heartbeat/cron/slash 命令不再误触路由
@@ -216,6 +220,43 @@ testing:
     - Verify configuration merging
 
 changelog:
+  "7.9.0":
+    date: 2026-03-05
+    breaking_changes: []
+    new_features:
+      - "is_context_dependent_question(): 疑问句+省略主语结构检测函数"
+      - "依赖上下文补偿机制: 满足条件的疑问句在分级判定前 score +0.25"
+    improvements:
+      - "task_jump_penalty() 疑问句豁免: 短疑问/省略主语句型强制返回 1.0，不施加跳变惩罚"
+      - "误触率显著降低: '我的需要重启网关生效吗？' 类省略主语追问 grade new_session→continue"
+    bug_fixes:
+      - "修复省略主语疑问句误触 C-auto: embedding语义距离大 + task_jump_penalty(0.55)叠加导致score<0.30触发C-auto"
+      - "测试通过: 原始误触案例 score 0.14→0.736(continue), 真正新话题不受影响(new_session)"
+
+  "7.8.2":
+    date: 2026-03-05
+    breaking_changes: []
+    bug_fixes:
+      - "Fixed recursive Skill Trigger dispatch loop: Skill Trigger and semantic-check declarations
+        were leaking back into routing input, causing fit_gate to re-score the skill name/dispatch_id
+        as user topic and trigger a second dispatch. Fixed by stripping 【Skill Trigger】 and its
+        boilerplate lines in strip_declaration_injection() and _sanitize_context_text() before
+        any routing or embedding scoring. is_system_message() intentionally NOT modified —
+        only the declaration text is stripped, preserving full skill trigger capability."
+
+  "7.7.1":
+    date: 2026-03-05
+    breaking_changes: []
+    new_features: []
+    improvements: []
+    bug_fixes:
+      - "Fixed recursive Skill Trigger dispatch loop: Skill Trigger and semantic-check declarations
+        were leaking back into routing input, causing fit_gate to re-score the skill name/dispatch_id
+        as user topic and trigger a second dispatch. Fixed by stripping 【Skill Trigger】 and its
+        boilerplate lines in strip_declaration_injection() and _sanitize_context_text() before
+        any routing or embedding scoring. is_system_message() intentionally NOT modified —
+        only the declaration text is stripped, preserving full skill trigger capability."
+
   "7.7.0":
     date: 2026-03-03
     breaking_changes: []
