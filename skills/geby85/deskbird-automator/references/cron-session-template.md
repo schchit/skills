@@ -1,6 +1,7 @@
 # Cron Session Prompt Template
 
 Nutze diese Vorlage fuer wiederkehrende Deskbird-Laeufe.
+Wenn verfuegbar, nutze `DESKBIRD_FIREBASE_API_KEY` + `DESKBIRD_FIREBASE_REFRESH_TOKEN` fuer automatisches Token-Refresh.
 
 ## Minimalvorlage
 
@@ -12,6 +13,11 @@ Nutze fuer alle Aufrufe den Wrapper `./scripts/deskbird.sh`, damit immer die Ski
 1) Auth-Pflichtcheck:
 - Fuehre aus: ./scripts/deskbird.sh auth-check --format json --min-valid-minutes 90
 - Wenn requires_reauth=true:
+  - Falls `DESKBIRD_FIREBASE_API_KEY` + `DESKBIRD_FIREBASE_REFRESH_TOKEN` vorhanden:
+    - zuerst automatischen Refresh versuchen:
+      - `./scripts/deskbird.sh auth-refresh --format json --min-valid-minutes 90`
+    - danach erneut auth-check.
+    - nur wenn weiterhin reauth noetig: manuellen Flow starten.
   - Bitte den Nutzer um einen Header-/Token-Paste aus Chrome DevTools:
     - Deskbird im Browser oeffnen, normal per SSO einloggen.
     - DevTools > Network > Request auf `api.deskbird.com`.

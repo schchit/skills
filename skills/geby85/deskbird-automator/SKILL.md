@@ -12,6 +12,7 @@ Verwende diesen Skill, um Deskbird ueber das lokale CLI (`scripts/deskbird_tool.
 - Arbeite im Projektordner `<repo-root>`.
 - Nutze bevorzugt diese CLI-Kommandos:
   - `./scripts/deskbird.sh auth-check`
+  - `./scripts/deskbird.sh auth-refresh --format json`
   - `./scripts/deskbird.sh auth-import --stdin --format json`
   - `./scripts/deskbird.sh discovery`
   - `./scripts/deskbird.sh parking-status`
@@ -31,6 +32,13 @@ Verwende diesen Skill, um Deskbird ueber das lokale CLI (`scripts/deskbird_tool.
 - Verwende fuer alle Skill-Aufrufe den Wrapper `./scripts/deskbird.sh`.
 - Der Wrapper setzt automatisch `--env-file <skill-root>/.env` und verhindert damit CWD-bedingte Auth-Fehler.
 - Nur bei gezieltem Debugging darfst du `--env-file` explizit auf eine andere Datei setzen.
+
+## Empfohlene Dauer-Auth (Broker-Basis)
+
+- Hinterlege nach einmaliger Ermittlung in der Skill-`.env`:
+  - `DESKBIRD_FIREBASE_API_KEY`
+  - `DESKBIRD_FIREBASE_REFRESH_TOKEN`
+- Dann kann der Agent automatisch per `auth-refresh` einen neuen Bearer holen, ohne jeden Login-Flow.
 
 ## Pflichtdialog Vor Automatisierung
 
@@ -58,8 +66,12 @@ Fuehre vor Discovery/Status/Buchung immer zuerst aus:
 Auswertung:
 
 - Wenn `requires_reauth=false`: normal fortfahren.
-- Wenn `requires_reauth=true`: Nutzer aktiv fragen, ob Reauth jetzt gestartet werden soll.
-- Reauth-Standard ist **Token/Header-Paste aus Chrome DevTools**.
+- Wenn `requires_reauth=true`:
+  - Wenn `DESKBIRD_FIREBASE_API_KEY` und `DESKBIRD_FIREBASE_REFRESH_TOKEN` vorhanden sind:
+    - zuerst automatisch `./scripts/deskbird.sh auth-refresh --format json --min-valid-minutes 90` ausfuehren.
+    - nur wenn das fehlschlaegt, Nutzer um manuelle Reauth bitten.
+  - Ohne Firebase-Refresh-Creds: Nutzer aktiv fragen, ob Reauth jetzt gestartet werden soll.
+- Manueller Reauth-Standard ist **Token/Header-Paste aus Chrome DevTools**.
 
 ## Office-Discovery Pflicht
 

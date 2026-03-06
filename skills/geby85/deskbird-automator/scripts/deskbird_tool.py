@@ -380,6 +380,12 @@ def parse_auth_values_from_text(raw_text: str) -> dict[str, str]:
                 out["DESKBIRD_X_XSRF_TOKEN"] = val
             elif key_l in {"deskbird_base_url", "base_url", "baseurl"}:
                 out["DESKBIRD_BASE_URL"] = val.rstrip("/")
+            elif key_l in {"deskbird_firebase_api_key", "firebase_api_key", "firebaseapikey", "google_api_key"}:
+                out["DESKBIRD_FIREBASE_API_KEY"] = val
+            elif key_l in {"deskbird_firebase_refresh_token", "firebase_refresh_token", "firebaserefreshtoken"}:
+                out["DESKBIRD_FIREBASE_REFRESH_TOKEN"] = val
+            elif key_l == "refreshtoken":
+                out["DESKBIRD_FIREBASE_REFRESH_TOKEN"] = val
 
     for line in text.replace("\r\n", "\n").split("\n"):
         s = strip_wrapping_quotes(line)
@@ -403,6 +409,9 @@ def parse_auth_values_from_text(raw_text: str) -> dict[str, str]:
             if k == "x-xsrf-token" and v:
                 out["DESKBIRD_X_XSRF_TOKEN"] = v
                 continue
+            if k in {"x-firebase-api-key", "firebase-api-key"} and v:
+                out["DESKBIRD_FIREBASE_API_KEY"] = v
+                continue
 
         if "=" in s:
             left, right = s.split("=", 1)
@@ -422,6 +431,12 @@ def parse_auth_values_from_text(raw_text: str) -> dict[str, str]:
                 continue
             if k in {"deskbird_base_url", "base_url", "baseurl"} and v:
                 out["DESKBIRD_BASE_URL"] = v.rstrip("/")
+                continue
+            if k in {"deskbird_firebase_api_key", "firebase_api_key", "firebaseapikey", "google_api_key"} and v:
+                out["DESKBIRD_FIREBASE_API_KEY"] = v
+                continue
+            if k in {"deskbird_firebase_refresh_token", "firebase_refresh_token", "firebaserefreshtoken", "refresh_token", "refreshtoken"} and v:
+                out["DESKBIRD_FIREBASE_REFRESH_TOKEN"] = v
                 continue
 
         if s.lower().startswith("bearer "):
@@ -1522,6 +1537,10 @@ def cmd_auth_import(args: argparse.Namespace) -> int:
         values["DESKBIRD_X_XSRF_TOKEN"] = strip_wrapping_quotes(args.x_xsrf_token)
     if args.base_url:
         values["DESKBIRD_BASE_URL"] = str(args.base_url).strip().rstrip("/")
+    if args.firebase_api_key:
+        values["DESKBIRD_FIREBASE_API_KEY"] = strip_wrapping_quotes(args.firebase_api_key)
+    if args.firebase_refresh_token:
+        values["DESKBIRD_FIREBASE_REFRESH_TOKEN"] = strip_wrapping_quotes(args.firebase_refresh_token)
 
     auth_related_keys = [
         "DESKBIRD_AUTHORIZATION",
@@ -1529,10 +1548,14 @@ def cmd_auth_import(args: argparse.Namespace) -> int:
         "DESKBIRD_X_CSRF_TOKEN",
         "DESKBIRD_X_XSRF_TOKEN",
     ]
-    if not any(values.get(key, "").strip() for key in auth_related_keys):
+    has_auth_values = any(values.get(key, "").strip() for key in auth_related_keys)
+    has_firebase_refresh_values = bool(values.get("DESKBIRD_FIREBASE_API_KEY", "").strip()) and bool(
+        values.get("DESKBIRD_FIREBASE_REFRESH_TOKEN", "").strip()
+    )
+    if not has_auth_values and not has_firebase_refresh_values:
         raise ValueError(
             "Keine nutzbaren Auth-Werte gefunden. "
-            "Bitte mindestens Authorization oder Cookie aus DevTools/Telegram uebergeben."
+            "Bitte mindestens Authorization/Cookie oder Firebase API-Key + Refresh-Token uebergeben."
         )
 
     values["DESKBIRD_AUTH_CAPTURED_AT"] = now_utc_iso()
@@ -1545,6 +1568,8 @@ def cmd_auth_import(args: argparse.Namespace) -> int:
             "DESKBIRD_COOKIE",
             "DESKBIRD_X_CSRF_TOKEN",
             "DESKBIRD_X_XSRF_TOKEN",
+            "DESKBIRD_FIREBASE_API_KEY",
+            "DESKBIRD_FIREBASE_REFRESH_TOKEN",
             "DESKBIRD_BASE_URL",
             "DESKBIRD_AUTH_CAPTURED_AT",
         ]
@@ -1567,6 +1592,62 @@ def cmd_auth_import(args: argparse.Namespace) -> int:
             print("Hinweis: Verifikation deaktiviert (--no-verify).")
         return 0
 
+    refresh_performed = False
+    if not has_auth_values and has_firebase_refresh_values:
+        refresh_performed = True
+        refresh_resp, refresh_payload = run_firebase_token_refresh(
+            api_key=values.get("DESKBIRD_FIREBASE_API_KEY", ""),
+            refresh_token=values.get("DESKBIRD_FIREBASE_REFRESH_TOKEN", ""),
+            timeout=int(args.timeout),
+        )
+        if refresh_resp.status_code >= 400 or not isinstance(refresh_payload, dict):
+            result = {
+                "imported": True,
+                "env_file": args.env_file,
+                "imported_values": imported_preview,
+                "verified": True,
+                "refresh_performed": True,
+                "refresh_http_status": refresh_resp.status_code,
+                "refresh_error_excerpt": sanitize_body(refresh_resp.text, keep_secrets=False, max_len=1000),
+            }
+            if args.format == "json":
+                print(json.dumps(result, indent=2, ensure_ascii=True))
+            else:
+                print(f"Auth-Werte in {args.env_file} gespeichert.")
+                print("Firebase-Refresh nach Import fehlgeschlagen.")
+                print_response_summary(refresh_resp, max_chars=1500)
+            return 5
+
+        id_token = str(refresh_payload.get("id_token") or "").strip()
+        rotated_refresh_token = str(refresh_payload.get("refresh_token") or "").strip()
+        if not id_token:
+            result = {
+                "imported": True,
+                "env_file": args.env_file,
+                "imported_values": imported_preview,
+                "verified": True,
+                "refresh_performed": True,
+                "refresh_http_status": refresh_resp.status_code,
+                "refresh_error": "securetoken_response_without_id_token",
+            }
+            if args.format == "json":
+                print(json.dumps(result, indent=2, ensure_ascii=True))
+            else:
+                print(f"Auth-Werte in {args.env_file} gespeichert.")
+                print("Firebase-Refresh lieferte kein id_token.")
+            return 5
+
+        refresh_values = {
+            "DESKBIRD_AUTHORIZATION": f"Bearer {id_token}",
+            "DESKBIRD_AUTH_CAPTURED_AT": now_utc_iso(),
+        }
+        if rotated_refresh_token:
+            refresh_values["DESKBIRD_FIREBASE_REFRESH_TOKEN"] = rotated_refresh_token
+        upsert_env_file(args.env_file, refresh_values)
+        imported_preview["DESKBIRD_AUTHORIZATION"] = redact_value(refresh_values["DESKBIRD_AUTHORIZATION"])
+        if rotated_refresh_token:
+            imported_preview["DESKBIRD_FIREBASE_REFRESH_TOKEN"] = redact_value(rotated_refresh_token)
+
     response, report = run_auth_check(
         env_file=args.env_file,
         timeout=int(args.timeout),
@@ -1579,6 +1660,7 @@ def cmd_auth_import(args: argparse.Namespace) -> int:
         "env_file": args.env_file,
         "imported_values": imported_preview,
         "verified": True,
+        "refresh_performed": refresh_performed,
         "auth_check_report": report,
     }
 
@@ -1588,6 +1670,8 @@ def cmd_auth_import(args: argparse.Namespace) -> int:
         print(f"Auth-Werte in {args.env_file} gespeichert.")
         for key, value in imported_preview.items():
             print(f"{key}={value}")
+        if refresh_performed:
+            print("Firebase-Refresh wurde nach dem Import automatisch ausgefuehrt.")
         print_auth_check_report(report)
         if response.status_code >= 400:
             print_response_summary(response, max_chars=2000)
@@ -1621,6 +1705,170 @@ def run_auth_check(
         min_valid_minutes=max(0, int(min_valid_minutes)),
     )
     return response, report
+
+
+def resolve_firebase_api_key(explicit_value: str | None = None) -> str:
+    candidates = [
+        str(explicit_value or "").strip(),
+        os.getenv("DESKBIRD_FIREBASE_API_KEY", "").strip(),
+        os.getenv("DESKBIRD_FIREBASE_WEB_API_KEY", "").strip(),
+        os.getenv("DESKBIRD_GOOGLE_API_KEY", "").strip(),
+    ]
+    for value in candidates:
+        if value:
+            return value
+    return ""
+
+
+def resolve_firebase_refresh_token(explicit_value: str | None = None) -> str:
+    candidates = [
+        str(explicit_value or "").strip(),
+        os.getenv("DESKBIRD_FIREBASE_REFRESH_TOKEN", "").strip(),
+    ]
+    for value in candidates:
+        if value:
+            return value
+    return ""
+
+
+def run_firebase_token_refresh(api_key: str, refresh_token: str, timeout: int) -> tuple[requests.Response, dict[str, Any] | None]:
+    key = str(api_key or "").strip()
+    rt = str(refresh_token or "").strip()
+    if not key:
+        raise ValueError("Firebase API-Key fehlt. Bitte --firebase-api-key oder DESKBIRD_FIREBASE_API_KEY setzen.")
+    if not rt:
+        raise ValueError("Firebase Refresh-Token fehlt. Bitte --firebase-refresh-token oder DESKBIRD_FIREBASE_REFRESH_TOKEN setzen.")
+
+    url = f"https://securetoken.googleapis.com/v1/token?key={key}"
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    body = {"grant_type": "refresh_token", "refresh_token": rt}
+    response = safe_request("POST", url, headers=headers, data=body, timeout=timeout)
+
+    payload: dict[str, Any] | None = None
+    ctype = response.headers.get("content-type", "").lower()
+    if "application/json" in ctype:
+        try:
+            parsed = response.json()
+            if isinstance(parsed, dict):
+                payload = parsed
+        except Exception:
+            payload = None
+    return response, payload
+
+
+def cmd_auth_refresh(args: argparse.Namespace) -> int:
+    load_dotenv(args.env_file, override=False)
+
+    api_key = resolve_firebase_api_key(args.firebase_api_key)
+    refresh_token = resolve_firebase_refresh_token(args.firebase_refresh_token)
+
+    response, payload = run_firebase_token_refresh(
+        api_key=api_key,
+        refresh_token=refresh_token,
+        timeout=int(args.timeout),
+    )
+
+    securetoken_summary: dict[str, Any] = {
+        "http_status": response.status_code,
+        "api_key": redact_value(api_key) if api_key else None,
+        "refresh_token": redact_value(refresh_token) if refresh_token else None,
+    }
+
+    if isinstance(payload, dict):
+        securetoken_summary["expires_in_seconds"] = int(str(payload.get("expires_in", "0") or "0")) if str(payload.get("expires_in", "")).isdigit() else None
+        securetoken_summary["project_id"] = payload.get("project_id")
+        securetoken_summary["user_id"] = payload.get("user_id")
+
+    if response.status_code >= 400 or not isinstance(payload, dict):
+        result = {
+            "refreshed": False,
+            "env_file": args.env_file,
+            "securetoken": securetoken_summary,
+            "error_excerpt": sanitize_body(response.text, keep_secrets=False, max_len=1000),
+        }
+        if args.format == "json":
+            print(json.dumps(result, indent=2, ensure_ascii=True))
+        else:
+            print("Firebase Token-Refresh fehlgeschlagen.")
+            print(f"HTTP: {response.status_code}")
+            print(f"API-Key: {securetoken_summary.get('api_key')}")
+            print(f"Refresh-Token: {securetoken_summary.get('refresh_token')}")
+            print_response_summary(response, max_chars=1500)
+        return 5
+
+    id_token = str(payload.get("id_token") or "").strip()
+    new_refresh_token = str(payload.get("refresh_token") or "").strip()
+    if not id_token:
+        result = {
+            "refreshed": False,
+            "env_file": args.env_file,
+            "securetoken": securetoken_summary,
+            "error": "securetoken_response_without_id_token",
+        }
+        if args.format == "json":
+            print(json.dumps(result, indent=2, ensure_ascii=True))
+        else:
+            print("Firebase Token-Refresh lieferte kein id_token.")
+        return 5
+
+    values: dict[str, str] = {
+        "DESKBIRD_AUTHORIZATION": f"Bearer {id_token}",
+        "DESKBIRD_AUTH_CAPTURED_AT": now_utc_iso(),
+        "DESKBIRD_FIREBASE_API_KEY": api_key,
+    }
+    if new_refresh_token:
+        values["DESKBIRD_FIREBASE_REFRESH_TOKEN"] = new_refresh_token
+        securetoken_summary["refresh_token_rotated"] = new_refresh_token != refresh_token
+    else:
+        securetoken_summary["refresh_token_rotated"] = False
+
+    upsert_env_file(args.env_file, values)
+
+    if not args.verify:
+        result = {
+            "refreshed": True,
+            "verified": False,
+            "env_file": args.env_file,
+            "securetoken": securetoken_summary,
+        }
+        if args.format == "json":
+            print(json.dumps(result, indent=2, ensure_ascii=True))
+        else:
+            print(f"Auth erfolgreich refreshed und in {args.env_file} gespeichert (ohne Verifikation).")
+            print(f"API-Key: {securetoken_summary.get('api_key')}")
+            print(f"Refresh-Token: {securetoken_summary.get('refresh_token')}")
+        return 0
+
+    deskbird_response, report = run_auth_check(
+        env_file=args.env_file,
+        timeout=int(args.timeout),
+        min_valid_minutes=max(0, int(args.min_valid_minutes)),
+        dotenv_override=True,
+    )
+
+    result = {
+        "refreshed": True,
+        "verified": True,
+        "env_file": args.env_file,
+        "securetoken": securetoken_summary,
+        "auth_check_report": report,
+    }
+
+    if args.format == "json":
+        print(json.dumps(result, indent=2, ensure_ascii=True))
+    else:
+        print(f"Auth in {args.env_file} refreshed.")
+        print(f"API-Key: {securetoken_summary.get('api_key')}")
+        print(f"Refresh-Token: {securetoken_summary.get('refresh_token')}")
+        print_auth_check_report(report)
+        if deskbird_response.status_code >= 400:
+            print_response_summary(deskbird_response, max_chars=1500)
+
+    if deskbird_response.status_code >= 400:
+        return 5
+    if report.get("requires_reauth"):
+        return 10
+    return 0
 
 
 def cmd_auth_pair_start(args: argparse.Namespace) -> int:
@@ -2510,6 +2758,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_auth_import.add_argument("--x-csrf-token")
     p_auth_import.add_argument("--x-xsrf-token")
     p_auth_import.add_argument("--base-url", help="Optionales Override fuer DESKBIRD_BASE_URL")
+    p_auth_import.add_argument("--firebase-api-key", help="Optional: Firebase Web API-Key fuer spaeteres auth-refresh")
+    p_auth_import.add_argument("--firebase-refresh-token", help="Optional: Firebase Refresh-Token fuer spaeteres auth-refresh")
     p_auth_import.add_argument("--telegram-text", help="Rohtext aus Telegram/DevTools (Header-Block oder JSON)")
     p_auth_import.add_argument("--from-file", help="Datei mit kopiertem Header-/Token-Text")
     p_auth_import.add_argument("--stdin", action="store_true", help="Rohtext von stdin lesen")
@@ -2518,6 +2768,19 @@ def build_parser() -> argparse.ArgumentParser:
     p_auth_import.add_argument("--min-valid-minutes", type=int, default=90)
     p_auth_import.add_argument("--no-verify", dest="verify", action="store_false")
     p_auth_import.set_defaults(func=cmd_auth_import, verify=True)
+
+    p_auth_refresh = sub.add_parser(
+        "auth-refresh",
+        help="Holt per Firebase SecureToken einen frischen Bearer aus Refresh-Token + API-Key",
+    )
+    p_auth_refresh.add_argument("--env-file", default=".env")
+    p_auth_refresh.add_argument("--firebase-api-key", help="Firebase Web API-Key (optional, sonst aus ENV).")
+    p_auth_refresh.add_argument("--firebase-refresh-token", help="Firebase Refresh-Token (optional, sonst aus ENV).")
+    p_auth_refresh.add_argument("--timeout", type=int, default=20)
+    p_auth_refresh.add_argument("--format", choices=["table", "json"], default="table")
+    p_auth_refresh.add_argument("--min-valid-minutes", type=int, default=90)
+    p_auth_refresh.add_argument("--no-verify", dest="verify", action="store_false")
+    p_auth_refresh.set_defaults(func=cmd_auth_refresh, verify=True)
 
     p_auth_pair_start = sub.add_parser("auth-pair-start", help="Startet einen Pairing-Code fuer reibungslose Reauth via Telegram")
     p_auth_pair_start.add_argument("--store-file", help="Pfad fuer Pairing-Store JSON (default: output/auth_pairings.json)")
