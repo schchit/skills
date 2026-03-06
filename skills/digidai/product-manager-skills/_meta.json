@@ -3,9 +3,15 @@
   "slug": "product-manager-skills",
   "displayName": "Product Manager Skills",
   "latest": {
-    "version": "0.3.0",
-    "publishedAt": 1772726584247,
-    "commit": "https://github.com/openclaw/skills/commit/7f69e75b7ad626120a9c3e0f5ca6981cf465fd4e"
+    "version": "0.3.1",
+    "publishedAt": 1772760400224,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.3.0",
+      "publishedAt": 1772726584247,
+      "commit": "https://github.com/openclaw/skills/commit/7f69e75b7ad626120a9c3e0f5ca6981cf465fd4e"
+    }
+  ]
 }
