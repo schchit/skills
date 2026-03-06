@@ -72,8 +72,11 @@ Use static auth for straightforward local setup:
 export BRIDGE_AUTH_MODE=static
 export BRIDGE_SHARED_TOKEN='change-me-strong-token'
 export BRIDGE_OPERATOR_TOKEN='Str0ng!Operator#42'
-browser-bridge-server
+browser-bridge-server >/tmp/browser-bridge-server.log 2>&1 &
+echo $! >/tmp/browser-bridge-server.pid
 ```
+
+Start `browser-bridge-server` in the background. Do not leave it attached to the current shell, because the agent needs that shell for follow-up CLI commands, status checks, and diagnostics. If startup needs verification, inspect the log file or process state after backgrounding it.
 
 Default endpoints:
 - Extension client WS: `ws://127.0.0.1:8765/ws/client`
