@@ -1,0 +1,11 @@
+{
+  "owner": "mvanhorn",
+  "slug": "supabase-db",
+  "displayName": "Clawdbot Skill Supabase",
+  "latest": {
+    "version": "1.2.0",
+    "publishedAt": 1772850424187,
+    "commit": null
+  },
+  "history": []
+}
