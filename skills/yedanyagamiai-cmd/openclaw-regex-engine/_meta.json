@@ -1,0 +1,11 @@
+{
+  "owner": "yedanyagamiai-cmd",
+  "slug": "openclaw-regex-engine",
+  "displayName": "OpenClaw Regex Engine",
+  "latest": {
+    "version": "2.0.0",
+    "publishedAt": 1772849433740,
+    "commit": null
+  },
+  "history": []
+}
