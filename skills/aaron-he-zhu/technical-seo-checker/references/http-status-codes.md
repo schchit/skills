@@ -651,3 +651,55 @@ Before launching site changes:
 - [ ] Check status codes in Search Console
 - [ ] Monitor server logs for unusual patterns
 - [ ] Set up alerts for error spikes
+
+---
+
+## Technical SEO Severity Framework
+
+### Issue Classification
+
+| Severity | Impact Description | Examples | Response Time |
+|----------|-------------------|---------|---------------|
+| **Critical** | Prevents indexation or causes site-wide issues | Robots.txt blocking site, noindex on key pages, site-wide 500 errors | Same day |
+| **High** | Significantly impacts rankings or user experience | Slow page speed, missing hreflang, duplicate content, redirect chains | Within 1 week |
+| **Medium** | Affects specific pages or has moderate impact | Missing schema, suboptimal canonicals, thin content pages | Within 1 month |
+| **Low** | Minor optimization opportunities | Image compression, minor CLS issues, non-essential schema missing | Next quarter |
+
+### Technical Debt Prioritization Matrix
+
+| Factor | Weight | Assessment |
+|--------|--------|-----------|
+| Pages affected | 30% | Site-wide > Section > Single page |
+| Revenue impact | 25% | Revenue pages > Blog > Utility pages |
+| Fix difficulty | 20% | Config change < Template change < Code rewrite |
+| Competitive impact | 15% | Competitors passing you > parity > you ahead |
+| Crawl budget waste | 10% | High waste > Moderate > Minimal |
+
+## Core Web Vitals Optimization Quick Reference
+
+### LCP (Largest Contentful Paint) Optimization
+
+| Root Cause | Detection | Fix |
+|-----------|-----------|-----|
+| Large hero image | PageSpeed Insights | Serve WebP, resize to container, add loading="lazy" |
+| Render-blocking CSS/JS | DevTools Coverage | Defer non-critical, inline critical CSS |
+| Slow server response | TTFB >800ms | CDN, server-side caching, upgrade hosting |
+| Third-party scripts | DevTools Network | Defer/async, use facade pattern |
+
+### CLS (Cumulative Layout Shift) Optimization
+
+| Root Cause | Detection | Fix |
+|-----------|-----------|-----|
+| Images without dimensions | DevTools | Add explicit width/height attributes |
+| Ads/embeds without reserved space | Visual inspection | Set min-height on containers |
+| Web fonts causing FOUT | DevTools | font-display: swap + preload fonts |
+| Dynamic content injection | Visual inspection | Reserve space with CSS |
+
+### INP (Interaction to Next Paint) Optimization
+
+| Root Cause | Detection | Fix |
+|-----------|-----------|-----|
+| Long JavaScript tasks | DevTools Performance | Break into smaller tasks, use requestIdleCallback |
+| Heavy event handlers | DevTools | Debounce/throttle, use passive listeners |
+| Main thread blocking | DevTools | Web workers for heavy computation |
+
