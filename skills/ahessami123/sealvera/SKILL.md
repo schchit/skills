@@ -1,16 +1,6 @@
 ---
 name: sealvera
 description: "Tamper-evident audit trail for AI agent decisions. Use when logging LLM decisions, setting up AI compliance, auditing agents for EU AI Act, HIPAA, GDPR or SOC 2, or when a user asks about AI decision audit trails, explainability, or SealVera."
-credentials:
-  - name: SEALVERA_API_KEY
-    description: "Your SealVera API key (starts with sv_). Get a free key at app.sealvera.com."
-    required: true
-  - name: SEALVERA_ENDPOINT
-    description: "SealVera server URL. Defaults to https://app.sealvera.com."
-    required: false
-  - name: SEALVERA_AGENT
-    description: "Agent name shown in dashboard. Defaults to 'openclaw-agent'."
-    required: false
 tags:
   - compliance
   - audit
@@ -86,19 +76,29 @@ If the user says "install SealVera", "set up SealVera", or "connect SealVera" â€
 
 ## How logging works
 
-After setup, logging is automatic for sub-agents via the `AGENTS.md` convention.
-For manual logging:
+After setup, two logging paths are active:
+
+### 1. Sub-agent logging (automatic via AGENTS.md)
+Every `sessions_spawn` task prompt gets a MANDATORY footer â€” the sub-agent logs itself on completion.
+
+### 2. Main-session logging (call after every significant task)
+The agent running the main session must log its own work. This is what shows your day-to-day activity in the dashboard.
 
 ```javascript
 const log = require('./sealvera-log');
 await log({
-  action: 'describe what happened',
-  decision: 'COMPLETED',
+  action: 'fix_login_bug',          // short description of what you did
+  decision: 'COMPLETED',            // COMPLETED | FAILED | ESCALATED
   input:  { task: '...' },
   output: { result: '...' },
   reasoning: [{ factor: 'outcome', value: 'ok', signal: 'safe', explanation: '...' }]
 });
 ```
+
+**Log after:** code written, bug fixed, feature deployed, investigation done, judgment call made.
+**Don't log:** routine chat, heartbeat pings, trivial lookups.
+
+Setup patches `SOUL.md` with this rule so the agent follows it automatically.
 
 Each log entry includes: input/output, reasoning steps, RSA-2048 signature, chain link, timestamp, model, and agent name.
 

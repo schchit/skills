@@ -84,6 +84,7 @@ function request(urlStr, headers = {}, method = 'GET', body = null) {
 
 // ── Workspace patchers ────────────────────────────────────────────────────────
 const AGENTS_MARKER = '## SealVera — Sub-agent Audit (auto-installed)';
+const SOUL_MARKER   = '## SealVera — Main Session Logging (auto-installed)';
 
 function patchAgentsMd(workspaceDir, logPath) {
   const agentsPath = path.join(workspaceDir, 'AGENTS.md');
@@ -229,6 +230,50 @@ module.exports = log;
 `;
 }
 
+function patchSoulMd(workspaceDir, logPath) {
+  const soulPath = path.join(workspaceDir, 'SOUL.md');
+  const block = `
+${SOUL_MARKER}
+
+**Log every significant main-session action to SealVera — not just sub-agents.**
+
+After completing any task (code written, bug fixed, feature deployed, investigation done):
+
+\`\`\`javascript
+const log = require('${logPath}');
+await log({
+  action: 'describe_what_you_did',   // e.g. 'fix_login_bug', 'deploy_feature'
+  decision: 'COMPLETED',             // COMPLETED | FAILED | ESCALATED
+  input:  { task: '<what was asked>' },
+  output: { result: '<what was done>' },
+  reasoning: [{ factor: 'outcome', value: 'shipped', signal: 'safe', explanation: '<why it was safe/correct>' }]
+});
+\`\`\`
+
+**When to log:**
+- Task or feature completed
+- Bug fixed and deployed
+- Investigation finished
+- Judgment call made
+
+**When NOT to log:**
+- Routine chat/answering questions
+- Heartbeat pings
+- Trivial lookups
+`;
+
+  if (!fs.existsSync(soulPath)) return 'skipped'; // don't create SOUL.md from scratch
+
+  const content = fs.readFileSync(soulPath, 'utf8');
+  if (content.includes(SOUL_MARKER)) {
+    const before = content.slice(0, content.indexOf(SOUL_MARKER));
+    fs.writeFileSync(soulPath, before + block);
+    return 'updated';
+  }
+  fs.appendFileSync(soulPath, '\n' + block);
+  return 'patched';
+}
+
 function writeEnvHint(workspaceDir, apiKey, agentName) {
   const envPath = path.join(workspaceDir, '.env');
   const lines = [
@@ -314,6 +359,12 @@ async function main() {
   // 5. Patch AGENTS.md
   const agentsResult = patchAgentsMd(workspace, logPath);
   console.log(G('✓') + ` AGENTS.md ${agentsResult} — sub-agent audit rule installed`);
+
+  // 5b. Patch SOUL.md with main-session logging rule
+  const soulResult = patchSoulMd(workspace, logPath);
+  if (soulResult !== 'skipped') {
+    console.log(G('✓') + ` SOUL.md ${soulResult} — main-session logging rule installed`);
+  }
 
   // 6. Update .env if it exists
   const envResult = writeEnvHint(workspace, apiKey, agentName);
