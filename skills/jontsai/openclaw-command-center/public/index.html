@@ -75,9 +75,12 @@
           <div class="stat-value" id="output-tokens">-</div>
           <div class="stat-label" data-i18n="stats.output">Output</div>
         </div>
-        <div class="stat" title="Sessions active within last 15 minutes">
+        <div
+          class="stat"
+          title="Sessions updated within the last 15 minutes (not necessarily actively running)"
+        >
           <div class="stat-value" id="active-sessions">-</div>
-          <div class="stat-label" data-i18n="stats.active15m">Active (15m)</div>
+          <div class="stat-label" data-i18n="stats.active15m">Recently active (15m)</div>
         </div>
         <div
           class="stat"
@@ -1220,7 +1223,8 @@
                     border-radius: 12px;
                     font-size: 0.75rem;
                   "
-                  >v0.2.0</span
+                  id="app-version"
+                  >v...</span
                 >
                 <span
                   style="
@@ -1271,6 +1275,14 @@
                   style="padding: 8px 16px"
                 >
                   🦞 OpenClaw
+                </a>
+                <a
+                  href="https://clawhub.ai/jontsai/command-center"
+                  target="_blank"
+                  class="link-tag"
+                  style="padding: 8px 16px"
+                >
+                  🔗 ClawHub
                 </a>
               </div>
             </div>
@@ -2478,6 +2490,7 @@
 
       // Store current token stats for window switching
       let currentTokenStats = null;
+      let optionalDeps = null;
 
       // Get saved savings window preference (default to 7dma for stability)
       function getSavingsWindowPref() {
@@ -2605,9 +2618,13 @@
         }
 
         // User/sys/idle breakdown
-        $set("cpu-user", "textContent", vitals.cpu?.userPercent?.toFixed(1) + "%" || "-");
-        $set("cpu-sys", "textContent", vitals.cpu?.sysPercent?.toFixed(1) + "%" || "-");
-        $set("cpu-idle", "textContent", vitals.cpu?.idlePercent?.toFixed(1) + "%" || "-");
+        // Avoid showing "undefined%" when fields are absent.
+        const cpuUser = vitals.cpu?.userPercent;
+        const cpuSys = vitals.cpu?.sysPercent;
+        const cpuIdle = vitals.cpu?.idlePercent;
+        $set("cpu-user", "textContent", Number.isFinite(cpuUser) ? cpuUser.toFixed(1) + "%" : "-");
+        $set("cpu-sys", "textContent", Number.isFinite(cpuSys) ? cpuSys.toFixed(1) + "%" : "-");
+        $set("cpu-idle", "textContent", Number.isFinite(cpuIdle) ? cpuIdle.toFixed(1) + "%" : "-");
 
         const loadAvg = vitals.cpu?.loadAvg || [0, 0, 0];
         $set("cpu-load-1", "textContent", loadAvg[0]?.toFixed(2) || "-");
@@ -2689,6 +2706,13 @@
         $set("disk-throughput", "textContent", vitals.disk?.throughputMBps?.toFixed(2) || "0.00");
         $set("disk-kbt", "textContent", vitals.disk?.kbPerTransfer?.toFixed(1) || "0.0");
 
+        // Show dep hint for disk I/O if all zeros and dep missing
+        renderDepHint(
+          "disk-io-hint",
+          "disk-io",
+          !vitals.disk?.iops && !vitals.disk?.throughputMBps,
+        );
+
         // Temperature
         const temp = vitals.temperature;
         const tempNote = vitals.temperatureNote;
@@ -2718,7 +2742,58 @@
           if (tempStatusEl) {
             tempStatusEl.textContent = tempNote || "Unavailable";
           }
+          // Show dep hint for temperature if unavailable and dep missing
+          renderDepHint("temp-hint", "temperature", true);
         }
+      }
+
+      /**
+       * Render an inline hint when an optional dependency is missing.
+       * Creates/updates a small element showing install instructions.
+       */
+      function renderDepHint(elementId, affects, show) {
+        let el = document.getElementById(elementId);
+        if (!show || !optionalDeps) {
+          if (el) el.style.display = "none";
+          return;
+        }
+        const dep = optionalDeps.find((d) => d.affects === affects && !d.installed);
+        if (!dep) {
+          if (el) el.style.display = "none";
+          return;
+        }
+        if (!el) {
+          // Find parent card based on the hint id
+          const parentMap = { "disk-io-hint": "disk-iops", "temp-hint": "temp-status" };
+          const anchor = document.getElementById(parentMap[elementId]);
+          if (!anchor) return;
+          const card = anchor.closest(".vital-card");
+          if (!card) return;
+          el = document.createElement("div");
+          el.id = elementId;
+          el.style.cssText =
+            "margin-top:8px;padding:6px 10px;background:rgba(136,192,208,0.08);border:1px solid rgba(136,192,208,0.2);border-radius:6px;font-size:0.7rem;color:var(--text-muted);line-height:1.4";
+          card.appendChild(el);
+        }
+        el.style.display = "block";
+        const action = dep.installCmd
+          ? '<code style="background:rgba(136,192,208,0.15);padding:1px 5px;border-radius:3px;font-size:0.65rem">' +
+            dep.installCmd +
+            "</code>"
+          : dep.url
+            ? '<a href="' +
+              dep.url +
+              '" target="_blank" style="color:var(--accent)">' +
+              dep.name +
+              "</a>"
+            : "see docs";
+        el.innerHTML =
+          "\u{1F4A1} Install <strong>" +
+          dep.name +
+          "</strong> for " +
+          dep.purpose.toLowerCase() +
+          ": " +
+          action;
       }
 
       // Safe DOM helper - sets property only if element exists
@@ -4177,6 +4252,22 @@
 
         pill.classList.remove("connected", "disconnected", "connecting");
         pill.classList.add(status);
+
+        // Update the data-i18n attribute so the i18n system doesn't overwrite our status.
+        // The i18n translateSubtree() re-applies data-i18n text, so we must keep the
+        // attribute in sync with the intended display state.
+        // Map status to i18n key, or remove data-i18n for custom messages
+        const i18nKeyMap = {
+          connected: "app.connected",
+          connecting: "app.connecting",
+          disconnected: "app.disconnected",
+        };
+        const i18nKey = i18nKeyMap[status];
+        if (i18nKey) {
+          statusText.setAttribute("data-i18n", i18nKey);
+        } else {
+          statusText.removeAttribute("data-i18n");
+        }
         statusText.textContent = message;
 
         // Update refresh bar mode indicator
@@ -4201,7 +4292,9 @@
         // Check for SSE support
         if (typeof EventSource === "undefined") {
           console.warn("[SSE] EventSource not supported, using polling fallback");
-          setConnectionStatus("connected", "Polling Mode");
+          setConnectionStatus("connected", i18nText("app.pollingMode", {}, "Polling Mode"));
+          // Override i18n key for polling mode specifically
+          document.getElementById("gateway-status")?.setAttribute("data-i18n", "app.pollingMode");
           startPolling();
           return;
         }
@@ -4502,6 +4595,21 @@
         console.log("[Privacy] Settings loaded from server");
 
         connectSSE();
+        // Populate version badge from server (single source of truth: package.json)
+        fetch("/api/about")
+          .then((r) => r.json())
+          .then((d) => {
+            const el = document.getElementById("app-version");
+            if (el && d.version) el.textContent = "v" + d.version;
+          })
+          .catch(() => {});
+        // Fetch optional dependency status (once)
+        fetch("/api/vitals")
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.optionalDeps) optionalDeps = d.optionalDeps;
+          })
+          .catch(() => {});
         // Fetch data after short delay to ensure DOM is ready
         // This fixes a race condition on initial page load
         setTimeout(fetchData, 100);

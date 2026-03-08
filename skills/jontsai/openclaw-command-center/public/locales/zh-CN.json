@@ -1,7 +1,11 @@
 {
   "app": {
     "title": "OpenClaw 指挥中心",
-    "connecting": "连接中..."
+    "connecting": "连接中...",
+    "connected": "🟢 实时",
+    "disconnected": "🔴 已断开",
+    "pollingMode": "轮询模式",
+    "error": "🔴 错误"
   },
   "sidebar": {
     "title": "指挥中心",
@@ -173,7 +177,7 @@
       "MB/s": "MB/秒",
       "KB/t": "KB/次",
       "tok/min": "Token/分钟",
-      "v0.2.0": "v0.2.0",
+      "v...": "v...",
       "MIT License": "MIT 许可证",
       "used": "已用",
       "available": "可用",
