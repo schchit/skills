@@ -1,0 +1,11 @@
+{
+  "owner": "spyfree",
+  "slug": "btc-risk-radar",
+  "displayName": "BTC Risk Radar",
+  "latest": {
+    "version": "0.3.0",
+    "publishedAt": 1772969814443,
+    "commit": null
+  },
+  "history": []
+}
