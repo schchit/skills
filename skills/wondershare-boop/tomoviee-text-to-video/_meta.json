@@ -3,9 +3,15 @@
   "slug": "tomoviee-text-to-video",
   "displayName": "Tomoviee Text to Video",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1772854491222,
-    "commit": "https://github.com/openclaw/skills/commit/7c8096932fdf29db4b784c2368d0b54f2c4ed16a"
+    "version": "1.0.3",
+    "publishedAt": 1772934183645,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1772854491222,
+      "commit": "https://github.com/openclaw/skills/commit/7c8096932fdf29db4b784c2368d0b54f2c4ed16a"
+    }
+  ]
 }
