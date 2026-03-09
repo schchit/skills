@@ -1,0 +1,11 @@
+{
+  "owner": "ppopen",
+  "slug": "openclaw-skill-docker-manager",
+  "displayName": "Docker Manager",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772924685582,
+    "commit": null
+  },
+  "history": []
+}
