@@ -1,0 +1,11 @@
+{
+  "owner": "mguozhen",
+  "slug": "voc-amazon-reviews",
+  "displayName": "VOC AI - Amazon Review Analysis",
+  "latest": {
+    "version": "1.0.3",
+    "publishedAt": 1772927020733,
+    "commit": null
+  },
+  "history": []
+}
