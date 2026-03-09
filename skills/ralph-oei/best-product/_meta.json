@@ -1,0 +1,11 @@
+{
+  "owner": "ralph-oei",
+  "slug": "best-product",
+  "displayName": "Best Product Recommender",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772997774803,
+    "commit": null
+  },
+  "history": []
+}
