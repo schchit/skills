@@ -1,0 +1,11 @@
+{
+  "owner": "tensorlink-dev",
+  "slug": "ganglion",
+  "displayName": "Ganglion",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1773030357310,
+    "commit": null
+  },
+  "history": []
+}
