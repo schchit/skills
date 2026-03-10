@@ -1,11 +1,17 @@
 {
   "owner": "arberx",
   "slug": "aeo",
-  "displayName": "AEO",
+  "displayName": "Aeo",
   "latest": {
-    "version": "1.1.1",
-    "publishedAt": 1772764439072,
-    "commit": "https://github.com/openclaw/skills/commit/c7c727ca9403d12e95b161f423439523b9bb0034"
+    "version": "1.2.2",
+    "publishedAt": 1773087792722,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.1.1",
+      "publishedAt": 1772764439072,
+      "commit": "https://github.com/openclaw/skills/commit/c7c727ca9403d12e95b161f423439523b9bb0034"
+    }
+  ]
 }
