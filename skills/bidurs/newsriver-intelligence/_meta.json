@@ -3,11 +3,16 @@
   "slug": "newsriver-intelligence",
   "displayName": "NewsRiver Global Intelligence",
   "latest": {
-    "version": "1.0.11",
-    "publishedAt": 1772736956034,
-    "commit": "https://github.com/openclaw/skills/commit/795ceb9b45e63df63b92906d8d031c46b003ae77"
+    "version": "1.0.13",
+    "publishedAt": 1773157769140,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.11",
+      "publishedAt": 1772736956034,
+      "commit": "https://github.com/openclaw/skills/commit/795ceb9b45e63df63b92906d8d031c46b003ae77"
+    },
     {
       "version": "1.0.6",
       "publishedAt": 1772666814995,
