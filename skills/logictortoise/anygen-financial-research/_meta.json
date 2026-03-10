@@ -1,11 +1,17 @@
 {
   "owner": "logictortoise",
   "slug": "anygen-financial-research",
-  "displayName": "AnyGen Financial Research Assistant",
+  "displayName": "Financial Research",
   "latest": {
-    "version": "1.2.0",
-    "publishedAt": 1772793186304,
-    "commit": "https://github.com/openclaw/skills/commit/1f67348651a5b040d0062fac97b76223ff1a163d"
+    "version": "1.3.2",
+    "publishedAt": 1773168109708,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.2.0",
+      "publishedAt": 1772793186304,
+      "commit": "https://github.com/openclaw/skills/commit/1f67348651a5b040d0062fac97b76223ff1a163d"
+    }
+  ]
 }
