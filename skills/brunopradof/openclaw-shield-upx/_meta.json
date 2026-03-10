@@ -1,13 +1,18 @@
 {
   "owner": "brunopradof",
   "slug": "openclaw-shield-upx",
-  "displayName": "Shield",
+  "displayName": "OpenClaw Shield",
   "latest": {
-    "version": "1.2.1",
-    "publishedAt": 1772818369193,
-    "commit": "https://github.com/openclaw/skills/commit/f3fbc5b17307f99c20ac8f106924300cc663d1de"
+    "version": "1.2.5",
+    "publishedAt": 1773080334999,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.2.1",
+      "publishedAt": 1772818369193,
+      "commit": "https://github.com/openclaw/skills/commit/f3fbc5b17307f99c20ac8f106924300cc663d1de"
+    },
     {
       "version": "1.0.8",
       "publishedAt": 1772663146716,

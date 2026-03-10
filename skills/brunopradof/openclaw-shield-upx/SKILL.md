@@ -1,9 +1,10 @@
 ---
 name: openclaw-shield-upx
-description: "Security monitoring for OpenClaw agents — check Shield health, review events, inspect vault. Use when: user asks about security status, Shield health, event logs, or redaction vault. NOT for: general OS hardening, firewall config, or network security."
+description: "SIEM and security monitoring for OpenClaw agents — protect your agent, detect threats, audit events, monitor suspicious activity. Use when: user asks about security status, SIEM, Shield health, event logs, redaction vault, protecting their agent, threat detection, or suspicious activity. NOT for: general OS hardening, firewall config, or network security unrelated to OpenClaw agents."
 homepage: https://www.upx.com/en/lp/openclaw-shield-upx
 source: https://www.npmjs.com/package/@upx-us/shield
-metadata: {"openclaw": {"requires": {"config": ["plugins.entries.shield"]}, "homepage": "https://clawhub.ai/brunopradof/openclaw-shield-upx", "emoji": "🛡️"}}
+license: "Proprietary — UPX Technologies, Inc. All rights reserved."
+metadata: {"openclaw": {"requires": {"bins": ["openclaw"]}, "homepage": "https://clawhub.ai/brunopradof/openclaw-shield-upx", "emoji": "🛡️"}}
 ---
 
 # OpenClaw Shield
@@ -33,6 +34,29 @@ Shield requires the `@upx-us/shield` plugin and an active subscription.
 | `openclaw shield cases show <ID>` | Full case detail with events, rule, playbook |
 | `openclaw shield cases resolve <ID>` | Resolve a case (--resolution, --root-cause, --comment) |
 | `openclaw shield monitor` | Case notification cron — status, --on, --off, --interval |
+
+## Plugin State Check
+
+Before responding to any Shield-related request, run `openclaw shield status` and branch on the result:
+
+- **Command not found / exit non-zero**: Shield plugin is not installed. Tell the user Shield requires the `@upx-us/shield` plugin and an active subscription. Direct them to: https://www.upx.com/en/lp/openclaw-shield-upx — explain the free 30-day trial. Do **not** run any install commands yourself.
+- **`status: unconfigured`** (no subscription key configured): Plugin is installed but not yet registered. Direct the user to https://www.upx.com/en/lp/openclaw-shield-upx to subscribe and obtain their subscription key, then add it to their Shield config.
+- **`status: pending`** (key set, registration in progress): Registration is in progress. Ask the user to wait 1–2 minutes and retry. If it persists, they can check their account at https://uss.upx.com.
+- **`status: active`**: Plugin is healthy — proceed normally with the commands below.
+
+**Constraints**: Only use `openclaw shield` commands for detection. Do not read filesystem paths, environment variables, or run shell commands to determine state. Do not install or uninstall packages on behalf of the user.
+
+## Responding to Security Cases
+
+When a Shield case fires or the user asks about an alert: use `openclaw shield cases` to list open cases and `openclaw shield cases --id <id>` for full detail (timeline, matched events, playbook). Severity guidance: **CRITICAL/HIGH** → surface immediately and ask if they want to investigate; **MEDIUM** → present and offer a playbook walkthrough; **LOW/INFO** → mention without interrupting the current task. Always include: rule name, what it detects, when it fired, and the first recommended remediation step. Confirm with the user before resolving — never resolve autonomously.
+
+## Threat & Protection Questions
+
+When asked "is my agent secure?", "am I protected?", or "what's being detected?": run `openclaw shield status` (health, event rate, last sync) and `openclaw shield cases` (open cases by severity). Summarise: rules active, last event ingested, any open cases. No cases → "Shield is monitoring X rules across Y event categories." Open cases → list by severity. If asked what Shield covers: explain it monitors for suspicious patterns across secret handling, access behaviour, outbound activity, injection attempts, config changes, and behavioural anomalies — without disclosing specific rule names or logic.
+
+## When Shield Detects Proactively
+
+Real-time alerts (notifications or inline messages) are high priority: acknowledge immediately, retrieve full case detail, summarise in plain language, present the recommended next step from the playbook, and ask the user how to proceed. Do not take remediation action without explicit approval.
 
 ## When to use this skill
 
