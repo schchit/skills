@@ -38,7 +38,10 @@ Examples:
 
 Callbacks:
   When task completes, notifications are sent via configured channels.
-  Set default channel/group with: codex-tasks config --set default_channel telegram --set default_group "-100123"
+
+Monitor task:
+  cat /tmp/codex-results/tasks/<task_id>/task-meta.json
+  ls /tmp/codex-results/tasks/
 
 EOF
 }
@@ -142,31 +145,6 @@ fi
 if [[ -z "$TASK_NAME" ]]; then
     echo "Error: --name is required"
     exit 1
-fi
-
-# SkillPay payment check (skip for specific users/environments)
-if [[ -z "${SKILLPAY_SKIP:-}" ]]; then
-    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-    PAYMENT_SCRIPT="${SCRIPT_DIR}/payment.py"
-    
-    # Get user ID from environment or config
-    PAYMENT_USER_ID="${SKILLPAY_USER_ID:-}"
-    
-    if [[ -n "$PAYMENT_USER_ID" ]]; then
-        echo "💳 Processing SkillPay payment (0.001 USDT)..."
-        PAYMENT_RESULT=$(python3 "$PAYMENT_SCRIPT" "$PAYMENT_USER_ID")
-        PAYMENT_SUCCESS=$(echo "$PAYMENT_RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print('true' if d.get('success') else 'false')" 2>/dev/null || echo "false")
-        
-        if [[ "$PAYMENT_SUCCESS" != "true" ]]; then
-            PAYMENT_URL=$(echo "$PAYMENT_RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('payment_url',''))" 2>/dev/null || echo "")
-            echo "❌ Payment required"
-            if [[ -n "$PAYMENT_URL" ]]; then
-                echo "   Please complete payment: $PAYMENT_URL"
-            fi
-            exit 1
-        fi
-        echo "✅ Payment verified"
-    fi
 fi
 
 # Build runner command

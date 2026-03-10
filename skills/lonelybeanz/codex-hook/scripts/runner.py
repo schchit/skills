@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Runner: Spawns a Codex task using openclaw agent in background and records metadata.
+Runner: Spawns a Codex task using ACP sessions with proper concurrency isolation.
 """
 import os
 import sys
@@ -9,6 +9,7 @@ import time
 import uuid
 import argparse
 import subprocess
+import requests
 from datetime import datetime
 from pathlib import Path
 
@@ -29,8 +30,28 @@ def generate_task_id():
     timestamp = int(time.time())
     return f"codex-{timestamp}-{uuid.uuid4().hex[:8]}"
 
+def is_safe_path(path, base_dir=None):
+    """Validate path is safe (no path traversal)"""
+    try:
+        path = Path(path).resolve()
+        if base_dir:
+            base_dir = Path(base_dir).resolve()
+            try:
+                path.relative_to(base_dir)
+            except ValueError:
+                return False
+        if '..' in str(path):
+            return False
+        return True
+    except Exception:
+        return False
+
 def ensure_result_dir(result_dir):
-    """Ensure result directory exists"""
+    """Ensure result directory exists with proper permissions"""
+    # Validate path before creating
+    if not is_safe_path(result_dir):
+        raise ValueError(f"Invalid result directory path: {result_dir}")
+    
     Path(result_dir).mkdir(parents=True, exist_ok=True)
     try:
         Path(result_dir).chmod(0o700)
@@ -43,37 +64,52 @@ def write_task_meta(task_dir, task_meta):
     with open(meta_file, 'w') as f:
         json.dump(task_meta, f, indent=2)
 
-def spawn_codex_session(task):
+def spawn_acp_session(task):
     """
-    Spawn Codex task in background using openclaw agent.
-    Returns (session_key, pid).
+    Spawn task via OpenClaw agent command.
+    Returns (session_key, run_id).
     """
-    session_key = f"agent:acp:codex-{task['task_id']}"
-    output_file = Path(task['result_dir']) / "output.txt"
-
-    # Build command
+    # Build command for openclaw agent
     cmd = [
         "openclaw", "agent",
-        "--agent", task.get('agent_id', 'codex'),
-        "--session-id", session_key,
+        "--local",
         "--message", task['prompt'],
-        "--timeout", str(task.get('timeout', 3600))
+        "--timeout", str(task.get('timeout', 3600)),
+        "--json"
     ]
 
-    # Start process in background, redirect output
+    # Add agent if specified
+    if task.get('agent_id'):
+        cmd.extend(["--agent", task['agent_id']])
+
     try:
-        proc = subprocess.Popen(
+        result = subprocess.run(
             cmd,
-            stdout=open(output_file, 'w'),
-            stderr=subprocess.STDOUT,
-            start_new_session=True  # Detach from parent
+            capture_output=True,
+            text=True,
+            timeout=task.get('timeout', 300)
         )
-        return session_key, proc.pid
+        if result.returncode != 0:
+            raise RuntimeError(f"openclaw agent failed: {result.stderr}")
+
+        # Parse JSON response
+        try:
+            resp = json.loads(result.stdout)
+        except:
+            resp = {"raw": result.stdout[:500]}
+
+        session_key = f"agent-{task.get('agent_id', 'main')}-{task['task_id']}"
+        run_id = task['task_id']
+
+        return session_key, run_id, resp
+
+    except subprocess.TimeoutExpired:
+        raise RuntimeError("openclaw agent timeout after 30s")
     except Exception as e:
-        raise RuntimeError(f"Failed to start agent: {e}")
+        raise RuntimeError(f"Failed to spawn agent: {e}")
 
 def main():
-    parser = argparse.ArgumentParser(description="Run Codex task with hooks")
+    parser = argparse.ArgumentParser(description="Run Codex task with ACP")
     parser.add_argument("-t", "--task", required=True, help="Task prompt")
     parser.add_argument("-n", "--name", required=True, help="Task name")
     parser.add_argument("-w", "--workspace", default="~/projects", help="Workspace directory")
@@ -118,14 +154,14 @@ def main():
     write_task_meta(task_dir, task_meta)
 
     try:
-        # Spawn Codex session in background
+        # Spawn ACP session
         print(f"🚀 Starting Codex task: {task_id}")
         print(f"   Task: {args.name}")
         print(f"   Workspace: {args.workspace}")
 
-        session_key, pid = spawn_codex_session(task_meta)
+        session_key, run_id, resp = spawn_acp_session(task_meta)
         task_meta["session_key"] = session_key
-        task_meta["pid"] = pid
+        task_meta["run_id"] = run_id
         task_meta["status"] = "running"
 
         # Update metadata
@@ -133,7 +169,7 @@ def main():
 
         print(f"✅ Task spawned successfully")
         print(f"   Session: {session_key}")
-        print(f"   PID: {pid}")
+        print(f"   Run ID: {run_id}")
         print(f"   Task ID: {task_id}")
         print(f"   Monitor: codex-tasks status {task_id}")
         print("")

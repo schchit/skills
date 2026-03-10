@@ -1,532 +1,285 @@
-# Skill: codex-hook
+---
+name: Codex Hook
+description: OpenClaw 智能任务执行系统 - 支持任务拆解、执行、监控、干预、自动 PR 合并、git worktree 隔离
+license: MIT-0
+version: 1.0.1
+---
 
-Task scheduler and callback system for OpenAI Codex CLI. Enables asynchronous code execution with automatic completion notifications, integration with OpenClaw heartbeat, and multi-channel callbacks (Telegram, webhook, pending-wake).
+# Skill: codex-hook v1.0.1
 
-## 🎯 Overview
+OpenClaw 智能任务执行系统。支持任务拆解、执行、监控、干预、自动 PR 合并。
 
-`codex-hook` is a task scheduling and callback system for OpenAI Codex CLI in OpenClaw. Enables asynchronous code execution with automatic completion notifications.
+## 架构
 
-**Key Features:**
+```
+OpenClaw (编排层) → codex-hook (执行层)
+       ↓                    ↓
+    拆解任务              并行执行
+       ↓                    ↓
+    子任务列表            tmux 隔离
+       ↓                    ↓
+    调用 codex-hook       监控+干预
+                           ↓
+                        自动合并
+```
 
-- ✅ **Async dispatch** - Submit tasks without blocking
-- ✅ **Session isolation** - Each task runs in isolated sub-session
-- ✅ **Auto callbacks** - Telegram, webhook, AGI heartbeat integration
-- ✅ **State tracking** - Persistent metadata and outputs
-- ✅ **Retry & timeout** - Built-in failure handling
-- ✅ **Git integration** - Auto-capture recent commits and modified files
+## 依赖
 
-## Quick Reference
+- `bash` - 执行脚本
+- `jq` - JSON 处理
+- `tmux` - 任务隔离（可选）
+- `gh` - GitHub CLI（自动合并需要）
+- `codex` - Codex CLI
+- `curl` - 发送通知
+
+## 安装
+
+脚本已位于：`~/.openclaw/skills/codex-hook/scripts/`
+
+建议添加 alias 到 shell 配置：
+```bash
+# ~/.zshrc 或 ~/.bashrc
+alias codex-tasks='bash ~/.openclaw/skills/codex-hook/scripts/codex-tasks.sh'
+```
+
+## 快速开始
 
 ```bash
-# Dispatch a task (async, returns immediately)
-dispatch-codex.sh \
-  -t "Implement user authentication API" \
-  -n "auth-api" \
-  -w "~/projects/backend" \
-  -g "-1003884099816" \
-  -c "telegram" \
-  --timeout 3600
+# 1. 初始化
+codex-tasks init
 
-# Check task status
-codex-tasks list          # Show all tasks
-codex-tasks status TASK_ID  # Show specific task
+# 2. 执行任务（OpenClaw 拆解后调用）
+codex-tasks execute parent-login '[{"name":"后端API","description":"实现登录API"},{"name":"前端","description":"实现登录页"}]'
 
-# Configure default callback channel
-codex-tasks config --default-channel telegram --default-group "-100123"
+# 3. 查看状态
+codex-tasks status
 ```
 
-## Architecture
+## 核心文件
 
 ```
-dispatch-codex.sh
-  │
-  ├─ 写入 task-meta.json (任务元数据)
-  ├─ 调用 runner.py → sessions_spawn 启动 Codex 子会话
-  │   └─ 返回 task_id
-  │
-  └─ 立即返回 task_id 给用户 (不阻塞)
-      │
-      └─ watcher.py (后台监听)
-          │
-          ├─ 轮询 sessions_list 检查状态
-          ├─ 检测完成 → 读取 transcript
-          ├─ 写入结果文件 (latest.json, pending-wake.json)
-          ├─ 发送 Telegram 通知 (如果配置)
-          ├─ 调用 webhook (如果配置)
-          └─ 更新任务状态为 completed/failed
+~/.openclaw/skills/codex-hook/scripts/
+├── codex-tasks.sh       # 统一入口
+├── task-registry.sh     # 任务注册表
+├── task-dispatcher.sh   # 任务调度器
+├── auto-merge.sh       # 自动 PR 创建、CI、检查、合并
+├── task-monitor.sh      # 任务监控
+└── task-splitter.sh    # 任务拆解（预留）
 ```
 
-## 📦 Installation
+## 命令说明
 
-### 1. Copy scripts to PATH
+| 命令 | 简写 | 说明 | 示例 |
+|------|------|------|------|
+| `init` | `i` | 初始化任务系统 | `codex-tasks init` |
+| `execute` | `run` | 接收子任务并执行 | `execute p1 '[{"name":"API"}]'` |
+| `add-subtask` | `add` | 添加单个子任务 | `add p1 "API" "实现登录"` |
+| `start` | - | 开始执行所有子任务 | `start p1` |
+| `status` | `list` | 查看状态 | `status` / `status task-xxx` |
+| `monitor` | `watch` | 实时监控面板 | `monitor` |
+| `check` | - | 单次检查任务状态 | `check` |
+| `intervene` | `send` | 干预任务 | `intervene t-xxx "消息"` |
+| `stop` | `kill` | 停止任务 | `stop t-xxx` |
+| `logs` | `log` | 查看日志 | `logs t-xxx` |
+| `auto-merge` | `merge` | 自动合并 PR | `auto-merge t-xxx` |
+| `report` | - | 汇报完成 | `report t-xxx` |
+| `cleanup` | `clean` | 清理已完成任务 | `cleanup 10` |
 
-```bash
-mkdir -p ~/bin
-cp skills/codex-hook/scripts/* ~/bin/
-chmod +x ~/bin/*
+## 工作流
 
-# Ensure ~/bin is in PATH
-echo 'export PATH="$HOME/bin:$PATH"' >> ~/.zshrc
-source ~/.zshrc
-```
+### 1. OpenClaw 拆解任务
 
-### 2. Create Codex agent (once)
-
-```bash
-openclaw agents add codex --workspace ~/projects --model openai-codex/gpt-5.2 --non-interactive
-```
-
-### 3. Configure defaults (optional)
-
-```bash
-codex-tasks config --set default_channel telegram
-codex-tasks config --set default_group "YOUR_GROUP_ID"  # Replace with actual group ID
-codex-tasks config --set result_dir "$HOME/.local/share/codex-hook/results"
-```
-
-## 🚀 Quick Start
-
-### Dispatch a task
-
-```bash
-dispatch-codex.sh \
-  -t "Your task description" \
-  -n "task-name" \
-  -w "~/projects" \
-  --timeout 3600
-```
-
-**Example:**
-
-```bash
-dispatch-codex.sh \
-  -t "Create a Python script that implements a simple REST API" \
-  -n "rest-api" \
-  -w "~/dev/project" \
-  --timeout 1800
-```
-
-Output:
-```
-✅ Task dispatched: codex-1740857284-a1b2c3d4
-   Monitor: codex-tasks status codex-1770857284-a1b2c3d4
-```
-
-### Monitor tasks
-
-```bash
-# List all tasks (most recent first)
-codex-tasks list
-
-# Show task details
-codex-tasks status <task_id>
-
-# Watch continuously (in separate terminal)
-while true; do clear; codex-tasks list; sleep 2; done
-```
-
-### Enable Telegram notifications
-
-1. Set `default_group` in config:
-```bash
-codex-tasks config --set default_group "-100xxxxxxxxxx"
-```
-
-2. Dispatch with callback:
-```bash
-dispatch-codex.sh \
-  -t "Refactor authentication module" \
-  -n "refactor-auth" \
-  -c telegram \
-  -g "-100xxxxxxxxxx"
-```
-
-When task completes, you'll receive a Telegram message with:
-- Task name and status
-- Duration
-- Output summary
-- Recent git commits (if workspace is a git repo)
-- Modified files list
-
-### Heartbeat integration (for AGI)
-
-Add to your AGI's heartbeat routine:
-
-```bash
-# Process pending completions
-process-codex-callbacks
-```
-
-This reads `pending-wake.json` and marks entries as processed.
-
-## 📋 Commands
-
-| Command | Description |
-|---------|-------------|
-| `dispatch-codex.sh -t "task" -n "name"` | Dispatch new task (required: -t, -n) |
-| `codex-tasks list` | List all tasks |
-| `codex-tasks status <id>` | Show task details |
-| `codex-tasks cancel <id>` | Cancel running task |
-| `codex-tasks retry <id>` | Retry failed task |
-| `codex-tasks cleanup --days N` | Delete tasks older than N days |
-| `codex-tasks config --set key val` | Set config option |
-| `process-codex-callbacks` | Process pending wake entries |
-| `start-codex-daemon.sh` | Start watcher daemon |
-| `stop-codex-daemon.sh` | Stop watcher daemon |
-
-## 🔧 Configuration
-
-### Config file: `~/.config/codex-hook/config.json`
+OpenClaw 负责分析需求，拆分为子任务列表：
 
 ```json
-{
-  "result_dir": "/tmp/codex-results",
-  "pending_wake_file": "/tmp/codex-results/pending-wake.json",
-  "latest_result_file": "/tmp/codex-results/latest.json",
-  "default_channel": "telegram",
-  "default_group": "YOUR_GROUP_ID",
-  "default_webhook_url": "",
-  "poll_interval": 5,
-  "max_concurrent": 4,
-  "heartbeat_integration": true,
-  "archive_days": 30,
-  "output_max_chars": 4000,
-  "retention": {
-    "completed": 30,
-    "failed": 7,
-    "running": 1
-  }
-}
+[
+  {"name": "后端API开发", "description": "实现用户登录API"},
+  {"name": "前端页面", "description": "实现登录页面"},
+  {"name": "单元测试", "description": "编写登录相关测试"}
+]
 ```
 
-### Configuration options
-
-- `result_dir` - Where task data is stored
-- `default_channel` - Default notification channel (telegram, webhook)
-- `default_group` - Default target group/channel ID
-- `poll_interval` - How often watcher checks task status (seconds)
-- `max_concurrent` - Maximum concurrent tasks (not enforced yet)
-- `heartbeat_integration` - Write to pending-wake.json for AGI heartbeat
-- `output_max_chars` - Max output characters to store/notify
-- `retention` - How long to keep tasks by status
-
-## 📁 Output Files
-
-### Directory structure
-
-```
-result_dir/
-├── latest.json                      # Latest completed task
-├── pending-wake.json               # Append-only log for heartbeat
-├── tasks/
-│   └── <task_id>/
-│       └── task-meta.json          # Task metadata
-├── archives/
-│   └── YYYY-MM/
-│       └── <task_id>.json
-└── logs/
-    └── watcher.log
-```
-
-### `latest.json`
-
-```json
-{
-  "task_id": "codex-1740857284-a1b2c3d4",
-  "task_name": "rest-api",
-  "status": "completed",
-  "started_at": "2026-03-01T20:30:00Z",
-  "completed_at": "2026-03-01T20:35:00Z",
-  "duration_seconds": 300,
-  "exit_code": 0,
-  "output": "Full task output...",
-  "output_truncated": false,
-  "session_key": "agent:acp:codex-a1b2c3d4",
-  "workspace": "~/dev/project"
-}
-```
-
-### `pending-wake.json` (JSONL)
-
-```json
-{
-  "task_id": "codex-1740857284-a1b2c3d4",
-  "task_name": "rest-api",
-  "status": "completed",
-  "completed_at": "2026-03-01T20:35:00Z",
-  "summary": "Created REST API with Flask",
-  "processed": false,
-  "callback_channels": ["telegram:-100xxxxx"]
-}
-```
-
-## 🔔 Notification Channels
-
-### Telegram
-
-Set `default_group` in config, then either:
-
-1. Configure globally (used for all tasks):
-```bash
-codex-tasks config --set default_group "-100xxxxxxxxxx"
-```
-
-2. Specify per-task:
-```bash
-dispatch-codex.sh -t "task" -n "name" -c telegram -g "-100xxxxxxxxxx"
-```
-
-**Notification format:**
-
-```
-🤖 Codex Task Completed
-📋 Task: rest-api
-⏱️ Duration: 5m 30s
-📊 Status: completed
-
-📝 Output Summary:
-```
-Successfully created Flask REST API.
-- Implemented User and Post endpoints
-- Added error handling
-- Wrote unit tests
-```
-
-📁 /home/user/project
-📂 Recent commits:
-  • abc1234 Add REST API implementation
-  • def5678 Update requirements.txt
-
-📝 Modified files:
-  • app.py
-  • models.py
-  • tests/test_api.py
-  • requirements.txt
-```
-
-### Webhook
+### 2. 调用 codex-hook 执行
 
 ```bash
-dispatch-codex.sh \
-  -t "task" \
-  -n "name" \
-  -c webhook \
-  --webhook-url "https://your-server.com/api/codex/callback"
+# 方式一：一次性接收所有子任务
+codex-tasks execute <parent_id> '<子任务JSON>' [workspace]
+
+# 方式二：逐个添加子任务
+codex-tasks add-subtask <parent_id> "任务名" "描述"
+codex-tasks add-subtask <parent_id> "任务名2" "描述2"
+codex-tasks start <parent_id> [workspace]
 ```
 
-**POST payload:**
-
-```json
-{
-  "task_id": "codex-1740857284-a1b2c3d4",
-  "task_name": "rest-api",
-  "status": "completed",
-  "completed_at": "2026-03-01T20:35:00Z",
-  "duration_seconds": 300,
-  "exit_code": 0,
-  "output": "Full output text...",
-  "output_truncated": false,
-  "session_key": "agent:acp:codex-a1b2c3d4",
-  "workspace": "~/dev/project"
-}
-```
-
-### Multiple callbacks
+### 3. 监控与干预
 
 ```bash
-dispatch-codex.sh \
-  -t "task" \
-  -n "multi" \
-  -c telegram -g "-100111" \
-  -c webhook --webhook-url "https://api/callback"
+# 查看所有任务
+codex-tasks status
+
+# 实时监控
+codex-tasks monitor
+
+# 干预任务（发送消息到 tmux）
+codex-tasks intervene <task_id> "停下，先做X"
+
+# 停止任务
+codex-tasks stop <task_id>
+
+# 查看日志
+codex-tasks logs <task_id>
 ```
 
-## 🔄 Heartbeat Integration
-
-Your main AGI can automatically react to task completions:
+### 4. 自动合并与汇报
 
 ```bash
-#!/bin/bash
-# In heartbeat routine
+# 自动合并 PR (CI检查 → 代码审查 → 合并)
+codex-tasks auto-merge <task_id> [repo]
 
-PENDING_WAKE="$HOME/.config/codex-hook/pending-wake.json"
+# 汇报完成
+codex-tasks report <task_id> [telegram]
 
-if [ -f "$PENDING_WAKE" ]; then
-    process-codex-callbacks "$PENDING_WAKE" --no-mark > /tmp/new-completions.json
-    
-    # Read and react to new completions
-    jq -r '.tasks[] | "\(.task_name) - \(.status)"' /tmp/new-completions.json | while read line; do
-        # Send notification or trigger actions
-        echo "Task completed: $line"
-    done
-    
-    # Mark as processed
-    process-codex-callbacks "$PENDING_WAKE"
-fi
+# 清理已完成任务
+codex-tasks cleanup [保留数量]
 ```
 
-## How It Works
+## 任务注册表
 
-### 1. Task Dispatch (`dispatch-codex.sh`)
-- Generates unique `task_id`
-- Writes `task-meta.json` to result directory
-- Calls `runner.py` which uses `sessions_spawn` to start Codex
-- Returns `task_id` immediately
-
-### 2. Task Execution (`runner.py`)
-- Configures Codex agent with proper workspace, model, tools
-- Sets timeouts and context limits
-- Logs session key to result directory
-- Exits (Codex runs in background)
-
-### 3. Status Watching (`watcher.py`)
-- Runs as daemon (or triggered by cron)
-- Polls `sessions_list` for tasks in `meta/`
-- Detects completion (status=completed, aborted, or timeout)
-- Extracts output from `sessions_history`
-- Triggers callbacks
-
-### 4. Callback Handling (`callback.py`)
-- Sends Telegram message (if configured)
-- POSTs to webhook (if configured)
-- Writes `latest.json` and `pending-wake.json`
-- Marks task as processed
-
-## 🛠️ Advanced Usage
-
-### Custom agent and model
+- 位置: `/tmp/codex-tasks/active-tasks.json`
+- 包含: 所有任务状态、子任务关系、日志
 
 ```bash
-dispatch-codex.sh \
-  -t "Complex task" \
-  -n "complex" \
-  --agent-id "codex-backend" \
-  --model "openai-codex/gpt-5.2" \
-  --context-messages 20 \
-  --timeout 7200
+# 直接查看 JSON
+codex-tasks json
+
+# 清理已完成任务
+codex-tasks cleanup 10
 ```
 
-### Workspace-specific tasks
+## 查看任务输出
 
 ```bash
-dispatch-codex.sh \
-  -t "Refactor frontend components" \
-  -n "frontend-refactor" \
-  -w "~/projects/frontend" \
-  --timeout 3600
+# 任务目录
+ls /tmp/codex-results/tasks/<task_id>/
+
+# 执行日志
+cat /tmp/codex-results/tasks/<task_id>/output.log
+
+# 任务提示词
+cat /tmp/codex-results/tasks/<task_id>/prompt.txt
 ```
 
-### Priority tasks
+## 监控设置 (可选)
 
 ```bash
-dispatch-codex.sh \
-  -t "Security patch CVE-2026-1234" \
-  -n "security-patch" \
-  --priority high
+# 方式一：加载环境变量后启动监控
+export $(cat ~/.openclaw/.env | xargs) && codex-tasks monitor-start 60 &
+
+# 方式二：直接指定间隔
+codex-tasks monitor-start 60 &
 ```
 
-## 📊 Monitoring
+**注意**：需要先配置通知环境变量才能收到进度/完成通知。
 
-### Real-time dashboard
+## OpenClaw 集成示例
+
+在 OpenClaw 中使用：
+
+```
+你: 实现用户登录功能
+
+OpenClaw (拆解):
+→ 分析需求，拆分为子任务
+→ 调用 codex-hook 执行
+→ 监控任务状态
+→ 自动合并 PR
+→ 汇报完成
+```
+
+## 通知配置
+
+### 方式一：环境变量文件
+
+推荐将配置写入 `~/.openclaw/.env`：
 
 ```bash
-watch -n 2 'codex-tasks list --limit 10'
+# ~/.openclaw/.env
+TELEGRAM_BOT_TOKEN="your-bot-token"
+TELEGRAM_CHAT_ID="your-chat-id"
+TELEGRAM_TOPIC_ID="123456"  # 可选，Forum 话题 ID
+DISCORD_WEBHOOK="https://discord.com/api/webhooks/xxx"
+WEBHOOK_URL="https://your-webhook.com/hook"
+DEFAULT_CHANNEL="telegram"
 ```
 
-### Check daemon log
-
-If running watcher daemon:
+启动监控时加载：
 ```bash
-tail -f /tmp/codex-results/logs/daemon.log
+export $(cat ~/.openclaw/.env | xargs) && codex-tasks monitor-start
 ```
 
-### Disk usage
-
-```bash
-du -sh /tmp/codex-results/tasks/
-du -sh /tmp/codex-results/archives/
-```
-
-### Cleanup old tasks
+### 方式二：环境变量
 
 ```bash
-# Using built-in command
-codex-tasks cleanup --days 30
+# Telegram (用户/群组/话题)
+export TELEGRAM_BOT_TOKEN="your-bot-token"
+export TELEGRAM_CHAT_ID="your-chat-id"
+export TELEGRAM_TOPIC_ID="123456"  # 可选，Forum 话题 ID
 
-# Or manually
-find /tmp/codex-results/tasks -type d -mtime +30 -exec rm -rf {} \;
+# Discord
+export DISCORD_WEBHOOK="https://discord.com/api/webhooks/xxx"
+
+# 通用 Webhook
+export WEBHOOK_URL="https://your-webhook.com/hook"
+
+# 默认渠道
+export DEFAULT_CHANNEL="telegram"
 ```
 
-## 📝 Examples
+### 通知类型
 
-### CI/CD Integration
+| 事件 | 通知内容 |
+|------|----------|
+| 任务开始 | 任务ID、名称、时间 |
+| 进度更新 | 进度条 (0-100%)、当前状态 |
+| 任务完成 | 任务ID、名称、PR链接、时间 |
+| 任务失败 | 任务ID、名称、错误信息 |
+| 人工干预 | 干预消息 |
+
+### 快速测试
 
 ```bash
-#!/bin/bash
-# Run tests asynchronously
-TASK_ID=$(dispatch-codex.sh \
-  -t "Run full test suite and generate coverage report" \
-  -n "ci-tests" \
-  -w "~/project" \
-  --timeout 1800 \
-  --webhook-url "https://ci.example.com/callback/codex" \
-  | grep 'TASK_ID:' | cut -d: -f2 | tr -d ' ')
+# 测试发送
+bash notify.sh send telegram "Hello"
 
-echo "Tests running, task ID: $TASK_ID"
-# CI server receives webhook when done
+# 测试进度条
+bash notify.sh bar 50 "处理中..."
 ```
 
-### Bulk refactoring
+### tmux 不可用
+```
+⚠️ tmux 不可用，使用后台执行
+```
+- 解决：安装 tmux `brew install tmux`
 
+### codex 命令找不到
+- 解决：确保 codex 已安装并在 PATH 中
+
+### gh 命令找不到 (自动合并)
+- 解决：安装 GitHub CLI `brew install gh`
+
+### Telegram 通知不工作
+- 配置环境变量：
 ```bash
-# Refactor multiple components in parallel
-for component in Navbar Footer Sidebar; do
-  dispatch-codex.sh \
-    -t "Refactor $component to TypeScript + Hooks" \
-    -n "refactor-$component" \
-    -w "~/project/src/components" \
-    --timeout 1200 &
-done
-wait
+export TELEGRAM_BOT_TOKEN="your-bot-token"
+export TELEGRAM_CHAT_ID="your-chat-id"
 ```
 
-### Scheduled code review
+## 版本历史
 
-```bash
-# In crontab (weekly review)
-0 9 * * 1 dispatch-codex.sh \
-  -t "Review all changes from last week, check security issues" \
-  -n "weekly-review" \
-  -w "~/project" \
-  --timeout 7200 \
-  -c telegram -g "YOUR_GROUP_ID"
-```
+- **1.0.1** - MIT-0 开源，修复 tmux/worktree 集成，改进状态监控
+- **1.0.0** - 初始版本
+- **0.1.0** - 基础任务调度
 
-## 🐛 Troubleshooting
+## 许可证
 
-| Issue | Solution |
-|-------|----------|
-| Tasks not starting | 1. Check agent exists: `openclaw agents list`<br>2. Check Codex auth: `codex login status` |
-| No Telegram messages | 1. Verify `default_group` is set correctly in config<br>2. Verify bot token and group ID in config |
-| Watcher not detecting completion | 1. Check daemon is running (if using daemon)<br>2. Increase `poll_interval` in config<br>3. Check `sessions_list` manually |
-| Output truncated | Increase `output_max_chars` in config (default 4000) |
-| Permission denied | Ensure result directory is writable (chmod 700) |
-| Task stuck in "running" | 1. Check `ps` for hanging process, use `codex-tasks cancel`<br>2. Check `sessions_list` for hanging sessions, may need manual cancel |
-
-## Performance & Limits
-
-- **Polling overhead**: Minimal (2-5s interval typical)
-- **Concurrent tasks**: Controlled by `max_concurrent` (default 4)
-- **Output storage**: 4000 chars by default (configurable)
-- **Archive retention**: 30 days completed, 7 days failed (configurable)
-
-## Security Considerations
-
-- Result directory should be writable only by owner (chmod 700)
-- Webhook URLs should use HTTPS in production
-- Task output may contain sensitive data; consider sanitizing before callbacks
-- Limit `max_concurrent` to avoid resource exhaustion
-
-## License
-
-Part of OpenClaw ecosystem. Compatible with OpenClaw License.
+MIT-0 (No Attribution) - 见 LICENSE 文件
