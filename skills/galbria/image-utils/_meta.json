@@ -3,11 +3,16 @@
   "slug": "image-utils",
   "displayName": "Image Utils",
   "latest": {
-    "version": "1.2.2",
-    "publishedAt": 1772978614996,
-    "commit": "https://github.com/openclaw/skills/commit/02734e738f4f3298090315536b11ce36be32c51b"
+    "version": "1.2.3",
+    "publishedAt": 1773176832484,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.2.2",
+      "publishedAt": 1772978614996,
+      "commit": "https://github.com/openclaw/skills/commit/02734e738f4f3298090315536b11ce36be32c51b"
+    },
     {
       "version": "1.2.1",
       "publishedAt": 1771850932425,
