@@ -3,11 +3,16 @@
   "slug": "vincent-credentials",
   "displayName": "Vincent - Credentials",
   "latest": {
-    "version": "1.0.66",
-    "publishedAt": 1772948930337,
-    "commit": "https://github.com/openclaw/skills/commit/529ad6abd23ada5fa7eb796bd99f7f6da7d87c32"
+    "version": "1.0.69",
+    "publishedAt": 1773088620490,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.66",
+      "publishedAt": 1772948930337,
+      "commit": "https://github.com/openclaw/skills/commit/529ad6abd23ada5fa7eb796bd99f7f6da7d87c32"
+    },
     {
       "version": "1.0.63",
       "publishedAt": 1772473152329,
