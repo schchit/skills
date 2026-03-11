@@ -1,0 +1,11 @@
+{
+  "owner": "stanrails",
+  "slug": "restart-recovery",
+  "displayName": "Restart Recovery",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773081745488,
+    "commit": null
+  },
+  "history": []
+}
