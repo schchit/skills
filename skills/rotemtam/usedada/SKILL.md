@@ -16,12 +16,9 @@ npx (requires Node.js):
 npx @usedada/cli
 ```
 
-curl:
-```
-curl -fsSL usedada.dev/install.sh | sh
-```
+Or download a prebuilt binary from GitHub Releases: https://github.com/honeybadge-labs/dada/releases
 
-If you installed via curl, all commands below work with just `dada` instead of `npx @usedada/cli`.
+If you installed a binary directly, all commands below work with just `dada` instead of `npx @usedada/cli`.
 
 ## Setup (once)
 
@@ -96,7 +93,7 @@ Examples: `score>50`, `done=1`, `name=Alice`
 - Use `--select field1,field2` to project only the fields you need.
 - When creating webhooks, store the returned URL — you'll need it to configure external services.
 - `webhook watch` is a long-running SSE stream. Use `webhook dequeue` for one-shot polling.
-- Never expose internal IDs or CLI commands to the user. Report results in natural language.
+- When reporting results to the user, summarize in natural language. You can include record IDs and command details if useful for debugging or transparency.
 
 ## Output Flags
 
