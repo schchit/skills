@@ -1,0 +1,11 @@
+{
+  "owner": "asantssec",
+  "slug": "openclaw-security-policy-check",
+  "displayName": "OpenClaw Security Audit",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1773133065844,
+    "commit": null
+  },
+  "history": []
+}
