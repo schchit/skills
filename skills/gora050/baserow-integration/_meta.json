@@ -1,0 +1,11 @@
+{
+  "owner": "gora050",
+  "slug": "baserow-integration",
+  "displayName": "Baserow",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1773191024201,
+    "commit": null
+  },
+  "history": []
+}
