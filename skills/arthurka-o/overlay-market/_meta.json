@@ -1,0 +1,11 @@
+{
+  "owner": "arthurka-o",
+  "slug": "overlay-market",
+  "displayName": "Overlay Market (perpetual futures trading)",
+  "latest": {
+    "version": "0.1.1",
+    "publishedAt": 1773262599657,
+    "commit": null
+  },
+  "history": []
+}
