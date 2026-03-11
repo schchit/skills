@@ -1,0 +1,11 @@
+{
+  "owner": "archibald80000-ai",
+  "slug": "cli-agent-bridge",
+  "displayName": "CLI Agent Bridge for OpenClaw",
+  "latest": {
+    "version": "0.2.1",
+    "publishedAt": 1773215002875,
+    "commit": null
+  },
+  "history": []
+}
