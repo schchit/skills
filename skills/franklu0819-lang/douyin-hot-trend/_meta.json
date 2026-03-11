@@ -3,11 +3,16 @@
   "slug": "douyin-hot-trend",
   "displayName": "Douyin Hot Trend",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1771697605098,
-    "commit": "https://github.com/openclaw/skills/commit/04ecf46c0220fe7c7d9e2682835b17e3d550926f"
+    "version": "1.1.0",
+    "publishedAt": 1773252093572,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1771697605098,
+      "commit": "https://github.com/openclaw/skills/commit/04ecf46c0220fe7c7d9e2682835b17e3d550926f"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1771686145975,
