@@ -1,0 +1,11 @@
+{
+  "owner": "chainaware",
+  "slug": "chainaware-behavioral-prediction",
+  "displayName": "ChainaAware Behavioral Prediction",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1773319731788,
+    "commit": null
+  },
+  "history": []
+}
