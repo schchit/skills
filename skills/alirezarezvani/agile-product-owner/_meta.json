@@ -3,11 +3,16 @@
   "slug": "agile-product-owner",
   "displayName": "Agile Product Owner",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1770402562930,
-    "commit": "https://github.com/openclaw/skills/commit/64f88db738907b6a2c013929865bbd89ad000a5c"
+    "version": "2.1.1",
+    "publishedAt": 1773070352360,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770402562930,
+      "commit": "https://github.com/openclaw/skills/commit/64f88db738907b6a2c013929865bbd89ad000a5c"
+    },
     {
       "version": "0.1.0",
       "publishedAt": 1770022297220,
