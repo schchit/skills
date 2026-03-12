@@ -2,6 +2,8 @@ import sys
 import json
 import requests
 import os
+import re
+from datetime import datetime, timedelta
 
 
 def baidu_search(api_key, requestBody: dict):
@@ -30,7 +32,7 @@ def baidu_search(api_key, requestBody: dict):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python baidu_search.py <query>")
+        print("Usage: python baidu_search.py <Json>")
         sys.exit(1)
 
     query = sys.argv[1]
@@ -44,6 +46,35 @@ if __name__ == "__main__":
     if "query" not in parse_data:
         print("Error: query must be present in request body.")
         sys.exit(1)
+    count = 10
+    search_filter = {}
+    if "count" in parse_data:
+        count = int(parse_data["count"])
+        if count <= 0:
+            count = 10
+        elif count > 50:
+            count = 50
+    current_time = datetime.now()
+    end_date = (current_time + timedelta(days=1)).strftime("%Y-%m-%d")
+    pattern = r'\d{4}-\d{2}-\d{2}to\d{4}-\d{2}-\d{2}'
+    if "freshness" in parse_data:
+        if parse_data["freshness"] in ["pd", "pw", "pm", "py"]:
+            if parse_data["freshness"] == "pd":
+                start_date = (current_time - timedelta(days=1)).strftime("%Y-%m-%d")
+            if parse_data["freshness"] == "pw":
+                start_date = (current_time - timedelta(days=6)).strftime("%Y-%m-%d")
+            if parse_data["freshness"] == "pm":
+                start_date = (current_time - timedelta(days=30)).strftime("%Y-%m-%d")
+            if parse_data["freshness"] == "py":
+                start_date = (current_time - timedelta(days=364)).strftime("%Y-%m-%d")
+            search_filter = {"range": {"page_time": {"gte": start_date, "lt": end_date}}}
+        elif re.match(pattern, parse_data["freshness"]):
+            start_date = parse_data["freshness"].split("to")[0]
+            end_date = parse_data["freshness"].split("to")[1]
+            search_filter = {"range": {"page_time": {"gte": start_date, "lt": end_date}}}
+        else:
+            print(f"Error: freshness ({parse_data['freshness']}) must be pd, pw, pm, py, or match {pattern}.")
+            sys.exit(1)
 
     # We will pass these via env vars for security
     api_key = os.getenv("BAIDU_API_KEY")
@@ -59,15 +90,9 @@ if __name__ == "__main__":
                 "role": "user"
             }
         ],
-        "edition": parse_data["edition"] if "edition" in parse_data else "standard",
         "search_source": "baidu_search_v2",
-        "resource_type_filter": parse_data["resource_type_filter"] if "resource_type_filter" in parse_data else [
-            {"type": "web", "top_k": 20}],
-        "search_filter": parse_data["search_filter"] if "search_filter" in parse_data else {},
-        "block_websites": parse_data["block_websites"] if "block_websites" in parse_data else None,
-        "search_recency_filter": parse_data[
-            "search_recency_filter"] if "search_recency_filter" in parse_data else "year",
-        "safe_search": parse_data["safe_search"] if "safe_search" in parse_data else False,
+        "resource_type_filter": [{"type": "web", "top_k": count}],
+        "search_filter": search_filter
     }
     try:
         results = baidu_search(api_key, request_body)

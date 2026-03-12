@@ -19,47 +19,31 @@ python3 skills/baidu-search/scripts/search.py '<JSON>'
 | Param | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | query | str | yes | - | Search query |
-| edition | str | no | standard | `standard` (full) or `lite` (light) |
-| resource_type_filter | list[obj] | no | web:20, others:0 | Resource types: web (max 50), video (max 10), image (max 30), aladdin (max 5) |
-| search_filter | obj | no | - | Advanced filters (see below) |
-| block_websites | list[str] | no | - | Sites to block, e.g. ["tieba.baidu.com"] |
-| search_recency_filter | str | no | - | Time filter: `week`, `month`, `semiyear`, `year` |
-| safe_search | bool | no | false | Enable strict content filtering |
-
-## SearchFilter
-
-| Param | Type | Description |
-|-------|------|-------------|
-| match.site | list[str] | Limit search to specific sites, e.g. ["baike.baidu.com"] |
-| range.pageTime | obj | Date range for page_time field (see below) |
-
-### Date Range Format
-
-Fixed date: `YYYY-MM-DD`
-Relative time (from current day): `now-1w/d`, `now-1M/d`, `now-1y/d`
-
-| Operator | Meaning |
-|----------|---------|
-| gte | Greater or equal (start) |
-| lte | Less or equal (end) |
+| count | int | no | 10 | Number of results to return, range 1-50 |
+| freshness | str | no | Null | Time range, two formats: format one is ”YYYY-MM-DDtoYYYY-MM-DD“, and format two includes pd, pw, pm, and py, representing the past 24 hours, past 7 days, past 31 days, and past 365 days respectively |
 
 ## Examples
 
 ```bash
 # Basic search
-python3 skills/baidu-search/scripts/search.py '{"query":"人工智能"}'
+python3 scripts/search.py '{"query":"人工智能"}'
 
-# Filter by time and site
-python3 skills/baidu-search/scripts/search.py '{
+# Freshness first format "YYYY-MM-DDtoYYYY-MM-DD" example
+python3 scripts/search.py '{
   "query":"最新新闻",
-  "search_recency_filter":"week",
-  "search_filter":{"match":{"site":["news.baidu.com"]}}
+  "freshness":"2025-09-01to2025-09-08"
 }'
 
-# Resource type filter
-python3 skills/baidu-search/scripts/search.py '{
+# Freshness second format pd、pw、pm、py example
+python3 scripts/search.py '{
+  "query":"最新新闻",
+  "freshness":"pd"
+}'
+
+# set count, the number of results to return
+python3 scripts/search.py '{
   "query":"旅游景点",
-  "resource_type_filter":[{"type":"web","top_k":20},{"type":"video","top_k":5}]
+  "count": 20,
 }'
 ```
 
