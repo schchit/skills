@@ -1,11 +1,17 @@
 {
   "owner": "bytesagain",
   "slug": "civil-service",
-  "displayName": "Civil Service Exam",
+  "displayName": "Civil Service",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773170234144,
-    "commit": "https://github.com/openclaw/skills/commit/c30ba8f12ceaa7ed9a211f447298924ed5e155fc"
+    "version": "2.0.0",
+    "publishedAt": 1773346229263,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773170234144,
+      "commit": "https://github.com/openclaw/skills/commit/c30ba8f12ceaa7ed9a211f447298924ed5e155fc"
+    }
+  ]
 }

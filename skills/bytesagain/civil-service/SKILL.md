@@ -7,22 +7,24 @@ description: >-
 
 公务员考试助手。申论写作、行测技巧、面试模拟、时政热点、备考计划、真题分析。Civil service exam prep. 公务员、国考、省考、申论。
 
-## Commands
+## 如何使用
 
-- `shenlun` — shenlun
-- `xingce` — xingce
-- `interview` — interview
-- `hotspot` — hotspot
-- `plan` — plan
-- `essay` — essay
+1. 选择你需要的功能命令
+2. 输入你的具体需求描述
+3. 获取专业的输出结果
+4. 根据需要调整和完善
 
-## Usage
+## 命令列表
 
-Run any command with your input to get started. Use `help` to see all available commands.
+| 命令 | 功能 |
+|------|------|
+| `shenlun` | shenlun |
+| `xingce` | xingce |
+| `interview` | interview |
+| `hotspot` | hotspot |
+| `plan` | plan |
+| `essay` | essay |
 
-## About
-
-Part of the BytesAgain productivity toolkit. Visit [bytesagain.com](https://bytesagain.com) for more tools.
 
 ---
-Powered by BytesAgain | bytesagain.com | hello@bytesagain.com
+*Civil Service Exam by BytesAgain*
