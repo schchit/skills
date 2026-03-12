@@ -223,7 +223,7 @@ function buildDistillationPrompt(analysis, existingGenes, sampleCapsules) {
   });
 
   return [
-    'You are a Gene synthesis engine for the GEP (Genome Evolution Protocol).',
+    'You are a Gene synthesis engine for the GEP (Gene Expression Protocol).',
     '',
     'Analyze the following successful evolution capsules and extract a reusable Gene.',
     '',
@@ -476,6 +476,22 @@ function completeDistillation(responseText) {
   try { if (request.prompt_path) fs.unlinkSync(request.prompt_path); } catch (e) {}
 
   console.log('[Distiller] Distillation complete. New gene: ' + gene.id);
+
+  if (process.env.SKILL_AUTO_PUBLISH !== '0') {
+    try {
+      var skillPublisher = require('./skillPublisher');
+      skillPublisher.publishSkillToHub(gene).then(function (res) {
+        if (res.ok) {
+          console.log('[Distiller] Skill published to Hub: ' + (res.result?.skill_id || gene.id));
+        } else {
+          console.warn('[Distiller] Skill publish failed: ' + (res.error || 'unknown'));
+        }
+      }).catch(function () {});
+    } catch (e) {
+      console.warn('[Distiller] Skill publisher unavailable: ' + e.message);
+    }
+  }
+
   return { ok: true, gene: gene };
 }
 

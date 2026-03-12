@@ -30,7 +30,7 @@ const {
   memoryGraphPath,
 } = memoryAdapter;
 const { readStateForSolidify, writeStateForSolidify } = require('./gep/solidify');
-const { fetchTasks, selectBestTask, claimTask, taskToSignals, claimWorkerTask } = require('./gep/taskReceiver');
+const { fetchTasks, selectBestTask, claimTask, taskToSignals, claimWorkerTask, estimateCommitmentDeadline } = require('./gep/taskReceiver');
 const { generateQuestions } = require('./gep/questionGenerator');
 const { buildMutation, isHighRiskMutationAllowed } = require('./gep/mutation');
 const { selectPersonalityForRun } = require('./gep/personality');
@@ -64,7 +64,9 @@ const TODAY_LOG = path.join(MEMORY_DIR, new Date().toISOString().split('T')[0] +
 // Ensure memory directory exists so state/cache writes work.
 try {
   if (!fs.existsSync(MEMORY_DIR)) fs.mkdirSync(MEMORY_DIR, { recursive: true });
-} catch (e) {}
+} catch (e) {
+  console.warn('[Evolver] Failed to create MEMORY_DIR (may cause downstream errors):', e && e.message || e);
+}
 
 function formatSessionLog(jsonlContent) {
   const result = [];
@@ -1041,11 +1043,21 @@ async function run() {
       try {
         const { tryReadMemoryGraphEvents } = require('./gep/memoryGraph');
         taskMemoryEvents = tryReadMemoryGraphEvents(1000);
-      } catch {}
+      } catch (e) {
+        console.warn('[TaskReceiver] MemoryGraph read failed (task selection proceeds without history):', e && e.message || e);
+      }
       const best = selectBestTask(hubTasks, taskMemoryEvents);
       if (best) {
         const alreadyClaimed = best.status === 'claimed';
-        const claimed = alreadyClaimed || await claimTask(best.id || best.task_id);
+        let claimed = alreadyClaimed;
+        if (!alreadyClaimed) {
+          const commitDeadline = estimateCommitmentDeadline(best);
+          claimed = await claimTask(best.id || best.task_id, commitDeadline ? { commitment_deadline: commitDeadline } : undefined);
+          if (claimed && commitDeadline) {
+            best._commitment_deadline = commitDeadline;
+            console.log(`[Commitment] Deadline set: ${commitDeadline}`);
+          }
+        }
         if (claimed) {
           activeTask = best;
           const taskSignals = taskToSignals(best);
@@ -1060,7 +1072,30 @@ async function run() {
     console.log(`[TaskReceiver] Fetch/claim failed (non-fatal): ${e.message}`);
   }
 
-  // --- Worker Pool: claim tasks from heartbeat available_work ---
+  // --- Commitment: check for overdue tasks from heartbeat ---
+  // If Hub reported overdue tasks, prioritize resuming them by injecting their
+  // signals at the front. This does not change activeTask selection (the overdue
+  // task should already be claimed/active from a previous cycle).
+  try {
+    const { consumeOverdueTasks } = require('./gep/a2aProtocol');
+    const overdueTasks = consumeOverdueTasks();
+    if (overdueTasks.length > 0) {
+      for (const ot of overdueTasks) {
+        const otId = ot.task_id || ot.id;
+        if (activeTask && (activeTask.id === otId || activeTask.task_id === otId)) {
+          console.warn(`[Commitment] Active task "${activeTask.title || otId}" is OVERDUE -- prioritizing completion.`);
+          signals.unshift('overdue_task', 'urgent');
+          break;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[Commitment] Overdue task check failed (non-fatal):', e && e.message || e);
+  }
+
+  // --- Worker Pool: select task from heartbeat available_work (deferred claim) ---
+  // Only remember the best task and inject its signals; actual claim+complete
+  // happens atomically in solidify.js after a successful evolution cycle.
   if (!activeTask && process.env.WORKER_ENABLED === '1') {
     try {
       const { consumeAvailableWork } = require('./gep/a2aProtocol');
@@ -1070,23 +1105,22 @@ async function run() {
         try {
           const { tryReadMemoryGraphEvents } = require('./gep/memoryGraph');
           taskMemoryEvents = tryReadMemoryGraphEvents(1000);
-        } catch {}
+        } catch (e) {
+          console.warn('[WorkerPool] MemoryGraph read failed (task selection proceeds without history):', e && e.message || e);
+        }
         const best = selectBestTask(workerTasks, taskMemoryEvents);
         if (best) {
-          const assignment = await claimWorkerTask(best.id || best.task_id);
-          if (assignment) {
-            activeTask = best;
-            activeTask._worker_assignment_id = assignment.id || assignment.assignment_id || null;
-            const taskSignals = taskToSignals(best);
-            for (const sig of taskSignals) {
-              if (!signals.includes(sig)) signals.unshift(sig);
-            }
-            console.log(`[WorkerPool] Claimed worker task: "${best.title || best.id}" assignment=${activeTask._worker_assignment_id} (${taskSignals.length} signals injected)`);
+          activeTask = best;
+          activeTask._worker_pending = true;
+          const taskSignals = taskToSignals(best);
+          for (const sig of taskSignals) {
+            if (!signals.includes(sig)) signals.unshift(sig);
           }
+          console.log(`[WorkerPool] Selected worker task (deferred claim): "${best.title || best.id}" (${taskSignals.length} signals injected)`);
         }
       }
     } catch (e) {
-      console.log(`[WorkerPool] Claim failed (non-fatal): ${e.message}`);
+      console.log(`[WorkerPool] Task selection failed (non-fatal): ${e.message}`);
     }
   }
 
@@ -1148,7 +1182,9 @@ async function run() {
   for (const c of newCandidates) {
     try {
       appendCandidateJsonl(c);
-    } catch (e) {}
+    } catch (e) {
+      console.warn('[Candidates] Failed to persist candidate:', e && e.message || e);
+    }
   }
   const recentCandidates = readRecentCandidates(20);
   const capabilityCandidatesPreview = renderCandidatesPreview(recentCandidates.slice(-8), 1600);
@@ -1211,7 +1247,9 @@ async function run() {
         2
       )}\n\`\`\``;
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn('[ExternalCandidates] Preview build failed (non-fatal):', e && e.message || e);
+  }
 
   // Search-First Evolution: query Hub for reusable solutions before local reasoning.
   let hubHit = null;
@@ -1399,7 +1437,9 @@ async function run() {
         .split('\n')
         .map(l => l.trim())
         .filter(Boolean);
-    } catch (e) {}
+    } catch (e) {
+      console.warn('[SolidifyState] Failed to read baseline untracked files:', e && e.message || e);
+    }
 
     try {
       const out = execSync('git rev-parse HEAD', {
@@ -1410,7 +1450,9 @@ async function run() {
         windowsHide: true,
       });
       baselineHead = String(out || '').trim() || null;
-    } catch (e) {}
+    } catch (e) {
+      console.warn('[SolidifyState] Failed to read git HEAD:', e && e.message || e);
+    }
 
     const maxFiles =
       selectedGene && selectedGene.constraints && Number.isFinite(Number(selectedGene.constraints.max_files))
@@ -1452,6 +1494,8 @@ async function run() {
         active_task_id: activeTask ? (activeTask.id || activeTask.task_id || null) : null,
         active_task_title: activeTask ? (activeTask.title || null) : null,
         worker_assignment_id: activeTask ? (activeTask._worker_assignment_id || null) : null,
+        worker_pending: activeTask ? (activeTask._worker_pending || false) : false,
+        commitment_deadline: activeTask ? (activeTask._commitment_deadline || null) : null,
         applied_lessons: hubLessons.map(function(l) { return l.lesson_id; }).filter(Boolean),
         hub_lessons: hubLessons,
       };

@@ -122,11 +122,11 @@ If you are not on the latest release, update first -- most reported issues are a
 # If installed via git
 git pull && npm install
 
-# If installed via npm (global install)
-npm install -g evolver@latest
+# If installed via npm
+npm install -g @evomap/evolver@latest
 ```
 
-Latest releases and changelog: `https://github.com/autogame-17/evolver/releases`
+Latest releases and changelog: `https://github.com/EvoMap/evolver/releases`
 
 ## License
 MIT

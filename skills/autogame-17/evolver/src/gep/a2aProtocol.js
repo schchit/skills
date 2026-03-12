@@ -18,7 +18,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { getGepAssetsDir } = require('./paths');
+const { getGepAssetsDir, getEvolverLogPath } = require('./paths');
 const { computeAssetId } = require('./contentHash');
 const { captureEnvFingerprint } = require('./envFingerprint');
 const os = require('os');
@@ -172,20 +172,23 @@ function buildPublishBundle(opts) {
   if (!capsule || capsule.type !== 'Capsule' || !capsule.id) {
     throw new Error('publishBundle: capsule must be a valid Capsule with type and id');
   }
-  var geneAssetId = gene.asset_id || computeAssetId(gene);
-  var capsuleAssetId = capsule.asset_id || computeAssetId(capsule);
-  var nodeSecret = process.env.A2A_NODE_SECRET || getNodeId();
-  var signatureInput = [geneAssetId, capsuleAssetId].sort().join('|');
-  var signature = crypto.createHmac('sha256', nodeSecret).update(signatureInput).digest('hex');
   if (o.modelName && typeof o.modelName === 'string') {
     gene.model_name = o.modelName;
     capsule.model_name = o.modelName;
   }
+  gene.asset_id = computeAssetId(gene);
+  capsule.asset_id = computeAssetId(capsule);
+  var geneAssetId = gene.asset_id;
+  var capsuleAssetId = capsule.asset_id;
+  var nodeSecret = process.env.A2A_NODE_SECRET || getNodeId();
+  var signatureInput = [geneAssetId, capsuleAssetId].sort().join('|');
+  var signature = crypto.createHmac('sha256', nodeSecret).update(signatureInput).digest('hex');
   var assets = [gene, capsule];
   if (event && event.type === 'EvolutionEvent') {
     if (o.modelName && typeof o.modelName === 'string') {
       event.model_name = o.modelName;
     }
+    event.asset_id = computeAssetId(event);
     assets.push(event);
   }
   var publishPayload = {
@@ -396,7 +399,10 @@ var _heartbeatStartedAt = null;
 var _heartbeatConsecutiveFailures = 0;
 var _heartbeatTotalSent = 0;
 var _heartbeatTotalFailed = 0;
+var _heartbeatFpSent = false;
 var _latestAvailableWork = [];
+var _latestOverdueTasks = [];
+var _pendingCommitmentUpdates = [];
 var _cachedHubNodeSecret = null;
 var _heartbeatIntervalMs = 0;
 var _heartbeatRunning = false;
@@ -498,13 +504,31 @@ function sendHeartbeat() {
     timestamp: new Date().toISOString(),
   };
 
+  var meta = {};
+
   if (process.env.WORKER_ENABLED === '1') {
     var domains = (process.env.WORKER_DOMAINS || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
-    bodyObj.meta = {
-      worker_enabled: true,
-      worker_domains: domains,
-      max_load: Math.max(1, Number(process.env.WORKER_MAX_LOAD) || 5),
-    };
+    meta.worker_enabled = true;
+    meta.worker_domains = domains;
+    meta.max_load = Math.max(1, Number(process.env.WORKER_MAX_LOAD) || 5);
+  }
+
+  if (_pendingCommitmentUpdates.length > 0) {
+    meta.commitment_updates = _pendingCommitmentUpdates.splice(0);
+  }
+
+  if (!_heartbeatFpSent) {
+    try {
+      var fp = captureEnvFingerprint();
+      if (fp && fp.evolver_version) {
+        meta.env_fingerprint = fp;
+        _heartbeatFpSent = true;
+      }
+    } catch {}
+  }
+
+  if (Object.keys(meta).length > 0) {
+    bodyObj.meta = meta;
   }
 
   var body = JSON.stringify(bodyObj);
@@ -546,7 +570,33 @@ function sendHeartbeat() {
       if (Array.isArray(data.available_work)) {
         _latestAvailableWork = data.available_work;
       }
+      if (Array.isArray(data.overdue_tasks) && data.overdue_tasks.length > 0) {
+        _latestOverdueTasks = data.overdue_tasks;
+        console.warn('[Commitment] ' + data.overdue_tasks.length + ' overdue task(s) detected via heartbeat.');
+      }
       _heartbeatConsecutiveFailures = 0;
+      try {
+        var logPath = getEvolverLogPath();
+        fs.mkdirSync(path.dirname(logPath), { recursive: true });
+        var now = new Date();
+        try {
+          fs.utimesSync(logPath, now, now);
+        } catch (e) {
+          if (e && e.code === 'ENOENT') {
+            try {
+              var fd = fs.openSync(logPath, 'a');
+              fs.closeSync(fd);
+              fs.utimesSync(logPath, now, now);
+            } catch (innerErr) {
+              console.warn('[Heartbeat] Failed to create evolver_loop.log: ' + innerErr.message);
+            }
+          } else {
+            console.warn('[Heartbeat] Failed to touch evolver_loop.log: ' + e.message);
+          }
+        }
+      } catch (outerErr) {
+        console.warn('[Heartbeat] Failed to ensure evolver_loop.log: ' + outerErr.message);
+      }
       return { ok: true, response: data };
     })
     .catch(function (err) {
@@ -571,6 +621,31 @@ function consumeAvailableWork() {
   var work = _latestAvailableWork;
   _latestAvailableWork = [];
   return work;
+}
+
+function getOverdueTasks() {
+  return _latestOverdueTasks;
+}
+
+function consumeOverdueTasks() {
+  var tasks = _latestOverdueTasks;
+  _latestOverdueTasks = [];
+  return tasks;
+}
+
+/**
+ * Queue a commitment deadline update to be sent with the next heartbeat.
+ * @param {string} taskId
+ * @param {string} deadlineIso - ISO-8601 deadline
+ * @param {boolean} [isAssignment] - true if this is a WorkAssignment
+ */
+function queueCommitmentUpdate(taskId, deadlineIso, isAssignment) {
+  if (!taskId || !deadlineIso) return;
+  _pendingCommitmentUpdates.push({
+    task_id: taskId,
+    deadline: deadlineIso,
+    assignment: !!isAssignment,
+  });
 }
 
 function startHeartbeat(intervalMs) {
@@ -667,6 +742,9 @@ module.exports = {
   getHeartbeatStats,
   getLatestAvailableWork,
   consumeAvailableWork,
+  getOverdueTasks,
+  consumeOverdueTasks,
+  queueCommitmentUpdate,
   getHubNodeSecret,
   buildHubHeaders,
 };
