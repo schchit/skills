@@ -9,7 +9,7 @@ description: |
   - User asks for pattern analysis ("Analyze my patterns", "How am I doing?")
   - User requests summaries ("Generate weekly/monthly summary")
 metadata:
-  version: 0.0.15
+  version: 0.0.18
 ---
 
 # PhoenixClaw: Zero-Tag Passive Journaling
@@ -64,7 +64,7 @@ PY
       done |
         xargs -0 jq -cr --argjson start "$START_EPOCH" --argjson end "$END_EPOCH" '
           (.timestamp // .created_at // empty) as $ts
-          | ($ts | fromdateiso8601?) as $epoch
+          | ($ts | split(".")[0] + "Z" | fromdateiso8601?) as $epoch
           | select($epoch != null and $epoch >= $start and $epoch < $end)
         '
       ```
