@@ -23,7 +23,7 @@ If not installed, install globally:
 npm install -g clawsouls
 ```
 
-Current version: **v0.6.0**
+Current version: **v0.6.2**
 
 ## Commands
 
@@ -38,6 +38,7 @@ npx clawsouls install clawsouls/surgical-coder@0.1.0         # specific version
 80+ souls available. Browse all at https://clawsouls.ai
 
 **Official souls** (owner: `clawsouls`):
+
 - **Development:** code-reviewer, coding-tutor, debug-detective, api-architect, ml-engineer, sysadmin-sage, devops-veteran, gamedev-mentor, prompt-engineer, frontend-dev, backend-dev, mobile-dev, cloud-architect, database-admin, qa-engineer
 - **Writing & Content:** tech-writer, storyteller, scifi-writer, copywriter, content-creator, journalist, poet, screenwriter, academic-writer
 - **Professional:** data-analyst, project-manager, legal-advisor, startup-founder, hr-manager, marketing-strategist, sales-coach, product-manager
@@ -142,12 +143,14 @@ npx clawsouls scan                  # alias
 ```
 
 SoulScan checks active soul files for:
+
 - **Integrity**: SHA-256 checksum comparison — detects tampering since last scan
 - **Security**: 53 pattern checks (prompt injection, code execution, XSS, data exfiltration, privilege escalation, social engineering, harmful content, secret detection)
 - **Quality**: File structure, content length, schema validation
 - **Persona Consistency**: Cross-validates name/tone across SOUL.md, IDENTITY.md, soul.json
 
 **Cron usage** — periodic tamper detection:
+
 ```bash
 # Run every hour to monitor workspace integrity
 npx clawsouls soulscan -q
@@ -182,8 +185,9 @@ Instructions to get API token: Sign in at https://clawsouls.ai → Dashboard →
 1. **Browse** — Check available souls at https://clawsouls.ai or suggest from the categorized list above
 2. **Install** — `npx clawsouls install clawsouls/surgical-coder`
 3. **Activate** — `npx clawsouls use clawsouls/surgical-coder`
-4. **Restart** — Run `openclaw gateway restart` to apply the new persona
-5. **Restore** — If they want to go back, `npx clawsouls restore`
+4. **Restart** — Run `soulclaw gateway restart` to apply the new persona
+5. **New Session** — Send `/new` in chat to clear previous persona context from conversation history
+6. **Restore** — If they want to go back, `npx clawsouls restore`
 
 ### Publishing a Soul
 
@@ -192,6 +196,35 @@ Instructions to get API token: Sign in at https://clawsouls.ai → Dashboard →
 3. **Create** — `npx clawsouls init my-soul` → edit files
 4. **Publish** — `npx clawsouls publish ./my-soul/`
 5. **Manage** — Dashboard at https://clawsouls.ai/dashboard (delete, view downloads)
+
+### Memory Sync (Swarm)
+
+```bash
+npx clawsouls sync                  # sync encrypted memory to/from GitHub
+npx clawsouls swarm                 # multi-agent memory branch & merge system
+```
+
+Sync agent memory across machines via encrypted Git. Uses `age` encryption for local-first privacy.
+
+### Soul Checkpoints (Rollback)
+
+```bash
+npx clawsouls checkpoint            # manage soul checkpoints
+npx clawsouls checkpoint create     # create a checkpoint of current soul state
+npx clawsouls checkpoint list       # list available checkpoints
+npx clawsouls checkpoint restore    # restore from a checkpoint
+```
+
+Checkpoint-based rollback for persona contamination detection and recovery.
+
+### Platform Detection
+
+```bash
+npx clawsouls platform              # show detected agent platform(s) and workspace path
+npx clawsouls detect                # alias
+```
+
+Detects which agent platform is running (OpenClaw, SoulClaw, ZeroClaw, etc.) and shows workspace paths.
 
 ## MCP Server (for Claude Desktop / Cowork)
 
@@ -202,8 +235,9 @@ npx -y soul-spec-mcp
 ```
 
 Or add to Claude Desktop config (`claude_desktop_config.json`):
+
 ```json
-{"mcpServers":{"soul-spec":{"command":"npx","args":["-y","soul-spec-mcp"]}}}
+{ "mcpServers": { "soul-spec": { "command": "npx", "args": ["-y", "soul-spec-mcp"] } } }
 ```
 
 6 tools: `search_souls`, `get_soul`, `install_soul`, `preview_soul`, `list_categories`, `apply_persona`
@@ -212,7 +246,7 @@ GitHub: https://github.com/clawsouls/soul-spec-mcp
 
 ## Important Notes
 
-- After `use`, always remind the user to run `openclaw gateway restart`
+- After `use`, always remind the user to run `soulclaw gateway restart` **and then `/new`** to start a fresh session (old conversation history retains the previous persona's identity)
 - The `use` command creates automatic backups — data loss is unlikely
 - Souls may include STYLE.md and examples/ for enhanced persona customization
 - Published souls appear at `https://clawsouls.ai/souls/owner/name`
