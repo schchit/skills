@@ -12,6 +12,14 @@ import urllib.request
 import urllib.error
 
 API_URL = "https://mcp.zonein.xyz/api/v1"
+_MAX_FIELD_LEN = 200
+
+
+def _trunc(s, maxlen=_MAX_FIELD_LEN):
+    """Truncate string fields from API responses."""
+    if isinstance(s, str) and len(s) > maxlen:
+        return s[:maxlen] + "…"
+    return s
 
 
 def fetch(endpoint: str) -> dict:
@@ -40,7 +48,7 @@ def show_pm_trader(wallet: str):
         print(f"  Not found on Polymarket")
         return
 
-    print(f"  Username: {trader.get('username', 'N/A')}")
+    print(f"  Username: {_trunc(trader.get('username', 'N/A'), 60)}")
     print(f"  Score:    {trader.get('score', 'N/A')}")
     labels = trader.get("labels", [])
     if labels:
@@ -70,7 +78,7 @@ def show_pm_trader(wallet: str):
                 pnl_pct = -pnl_pct
             icon = "🟢" if pnl_pct > 0 else "🔴"
             print(f"    {icon} {direction:3s} ${size:,.0f} @ {avg:.2f} → {cur:.2f} "
-                  f"({pnl_pct:+.1f}%) | {p.get('title', '')[:45]}")
+                  f"({pnl_pct:+.1f}%) | {_trunc(p.get('title', ''), 45)}")
 
 
 def show_perp_trader(address: str):

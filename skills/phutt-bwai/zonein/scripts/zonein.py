@@ -7,6 +7,8 @@ SECURITY MANIFEST:
   External endpoints called: https://mcp.zonein.xyz/api/v1/* (only)
   Local files read: ~/.openclaw/openclaw.json (API key fallback only, if ZONEIN_API_KEY env var is not set)
   Local files written: none
+  Output sanitization: All API responses are truncated (max 500 chars/field) before output
+  Financial gate: --confirm flag required for all financial commands (programmatic, not bypassable via prompt)
 
 Usage:
   python3 scripts/zonein.py <command> [options]
@@ -16,10 +18,15 @@ Commands:
   leaderboard      — PM leaderboard (top traders by PnL)
   consensus        — PM consensus positions
   trader <wallet>  — PM trader profile + performance
+  pm-top           — PM top traders by smart score
+  smart-bettors    — PM smart money bettors (high ROI)
+  trader-positions <wallet> — PM trader current positions
+  trader-trades <wallet> — PM trader trade history
   perp-signals     — Perp trading signals (HyperLiquid)
   perp-traders     — Perp smart money traders
   perp-top         — Perp top performers by PnL
   perp-categories  — Perp trader categories
+  perp-category-stats — Perp category statistics
   perp-coins       — Perp coin distribution
   perp-trader <addr> — Perp trader details
   agents           — List your trading agents
@@ -46,6 +53,27 @@ Commands:
   agent-templates  — Available agent types & config templates
   agent-assets     — Available trading assets
   agent-categories — Smart money categories with stats
+  agent-overview <id> — Agent overview (PnL, ROI, win rate) via AgentsArena
+  agent-performance <id> — Advanced performance metrics via AgentsArena
+  agent-check      — Check pending trade plans across all agents (HITL)
+  agent-plans <id> — List trade plans for a specific agent
+  agent-plan-detail <id> <plan_id> — Full trade plan with evidence
+  agent-plan-action <id> <plan_id> <action> — Approve/reject/edit/paper a plan
+  agent-plan-history <id> — Past trade plans (audit trail)
+  agent-signal <sym> — Raw composite data for agents (SM + TA + Market)
+  dashboard        — AI Dashboard overview (top signals all types)
+  dashboard-latest — Latest AI signal snapshots by asset type
+  dashboard-asset  — Full detail for single asset (SM + TA + Market)
+  derivatives <sym>— Derivatives indicators (OI, funding, L/S, liq)
+  fear-greed       — Crypto Fear & Greed Index
+  derivatives-pairs <sym> — Per-exchange pair data
+  ta <sym>         — Multi-timeframe TA indicators
+  ta-single <sym> <ind> — Single TA indicator value
+  liquidation-map <coin> — Liquidation price distribution
+  telegram-setup-init — Easy Telegram setup (bot_token only)
+  telegram-setup   — Full Telegram setup (bot_token + chat_id)
+  telegram-config  — View current Telegram notification config
+  telegram-disable — Disable Telegram notifications
   status           — Check API key status
 """
 
@@ -64,6 +92,30 @@ except ImportError:
 API_BASE = "https://mcp.zonein.xyz/api/v1"
 CONTENT_JSON = "application/json"
 CONFIRM_HELP = "Required: confirms user approved this financial action"
+
+# Max length for any single string field in API responses (defense against oversized payloads)
+_MAX_FIELD_LEN = 500
+
+
+def _sanitize_value(v):
+    """Sanitize a single value from API response. Truncates long strings."""
+    if isinstance(v, str) and len(v) > _MAX_FIELD_LEN:
+        return v[:_MAX_FIELD_LEN] + "…[truncated]"
+    return v
+
+
+def _sanitize(obj):
+    """Recursively sanitize API response data. Truncates oversized string fields."""
+    if isinstance(obj, dict):
+        return {k: _sanitize(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_sanitize(item) for item in obj]
+    return _sanitize_value(obj)
+
+
+def _output(data):
+    """Sanitize and print API response as JSON."""
+    print(json.dumps(_sanitize(data), indent=2))
 
 
 def get_api_key():
@@ -162,7 +214,7 @@ def cmd_signals(args):
     if args.min_wallets:
         params["min_wallets"] = args.min_wallets
     data = api_request("/pm/signals", params)
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_leaderboard(args):
@@ -173,20 +225,49 @@ def cmd_leaderboard(args):
         "limit": args.limit,
     }
     data = api_request("/pm/leaderboard", params)
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_consensus(args):
     """PM consensus positions."""
     params = {"min_bettors": args.min_bettors}
     data = api_request("/pm/consensus", params)
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_trader(args):
     """PM trader profile."""
     data = api_request(f"/pm/trader/{args.wallet}")
-    print(json.dumps(data, indent=2))
+    _output(data)
+
+
+def cmd_pm_top(args):
+    """PM top traders by smart score."""
+    params = {"limit": args.limit}
+    if args.min_score:
+        params["min_score"] = args.min_score
+    data = api_request("/pm/traders/top", params)
+    _output(data)
+
+
+def cmd_smart_bettors(args):
+    """PM smart money bettors (high ROI, high trade count)."""
+    params = {"limit": args.limit}
+    data = api_request("/pm/traders/smart-bettors", params)
+    _output(data)
+
+
+def cmd_trader_positions(args):
+    """PM trader current positions."""
+    data = api_request(f"/pm/trader/{args.wallet}/positions")
+    _output(data)
+
+
+def cmd_trader_trades(args):
+    """PM trader trade history."""
+    params = {"limit": args.limit}
+    data = api_request(f"/pm/trader/{args.wallet}/trades", params)
+    _output(data)
 
 
 def cmd_perp_signals(args):
@@ -197,7 +278,7 @@ def cmd_perp_signals(args):
     if args.min_score:
         params["min_score"] = args.min_score
     data = api_request("/perp/signals", params)
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_perp_traders(args):
@@ -208,44 +289,50 @@ def cmd_perp_traders(args):
     if args.categories:
         params["categories"] = args.categories
     data = api_request("/perp/traders", params)
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_perp_top(args):
     """Perp top performers."""
     params = {"limit": args.limit, "time_period": args.period}
     data = api_request("/perp/traders/top", params)
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_perp_categories(args):
     """Perp categories."""
     data = api_request("/perp/categories")
-    print(json.dumps(data, indent=2))
+    _output(data)
+
+
+def cmd_perp_category_stats(args):
+    """Perp category stats."""
+    data = api_request("/perp/categories/stats")
+    _output(data)
 
 
 def cmd_perp_coins(args):
     """Perp coin distribution."""
     data = api_request("/perp/coins")
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_perp_trader(args):
     """Perp trader details."""
     data = api_request(f"/perp/trader/{args.address}")
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_agents(args):
     """List trading agents."""
     data = api_request("/agents/")
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_agent_get(args):
     """Get agent details."""
     data = api_request(f"/agents/{args.agent_id}")
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_agent_create(args):
@@ -259,6 +346,8 @@ def cmd_agent_create(args):
         body["max_leverage"] = args.leverage
     if args.description:
         body["description"] = args.description
+    if args.execution_mode:
+        body["execution_mode"] = args.execution_mode
     if args.risk_per_trade:
         body.setdefault("risk_profile", {})["risk_per_trade_percent"] = args.risk_per_trade
     if args.max_daily_loss:
@@ -275,8 +364,18 @@ def cmd_agent_create(args):
         body["strength_thresholds"] = json.loads(args.strength_thresholds)
     if args.timeframe_weights:
         body["timeframe_weights"] = json.loads(args.timeframe_weights)
+    if args.signal_weights:
+        body["signal_weights"] = json.loads(args.signal_weights)
+    if args.trigger_conditions:
+        body["trigger_conditions"] = json.loads(args.trigger_conditions)
+    if args.trading_risk:
+        body["trading_risk"] = json.loads(args.trading_risk)
+    if args.prompt_config:
+        body["prompt_config"] = json.loads(args.prompt_config)
+    if args.withdrawal_addresses:
+        body["withdrawal_addresses"] = [a.strip() for a in args.withdrawal_addresses.split(",")]
     data = api_post("/agents/", body)
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_agent_update(args):
@@ -292,115 +391,131 @@ def cmd_agent_update(args):
         body["smart_money_categories"] = args.categories.split(",")
     if args.leverage:
         body["max_leverage"] = args.leverage
-    if args.methodology:
-        body.setdefault("prompt_config", {})["trading_methodology"] = args.methodology
-    if args.entry_strategy:
-        body.setdefault("prompt_config", {})["entry_strategy"] = args.entry_strategy
-    if args.exit_framework:
-        body.setdefault("prompt_config", {})["exit_framework"] = args.exit_framework
+    if args.execution_mode:
+        body["execution_mode"] = args.execution_mode
+    if args.prompt_config:
+        body["prompt_config"] = json.loads(args.prompt_config)
+    if args.trading_strategy:
+        body.setdefault("prompt_config", {})["trading_strategy"] = args.trading_strategy
+    if args.custom_rules:
+        body.setdefault("prompt_config", {})["custom_rules"] = args.custom_rules
+    if args.risk_management:
+        body.setdefault("prompt_config", {})["risk_management"] = args.risk_management
+    if args.trigger_conditions:
+        body["trigger_conditions"] = json.loads(args.trigger_conditions)
+    if args.trading_risk:
+        body["trading_risk"] = json.loads(args.trading_risk)
+    if args.signal_weights:
+        body["signal_weights"] = json.loads(args.signal_weights)
     if args.strength_thresholds:
         body["strength_thresholds"] = json.loads(args.strength_thresholds)
     if args.timeframe_weights:
         body["timeframe_weights"] = json.loads(args.timeframe_weights)
+    if args.withdrawal_addresses:
+        body["withdrawal_addresses"] = [a.strip() for a in args.withdrawal_addresses.split(",")]
     if not body:
         print(json.dumps({"error": "No updates provided"}))
         sys.exit(1)
     data = api_patch(f"/agents/{args.agent_id}", body)
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_agent_deploy(args):
     """Deploy agent — validate + enable."""
     _require_confirm(args, "Deploy and enable agent for live trading")
     data = api_post(f"/agents/{args.agent_id}/deploy", {})
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_agent_enable(args):
     """Enable agent."""
     _require_confirm(args, "Enable agent for live trading")
     data = api_post(f"/agents/{args.agent_id}/enable", {})
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_agent_disable(args):
     """Disable agent."""
     data = api_post(f"/agents/{args.agent_id}/disable", {})
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_agent_pause(args):
     """Pause agent."""
     data = api_post(f"/agents/{args.agent_id}/pause")
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_agent_delete(args):
     """Delete agent."""
     data = api_delete(f"/agents/{args.agent_id}")
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_agent_stats(args):
     """Agent performance stats."""
     data = api_request(f"/agents/{args.agent_id}/stats")
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_agent_trades(args):
     """Agent trade history."""
     params = {"limit": args.limit}
+    if getattr(args, 'offset', 0):
+        params["offset"] = args.offset
+    if getattr(args, 'filter', 'all') != 'all':
+        params["filter"] = args.filter
     data = api_request(f"/agents/{args.agent_id}/trades", params)
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_agent_vault(args):
     """Agent vault/wallet info."""
     data = api_request(f"/agents/{args.agent_id}/vault")
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_agent_templates(args):
     """Available agent types & config templates."""
     data = api_request("/agents/config/templates")
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_agent_assets(args):
     """Available trading assets."""
     data = api_request("/agents/config/assets")
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_agent_categories(args):
     """Smart money categories with stats."""
     data = api_request("/agents/config/categories")
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_agent_balance(args):
     """Agent vault balance (live from Hyperliquid)."""
     data = api_request(f"/agents/{args.agent_id}/balance")
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_agent_positions(args):
     """Agent open positions (live from Hyperliquid)."""
     data = api_request(f"/agents/{args.agent_id}/positions")
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_agent_deposit(args):
     """Get deposit address for funding agent."""
     data = api_request(f"/agents/{args.agent_id}/deposit-info")
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_agent_fund(args):
     """Bridge USDC from Arbitrum to Hyperliquid."""
     _require_confirm(args, "Bridge USDC from Arbitrum to Hyperliquid")
     data = api_post(f"/agents/{args.agent_id}/fund", {})
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_agent_open(args):
@@ -415,7 +530,7 @@ def cmd_agent_open(args):
     if args.leverage:
         body["leverage"] = args.leverage
     data = api_post(f"/agents/{args.agent_id}/orders", body)
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_agent_close(args):
@@ -427,14 +542,14 @@ def cmd_agent_close(args):
         "direction": "LONG",
     }
     data = api_post(f"/agents/{args.agent_id}/orders", body)
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_agent_orders(args):
     """Manual order history."""
     params = {"limit": args.limit}
     data = api_request(f"/agents/{args.agent_id}/orders", params)
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def cmd_agent_withdraw(args):
@@ -442,7 +557,7 @@ def cmd_agent_withdraw(args):
     _require_confirm(args, f"Withdraw funds to {args.to}")
     body = {"destination_address": args.to}
     data = api_post(f"/agents/{args.agent_id}/withdraw", body)
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def _process_backtest_msg(msg):
@@ -519,7 +634,7 @@ def cmd_agent_backtest(args):
                 report = _process_backtest_msg(json.loads(line))
                 if report is not None:
                     last_report = report
-            print(json.dumps(_build_backtest_result(backtest_id, dashboard_url, last_report), indent=2))
+            _output(_build_backtest_result(backtest_id, dashboard_url, last_report))
     except urllib.error.HTTPError as e:
         raw = e.read().decode("utf-8", errors="replace")
         try:
@@ -536,13 +651,171 @@ def cmd_agent_backtest(args):
 def cmd_agent_backtests(args):
     """List past backtests for an agent."""
     data = api_request(f"/backtest/list/{args.agent_id}", {"limit": args.limit})
-    print(json.dumps(data, indent=2))
+    _output(data)
+
+
+def cmd_agent_overview(args):
+    """Agent overview (name, PnL, ROI, win rate, config, status) via AgentsArena."""
+    data = api_request(f"/agents/{args.agent_id}/overview")
+    _output(data)
+
+
+def cmd_agent_performance(args):
+    """Detailed agent performance + advanced metrics via AgentsArena."""
+    data = api_request(f"/agents/{args.agent_id}/performance")
+    _output(data)
+
+
+def cmd_agent_check(args):
+    """Check pending trade plans across all agents (HITL)."""
+    data = api_request("/agents/plans/pending")
+    _output(data)
+
+
+def cmd_agent_plans(args):
+    """List trade plans for a specific agent."""
+    params = {"limit": args.limit}
+    if args.status:
+        params["status"] = args.status
+    data = api_request(f"/agents/{args.agent_id}/plans", params)
+    _output(data)
+
+
+def cmd_agent_plan_detail(args):
+    """Get full detail for a specific trade plan."""
+    data = api_request(f"/agents/{args.agent_id}/plans/{args.plan_id}")
+    _output(data)
+
+
+def cmd_agent_plan_action(args):
+    """Act on a pending trade plan (approve/reject/edit/paper)."""
+    if args.action in ("approve", "edit"):
+        _require_confirm(args, f"{args.action.title()} trade plan {args.plan_id}")
+    body = {"action": args.action}
+    if args.notes:
+        body["notes"] = args.notes
+    if args.edits:
+        body["edits"] = json.loads(args.edits)
+    data = api_post(f"/agents/{args.agent_id}/plans/{args.plan_id}/action", body)
+    _output(data)
+
+
+def cmd_agent_plan_history(args):
+    """Past trade plans (approved, rejected, executed, expired)."""
+    params = {"status": "all", "limit": args.limit}
+    data = api_request(f"/agents/{args.agent_id}/plans", params)
+    _output(data)
+
+
+def cmd_telegram_setup_init(args):
+    """Easy Telegram setup: provide bot_token only, then send /start to bot."""
+    data = api_post("/telegram/setup-init", {"bot_token": args.bot_token})
+    _output(data)
+
+
+def cmd_telegram_setup(args):
+    """Full Telegram setup with bot_token + chat_id."""
+    data = api_post("/telegram/setup", {"bot_token": args.bot_token, "chat_id": args.chat_id})
+    _output(data)
+
+
+def cmd_telegram_config(args):
+    """View current Telegram notification config."""
+    data = api_request("/telegram/config")
+    _output(data)
+
+
+def cmd_telegram_disable(args):
+    """Disable Telegram notifications and remove webhook."""
+    data = api_delete("/telegram/config")
+    _output(data)
+
+
+def cmd_agent_signal(args):
+    """Raw composite data for trading agents (SM + TA + Market in one call)."""
+    params = {}
+    if args.categories:
+        params["categories"] = args.categories
+    data = api_request(f"/dashboard/agent-signal/perp/{args.symbol.upper()}", params)
+    _output(data)
+
+
+def cmd_dashboard(args):
+    """AI Dashboard overview — top signals across all asset types."""
+    data = api_request("/dashboard/overview")
+    _output(data)
+
+
+def cmd_dashboard_latest(args):
+    """Latest AI signal snapshots by asset type."""
+    params = {}
+    if args.limit:
+        params["limit"] = args.limit
+    data = api_request(f"/dashboard/latest/{args.type}", params)
+    _output(data)
+
+
+def cmd_dashboard_asset(args):
+    """Full detail for a single asset (SM + TA + Market data)."""
+    data = api_request(f"/dashboard/asset/{args.type}/{args.symbol.upper()}")
+    _output(data)
+
+
+def cmd_derivatives(args):
+    """All derivatives indicators for a coin (OI, funding, L/S ratio, liquidations)."""
+    data = api_request(f"/derivatives/indicators/{args.symbol.upper()}")
+    _output(data)
+
+
+def cmd_fear_greed(args):
+    """Crypto Fear & Greed Index."""
+    data = api_request("/derivatives/fear-greed")
+    _output(data)
+
+
+def cmd_derivatives_pairs(args):
+    """Per-exchange pair data (OI, volume, funding, liquidation, price)."""
+    data = api_request(f"/derivatives/pairs/{args.symbol.upper()}")
+    _output(data)
+
+
+def cmd_ta(args):
+    """Multi-timeframe TA indicators for a symbol."""
+    params = {}
+    if args.timeframes:
+        params["timeframes"] = args.timeframes
+    if args.indicators:
+        params["indicators"] = args.indicators
+    if args.exchange:
+        params["exchange"] = args.exchange
+    data = api_request(f"/ta/indicators/{args.symbol.upper()}", params)
+    _output(data)
+
+
+def cmd_ta_single(args):
+    """Single TA indicator value."""
+    params = {"interval": args.interval}
+    if args.exchange:
+        params["exchange"] = args.exchange
+    if args.period:
+        params["period"] = args.period
+    data = api_request(f"/ta/indicator/{args.symbol.upper()}/{args.indicator}", params)
+    _output(data)
+
+
+def cmd_liquidation_map(args):
+    """Liquidation price distribution for a coin."""
+    params = {}
+    if args.buckets:
+        params["buckets"] = args.buckets
+    data = api_request(f"/perp/liquidation-map/{args.coin.upper()}", params)
+    _output(data)
 
 
 def cmd_status(args):
     """Check API key status."""
     data = api_request("/auth/api-key/status")
-    print(json.dumps(data, indent=2))
+    _output(data)
 
 
 def main():
@@ -577,6 +850,28 @@ def main():
     p.add_argument("wallet", type=str)
     p.set_defaults(func=cmd_trader)
 
+    # --- PM Top Traders ---
+    p = sub.add_parser("pm-top", help="PM top traders by smart score")
+    p.add_argument("--limit", type=int, default=50)
+    p.add_argument("--min-score", type=float, default=None)
+    p.set_defaults(func=cmd_pm_top)
+
+    # --- PM Smart Bettors ---
+    p = sub.add_parser("smart-bettors", help="PM smart money bettors (high ROI)")
+    p.add_argument("--limit", type=int, default=50)
+    p.set_defaults(func=cmd_smart_bettors)
+
+    # --- PM Trader Positions ---
+    p = sub.add_parser("trader-positions", help="PM trader current positions")
+    p.add_argument("wallet", type=str)
+    p.set_defaults(func=cmd_trader_positions)
+
+    # --- PM Trader Trades ---
+    p = sub.add_parser("trader-trades", help="PM trader trade history")
+    p.add_argument("wallet", type=str)
+    p.add_argument("--limit", type=int, default=100)
+    p.set_defaults(func=cmd_trader_trades)
+
     # --- Perp Signals ---
     p = sub.add_parser("perp-signals", help="Perp trading signals")
     p.add_argument("--limit", type=int, default=20)
@@ -600,6 +895,10 @@ def main():
     # --- Perp Categories ---
     p = sub.add_parser("perp-categories", help="Perp trader categories")
     p.set_defaults(func=cmd_perp_categories)
+
+    # --- Perp Category Stats ---
+    p = sub.add_parser("perp-category-stats", help="Perp category statistics")
+    p.set_defaults(func=cmd_perp_category_stats)
 
     # --- Perp Coins ---
     p = sub.add_parser("perp-coins", help="Perp coin distribution")
@@ -627,14 +926,20 @@ def main():
     p.add_argument("--categories", type=str, default=None, help="Comma-separated SM categories")
     p.add_argument("--leverage", type=int, default=None, help="Max leverage (1-20)")
     p.add_argument("--description", type=str, default=None)
-    p.add_argument("--risk-per-trade", type=float, default=None, help="Risk per trade %")
-    p.add_argument("--max-daily-loss", type=float, default=None, help="Max daily loss %")
+    p.add_argument("--risk-per-trade", type=float, default=None, help="Risk per trade %%")
+    p.add_argument("--max-daily-loss", type=float, default=None, help="Max daily loss %%")
     p.add_argument("--risk-reward", type=str, default=None, help="Risk:reward ratio e.g. 1:2")
     p.add_argument("--max-trades-per-day", type=int, default=None)
     p.add_argument("--min-confidence", type=float, default=None, help="Min confidence 0-1")
     p.add_argument("--min-consensus", type=float, default=None, help="Min SM consensus 0-1")
     p.add_argument("--strength-thresholds", type=str, default=None, help="JSON: {\"BTC\": {\"min_strength_buy\": 70, \"min_strength_sell\": 65}, ...}")
     p.add_argument("--timeframe-weights", type=str, default=None, help="JSON: {\"24h\": 0.5, \"4h\": 0.35, \"1h\": 0.15}")
+    p.add_argument("--execution-mode", type=str, default=None, help="auto (fully automated) or hitl (human-in-the-loop)")
+    p.add_argument("--signal-weights", type=str, default=None, help="JSON: {\"sm\":40,\"ta\":35,\"market\":25} (must sum to 100)")
+    p.add_argument("--trigger-conditions", type=str, default=None, help="JSON: entry/exit trigger conditions")
+    p.add_argument("--trading-risk", type=str, default=None, help="JSON: {max_positions, max_position_size_pct, default_stop_loss_pct, default_take_profit_pct, max_leverage}")
+    p.add_argument("--prompt-config", type=str, default=None, help="JSON: {trading_strategy, custom_rules, risk_management}")
+    p.add_argument("--withdrawal-addresses", type=str, default=None, help="Comma-separated 0x... addresses for withdrawal whitelist")
     p.set_defaults(func=cmd_agent_create)
 
     # --- Agent Update ---
@@ -645,11 +950,17 @@ def main():
     p.add_argument("--assets", type=str, default=None, help="Comma-separated: BTC,ETH,SOL,HYPE")
     p.add_argument("--categories", type=str, default=None, help="Comma-separated SM categories")
     p.add_argument("--leverage", type=int, default=None)
-    p.add_argument("--methodology", type=str, default=None, help="Trading methodology text")
-    p.add_argument("--entry-strategy", type=str, default=None, help="Entry strategy text")
-    p.add_argument("--exit-framework", type=str, default=None, help="Exit framework text")
-    p.add_argument("--strength-thresholds", type=str, default=None, help="JSON: {\"BTC\": {\"min_strength_buy\": 70, \"min_strength_sell\": 65}, ...}")
+    p.add_argument("--execution-mode", type=str, default=None, help="auto or hitl")
+    p.add_argument("--prompt-config", type=str, default=None, help="JSON: {trading_strategy, custom_rules, risk_management}")
+    p.add_argument("--trading-strategy", type=str, default=None, help="Overall trading approach for LLM")
+    p.add_argument("--custom-rules", type=str, default=None, help="Specific entry/exit rules for LLM")
+    p.add_argument("--risk-management", type=str, default=None, help="Risk management rules for LLM")
+    p.add_argument("--trigger-conditions", type=str, default=None, help="JSON: entry/exit trigger conditions")
+    p.add_argument("--trading-risk", type=str, default=None, help="JSON: {max_positions, max_position_size_pct, default_stop_loss_pct, default_take_profit_pct, max_leverage}")
+    p.add_argument("--signal-weights", type=str, default=None, help="JSON: {\"sm\":40,\"ta\":35,\"market\":25} (must sum to 100)")
+    p.add_argument("--strength-thresholds", type=str, default=None, help="JSON: {\"BTC\": {\"min_strength_buy\": 70, ...}}")
     p.add_argument("--timeframe-weights", type=str, default=None, help="JSON: {\"24h\": 0.5, \"4h\": 0.35, \"1h\": 0.15}")
+    p.add_argument("--withdrawal-addresses", type=str, default=None, help="Comma-separated 0x... addresses for withdrawal whitelist")
     p.set_defaults(func=cmd_agent_update)
 
     # --- Agent Deploy ---
@@ -684,10 +995,22 @@ def main():
     p.add_argument("agent_id", type=str)
     p.set_defaults(func=cmd_agent_stats)
 
+    # --- Agent Overview ---
+    p = sub.add_parser("agent-overview", help="Agent overview (PnL, ROI, win rate, config) via AgentsArena")
+    p.add_argument("agent_id", type=str)
+    p.set_defaults(func=cmd_agent_overview)
+
+    # --- Agent Performance ---
+    p = sub.add_parser("agent-performance", help="Detailed performance + advanced metrics via AgentsArena")
+    p.add_argument("agent_id", type=str)
+    p.set_defaults(func=cmd_agent_performance)
+
     # --- Agent Trades ---
     p = sub.add_parser("agent-trades", help="Agent trade history")
     p.add_argument("agent_id", type=str)
     p.add_argument("--limit", type=int, default=50)
+    p.add_argument("--offset", type=int, default=0, help="Pagination offset")
+    p.add_argument("--filter", type=str, default="all", help="Filter: all, wins, losses")
     p.set_defaults(func=cmd_agent_trades)
 
     # --- Agent Vault ---
@@ -772,6 +1095,117 @@ def main():
     p.add_argument("agent_id", type=str)
     p.add_argument("--limit", type=int, default=10)
     p.set_defaults(func=cmd_agent_backtests)
+
+    # --- Agent Check (HITL — all pending plans) ---
+    p = sub.add_parser("agent-check", help="Check pending trade plans across all agents (HITL)")
+    p.set_defaults(func=cmd_agent_check)
+
+    # --- Agent Plans ---
+    p = sub.add_parser("agent-plans", help="List trade plans for a specific agent")
+    p.add_argument("agent_id", type=str)
+    p.add_argument("--status", type=str, default=None, help="Filter: pending, approved, rejected, expired, all")
+    p.add_argument("--limit", type=int, default=20)
+    p.set_defaults(func=cmd_agent_plans)
+
+    # --- Agent Plan Detail ---
+    p = sub.add_parser("agent-plan-detail", help="Get full trade plan with evidence")
+    p.add_argument("agent_id", type=str)
+    p.add_argument("plan_id", type=str)
+    p.set_defaults(func=cmd_agent_plan_detail)
+
+    # --- Agent Plan Action (approve/reject/edit/paper) ---
+    p = sub.add_parser("agent-plan-action", help="Act on a pending trade plan")
+    p.add_argument("agent_id", type=str)
+    p.add_argument("plan_id", type=str)
+    p.add_argument("action", type=str, help="approve, reject, edit, paper")
+    p.add_argument("--notes", type=str, default=None, help="User reasoning for the action")
+    p.add_argument("--edits", type=str, default=None, help="JSON: {entry, stop_loss, take_profit, size_usd, leverage}")
+    p.add_argument("--confirm", action="store_true", help=CONFIRM_HELP)
+    p.set_defaults(func=cmd_agent_plan_action)
+
+    # --- Agent Plan History ---
+    p = sub.add_parser("agent-plan-history", help="Past trade plans (approved, rejected, executed, expired)")
+    p.add_argument("agent_id", type=str)
+    p.add_argument("--limit", type=int, default=20)
+    p.set_defaults(func=cmd_agent_plan_history)
+
+    # --- Telegram Setup Init ---
+    p = sub.add_parser("telegram-setup-init", help="Easy Telegram setup (bot_token only, then send /start)")
+    p.add_argument("--bot-token", type=str, required=True, help="Telegram bot token from @BotFather")
+    p.set_defaults(func=cmd_telegram_setup_init)
+
+    # --- Telegram Setup ---
+    p = sub.add_parser("telegram-setup", help="Full Telegram setup with bot_token + chat_id")
+    p.add_argument("--bot-token", type=str, required=True, help="Telegram bot token from @BotFather")
+    p.add_argument("--chat-id", type=str, required=True, help="Your Telegram chat ID")
+    p.set_defaults(func=cmd_telegram_setup)
+
+    # --- Telegram Config ---
+    p = sub.add_parser("telegram-config", help="View current Telegram notification config")
+    p.set_defaults(func=cmd_telegram_config)
+
+    # --- Telegram Disable ---
+    p = sub.add_parser("telegram-disable", help="Disable Telegram notifications + remove webhook")
+    p.set_defaults(func=cmd_telegram_disable)
+
+    # --- Agent Signal (raw composite data) ---
+    p = sub.add_parser("agent-signal", help="Raw composite data for trading agents (SM + TA + Market)")
+    p.add_argument("symbol", type=str, help="Coin symbol: BTC, ETH, SOL, etc.")
+    p.add_argument("--categories", type=str, default=None, help="Comma-separated SM wallet categories to filter")
+    p.set_defaults(func=cmd_agent_signal)
+
+    # --- Dashboard Overview ---
+    p = sub.add_parser("dashboard", help="AI Dashboard overview — top signals across all asset types")
+    p.set_defaults(func=cmd_dashboard)
+
+    # --- Dashboard Latest ---
+    p = sub.add_parser("dashboard-latest", help="Latest AI signal snapshots by asset type")
+    p.add_argument("type", type=str, help="Asset type: perp, spot, pm, hip3")
+    p.add_argument("--limit", type=int, default=None, help="Max snapshots to return")
+    p.set_defaults(func=cmd_dashboard_latest)
+
+    # --- Dashboard Asset Detail ---
+    p = sub.add_parser("dashboard-asset", help="Full detail for a single asset (SM + TA + Market)")
+    p.add_argument("type", type=str, help="Asset type: perp, spot, pm, hip3")
+    p.add_argument("symbol", type=str, help="Asset symbol (e.g. BTC, ETH, SOL)")
+    p.set_defaults(func=cmd_dashboard_asset)
+
+    # --- Derivatives Indicators ---
+    p = sub.add_parser("derivatives", help="All derivatives indicators for a coin (OI, funding, L/S ratio, liq)")
+    p.add_argument("symbol", type=str, help="Coin symbol: BTC, ETH, SOL, etc.")
+    p.set_defaults(func=cmd_derivatives)
+
+    # --- Fear & Greed ---
+    p = sub.add_parser("fear-greed", help="Crypto Fear & Greed Index")
+    p.set_defaults(func=cmd_fear_greed)
+
+    # --- Derivatives Pairs ---
+    p = sub.add_parser("derivatives-pairs", help="Per-exchange pair data (OI, volume, funding, liq, price)")
+    p.add_argument("symbol", type=str, help="Coin symbol: BTC, ETH, SOL, etc.")
+    p.set_defaults(func=cmd_derivatives_pairs)
+
+    # --- TA Multi-timeframe ---
+    p = sub.add_parser("ta", help="Multi-timeframe TA indicators (RSI, MACD, BB, etc.)")
+    p.add_argument("symbol", type=str, help="Coin symbol: BTC, ETH, SOL, etc.")
+    p.add_argument("--timeframes", type=str, default=None, help="Comma-separated: 15m,4h,1d")
+    p.add_argument("--indicators", type=str, default=None, help="Comma-separated: rsi,macd,bbands")
+    p.add_argument("--exchange", type=str, default=None, help="Exchange name (default: binancefutures)")
+    p.set_defaults(func=cmd_ta)
+
+    # --- TA Single Indicator ---
+    p = sub.add_parser("ta-single", help="Single TA indicator value")
+    p.add_argument("symbol", type=str, help="Coin symbol: BTC, ETH, SOL, etc.")
+    p.add_argument("indicator", type=str, help="Indicator name: rsi, macd, bbands, sma, ema, etc.")
+    p.add_argument("--interval", type=str, default="4h", help="Timeframe: 15m, 1h, 4h, 1d")
+    p.add_argument("--exchange", type=str, default=None, help="Exchange name")
+    p.add_argument("--period", type=int, default=None, help="Period parameter (e.g. 14 for RSI)")
+    p.set_defaults(func=cmd_ta_single)
+
+    # --- Liquidation Map ---
+    p = sub.add_parser("liquidation-map", help="Liquidation price distribution for a coin")
+    p.add_argument("coin", type=str, help="Coin symbol: BTC, ETH, SOL, etc.")
+    p.add_argument("--buckets", type=int, default=None, help="Number of price buckets (10-100, default 40)")
+    p.set_defaults(func=cmd_liquidation_map)
 
     # --- Status ---
     p = sub.add_parser("status", help="Check API key status")

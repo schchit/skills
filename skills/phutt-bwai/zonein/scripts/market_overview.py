@@ -10,6 +10,14 @@ import urllib.request
 import urllib.error
 
 API_URL = "https://mcp.zonein.xyz/api/v1"
+_MAX_FIELD_LEN = 200
+
+
+def _trunc(s, maxlen=_MAX_FIELD_LEN):
+    """Truncate string fields from API responses."""
+    if isinstance(s, str) and len(s) > maxlen:
+        return s[:maxlen] + "…"
+    return s
 
 
 def fetch(endpoint: str) -> dict:
@@ -59,7 +67,7 @@ def main():
         for s in pm_sigs:
             c = round(s.get("consensus", 0) * 100)
             print(f"    {s.get('direction'):3s} {c}% ({s.get('total_wallets')}w) "
-                  f"| {s.get('title', s.get('market_slug', ''))[:55]}")
+                  f"| {_trunc(s.get('title', s.get('market_slug', '')), 55)}")
 
     # --- Perp Trading ---
     perp_stats = perp_health.get("data", {})

@@ -161,63 +161,89 @@
 
 ## Agent Management
 
-### Agent Config
+### Agent Config (V2 — Perp Trading)
 ```json
 {
-  "agent_id": "agent_abc123def456",
-  "name": "PM Politics Agent",
-  "agent_type": "prediction_market",
-  "description": "Trades politics markets based on smart money signals",
+  "agent_id": "agent_abc12345",
+  "name": "Momentum Hunter",
+  "domain": "trading",
+  "agent_type": "momentum_hunter",
+  "trading_style": "momentum",
+  "description": "Momentum-based trading following high win rate smart wallets",
   "enabled": true,
   "status": "enabled",
-  "pm_config": {
-    "categories": ["POLITICS", "ECONOMICS"],
-    "leaderboard_period": "WEEK",
-    "min_smart_wallets_agreeing": 3,
-    "preferred_odds": 0.50,
-    "min_edge": 0.03,
-    "max_signals": 10,
-    "signal_weights": {
-      "consensus_ratio": 25,
-      "user_count": 30,
-      "leaderboard_rank": 20,
-      "price_deviation_penalty": 10,
-      "reward_ratio": 15
+  "execution_mode": "auto",
+  "allowed_assets": ["BTC", "ETH", "SOL"],
+  "smart_money_categories": ["high_risk_high_return", "momentum_trader", "short_term_trading"],
+  "llm": {
+    "provider": "deepseek",
+    "model": "deepseek-v3-1-250821"
+  },
+  "signal_weights": {"sm": 40, "ta": 35, "market": 25},
+  "trading_risk": {
+    "max_positions": 5,
+    "max_position_size_pct": 15,
+    "default_stop_loss_pct": 1.0,
+    "default_take_profit_pct": 2.0,
+    "max_leverage": 5,
+    "min_confidence": 0.7
+  },
+  "trigger_conditions": {
+    "entry": {
+      "long": {"op": "and", "conditions": [
+        {"field": "sm.long_ratio", "compare": ">=", "value": 55},
+        {"field": "sm.wallet_count", "compare": ">=", "value": 3},
+        {"field": "ta.4h.rsi", "compare": "<=", "value": 65},
+        {"field": "market.taker_buy_sell_ratio", "compare": ">", "value": 0.505}
+      ]},
+      "short": {"op": "and", "conditions": [
+        {"field": "sm.short_ratio", "compare": ">=", "value": 55},
+        {"field": "sm.wallet_count", "compare": ">=", "value": 3},
+        {"field": "ta.4h.rsi", "compare": ">=", "value": 35},
+        {"field": "market.taker_buy_sell_ratio", "compare": "<", "value": 0.495}
+      ]}
+    },
+    "exit": {
+      "close_long": {"op": "or", "conditions": [
+        {"field": "sm.short_ratio", "compare": ">=", "value": 60},
+        {"field": "ta.4h.rsi", "compare": ">=", "value": 75}
+      ]},
+      "close_short": {"op": "or", "conditions": [
+        {"field": "sm.long_ratio", "compare": ">=", "value": 60},
+        {"field": "ta.4h.rsi", "compare": "<=", "value": 25}
+      ]}
     }
   },
-  "risk_config": {
-    "max_position_size_pct": 0.05,
-    "max_portfolio_exposure_pct": 0.50,
-    "max_category_exposure_pct": 0.20,
-    "min_edge": 0.05,
-    "daily_loss_limit_pct": 0.10
+  "prompt_config": {
+    "trading_strategy": "Momentum-based trading following high win rate smart wallets.",
+    "custom_rules": "Enter LONG: SM long_ratio >=55%, >=3 wallets, RSI <=65, taker ratio >0.505.",
+    "risk_management": "1:2 risk-reward ratio. Stop-loss at 1%, take-profit at 2%."
   },
-  "llm_config": {
-    "provider": "openai",
-    "model": "gpt-4-turbo",
-    "temperature": 0.3
+  "withdrawal_addresses": ["0x596b6B0b395b9BE4C3a03e371A5E3884D94C91Dd"],
+  "risk_profile": {
+    "max_daily_loss": 3,
+    "risk_per_trade_percent": 1,
+    "risk_reward_ratio": "1:2",
+    "max_account_leverage": 5
   },
   "strength_thresholds": {
     "BTC": {"min_strength_buy": 70, "min_strength_sell": 65},
-    "ETH": {"min_strength_buy": 75, "min_strength_sell": 65},
-    "SOL": {"min_strength_buy": 80, "min_strength_sell": 65},
-    "OTHERS": {"min_strength_buy": 80, "min_strength_sell": 65}
+    "ETH": {"min_strength_buy": 75, "min_strength_sell": 65}
   },
-  "timeframe_weights": {
-    "24h": 0.5,
-    "4h": 0.35,
-    "1h": 0.15
-  }
+  "timeframe_weights": {"24h": 0.5, "4h": 0.35, "1h": 0.15}
 }
 ```
 
-### Agent Stats
+### Agent Stats (via AgentsArena)
 ```json
 {
   "total_trades": 45,
   "successful_trades": 28,
   "win_rate": 0.622,
   "total_pnl": 1250.50,
-  "total_volume": 8500.0
+  "total_volume": 8500.0,
+  "profit_factor": 2.5,
+  "sharpe_ratio": 1.8,
+  "max_drawdown": 0.15
 }
 ```
