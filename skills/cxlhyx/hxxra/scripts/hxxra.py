@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 hxxra - A Research Assistant workflow skill
-Commands: search, download, analyze, save
+Commands: search, download, analyze, report, save
 """
 
 import json
@@ -523,37 +523,37 @@ def analyze_with_llm(text: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
     if len(text) > max_chars:
         text = text[:max_chars] + "\n\n[Text truncated due to length...]"
 
-    # Build prompt
-    system_prompt = """You are a research paper analysis assistant. Analyze the provided academic paper and extract key information in a structured format.
+        # Build prompt
+        system_prompt = """你是一个学术论文分析助手。分析提供的学术论文，并以结构化格式提取关键信息。
 
-Provide your analysis in this exact JSON structure:
+请按照以下精确的JSON结构提供分析结果：
 {
-    "title": "The paper title",
-    "authors": ["Author 1", "Author 2"],
-    "year": "Publication year",
-    "abstract": "Brief abstract summarizing the paper",
-    "code_link": "GitHub/GitLab repository URL (e.g., https://github.com/username/project) or N/A if not available",
-    "background": "The research problem, motivation, and context",
-    "methodology": "The methods, approach, and techniques used",
-    "results": "Key findings and experimental results",
-    "conclusions": "Main conclusions and future work",
-    "keywords": ["keyword1", "keyword2", "keyword3"],
-    "limitations": "Any limitations mentioned",
-    "impact": "Potential impact and significance of this work"
+    "title": "论文标题",
+    "authors": ["作者1", "作者2"],
+    "year": "发表年份",
+    "abstract": "简要摘要",
+    "code_link": "GitHub/GitLab仓库URL（如 https://github.com/username/project），如不可用则填写 N/A",
+    "background": "研究问题、动机和背景",
+    "methodology": "使用的方法、方法和技术",
+    "results": "主要发现和实验结果",
+    "conclusions": "主要结论和未来工作",
+    "keywords": ["关键词1", "关键词2", "关键词3"],
+    "limitations": "提到的任何局限性",
+    "impact": "潜在影响和意义"
 }
 
-Be concise but comprehensive. If information is not available, use empty strings or empty arrays. For code_link, search for GitHub, GitLab, or other code repository links in the paper, especially in the abstract, introduction, or footnote sections. Return ONLY valid JSON, no markdown formatting."""
+请简洁但全面。如果信息不可用，请使用空字符串或空数组。对于 code_link，请搜索论文中的 GitHub、GitLab 或其他代码仓库链接，特别注意摘要、引言或脚注部分。只需返回有效的 JSON，不要使用 markdown 格式。"""
 
-    user_prompt = f"""Please analyze the following research paper:
+    user_prompt = f"""请分析以下学术论文：
 
---- Paper Metadata ---
-Title: {metadata.get('title', 'Unknown')}
-Author: {metadata.get('author', 'Unknown')}
+--- 论文元数据 ---
+标题：{metadata.get('title', '未知')}
+作者：{metadata.get('author', '未知')}
 
---- Paper Content ---
+--- 论文内容 ---
 {text}
 
-Provide a structured analysis in JSON format."""
+请使用中文以 JSON 格式提供结构化分析。"""
 
     # Initialize OpenAI client
     client = OpenAI(api_key=config["api_key"], base_url=config["base_url"])
@@ -1016,6 +1016,217 @@ def handle_analyze(input_data: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def handle_report(input_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle report command - generate Markdown report from analysis.json files."""
+    directory = input_data.get("directory") or input_data.get("dir")
+    if not directory:
+        return {"ok": False, "error": "Missing required parameter: directory"}
+
+    if not os.path.isdir(directory):
+        return {"ok": False, "error": f"Directory not found: {directory}"}
+
+    output_file = input_data.get("output") or f"{directory}/report.md"
+    title = input_data.get("title", "Research Papers Report")
+    sort_by = input_data.get("sort", "year")
+
+    # 1. 递归扫描所有 analysis.json
+    analysis_files = []
+    for root, dirs, files in os.walk(directory):
+        if "analysis.json" in files:
+            analysis_files.append(os.path.join(root, "analysis.json"))
+
+    if not analysis_files:
+        return {"ok": False, "error": f"No analysis.json files found in {directory}"}
+
+    # 2. 读取并解析每个 analysis.json
+    papers = []
+    for f in analysis_files:
+        try:
+            with open(f, encoding="utf-8") as fp:
+                data = json.load(fp)
+                if data.get("status") == "success":
+                    data["source_file"] = os.path.dirname(f)
+                    papers.append(data)
+        except Exception as e:
+            print(f"Warning: Failed to load {f}: {e}", file=sys.stderr)
+
+    if not papers:
+        return {
+            "ok": False,
+            "error": "No valid analysis.json files with status=success found",
+        }
+
+    # 3. 按指定方式排序
+    if sort_by == "year":
+        papers.sort(key=lambda x: x.get("metadata", {}).get("year", ""), reverse=True)
+    elif sort_by == "title":
+        papers.sort(key=lambda x: x.get("metadata", {}).get("title", ""))
+    elif sort_by == "author":
+        papers.sort(
+            key=lambda x: (
+                x.get("metadata", {}).get("authors", [""])[0]
+                if x.get("metadata", {}).get("authors")
+                else ""
+            )
+        )
+
+    # 4. 生成 Markdown
+    md_content = _generate_markdown_report(papers, title, directory)
+
+    # 5. 保存文件
+    try:
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write(md_content)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to write report file: {str(e)}"}
+
+    return {
+        "ok": True,
+        "command": "report",
+        "total_papers": len(papers),
+        "output_file": os.path.abspath(output_file),
+    }
+
+
+def _generate_markdown_report(
+    papers: List[Dict[str, Any]], title: str, source_dir: str
+) -> str:
+    """Generate Markdown content from papers list."""
+    from datetime import datetime
+
+    # 提取所有关键词
+    all_keywords = []
+    for p in papers:
+        keywords = p.get("metadata", {}).get("keywords", [])
+        all_keywords.extend(keywords)
+
+    # 统计关键词频率
+    keyword_counts = {}
+    for k in all_keywords:
+        keyword_counts[k] = keyword_counts.get(k, 0) + 1
+
+    # 按频率排序
+    top_keywords = sorted(keyword_counts.items(), key=lambda x: x[1], reverse=True)[:15]
+
+    # 生成 Markdown
+    lines = []
+
+    # 标题和元信息
+    lines.append(f"# {title}\n")
+    lines.append(f"**生成日期**: {datetime.now().strftime('%Y-%m-%d')}")
+    lines.append(f"**论文数量**: {len(papers)} 篇")
+    lines.append(f"**数据来源**: `{source_dir}`\n")
+    lines.append("---\n")
+
+    # 关键词统计
+    if top_keywords:
+        lines.append("## 🏷️ 高频关键词\n")
+        lines.append("| 关键词 | 出现次数 |")
+        lines.append("|--------|----------|")
+        for kw, count in top_keywords:
+            lines.append(f"| {kw} | {count} |")
+        lines.append("")
+
+    # 论文总览表格
+    lines.append("## 📊 论文总览\n")
+    lines.append("| # | 标题 | 作者 | 年份 | 关键词 |")
+    lines.append("|---|------|------|------|--------|")
+
+    for i, paper in enumerate(papers, 1):
+        metadata = paper.get("metadata", {})
+        title = metadata.get("title", "N/A")
+        authors = metadata.get("authors", [])
+        year = metadata.get("year", "N/A")
+        keywords = metadata.get("keywords", [])
+
+        # 限制标题长度以避免表格过宽
+        short_title = title[:50] + "..." if len(title) > 50 else title
+
+        # 作者只显示第一个
+        author_str = (
+            authors[0][:20] + "..."
+            if authors and len(authors[0]) > 20
+            else (authors[0] if authors else "N/A")
+        )
+
+        # 关键词限制为前3个
+        kw_str = (
+            ", ".join(keywords[:3]) + "..."
+            if len(keywords) > 3
+            else ", ".join(keywords)
+        )
+
+        lines.append(f"| {i} | {short_title} | {author_str} | {year} | {kw_str} |")
+
+    lines.append("")
+
+    # 详细内容
+    lines.append("## 📖 详细内容\n")
+
+    for i, paper in enumerate(papers, 1):
+        metadata = paper.get("metadata", {})
+        analysis = paper.get("analysis", {})
+
+        title = metadata.get("title", "N/A")
+        authors = metadata.get("authors", [])
+        year = metadata.get("year", "N/A")
+        keywords = metadata.get("keywords", [])
+        code_link = metadata.get("code_link", "N/A")
+        abstract = metadata.get("abstract", "")
+        source_file = paper.get("source_file", "")
+
+        # 作者列表
+        author_list = authors if authors else ["N/A"]
+        author_str = ", ".join(author_list[:5]) + ("..." if len(authors) > 5 else "")
+
+        # 关键词列表
+        kw_list = keywords if keywords else []
+        kw_str = ", ".join(kw_list)
+
+        lines.append(f"### {i}. {title} ({year})")
+        lines.append(f"**作者**: {author_str}")
+        if kw_list:
+            lines.append(f"**关键词**: {kw_str}")
+        if code_link and code_link != "N/A":
+            lines.append(f"**🔗 代码**: [{code_link}]({code_link})")
+        lines.append("")
+
+        if abstract:
+            lines.append(f"#### 📝 摘要")
+            lines.append(abstract)
+            lines.append("")
+
+        # 分析内容
+        sections = [
+            ("background", "研究背景"),
+            ("methodology", "方法论"),
+            ("results", "主要结果"),
+            ("conclusions", "结论"),
+            ("limitations", "局限性"),
+            ("impact", "影响"),
+        ]
+
+        for key, section_title in sections:
+            content = analysis.get(key, "")
+            if content:
+                lines.append(f"#### {section_title}")
+                lines.append(content)
+                lines.append("")
+
+        # 来源文件夹
+        if source_file:
+            lines.append(f"> 📁 来源: `{source_file}`")
+            lines.append("")
+
+        # 分隔线
+        lines.append("---\n")
+
+    # 页脚
+    lines.append("\n*Generated by hxxra*")
+
+    return "\n".join(lines)
+
+
 def handle_save(input_data: Dict[str, Any]) -> Dict[str, Any]:
     """Handle save command."""
     ids = input_data.get("ids", [])
@@ -1115,6 +1326,7 @@ def handle(input_data: Dict[str, Any]) -> Dict[str, Any]:
         "search": handle_search,
         "download": handle_download,
         "analyze": handle_analyze,
+        "report": handle_report,
         "save": handle_save,
     }
 

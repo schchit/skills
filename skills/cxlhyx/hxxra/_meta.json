@@ -3,11 +3,16 @@
   "slug": "hxxra",
   "displayName": "hxxra",
   "latest": {
-    "version": "1.1.1",
-    "publishedAt": 1772894992655,
-    "commit": "https://github.com/openclaw/skills/commit/3aed73bf4ca4dd492eb52e335ecad412a9442d23"
+    "version": "1.2.0",
+    "publishedAt": 1773247974186,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.1.1",
+      "publishedAt": 1772894992655,
+      "commit": "https://github.com/openclaw/skills/commit/3aed73bf4ca4dd492eb52e335ecad412a9442d23"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1770644667196,

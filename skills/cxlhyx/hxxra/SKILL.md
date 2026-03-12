@@ -1,11 +1,11 @@
 ---
 name: hxxra
-description: A Research Assistant workflow skill with four core commands: search papers, download PDFs, analyze content, and save to Zotero. Entry point is a Python script located at scripts/hxxra.py and invoked via stdin/stdout (OpenClaw integration). The search uses crawlers for Google Scholar and arXiv APIs; download uses Python requests or arXiv API; analyze uses an LLM; save uses Zotero API.
+description: A Research Assistant workflow skill with five core commands: search papers, download PDFs, analyze content, generate reports, and save to Zotero. Entry point is a Python script located at scripts/hxxra.py and invoked via stdin/stdout (OpenClaw integration). The search uses crawlers for Google Scholar and arXiv APIs; download uses Python requests or arXiv API; analyze uses an LLM; report generates Markdown summaries from analysis.json files; save uses Zotero API.
 ---
 
 # hxxra
 
-This skill is a Research Assistant that helps users search, download, analyze, and save research papers.
+This skill is a Research Assistant that helps users search, download, analyze, report, and save research papers.
 
 ## Recommended Directory Structure
 
@@ -19,6 +19,7 @@ For better organization, it is recommended to create a dedicated workspace for `
         ├── 2025-03-07_transformer_architectures_scholar.json
         └── ...
     ├── 📁 papers/                           # Stores downloaded PDF files and per-paper analysis results (each as a subfolder)
+        ├── papers_report.md                # Generated Markdown report summarizing all analyzed papers
         ├── 2023_Smith_NeRF_Explained/      # Folder named after the PDF (without extension)
           ├── 2023_Smith_NeRF_Explained.pdf
           ├── analysis.json                 # Structured output from LLM analysis
@@ -185,7 +186,57 @@ This structure keeps all related files organized and easily accessible for revie
 
 ------
 
-### 4. **hxxra save** - Save to Zotero
+### 4. **hxxra report** - Generate Markdown report
+
+**Purpose**: Generate a comprehensive Markdown report from all `analysis.json` files in a directory
+
+**Parameters**:
+
+- `-d, --directory <path>` (Required): Directory containing paper folders with `analysis.json` files
+- `-o, --output <path>` (Optional): Output Markdown file path (default: `{directory}/report.md`)
+- `-t, --title <string>` (Optional): Report title (default: "Research Papers Report")
+- `-s, --sort <string>` (Optional): Sort by: `year` (default, descending), `title`, or `author`
+
+**Input Examples**:
+
+```json
+{"command": "report", "directory": "hxxra/papers/", "output": "hxxra/papers/report.md", "title": "My Research Papers", "sort": "year"} | python scripts/hxxra.py
+{"command": "report", "directory": "hxxra/papers/"} | python scripts/hxxra.py
+```
+
+**Output Structure**:
+
+```json
+{
+  "ok": true,
+  "command": "report",
+  "total_papers": 10,
+  "output_file": "/path/to/hxxra/papers/report.md"
+}
+```
+
+**Generated Markdown Format**:
+
+The generated report includes:
+- **Header**: Title, generation date, total papers, data source
+- **Keywords Table**: Top 15 most frequent keywords across all papers
+- **Overview Table**: Quick summary of all papers (title, author, year, keywords)
+- **Detailed Content**: For each paper:
+  - Title, authors, year, keywords, code link (if available)
+  - Abstract
+  - Research background
+  - Methodology
+  - Main results
+  - Conclusions
+  - Limitations
+  - Impact
+  - Source folder path
+
+**Note**: The report command recursively scans all subdirectories for `analysis.json` files and only includes papers with `status: "success"`.
+
+------
+
+### 5. **hxxra save** - Save to Zotero
 
 **Purpose**: Save papers to Zotero collection
 
@@ -235,13 +286,16 @@ This structure keeps all related files organized and easily accessible for revie
 # 1. Search for papers
 {"command": "search", "query": "graph neural networks", "source": "arxiv", "limit": 10, "output": "hxxra/searches/gnn_arxiv.json"} | python scripts/hxxra.py
 
-# 2. Download first 5 papers
+# 2. Download papers
 {"command": "download", "from-file": "hxxra/searches/gnn_arxiv.json", "dir": "hxxra/papers"} | python scripts/hxxra.py
 
 # 3. Analyze downloaded papers
 {"command": "analyze", "directory": "hxxra/papers/"} | python scripts/hxxra.py
 
-# 4. Save to Zotero
+# 4. Generate comprehensive report
+{"command": "report", "directory": "hxxra/papers/", "output": "hxxra/papers/report.md", "sort": "year"} | python scripts/hxxra.py
+
+# 5. Save to Zotero
 {"command": "save", "from-file": "hxxra/searches/gnn_arxiv.json", "collection": "GNN Papers"} | python scripts/hxxra.py
 ```
 
@@ -256,6 +310,9 @@ This structure keeps all related files organized and easily accessible for revie
 
 # Analyze single PDF in detail
 {"command": "analyze", "pdf": "hxxra/papers/2024_Zhang_Transformer_Survey/2024_Zhang_Transformer_Survey.pdf"} | python scripts/hxxra.py
+
+# Generate report sorted by title
+{"command": "report", "directory": "hxxra/papers/", "sort": "title", "output": "hxxra/papers/report_by_title.md"} | python scripts/hxxra.py
 
 # Save with custom notes
 {"command": "save", "from-file": "hxxra/searches/search_results.json", "ids": ["1"], "collection": "To Read"} | python scripts/hxxra.py
@@ -305,9 +362,17 @@ Each command returns standard error format:
 
 ## Development Status
 
-### Current Version: v1.1.1 (2026/3/7)
+### Current Version: v1.2.0 (2026/3/8)
 
 ### Version History
+
+**v1.2.0 · 2026/3/8**
+
+- Added `report` command to generate comprehensive Markdown reports from all `analysis.json` files
+- Report includes keyword statistics, overview table, and detailed content for each paper
+- Supports sorting by year (default), title, or author
+- Generates clean, readable Markdown format with tables, headers, and structured content
+- Updated documentation to include the new report command in workflows and examples
 
 **v1.1.1 · 2026/3/7**
 
