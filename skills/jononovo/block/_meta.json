@@ -1,0 +1,11 @@
+{
+  "owner": "jononovo",
+  "slug": "block",
+  "displayName": "Block for OpenClaw - Spend anywhere or request payment from anyone.",
+  "latest": {
+    "version": "1.0.7",
+    "publishedAt": 1773191103426,
+    "commit": null
+  },
+  "history": []
+}
