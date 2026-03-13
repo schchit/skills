@@ -1,18 +1,22 @@
 # ZeeLin Music 🎵
 
-**用一句话创作完整歌曲** - 由 AI 驱动的音乐创作工具
+**用一句话创作完整歌曲** - 由 AI 驱动的音乐创作工具，接入智灵计费平台
 
-[![Version](https://img.shields.io/badge/version-1.0.6-blue.svg)](https://clawhub.ai/skills/melodylab-ai-song)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://clawhub.ai/skills/melodylab-ai-song)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![OpenClaw](https://img.shields.io/badge/OpenClaw-Skill-orange.svg)](https://openclaw.ai)
 
 ## ✨ 功能特性
 
-### 🤖 AI 全自动模式（新功能！）
+### 💰 智灵计费体系
+- 每次生成音乐消耗 **200 额度**，生成歌词**免费**
+- 用户使用自己的智灵 App-Key，各自独立计费
+- 前往 [skills.zeelin.cn](https://skills.zeelin.cn) 注册账号并充值
+
+### 🤖 AI 全自动模式
 让 AI 随机为你创作惊喜歌曲：
 - 自动选择主题、风格、情绪
 - 完全随机，给你意想不到的创意
-- 适合寻求灵感或探索新风格
 
 ### 🎨 自定义创作模式
 完全控制你的音乐：
@@ -22,171 +26,131 @@
 - 决定人声或纯音乐
 
 ### 🎼 生成流程
-1. **Gemini AI** 生成高质量歌词
-2. **可编辑确认** - 修改直到满意
-3. **Suno AI** 一次性生成 2 首完整歌曲
-4. **多版本选择** - 选择你最喜欢的版本
+1. **验证智灵 App-Key** - 校验余额（必须）
+2. **DeepSeek AI** 生成高质量歌词（免费）
+3. **可编辑确认** - 修改直到满意
+4. **Suno V5** 一次性生成 2 首完整歌曲（消耗 200 额度）
 
 ## 🚀 快速开始
 
-### 安装
+### 前置条件
 
-```bash
-# 使用 ClawHub CLI
-clawhub install melodylab-ai-song
-
-# 或者手动克隆
-git clone https://github.com/yourusername/melodylab-ai-song.git ~/.openclaw/workspace/skills/melodylab-ai-song
-```
+1. 前往 [skills.zeelin.cn](https://skills.zeelin.cn) 注册账号
+2. 创建应用，获取 App-Key
+3. 充值额度（每首歌消耗 200 额度）
 
 ### 使用示例
 
-**AI 全自动模式**:
 ```
 你: 帮我生成一首歌
-AI: [询问模式选择]
-你: 全自动
-AI: [自动创作]
-```
-
-**自定义创作**:
-```
-你: 写一首关于夏天海边初恋的流行歌，要甜蜜的感觉
+AI: 请先提供你的智灵 App-Key...
+你: sdpj2syPCFOcYiBWBy328W6gxoSbUosi
+AI: ✅ 验证通过！余额 800 额度，可生成 4 首歌曲
+    请选择：1️⃣ AI全自动  2️⃣ 自定义创作
+你: 写一首关于毕业离别的民谣，要悲伤又有期许
 AI: [生成歌词并等待确认]
 你: 确认
-AI: [生成音乐并返回两个版本]
+AI: ✅ 已生成两个版本，消耗 200 额度，剩余 600 额度
+    🎵 v1: https://cdn.suno.ai/xxx.mp3
+    🎵 v2: https://cdn.suno.ai/yyy.mp3
 ```
 
 ## 📋 技术架构
 
 ```
-用户输入
+用户输入 + 智灵 App-Key
    ↓
-ZeeLin Song Generator (OpenClaw Skill)
+① 智灵平台余额校验（skills.zeelin.cn）
    ↓
-MelodyLab API (https://melodylab.top)
+② MelodyLab API (https://melodylab.top)
    ↓
 ┌─────────────┬─────────────┐
-│  Gemini AI  │   Suno AI   │
+│ DeepSeek AI │   Suno V5   │
 │  (歌词生成)  │  (音乐合成)  │
 └─────────────┴─────────────┘
+   ↓
+③ 智灵平台扣减 200 额度
    ↓
 返回 2 首完整歌曲 + 封面
 ```
 
-## 🔒 隐私与安全
+## 🔑 API 接口说明
 
-### 我们承诺
+### 额度校验
+```
+POST https://skills.zeelin.cn/v2/api/skill/detail
+Header: app-key: <your_app_key>
+Body: { "query": "生成AI音乐: xxx", "skill-id": "zeelin_ParDdTaM9W81iKiRZndwSCXW0" }
+```
+
+### 生成音乐
+```
+POST https://melodylab.top/api/generate-music
+Body: {
+  "lyrics": "...",
+  "title": "歌曲名",
+  "zeelin_app_key": "<your_app_key>"
+}
+```
+
+### 超时扣费确认
+```
+POST https://melodylab.top/api/zeelin-confirm
+Body: { "pre_order_id": "...", "zeelin_app_key": "<your_app_key>" }
+```
+
+## 🔒 隐私与安全
 
 - ✅ **不存储用户输入** - 创意描述仅用于实时生成
 - ✅ **HTTPS 加密传输** - 所有数据通过 TLS 1.2+ 加密
-- ✅ **最小化数据收集** - 仅收集必要的创作参数
-- ✅ **无第三方追踪** - 不使用 Google Analytics 等追踪工具
+- ✅ **用户各自计费** - App-Key 不共享，互相隔离
 - ✅ **7 天日志保留** - 仅用于故障排查，之后自动删除
-
-### 第三方服务
-
-本技能使用以下第三方服务：
-
-| 服务 | 用途 | 隐私政策 |
-|------|------|----------|
-| **Google Gemini** | 歌词生成 | [查看政策](https://ai.google.dev/gemini-api/terms) |
-| **Suno AI** | 音乐合成 | [查看政策](https://suno.com/terms) |
-| **MelodyLab** | API 聚合 | [查看 PRIVACY.md](./PRIVACY.md) |
-
-详细隐私说明请查看 [PRIVACY.md](./PRIVACY.md)
 
 ## ⚠️ 使用限制
 
-### 速率限制
-- 每用户每分钟最多 10 个请求
-- 生成时间：歌词 30-90 秒，音乐 60-180 秒
-
-### 内容限制
-禁止生成以下内容：
-- ❌ 仇恨言论或歧视性内容
-- ❌ 暴力或威胁性内容
-- ❌ 色情或露骨内容
-- ❌ 侵犯版权的内容
-
-违规请求会被自动过滤并可能导致 IP 封禁。
+- 每次生成音乐消耗 **200 额度**
+- 生成时间：歌词 30-90 秒，音乐 60-300 秒
+- 音乐生成失败不扣费
 
 ## 🎯 支持的风格
 
-### 音乐风格
-流行 Pop | 摇滚 Rock | 民谣 Folk | 电子 Electronic | 说唱 Hip-hop | 古风 Ancient Style | 爵士 Jazz | R&B | 乡村 Country | 金属 Metal | 朋克 Punk | 布鲁斯 Blues | 雷鬼 Reggae | 拉丁 Latin
+**音乐风格**: 流行 | 摇滚 | 民谣 | 电子 | 说唱 | 古风 | 爵士 | R&B | 乡村 | 金属
 
-### 情绪基调
-甜蜜 Sweet | 悲伤 Sad | 激昂 Passionate | 平静 Calm | 怀旧 Nostalgic | 欢快 Cheerful | 深沉 Deep | 浪漫 Romantic | 治愈 Healing | 振奋 Uplifting | 忧郁 Melancholic | 神秘 Mysterious
-
-## 🛠️ 故障排查
-
-### 常见错误
-
-**403 用户已被封禁**
-- 原因：API 配额耗尽或账户限制
-- 解决：稍后重试或联系开发者
-
-**429 Too Many Requests**
-- 原因：请求频率过高
-- 解决：等待 60 秒后重试
-
-**500 Internal Server Error**
-- 原因：后端服务异常
-- 解决：稍后重试
-
-**timeout**
-- 原因：生成超时（超过 2 分钟）
-- 解决：重新提交请求
+**情绪基调**: 甜蜜 | 悲伤 | 激昂 | 平静 | 怀旧 | 欢快 | 深沉 | 浪漫 | 治愈
 
 ## 📊 版本历史
 
+### v1.2.0 (2026-03-11)
+- 💰 接入智灵 Skill 计费平台，每次生成消耗 200 额度
+- 🔑 用户使用自己的 App-Key，各自独立计费
+- 🔄 完整的校验→生成→扣费事务流程
+- ⏱️ 超时异步扣费机制（/api/zeelin-confirm）
+- 🛡️ 修复并发场景下的 appKey 隔离问题
+
+### v1.1.0 (2026-03-11)
+- ⚡ 初步接入智灵计费框架
+
 ### v1.0.6 (2026-03-05)
 - 🏷️ 更新技能名称为 "ZeeLin Music"
-- 📝 优化品牌标识和文档
 
 ### v1.0.5 (2026-03-04)
 - ✨ 新增 AI 全自动创作模式
-- 📝 完善隐私政策和安全说明
-- 🔒 添加详细的数据处理透明度信息
-- 📚 优化文档和使用示例
 
-### v1.0.4 (2026-03-04)
-- 🏷️ 更新技能名称为 "ZeeLin Song Generator"
+## 🤝 贡献与支持
 
-### v1.0.2 (2026-03-03)
-- 🐛 修复 API 调用问题
-- 📝 改进文档
-
-### v1.0.1 (2026-03-03)
-- 🎉 初始版本发布
-
-## 🤝 贡献
-
-欢迎提交问题和建议！
-
-- **Issues**: [ClawHub 技能页面](https://clawhub.ai/skills/melodylab-ai-song)
-- **Email**: 通过项目主页联系
-- **讨论**: OpenClaw Discord 社区
+- **项目主页**: https://melodylab.top
+- **智灵平台**: https://skills.zeelin.cn
+- **ClawHub**: [@dongjiangliu9-tech](https://clawhub.ai/users/dongjiangliu9-tech)
+- **Issues**: 通过 ClawHub 技能页面反馈
 
 ## 📄 许可证
 
-MIT License - 详见 [LICENSE](LICENSE)
+MIT License
 
 ## 👤 作者
 
-**刘东江** (@lidngjing317853)
-
-- 项目主页: https://melodylab.top
-- ClawHub: [@dongjiangliu9-tech](https://clawhub.ai/users/dongjiangliu9-tech)
-
-## 🙏 致谢
-
-感谢以下服务提供商：
-- [Google Gemini](https://ai.google.dev/) - 强大的歌词生成能力
-- [Suno AI](https://suno.com/) - 高质量的音乐合成技术
-- [OpenClaw](https://openclaw.ai/) - 优秀的 AI 代理平台
+**刘东江** (@lidngjing317853) - https://melodylab.top
 
 ---
 
-**免责声明**: 本技能生成的音乐内容版权归属请遵守 Suno AI 的许可协议。不得用于商业用途，除非获得相应授权。
+**免责声明**: 本技能生成的音乐内容版权归属请遵守 Suno AI 的许可协议。
