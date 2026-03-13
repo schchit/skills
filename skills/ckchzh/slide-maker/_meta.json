@@ -1,11 +1,17 @@
 {
   "owner": "ckchzh",
   "slug": "slide-maker",
-  "displayName": "slide-maker",
+  "displayName": "Slide Maker",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773195474516,
-    "commit": "https://github.com/openclaw/skills/commit/fc16e9366b31285fe60015742206b80ffa51dbb1"
+    "version": "2.2.0",
+    "publishedAt": 1773421808500,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773195474516,
+      "commit": "https://github.com/openclaw/skills/commit/fc16e9366b31285fe60015742206b80ffa51dbb1"
+    }
+  ]
 }

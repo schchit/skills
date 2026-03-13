@@ -1,6 +1,6 @@
 ---
 name: slide-maker
-description: "Presentation and slide deck generator. Create outlines, full slide decks, speaker notes, pitch decks, training slides, report presentations, and design recommendations. Outputs Markdown with --- page separators compatible with Marp, Slidev, and Reveal.js. Use when creating presentations, pitch decks, or training materials."
+description: "Presentation and slide deck generator. Create outlines, full slide decks, speaker notes, pitch decks, training slides, report presentations, and design recommendations. Outputs Markdown with 
 ---
 
 # 🎬 Slide Maker — Presentation Generator
