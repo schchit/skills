@@ -3,9 +3,15 @@
   "slug": "option-calculator",
   "displayName": "Option Calculator",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773213507748,
-    "commit": "https://github.com/openclaw/skills/commit/ae17b0d10743d50e01b1bda64edcd2bae090084e"
+    "version": "2.2.0",
+    "publishedAt": 1773421618239,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773213507748,
+      "commit": "https://github.com/openclaw/skills/commit/ae17b0d10743d50e01b1bda64edcd2bae090084e"
+    }
+  ]
 }
