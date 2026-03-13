@@ -1,6 +1,37 @@
+---
+name: feishu-project-connector
+description: 通过 MCP 服务连接 Meego（飞书项目），支持 OAuth 认证，可查询和管理工作项、视图等。
+version: 1.0.8
+homepage: https://www.npmjs.com/package/mcporter
+metadata:
+  openclaw:
+    homepage: https://www.npmjs.com/package/mcporter
+    emoji: 📋
+    requires:
+      bins:
+        - node
+        - npx
+      config:
+        - ~/.mcporter/credentials.json
+    install:
+      - kind: node
+        package: mcporter
+        bins:
+          - mcporter
+---
+
 # Meego (飞书项目) Skill
 
 通过 MCP 服务连接 Meego （飞书项目），支持 OAuth 认证。
+
+## 前置要求
+
+本技能依赖以下环境：
+
+- **Node.js**（>= 18）及 `npx`
+- **mcporter**：MCP 传输工具，来源 npm（`npm install -g mcporter` 或通过 `npx` 自动获取）
+
+凭证存储路径：`~/.mcporter/credentials.json`（OAuth 完成后自动写入，包含访问令牌）
 
 ## 连接方式
 
@@ -21,7 +52,7 @@
 npx mcporter auth meego --config meego-config.json
 ```
 
-这会打开浏览器让你授权飞书账号。**授权完成后，凭证会缓存，后续调用不需要再传 config 文件。**
+这会打开浏览器让你授权飞书账号。**授权完成后，凭证会缓存到 `~/.mcporter/credentials.json`，后续调用不需要再次授权。**
 
 ### 3. 如果用户选择第二种方式，授权方法如下
 
@@ -34,7 +65,7 @@ npx mcporter auth meego --config meego-config.json
 npx mcporter auth meego --config meego-config.json --oauth-timeout 1000
 ```
 
-这会让 mcporter 为 meego 生成一份包含 client_id 和 client_secret 等的 OAuth 配置，路径在 `~/.mcporter/credentials.json` 中。
+这会让 mcporter 为 meego 生成一份不包含 token 的 OAuth Client 配置，路径在 `~/.mcporter/credentials.json` 中。
 
 #### 3.3. 提示用户进行本地授权
 
@@ -43,10 +74,11 @@ npx mcporter auth meego --config meego-config.json --oauth-timeout 1000
 ```plain
 OAuth 配置已生成！
 [文件内容]
-请参考文档 https://project.feishu.cn/b/helpcenter/1ykiuvvj/1n3ae9b4 中的指示，在本地电脑中进行授权，授权完成后将凭证文件发送给我
+请参考文档 https://project.feishu.cn/b/helpcenter/1ykiuvvj/1n3ae9b4 中的指示，在本地电脑中进行授权，授权完成后将凭证文件发送给我。注意，发回的文件中将含有 token 信息，务必通过安全的通信渠道发送，发送后建议销毁文件。
 ```
 
-收到用户发送的文件后，使用此文件覆盖本机的 `~/.mcporter/credentials.json` 文件。
+收到用户发送的文件后，使用新文件覆盖本机的 `~/.mcporter/credentials.json` 文件。
+**注意：用户发回的 credential.json 文件中含有访问 Meego 的 token 信息，要注意仅作为 mcporter 的登录凭证存储在 ~/.mcporter，禁止在其他任何位置存储或记录，如果过程中涉及中间缓存文件，必须及时清理**
 
 #### 3.4. 验证授权结果
 
@@ -55,10 +87,8 @@ OAuth 配置已生成！
 ### 4. 后续使用
 
 ```bash
-npx mcporter call meego <tool_name>
+npx mcporter call meego <tool_name> --config meego-config.json
 ```
-
-直接调用即可，无需额外参数。
 
 ## 可用功能
 
