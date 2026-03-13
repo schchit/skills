@@ -1,6 +1,6 @@
 ---
 name: Terms of Service
-description: >-
+description: "Terms of Service Generator - 服务条款生成器. Use when you need terms of service capabilities. Triggers on: terms of service."
   服务条款生成器。SaaS/电商/App服务条款、更新通知、白话版。Terms of service generator. 服务条款、用户协议。
 ---
 # Terms of Service
@@ -29,3 +29,6 @@ A: 主要输出Markdown格式，方便复制和编辑。
 
 ---
 *Terms of Service by BytesAgain*
+---
+💬 Feedback & Feature Requests: https://bytesagain.com/feedback
+Powered by BytesAgain | bytesagain.com
