@@ -3,11 +3,16 @@
   "slug": "stock-price-query",
   "displayName": "Stock Price Query",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1772106486405,
-    "commit": "https://github.com/openclaw/skills/commit/5205cd890aaeaa1a14c9e58685f4877efd939587"
+    "version": "1.0.7",
+    "publishedAt": 1773326920974,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1772106486405,
+      "commit": "https://github.com/openclaw/skills/commit/5205cd890aaeaa1a14c9e58685f4877efd939587"
+    },
     {
       "version": "1.0.3",
       "publishedAt": 1772008624465,
