@@ -1,11 +1,17 @@
 {
   "owner": "bytesagain",
   "slug": "compensation-calc",
-  "displayName": "compensation-calc",
+  "displayName": "Compensation Calc",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773152524023,
-    "commit": "https://github.com/openclaw/skills/commit/40a1edc9636d0aa1156f3a0d55e270fdfa41d449"
+    "version": "2.2.0",
+    "publishedAt": 1773421088200,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773152524023,
+      "commit": "https://github.com/openclaw/skills/commit/40a1edc9636d0aa1156f3a0d55e270fdfa41d449"
+    }
+  ]
 }
