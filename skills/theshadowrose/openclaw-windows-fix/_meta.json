@@ -1,0 +1,11 @@
+{
+  "owner": "theshadowrose",
+  "slug": "openclaw-windows-fix",
+  "displayName": "OpenClaw Windows Fix Scheduled Task Idle-Kill Bug Patch",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773201609192,
+    "commit": null
+  },
+  "history": []
+}
