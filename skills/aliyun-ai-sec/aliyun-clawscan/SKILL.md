@@ -1,7 +1,11 @@
 ---
 name: aliyun-clawscan
 description: Analyzes the security posture of a user's OpenClaw environment and installed skills. Use when a user is about to install a new skill and wants to verify its safety, has concerns about the behavior of an existing skill, or needs a comprehensive security check of their entire OpenClaw setup. Helpful for users performing a security audit, investigating a suspicious skill, or needing to assess configuration risks and potential vulnerabilities before proceeding with installations.
-metadata: {"openclaw":{"homepage":"https://github.com/AliyunSecAI/","requires":{"bins":["openclaw"]}}}
+metadata: {"openclaw":{"homepage":"https://github.com/aliyun-ai-sec","requires":{"bins":["openclaw"]}}}
+---
+
+> **说明**：本 Skill 由 **阿里云（Alibaba Cloud）** 提供的安全防护检查能力，用于对 OpenClaw 环境与 Skill 进行安全评估与风险检测。
+
 ---
 
 # aliyun-clawscan
@@ -165,3 +169,7 @@ Apply local detection rules across 11 categories:
 |------|---------|
 | `reference/baseline.md` | Configuration audit rules and parsing logic |
 | `reference/skillaudit.md` | Skill security detection patterns and scenarios |
+
+---
+
+> **说明**：本 Skill 由 **阿里云（Alibaba Cloud）** 提供的安全防护检查能力。使用本能力可对 OpenClaw 配置与已安装/待安装 Skill 进行安全审计与风险评估。

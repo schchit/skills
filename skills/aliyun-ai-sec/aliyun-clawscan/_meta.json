@@ -1,11 +1,17 @@
 {
   "owner": "aliyun-ai-sec",
   "slug": "aliyun-clawscan",
-  "displayName": "aliyun-clawscan",
+  "displayName": "Aliyun ClawScan",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773223916183,
-    "commit": "https://github.com/openclaw/skills/commit/749cfac41ed09f4de548ff8f58ab4053a8a6797e"
+    "version": "1.0.2",
+    "publishedAt": 1773381910123,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773223916183,
+      "commit": "https://github.com/openclaw/skills/commit/749cfac41ed09f4de548ff8f58ab4053a8a6797e"
+    }
+  ]
 }
