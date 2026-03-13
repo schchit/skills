@@ -3,9 +3,15 @@
   "slug": "twit-mcp",
   "displayName": "twit-mcp",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1771859921155,
-    "commit": "https://github.com/openclaw/skills/commit/0151e38f016c8ae17efbef84e4e39dff7346579a"
+    "version": "1.4.1",
+    "publishedAt": 1773156234296,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1771859921155,
+      "commit": "https://github.com/openclaw/skills/commit/0151e38f016c8ae17efbef84e4e39dff7346579a"
+    }
+  ]
 }

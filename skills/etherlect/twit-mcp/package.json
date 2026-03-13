@@ -1,6 +1,6 @@
 {
   "name": "twit-mcp",
-  "version": "1.0.1",
+  "version": "1.4.0",
   "description": "X/Twitter data MCP server powered by x402 micropayments. Pay per request in USDC on Base.",
   "type": "module",
   "main": "dist/index.js",
@@ -20,6 +20,10 @@
     "usdc",
     "base"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/etherlect/twit-mcp.git"
+  },
   "license": "MIT",
   "engines": {
     "node": ">=20"
@@ -30,6 +34,7 @@
     "@x402/fetch": "^2.3.0",
     "dotenv": "^16.4.7",
     "ethers": "^6.16.0",
+    "playwright": "^1.58.2",
     "viem": "^2.45.3",
     "zod": "^3.24.2"
   },
