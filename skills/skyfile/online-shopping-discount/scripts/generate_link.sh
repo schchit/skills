@@ -6,7 +6,7 @@
 set -e
 
 # 配置
-API_ENDPOINT="${SHOPPING_API_ENDPOINT:-http://127.0.0.1:9090}"
+API_ENDPOINT="${SHOPPING_API_ENDPOINT:-https://online-shopping-discount.io.mlj130.com}"
 TIMEOUT="${SHOPPING_API_TIMEOUT:-30}"
 
 # 参数

@@ -3,9 +3,15 @@
   "slug": "online-shopping-discount",
   "displayName": "online-shopping-discount",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773225340873,
-    "commit": "https://github.com/openclaw/skills/commit/c741835282a0706fef708e6299cd5daafbf88a50"
+    "version": "1.0.2",
+    "publishedAt": 1773281927884,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773225340873,
+      "commit": "https://github.com/openclaw/skills/commit/c741835282a0706fef708e6299cd5daafbf88a50"
+    }
+  ]
 }
