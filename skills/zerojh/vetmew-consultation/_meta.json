@@ -3,11 +3,16 @@
   "slug": "vetmew-consultation",
   "displayName": "专业宠物（猫、狗及异宠）多轮医疗问诊",
   "latest": {
-    "version": "1.0.6",
-    "publishedAt": 1773138151470,
-    "commit": "https://github.com/openclaw/skills/commit/a8166626be46b34b515ac73ceacb7b4188f9683f"
+    "version": "1.0.8",
+    "publishedAt": 1773286860797,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.6",
+      "publishedAt": 1773138151470,
+      "commit": "https://github.com/openclaw/skills/commit/a8166626be46b34b515ac73ceacb7b4188f9683f"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1772789639204,

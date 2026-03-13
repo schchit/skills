@@ -1,13 +1,10 @@
 ---
 name: vetmew-consultation
-description: 专业宠物（猫、狗及异宠）多轮医疗问诊。基于 VetMew 3.0 API 提供症状分析与诊断建议。
+description: 专业宠物（猫、狗及异宠）医疗问诊。基于 VetMew 3.0 API 提供症状分析与诊断建议。
 emoji: 🐾
-license: MIT
-homepage: https://open.vetmew.com/
-compatibility: 需要 Python 3.12+ 及有效的 VetMew API 凭据。
 metadata:
   author: AI-Consultant
-  version: "1.0.6"
+  version: "1.0.8"
   openclaw:
     requires:
       env:
@@ -20,25 +17,23 @@ metadata:
         spec: -r requirements.txt
 ---
 
+# Setup (OpenClaw / Agent Platform)
+
+## 凭据获取 (Authentication)
+本技能要求注入环境变量 `VETMEW_AUTH_TOKEN` (格式为 `API_KEY:API_SECRET`)。
+
+您可以通过以下顺序获取凭据：
+1. **配置文件**: 从 `~/.openclaw/openclaw.json` 中的 `skills."vetmew-consultation".apiKey` 字段获取。
+2. **环境变量**: 从系统环境变量 `VETMEW_AUTH_TOKEN` 直接获取。
+3. **手动拼接**: 分别获取 `VETMEW_API_KEY` 和 `VETMEW_API_SECRET` 环境变量并以冒号 `:` 拼接。
+4. **官方渠道**: 登录 VetMew 开放平台申请：https://open.vetmew.com/
+
+---
+
 # VetMew 宠物问诊 Skill
 
 ## 简介
 这是一个接入了 VetMew 开放平台 (VetMew Open Platform) 的专业宠物问诊技能。它能够处理复杂的宠物档案（涵盖犬、猫及龙猫、豚鼠等异宠），并通过 HMAC-SHA256 安全认证调用深度学习模型，为宠物提供专业的医疗咨询建议。
-
-## Setup (Automated / Environment Priority)
-
-本技能优先支持通过环境变量进行自动化配置。
-
-### 1. 自动化环境 (OpenClaw / Agent 框架)
-在 OpenClaw 等环境下，技能已通过元数据声明了 `VETMEW_AUTH_TOKEN` 的需求。**您只需在平台的技能设置界面输入凭据即可**，系统会自动将其注入运行环境。
-
-- **凭据格式**: `API_KEY:API_SECRET` (中间以冒号分隔)。
-
-### 2. 运行需求
-- **Python**: 需要 3.12 或更高版本。
-- **依赖安装**: `pip install -r requirements.txt` (自动化环境下通常由平台完成)。
-
-> 若您需要在本地开发环境手动配置，请参考文档末尾的 [附录：手动凭据配置](#appendix-manual-credential-setup)。
 
 ## Usage
 
@@ -52,6 +47,21 @@ metadata:
 
 ### 3. 异宠医疗问诊
 `python3 scripts/exotic_consultation.py --name <name> --breed <breed> --pet_type 3 --gender <1|2> --msg <question> [--conversation_id <id>] [--thinking]`
+
+## Session & State (核心指令)
+Agent **必须** 维护独立的 Session 槽位以隔离不同类型的会话。请将 ID 持久化到对应的平台变量中：
+
+| 业务场景 | 脚本路径 | Session 槽位变量 |
+| :--- | :--- | :--- |
+| **犬猫医疗** | `consultation.py` | `VETMEW_MEDICAL_SESSION` |
+| **异宠医疗** | `exotic_consultation.py` | `VETMEW_EXOTIC_SESSION` |
+| **知识问答** | `free_chat.py` | `VETMEW_CHAT_SESSION` |
+
+### 工作流程 (Steps)
+1. **槽位检查**: 运行前检查对应槽位是否有值。
+2. **执行并捕获**: 脚本运行结束后，必须正则提取输出中的 `CONVERSATION_ID: <id>`。
+3. **状态同步**: 将提取的 ID 更新至对应的 Session 槽位，以便下轮对话通过 `--conversation_id` 复用。
+4. **异常处理**: 若返回“会话无效”错误，Agent 应清除槽位值并引导用户重新开始。
 
 ## Input (输入参数)
 
@@ -87,32 +97,7 @@ metadata:
 
 ### 3. 通用交互信息
 - `--msg`: **用户提问/症状描述** (String)。请尽可能详细描述宠物的精神、饮食、排泄等异常表现。
-- `--conversation_id`: **会话 ID** (Optional)。在多轮对话中，Agent 应自动提取并传递此 ID 以维持上下文。**注意：必须确保传入的 ID 与当前触发的脚本路径（医疗 vs 问答）一致。**
-
-## Steps (工作流程)
-
-1. **意图识别**: 当用户表达出对宠物健康的担忧或寻求专业建议时，触发此技能。
-2. **槽位映射 (Session Slotting)**: Agent **必须** 维护三个独立的槽位以隔离会话。**在 OpenClaw 中，请将其持久化到对应的变量中**：
-    - `VETMEW_MEDICAL_SESSION`: 存储来自 `consultation.py` 的 ID。
-    - `VETMEW_EXOTIC_SESSION`: 存储来自 `exotic_consultation.py` 的 ID。
-    - `VETMEW_CHAT_SESSION`: 存储来自 `free_chat.py` 的 ID。
-3. **参数收集**: Agent 检查必选参数。如果用户未提及品种或年龄（针对犬猫），Agent 必须主动发起追问。
-4. **运行环境就绪**: 确保已按照 `metadata.openclaw.install` 规格安装依赖，并正确获取环境变量。
-5. **流式消费**: 实时解析来自 VetMew 的 SSE 数据块，提取 `msg` 内容并即时向用户渲染。
-6. **状态捕获与同步**: 脚本正常结束时打印 `CONVERSATION_ID: <id>`。
-    - **Agent 行动**: 必须提取此 ID 并更新到上述对应的 Session 槽位中，以便在下轮对话中通过 `--conversation_id` 自动复用。
-7. **异常回退**: 若脚本返回“会话无效或隔离冲突”错误，Agent 必须清除对应槽位的旧 ID 并提示用户重新发起会话。
-
-## Output (输出示例)
-
-### 诊断中 (流式 Markdown)
-> "根据**大黄**（金毛，8个月，未绝育）的呕吐频率，初步判断可能存在急性胃炎风险。建议：
-> 1. **禁食 12 小时**：观察是否继续呕吐。
-> 2. **精神观察**：若伴随拉稀或发烧，请及时就医。"
-
-### 诊断结束 (状态标识)
-> "--------------------"
-> "CONVERSATION_ID: v2-chat-session-88291"
+- `--conversation_id`: **会话 ID** (Optional)。在多轮对话中，Agent 应自动提取并传递此 ID 以维持上下文。
 
 ## Guardrails (护栏)
 
@@ -120,24 +105,3 @@ metadata:
 - **物种匹配校验**: 系统将校验品种是否属于指定的 `pet_type`。禁止跨物种问诊。
 - **安全红线**: 严禁在输出中包含任何 API 秘钥或原始签名字符串。
 - **医疗免责**: 输出内容仅供参考，危急情况下请务必引导用户前往线下宠物医院。
-
-## Appendix: Manual Credential Setup
-
-如果您需要在本地 CLI 环境中手动配置凭据，请按以下步骤操作。
-
-### 1. 获取凭据
-请前往 [VetMew 开放平台](https://open.vetmew.com/) 申请 `API_KEY` 和 `API_SECRET`。
-
-### 2. 初始化配置
-直接运行任一入口脚本（如 `consultation.py`）。系统将检测到缺失凭据并自动启动配置向导：
-1. 按照终端提示输入您的 `API_KEY` 和 `API_SECRET`。
-2. 系统将自动在当前目录下创建 `.env` 文件，并将凭据合并为 `VETMEW_AUTH_TOKEN`。
-3. 配置完成后，即可正常使用。
-
-> **安全提示**：请勿将生成的包含真实密钥的 `.env` 文件提交到版本控制系统。
-
-## Technical Dependencies
-- Python 3.12+
-- `requests`, `python-dotenv`
-- `consultation.py` (主程序)
-- `breed_manager.py` (品种管理)
