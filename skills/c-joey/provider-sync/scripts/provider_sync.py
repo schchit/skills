@@ -23,10 +23,15 @@ def load_json(path: str) -> Any:
         return json.load(f)
 
 
-def dump_json(path: str, data: Any):
+def dump_json(path: str, data: Any, *, chmod_600: bool = False):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
         f.write("\n")
+    if chmod_600:
+        try:
+            os.chmod(path, 0o600)
+        except Exception:
+            pass
 
 
 def split_path(path: str) -> List[str]:
@@ -138,6 +143,47 @@ def _sha256_text(text: str) -> str:
     return hashlib.sha256((text or "").encode("utf-8")).hexdigest()
 
 
+def _looks_sensitive_key(key: str) -> bool:
+    k = (key or "").lower()
+    needles = [
+        "api_key",
+        "apikey",
+        "authorization",
+        "bearer",
+        "cookie",
+        "secret",
+        "token",
+        "password",
+        "private",
+        "session",
+        "set-cookie",
+        "access_key",
+    ]
+    return any(n in k for n in needles)
+
+
+def redact_sensitive_fields(value: Any) -> Any:
+    """Best-effort redaction for cached upstream JSON.
+
+    Provider /models endpoints should never return secrets, but some proxies can be buggy.
+    We avoid persisting accidental secret-like fields (tokens/cookies/api keys) by:
+    - Recursively dropping dict keys that look sensitive.
+    - Leaving the rest of the structure intact so mapping still works.
+
+    This redaction applies to provider-sync cache files only.
+    """
+    if isinstance(value, dict):
+        out = {}
+        for k, v in value.items():
+            if isinstance(k, str) and _looks_sensitive_key(k):
+                continue
+            out[k] = redact_sensitive_fields(v)
+        return out
+    if isinstance(value, list):
+        return [redact_sensitive_fields(v) for v in value]
+    return value
+
+
 def _safe_cache_key(endpoint: str, method: str, headers: Dict[str, str], body: Any) -> str:
     # NOTE: This hashes header VALUES too (including Authorization) but never stores them.
     # This avoids cross-key cache confusion without leaking secrets.
@@ -186,7 +232,14 @@ def fetch_json_with_meta(
     def write_cache(meta: Dict[str, Any], data: Any):
         meta_path.parent.mkdir(parents=True, exist_ok=True)
         meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        data_path.write_text(json.dumps(data, ensure_ascii=False) + "\n", encoding="utf-8")
+        # Redact secret-like fields before persisting cache payload.
+        safe_data = redact_sensitive_fields(data)
+        data_path.write_text(json.dumps(safe_data, ensure_ascii=False) + "\n", encoding="utf-8")
+        try:
+            os.chmod(meta_path, 0o600)
+            os.chmod(data_path, 0o600)
+        except Exception:
+            pass
 
     cache_meta, cache_data = (None, None)
     if cache_enabled:
@@ -853,7 +906,11 @@ def main():
     ap = argparse.ArgumentParser(description="Sync provider fields from upstream to openclaw.json")
     ap.add_argument("--config", default="/root/.openclaw/openclaw.json", help="openclaw.json path")
     ap.add_argument("--provider-root", default="models.providers", help="provider map path in config")
-    ap.add_argument("--provider-id", required=True, help="provider id in openclaw.json")
+    ap.add_argument(
+        "--provider-id",
+        required=True,
+        help="provider id in openclaw.json (comma-separated ok). Use 'all' to sync all providers under --provider-root.",
+    )
     ap.add_argument("--use-provider-config", action="store_true", help="derive endpoint/auth from openclaw.json when possible")
     ap.add_argument("--endpoint", default="", help="upstream API endpoint (optional with --use-provider-config)")
     ap.add_argument("--method", default="GET", choices=["GET", "POST", "PUT", "PATCH"])
@@ -916,8 +973,67 @@ def main():
     providers = get_path(cfg, args.provider_root)
     if not isinstance(providers, dict):
         die(f"provider root not found or not object: {args.provider_root}")
-    if args.provider_id not in providers:
-        die(f"provider not found: {args.provider_id}")
+
+    # Multi-provider mode (provider-id supports: comma list / 'all')
+    raw_pid = (args.provider_id or "").strip()
+    if raw_pid.lower() == "all":
+        provider_ids = [str(k) for k in providers.keys()]
+    else:
+        provider_ids = [p.strip() for p in raw_pid.split(",") if p.strip()]
+
+    if len(provider_ids) != 1:
+        import subprocess
+
+        summaries = []
+        for pid in provider_ids:
+            if pid not in providers:
+                die(f"provider not found: {pid}")
+
+            # Re-run this script in single-provider mode and collect JSON.
+            base_argv = []
+            skip_next = False
+            for a in sys.argv[1:]:
+                if skip_next:
+                    skip_next = False
+                    continue
+                if a == "--provider-id":
+                    skip_next = True
+                    continue
+                base_argv.append(a)
+
+            cmd = [sys.executable, os.path.abspath(__file__)] + base_argv + ["--provider-id", pid, "--output", "json"]
+            proc = subprocess.run(cmd, capture_output=True, text=True)
+            if proc.returncode != 0:
+                # Bubble the underlying error.
+                sys.stderr.write(proc.stderr or proc.stdout or "")
+                sys.exit(proc.returncode)
+
+            try:
+                summaries.append(json.loads(proc.stdout))
+            except Exception:
+                sys.stderr.write(proc.stdout)
+                die("failed to parse JSON output from sub-run")
+
+        # Aggregate output
+        if args.output == "json":
+            print(json.dumps({"providerIds": provider_ids, "summaries": summaries}, ensure_ascii=False, indent=2))
+        else:
+            for s in summaries:
+                fetch = s.get("fetch") or {}
+                prov = ""
+                # Best-effort: infer provider id from endpoint baseUrl in fetch
+                prov = fetch.get("endpoint") or ""
+                changed = "有变化" if s.get("changed") else "没变化"
+                mc = s.get("modelCount")
+                print(f"- {changed} | models={mc} | endpoint={fetch.get('endpoint','')}")
+            print("\n提示：如需写入，请去掉 --dry-run 或使用 mode=apply。")
+
+        return
+
+    # Single provider
+    if provider_ids[0] not in providers:
+        die(f"provider not found: {provider_ids[0]}")
+    args.provider_id = provider_ids[0]
 
     provider_base = f"{args.provider_root}.{args.provider_id}"
     provider_obj = get_path(cfg, provider_base) or {}
@@ -1131,8 +1247,8 @@ def main():
 
     ts = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
     backup = f"{args.config}.bak.{ts}"
-    dump_json(backup, cfg)
-    dump_json(args.config, new_cfg)
+    dump_json(backup, cfg, chmod_600=True)
+    dump_json(args.config, new_cfg, chmod_600=True)
 
     if args.output == "json":
         summary["backup"] = backup
