@@ -1,11 +1,17 @@
 {
   "owner": "bytesagain",
   "slug": "ab-test-calculator",
-  "displayName": "ab-test-calculator",
+  "displayName": "Ab Test Calculator",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773152367312,
-    "commit": "https://github.com/openclaw/skills/commit/a8a339286f6bb2e9b76f7a8c37fe87c640f86861"
+    "version": "2.2.0",
+    "publishedAt": 1773420888771,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773152367312,
+      "commit": "https://github.com/openclaw/skills/commit/a8a339286f6bb2e9b76f7a8c37fe87c640f86861"
+    }
+  ]
 }
