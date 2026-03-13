@@ -1,28 +1,26 @@
-# Feishu Webhook - Heredoc Edition
+# Feishu Webhook
 
-Send messages to Feishu via Webhook with heredoc input.
+使用飞书Webhook发送富文本消息。
 
-## Usage
+## 使用方法
 
 ```bash
-python3 send-feishu.py << 'EOF'
-💓 心跳报告
-- 时间: 2026-02-08 03:00
-- 状态: 运行正常
-- 任务: 已完成
+python3 /home/yuhiri/workspace/skills/feishu-webhook/scripts/send-feishu.py << 'EOF'
+# 在这里写Markdown内容（避免使用1-2级标题；3-6级标题均可）
+- 列表
+- **粗体文本**
 EOF
 ```
 
-## Features
+## 功能
 
-- 📝 Heredoc input
-- 🎯 First line = title
-- 📄 Rest = content (Markdown)
-- ⚙️ Environment variables from OpenClaw config
+- 📝 Heredoc 输入
+- 📄 Markdown 支持（飞书卡片样式）
+- ⚙️ 从 OpenClaw 配置读取环境变量
 
-## Config (OpenClaw)
+## 配置 (OpenClaw)
 
-Add to `~/.openclaw/openclaw.json` under `env.vars`:
+在 `~/.openclaw/openclaw.json` 的 `env.vars` 中添加：
 
 ```json
 {
@@ -35,8 +33,10 @@ Add to `~/.openclaw/openclaw.json` under `env.vars`:
 }
 ```
 
-## Files
+## 文件说明
 
-- `send-feishu.py` - Main sender
+- `scripts/send-feishu.py` - 主脚本
 
-**v1.2.0** - Environment variables from OpenClaw config
+## 版本
+
+- **1.2.1**

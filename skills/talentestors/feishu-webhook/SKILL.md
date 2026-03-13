@@ -1,6 +1,9 @@
 ---
 name: feishu-webhook
-description: Send messages to Feishu via Webhook with heredoc input support
+version: 1.2.3
+author: ATRI
+homepage: https://github.com/talentestors/feishu-webhook
+description: Send rich text messages to Feishu via Webhook with heredoc input support. Use when you need to send Markdown-formatted messages to Feishu channels or DMs, especially for scheduled notifications, alerts, or reports.
 ---
 
 # Feishu Webhook Skill
@@ -10,7 +13,7 @@ Send messages to Feishu via Webhook with heredoc input.
 ## Quick Start
 
 ```bash
-python3 /home/yuhiri/workspace/skills/feishu-webhook/send-feishu.py << 'EOF'
+python3 /home/yuhiri/workspace/skills/feishu-webhook/scripts/send-feishu.py << 'EOF'
 # Write your Markdown content here (avoid level 1 and 2 headings; levels 3-6 are acceptable)
 - Lists
 - **Bold text**
@@ -40,7 +43,7 @@ Add to `~/.openclaw/openclaw.json` under `env.vars`:
 
 ## Files
 
-- `send-feishu.py` - Main sender
+- `scripts/send-feishu.py` - Main sender
 
 ## Version
 
