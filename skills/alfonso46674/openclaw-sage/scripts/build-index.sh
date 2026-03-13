@@ -22,14 +22,14 @@ case "$1" in
       curl -sf --max-time 10 "${DOCS_BASE_URL}/sitemap.xml" -o "$SITEMAP_XML" 2>/dev/null
     fi
 
-    ALL_URLS=$(grep -oP '(?<=<loc>)[^<]+' "$SITEMAP_XML" 2>/dev/null | grep "docs\.openclaw\.ai/" | grep -v '^https://docs\.openclaw\.ai/$')
+    ALL_URLS=$(grep -o '<loc>[^<]*</loc>' "$SITEMAP_XML" 2>/dev/null | sed 's/<[^>]*>//g' | grep "${DOCS_BASE_URL}/" | grep -v "^${DOCS_BASE_URL}/$")
 
     # Show available languages in the sitemap
     # Language prefix format: "ll/" or "ll-RR/" (e.g. zh-CN/, pt-BR/)
-    available_langs=$(echo "$ALL_URLS" | awk '
+    available_langs=$(echo "$ALL_URLS" | awk -v base_url="$DOCS_BASE_URL" '
       {
         path = $0
-        sub(/https:\/\/docs\.openclaw\.ai\//, "", path)
+        sub(base_url "/", "", path)
         if (match(path, /^[a-z][a-z](-[A-Za-z]+)?\//))
           lang = substr(path, 1, RLENGTH - 1)
         else
@@ -46,10 +46,10 @@ case "$1" in
     if [ "$LANGS" = "all" ]; then
       URLS="$ALL_URLS"
     else
-      URLS=$(echo "$ALL_URLS" | awk -v langs=",$LANGS," '
+      URLS=$(echo "$ALL_URLS" | awk -v langs=",$LANGS," -v base_url="$DOCS_BASE_URL" '
         {
           url = $0
-          sub(/https:\/\/docs\.openclaw\.ai\//, "", url)
+          sub(base_url "/", "", url)
           if (match(url, /^[a-z][a-z](-[A-Za-z]+)?\//))
             lang = substr(url, 1, 2)   # base code only: "zh-CN" → "zh"
           else
@@ -60,7 +60,7 @@ case "$1" in
     fi
 
     if [ -z "$URLS" ]; then
-      echo "Error: Could not get URL list from sitemap. Run ./scripts/sitemap.sh first."
+      echo "Error: Could not get URL list from sitemap. Run ./scripts/sitemap.sh first." >&2
       exit 1
     fi
 
@@ -69,17 +69,15 @@ case "$1" in
     new=0
 
     while IFS= read -r url; do
-      path=$(echo "$url" | sed 's|https://docs\.openclaw\.ai/||')
+      path=$(echo "$url" | sed "s|${DOCS_BASE_URL}/||")
       [ -z "$path" ] && continue
       cache_file="${CACHE_DIR}/doc_$(echo "$path" | tr '/' '_').txt"
       count=$((count + 1))
       printf "\r  [%d/%d] %s          " "$count" "$total" "$path" >&2
 
       if [ ! -f "$cache_file" ] || ! is_cache_fresh "$cache_file" "$DOC_TTL"; then
-        fetch_text "$url" > "$cache_file"
-        if [ ! -s "$cache_file" ]; then
-          rm -f "$cache_file"
-        else
+        safe="$(echo "$path" | tr '/' '_')"
+        if fetch_and_cache "$url" "$safe"; then
           new=$((new + 1))
         fi
         sleep 0.3  # be polite to the server
@@ -99,7 +97,7 @@ case "$1" in
       exit 1
     fi
 
-    > "$INDEX_FILE"
+    : > "$INDEX_FILE"
     doc_count=0
     for f in "$CACHE_DIR"/doc_*.txt; do
       path=$(basename "$f" .txt | sed 's/^doc_//; s/_/\//g')
@@ -152,11 +150,11 @@ case "$1" in
     else
       # grep fallback when python3 unavailable
       grep -i "$QUERY" "$INDEX_FILE" \
-        | awk -F'|' '
+        | awk -F'|' -v base_url="$DOCS_BASE_URL" '
             {
               if ($1 != prev) {
                 if (prev != "") print ""
-                print "  [---] " $1 "  ->  https://docs.openclaw.ai/" $1
+                print "  [---] " $1 "  ->  " base_url "/" $1
                 prev = $1
                 count = 0
               }

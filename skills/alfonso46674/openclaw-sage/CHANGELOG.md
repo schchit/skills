@@ -5,6 +5,58 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.2.4] — 2026-03-11
+
+### Fixed
+
+- **BUG-15** (`snippets/common-configs.md`) — Model name `claude-sonnet-4-5` updated to `claude-sonnet-4-6` to match `SKILL.md`.
+- **BUG-17** (`recent.sh`, `build-index.sh`) — Remaining hardcoded `https://docs.openclaw.ai` URLs missed by the BUG-01 fix. `recent.sh` Python heredoc now receives `$DOCS_BASE_URL` via `sys.argv`. `build-index.sh` awk blocks use `-v base_url=`, grep/sed pipelines use `$DOCS_BASE_URL`. All produce correct output when `OPENCLAW_SAGE_DOCS_BASE_URL` is overridden.
+- **BUG-18** (`fetch-doc.sh`) — Removed local `fetch_and_cache()` that shadowed the shared `lib.sh` version. Replaced with a thin `_do_fetch` wrapper that calls the lib version and adds fetch-doc-specific error messages.
+- **BUG-19** (`search.sh`) — "Tip: For comprehensive ranked results..." diagnostic block was sent to stdout, polluting agent-parseable output. Redirected to stderr.
+- **BUG-20** (`build-index.sh`) — "Error: Could not get URL list from sitemap..." message was sent to stdout instead of stderr. Added `>&2`.
+- **I-1** (`build-index.sh`) — Bare redirection `> "$INDEX_FILE"` (ShellCheck SC2188) replaced with `: > "$INDEX_FILE"`.
+
+### Added
+
+- `tests/test_build_index.bats` — 2 new tests: BUG-20 stderr routing, BUG-17 URL override regression.
+- `tests/test_search.bats` — 1 new test: BUG-19 tip text not on stdout.
+- `tests/test_recent.bats` — 1 new test: BUG-17 URL override regression.
+- `tests/test_fetch_doc.bats` — 1 new test: BUG-18 no local fetch_and_cache shadow.
+
+---
+
+## [0.2.3] 2026-03-10
+
+### Fixed
+
+- **BUG-07** (`build-index.sh`, `lib.sh`) — `build-index.sh fetch` only wrote `.txt` files; the `.html` cache was never populated. Subsequent `--toc`/`--section` calls on bulk-fetched docs required a redundant network round-trip. Added a shared `fetch_and_cache <url> <safe_path>` helper to `lib.sh` that writes both `doc_<safe>.html` and `doc_<safe>.txt` in a single HTTP request. `build-index.sh fetch` now calls this helper instead of `fetch_text`.
+- **BUG-08** (`recent.sh`) — sitemap was only re-fetched when the file was absent (`[ ! -f ]`), ignoring `$SITEMAP_TTL`. A stale sitemap would be served indefinitely. Replaced with `! is_cache_fresh "$SITEMAP_XML" "$SITEMAP_TTL"` consistent with all other scripts.
+- **BUG-09** (`recent.sh`) — `$DAYS` argument had no validation; a non-numeric value like `recent.sh foo` would propagate to `find -mtime` (immediate error) and Python `int()` (unhandled exception) with no usage hint. Added `[[ "$DAYS" =~ ^[0-9]+$ ]]` guard after sourcing `lib.sh`, printing `Usage: recent.sh [days]` and exiting 1 on invalid input.
+
+### Added
+
+- `tests/test_recent.bats` — 7 tests covering BUG-08 (TTL-based sitemap refresh) and BUG-09 (argument validation).
+- `tests/test_build_index.bats` — 4 tests covering BUG-07 (`fetch_and_cache` dual-write regression).
+
+---
+
+## [0.2.2] - 2026-03-09
+
+### Fixed
+
+- **BUG-01** (`search.sh`, `build-index.sh`) — awk grep-fallback path hardcoded `https://docs.openclaw.ai` instead of using `$DOCS_BASE_URL`. Now passes the variable via `awk -v base_url=`.
+- **BUG-02** (`sitemap.sh`, `build-index.sh`, `track-changes.sh`) — `grep -oP` uses PCRE which is unsupported on macOS/BSD grep, causing silent failures. Replaced with POSIX-compatible `grep -o '<loc>[^<]*</loc>' | sed 's/<[^>]*>//g'`.
+- **BUG-03** (`track-changes.sh`) — `trap "rm -f $AFTER_TMP" EXIT` expanded the variable at registration time; a `TMPDIR` with spaces would break cleanup. Changed to single-quoted `trap 'rm -f "$AFTER_TMP"' EXIT`.
+- **BUG-04** (`info.sh`) — JSON `not_cached` error was built with `printf "%s"` interpolation, producing invalid JSON for paths containing `"` or `\`. Now emits via Python `json.dumps`.
+- **BUG-05** (`fetch-doc.sh`) — when offline with no HTML cache, `--toc`/`--section` would fall through to a misleading "run without --toc first" error. Now exits immediately with a clear offline message.
+- **BUG-06** (`track-changes.sh`) — `get_current_pages` unconditionally overwrote `sitemap.xml` on every call, ignoring `$SITEMAP_TTL` and risking corruption if curl failed silently. Now checks `is_cache_fresh` first and only writes via a temp file + `mv` on success.
+
+### Added
+
+- **`OPENCLAW_SAGE_DOCS_BASE_URL`** env var override in `lib.sh` — allows overriding the docs base URL for testing or private mirrors. Consistent with all other `OPENCLAW_SAGE_*` overrides.
+
+---
+
 ## [0.2.1] - 2026-03-08
 
 ### Added

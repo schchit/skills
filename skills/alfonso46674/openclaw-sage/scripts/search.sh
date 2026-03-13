@@ -134,11 +134,11 @@ elif [ -f "$INDEX_FILE" ]; then
   echo "Note: Install python3 for ranked BM25 results."
   echo ""
   grep -i "$KEYWORD" "$INDEX_FILE" \
-    | awk -F'|' '
+    | awk -F'|' -v base_url="$DOCS_BASE_URL" '
         {
           if ($1 != prev) {
             print ""
-            print "  [---] " $1 "  ->  https://docs.openclaw.ai/" $1
+            print "  [---] " $1 "  ->  " base_url "/" $1
             prev = $1; count = 0
           }
           if (count < 3) { gsub(/^[[:space:]]+/, "", $2); print "        " $2; count++ }
@@ -178,6 +178,6 @@ if [ "$found" -eq 0 ]; then
   echo "  3. Build search index:    ./scripts/build-index.sh build"
 fi
 
-echo "Tip: For comprehensive ranked results:"
-echo "  ./scripts/build-index.sh fetch && ./scripts/build-index.sh build"
-echo "  ./scripts/build-index.sh search \"$KEYWORD\""
+echo "Tip: For comprehensive ranked results:" >&2
+echo "  ./scripts/build-index.sh fetch && ./scripts/build-index.sh build" >&2
+echo "  ./scripts/build-index.sh search \"$KEYWORD\"" >&2
