@@ -1,11 +1,17 @@
 {
   "owner": "bytesagain1",
   "slug": "raspberry-pi-manager",
-  "displayName": "raspberry-pi-manager",
+  "displayName": "Raspberry Pi Manager",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773231456942,
-    "commit": "https://github.com/openclaw/skills/commit/365603b60bef7fdd974c2ea5e6f67dc172574769"
+    "version": "1.0.1",
+    "publishedAt": 1773361595550,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773231456942,
+      "commit": "https://github.com/openclaw/skills/commit/365603b60bef7fdd974c2ea5e6f67dc172574769"
+    }
+  ]
 }

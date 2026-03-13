@@ -2,6 +2,7 @@
 name: raspberry-pi-manager
 version: 1.0.0
 description: Manage Raspberry Pi devices — GPIO control, system monitoring (CPU/temp/memory), service management, sensor data reading, and remote deployment.
+runtime: python3
 ---
 
 # Raspberry Pi Manager
