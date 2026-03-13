@@ -3,11 +3,16 @@
   "slug": "sourcing-in-china",
   "displayName": "Sourcing in China",
   "latest": {
-    "version": "1.0.5",
-    "publishedAt": 1773285868353,
-    "commit": "https://github.com/openclaw/skills/commit/655e92353ae405a972f39bc47272db82582afd60"
+    "version": "2.2.1",
+    "publishedAt": 1773287103289,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.5",
+      "publishedAt": 1773285868353,
+      "commit": "https://github.com/openclaw/skills/commit/655e92353ae405a972f39bc47272db82582afd60"
+    },
     {
       "version": "1.0.3",
       "publishedAt": 1773085386428,
