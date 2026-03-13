@@ -1,0 +1,11 @@
+{
+  "owner": "puppetcat-fire",
+  "slug": "secure-p2p-messenger-real",
+  "displayName": "Secure P2p Messenger Real",
+  "latest": {
+    "version": "1.0.3",
+    "publishedAt": 1773406303194,
+    "commit": null
+  },
+  "history": []
+}
