@@ -128,6 +128,9 @@ aliyun rds DescribeRCInstances --region cn-beijing
 | `aliyun rds DescribeRCInstances` | 查询 RC 实例列表 |
 | `aliyun rds DescribeRCInstanceAttribute` | 查询单个 RC 实例详细信息 |
 | `aliyun rds DescribeRCImageList` | 查询 RC 实例可用镜像列表 |
+| `aliyun rds DescribeRCNetworkInterfaces` | 查询 RC 实例网络接口信息 |
+| `aliyun rds DescribeRCDeploymentSets` | 查询 RC 实例部署集列表 |
+| `aliyun rds DescribeRCDisks` | 查询 RC 实例磁盘列表 |
 | `aliyun rds DescribeRCMetricList` | 查询 RC 实例监控指标（CPU、内存等） |
 
 ## 查询实例详细信息
@@ -227,6 +230,172 @@ aliyun rds DescribeRCImageList \
 | OSType | 操作系统类型（linux/windows） |
 | OSName | 操作系统名称 |
 | ImageVersion | 镜像版本 |
+
+## 查询网络接口信息
+
+### 基本查询
+
+```bash
+aliyun rds DescribeRCNetworkInterfaces \
+  --region cn-beijing \
+  --InstanceId rc-c5kyo15381wht249k498
+```
+
+### 格式化输出
+
+```bash
+aliyun rds DescribeRCNetworkInterfaces \
+  --region cn-beijing \
+  --InstanceId rc-c5kyo15381wht249k498 \
+  --output cols=NetworkInterfaceId,PrivateIpAddress,MacAddress,Status
+```
+
+### 使用 jq 提取字段
+
+```bash
+# 提取网络接口基本信息
+aliyun rds DescribeRCNetworkInterfaces \
+  --region cn-beijing \
+  --InstanceId rc-c5kyo15381wht249k498 \
+  | jq '.NetworkInterfaces[] | {NetworkInterfaceId, PrivateIpAddress, MacAddress}'
+
+# 提取 VPC 信息
+aliyun rds DescribeRCNetworkInterfaces \
+  --region cn-beijing \
+  --InstanceId rc-c5kyo15381wht249k498 \
+  | jq '.NetworkInterfaces[] | {VpcId, VSwitchId, SecurityGroupId}'
+
+# 统计网络接口数量
+aliyun rds DescribeRCNetworkInterfaces \
+  --region cn-beijing \
+  --InstanceId rc-c5kyo15381wht249k498 \
+  | jq '.NetworkInterfaces | length'
+```
+
+### 输出字段说明
+
+| 字段 | 说明 |
+|------|------|
+| NetworkInterfaceId | 弹性网卡 ID |
+| PrivateIpAddress | 私网 IP 地址 |
+| MacAddress | MAC 地址 |
+| Status | 网卡状态（Available/InUse） |
+| VpcId | VPC ID |
+| VSwitchId | 交换机 ID |
+| SecurityGroupId | 安全组 ID |
+
+## 查询部署集列表
+
+### 基本查询
+
+```bash
+aliyun rds DescribeRCDeploymentSets \
+  --region cn-beijing
+```
+
+### 格式化输出
+
+```bash
+aliyun rds DescribeRCDeploymentSets \
+  --region cn-beijing \
+  --output cols=DeploymentSetId,DeploymentSetName,Strategy,InstanceAmount
+```
+
+### 使用 jq 提取字段
+
+```bash
+# 提取部署集基本信息
+aliyun rds DescribeRCDeploymentSets \
+  --region cn-beijing \
+  | jq '.DeploymentSets[] | {DeploymentSetId, DeploymentSetName, Strategy}'
+
+# 查询部署集中的实例数量
+aliyun rds DescribeRCDeploymentSets \
+  --region cn-beijing \
+  | jq '.DeploymentSets[] | {DeploymentSetName, InstanceAmount}'
+
+# 统计部署集总数
+aliyun rds DescribeRCDeploymentSets \
+  --region cn-beijing \
+  | jq '.DeploymentSets | length'
+```
+
+### 输出字段说明
+
+| 字段 | 说明 |
+|------|------|
+| DeploymentSetId | 部署集 ID |
+| DeploymentSetName | 部署集名称 |
+| Strategy | 部署策略（AvailabilityWithInHost/Dispersed） |
+| InstanceAmount | 部署集中的实例数量 |
+| Description | 部署集描述 |
+
+## 查询磁盘列表
+
+### 基本查询
+
+```bash
+aliyun rds DescribeRCDisks \
+  --region cn-beijing \
+  --InstanceId rc-c5kyo15381wht249k498
+```
+
+### 按地域查询
+
+```bash
+aliyun rds DescribeRCDisks \
+  --region cn-beijing
+```
+
+### 格式化输出
+
+```bash
+aliyun rds DescribeRCDisks \
+  --region cn-beijing \
+  --InstanceId rc-c5kyo15381wht249k498 \
+  --output cols=DiskId,DiskName,Size,Category,Status
+```
+
+### 使用 jq 提取字段
+
+```bash
+# 提取磁盘基本信息
+aliyun rds DescribeRCDisks \
+  --region cn-beijing \
+  --InstanceId rc-c5kyo15381wht249k498 \
+  | jq '.Disks[] | {DiskId, DiskName, Size, Category}'
+
+# 查询系统盘和数据盘
+aliyun rds DescribeRCDisks \
+  --region cn-beijing \
+  --InstanceId rc-c5kyo15381wht249k498 \
+  | jq '.Disks[] | select(.Type == "system")'
+
+# 统计磁盘总容量
+aliyun rds DescribeRCDisks \
+  --region cn-beijing \
+  --InstanceId rc-c5kyo15381wht249k498 \
+  | jq '[.Disks[].Size | tonumber] | add'
+
+# 统计磁盘数量
+aliyun rds DescribeRCDisks \
+  --region cn-beijing \
+  --InstanceId rc-c5kyo15381wht249k498 \
+  | jq '.Disks | length'
+```
+
+### 输出字段说明
+
+| 字段 | 说明 |
+|------|------|
+| DiskId | 磁盘 ID |
+| DiskName | 磁盘名称 |
+| Size | 磁盘容量（GB） |
+| Category | 磁盘种类（cloud_essd/cloud_ssd 等） |
+| Status | 磁盘状态（In_Use/Available） |
+| Type | 磁盘类型（system/data） |
+| Device | 设备名（/dev/vda 等） |
+| Encrypted | 是否加密 |
 
 ## 监控指标查询
 

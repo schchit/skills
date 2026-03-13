@@ -3,11 +3,16 @@
   "slug": "alicloud-database-rds-custom",
   "displayName": "Alicloud Database RDS Custom",
   "latest": {
-    "version": "1.4.0",
-    "publishedAt": 1773394541972,
-    "commit": "https://github.com/openclaw/skills/commit/aed7a71c745935a0cd5ead64116cdfcb33812291"
+    "version": "1.7.0",
+    "publishedAt": 1773394791004,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.4.0",
+      "publishedAt": 1773394541972,
+      "commit": "https://github.com/openclaw/skills/commit/aed7a71c745935a0cd5ead64116cdfcb33812291"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773391540646,
