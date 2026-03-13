@@ -3,11 +3,16 @@
   "slug": "ci-cd-pipeline",
   "displayName": "Ci Cd Pipeline",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773281749189,
-    "commit": "https://github.com/openclaw/skills/commit/c195c8f16d53d642f3518d39bf02fb86676f75da"
+    "version": "2.2.0",
+    "publishedAt": 1773421017026,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773281749189,
+      "commit": "https://github.com/openclaw/skills/commit/c195c8f16d53d642f3518d39bf02fb86676f75da"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773163066495,
