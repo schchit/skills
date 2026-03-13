@@ -3,11 +3,16 @@
   "slug": "trading-agents",
   "displayName": "stock trading agents",
   "latest": {
-    "version": "1.0.5",
-    "publishedAt": 1772877433160,
-    "commit": "https://github.com/openclaw/skills/commit/283fe7a969e1cc114b5ae1f3f6d1fe935f50c363"
+    "version": "1.0.6",
+    "publishedAt": 1773245637141,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.5",
+      "publishedAt": 1772877433160,
+      "commit": "https://github.com/openclaw/skills/commit/283fe7a969e1cc114b5ae1f3f6d1fe935f50c363"
+    },
     {
       "version": "1.0.3",
       "publishedAt": 1772701671179,
