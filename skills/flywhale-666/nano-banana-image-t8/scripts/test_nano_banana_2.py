@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+from datetime import datetime
 import getpass
 import os
 import sys
@@ -47,6 +48,15 @@ def _display_model_name(model: str) -> str:
     return _MODEL_DISPLAY_NAMES.get(normalized, normalized)
 
 
+def _default_image_size(model: str, image_size: str | None) -> str | None:
+    normalized = _normalize_model_name(model)
+    if image_size:
+        return image_size
+    if normalized == "nano-banana-2":
+        return "2K"
+    return None
+
+
 def _load_saved_default_model() -> str:
     if not _DEFAULT_MODEL_FILE.exists():
         return _DEFAULT_MODEL
@@ -88,11 +98,17 @@ def _save_image(data: bytes, path: Path) -> None:
     path.write_bytes(data)
 
 
+def _timestamped_output_path(out_dir: Path, prefix: str) -> Path:
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return out_dir / f"{prefix}_{stamp}.png"
+
+
 def run_text_to_image(
     client: httpx.Client,
     base_url: str,
     model: str,
     size: str | None,
+    image_size: str | None,
     aspect_ratio: str,
     prompt: str,
     output_path: Path,
@@ -107,6 +123,9 @@ def run_text_to_image(
         payload["size"] = size
     else:
         payload["aspect_ratio"] = aspect_ratio
+    effective_image_size = _default_image_size(model, image_size)
+    if effective_image_size:
+        payload["image_size"] = effective_image_size
 
     resp = client.post(f"{base_url}/v1/images/generations", json=payload, timeout=300)
     resp.raise_for_status()
@@ -125,6 +144,7 @@ def run_image_to_image(
     base_url: str,
     edit_model: str,
     size: str | None,
+    image_size: str | None,
     aspect_ratio: str,
     input_image_paths: list[Path],
     output_path: Path,
@@ -140,6 +160,9 @@ def run_image_to_image(
         form_data["size"] = size
     else:
         form_data["aspect_ratio"] = aspect_ratio
+    effective_image_size = _default_image_size(edit_model, image_size)
+    if effective_image_size:
+        form_data["image_size"] = effective_image_size
 
     with ExitStack() as stack:
         if len(input_image_paths) == 1:
@@ -284,6 +307,7 @@ def main() -> int:
     parser.add_argument("--prompt", default="")
     parser.add_argument("--input-image", action="append", default=[])
     parser.add_argument("--size", default="")
+    parser.add_argument("--image-size", default="")
     parser.add_argument("--aspect-ratio", default="auto")
     parser.add_argument("--out-dir", default=str(_DEFAULT_OUT_DIR))
     args = parser.parse_args()
@@ -322,8 +346,8 @@ def main() -> int:
     args.edit_model = _normalize_model_name(str(args.edit_model)) or default_model
 
     out_dir = Path(args.out_dir)
-    text_output = out_dir / "text_to_image.png"
-    edit_output = out_dir / "image_to_image.png"
+    text_output = _timestamped_output_path(out_dir, "text_to_image")
+    edit_output = _timestamped_output_path(out_dir, "image_to_image")
 
     if args.model == args.edit_model:
         print(f"当前使用模型: {_display_model_name(args.model)}")
@@ -334,6 +358,7 @@ def main() -> int:
     with httpx.Client(headers=_build_headers(api_key), follow_redirects=True) as client:
         try:
             size = args.size.strip() or None
+            image_size = args.image_size.strip() or None
             if mode in {"text", "both"}:
                 print("[文生图] 测试中...")
                 run_text_to_image(
@@ -341,6 +366,7 @@ def main() -> int:
                     args.base_url.rstrip("/"),
                     args.model,
                     size,
+                    image_size,
                     args.aspect_ratio,
                     prompt,
                     text_output,
@@ -359,6 +385,7 @@ def main() -> int:
                     args.base_url.rstrip("/"),
                     args.edit_model,
                     size,
+                    image_size,
                     args.aspect_ratio,
                     input_images,
                     edit_output,
