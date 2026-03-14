@@ -1,0 +1,11 @@
+{
+  "owner": "sshnii",
+  "slug": "tronscan-transaction-info",
+  "displayName": "TronScan Transaction Info",
+  "latest": {
+    "version": "1.0.6",
+    "publishedAt": 1773451327631,
+    "commit": null
+  },
+  "history": []
+}
