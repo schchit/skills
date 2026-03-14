@@ -3,9 +3,15 @@
   "slug": "gdpr-checker",
   "displayName": "Gdpr Checker",
   "latest": {
-    "version": "0.0.1",
-    "publishedAt": 1773316846947,
-    "commit": "https://github.com/openclaw/skills/commit/71e1cb11191ded47c803b63c7c4cf4c7c0ac0f5c"
+    "version": "2.3.0",
+    "publishedAt": 1773448461250,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.0.1",
+      "publishedAt": 1773316846947,
+      "commit": "https://github.com/openclaw/skills/commit/71e1cb11191ded47c803b63c7c4cf4c7c0ac0f5c"
+    }
+  ]
 }

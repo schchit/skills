@@ -1,6 +1,6 @@
 ---
 name: GDPR Checker
-description: >-
+description: "GDPR Compliance Checker. Use when you need gdpr checker capabilities. Triggers on: gdpr checker."
   GDPR合规检查。合规审计、用户同意、数据权利、泄露响应、DPA、检查清单。GDPR compliance checker. GDPR、数据保护。
 ---
 # GDPR Checker
@@ -27,3 +27,6 @@ GDPR合规检查。合规审计、用户同意、数据权利、泄露响应、D
 
 ---
 *GDPR Checker by BytesAgain*
+---
+💬 Feedback & Feature Requests: https://bytesagain.com/feedback
+Powered by BytesAgain | bytesagain.com
