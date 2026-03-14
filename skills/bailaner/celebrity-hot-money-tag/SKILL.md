@@ -1,6 +1,6 @@
 ---
-name: hot-trader-analysis
-description: "Analyzes famous Chinese traders (游资) from dragon-tiger lists, provides win rates, investment recommendations, and trading style analysis. Invoke when user needs to identify trader seats, analyze trading patterns, or get follow-investment advice based on龙虎榜 data."
+name: celebrity-hot-money-tag
+description: "Analyzes famous Chinese traders (游资) from dragon-tiger lists, provides win rates, investment recommendations, and trading style analysis. Invoke when user needs to identify trader seats, analyze trading patterns, or get follow-investment advice based on 龙虎榜 data."
 ---
 
 # 明星游资席位识别与跟投决策
