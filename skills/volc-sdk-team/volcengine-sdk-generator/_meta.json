@@ -1,0 +1,11 @@
+{
+  "owner": "volc-sdk-team",
+  "slug": "volcengine-sdk-generator",
+  "displayName": "Volcengine SDK Generator",
+  "latest": {
+    "version": "1.0.3",
+    "publishedAt": 1773384050550,
+    "commit": null
+  },
+  "history": []
+}
