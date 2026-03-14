@@ -1,9 +1,6 @@
 ---
 name: email-template
-version: 1.0.0
-description: "邮件模板库。欢迎邮件、Newsletter、事务邮件、冷启动邮件、跟进邮件、催款邮件模板生成。Email template library with welcome, newsletter, transactional, cold outreach, follow-up, and collection templates."
-author: BytesAgain
-tags: [email, template, newsletter, welcome, transactional, cold-email, follow-up, collection, 邮件模板, 邮件营销]
+description: "邮件模板库。欢迎邮件、Newsletter、事务邮件、冷启动邮件、跟进邮件、催款邮件模板生成。Email template library with welcome, newsletter, transactional, cold outreach, follow-up, and collection templates. Use when you need email template capabilities. Triggers on: email template."
 ---
 # email-template
 
@@ -39,3 +36,6 @@ A: 主要输出Markdown格式，方便复制和编辑。
 
 ---
 *email-template by BytesAgain*
+---
+💬 Feedback & Feature Requests: https://bytesagain.com/feedback
+Powered by BytesAgain | bytesagain.com
