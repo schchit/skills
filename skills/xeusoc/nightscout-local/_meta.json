@@ -1,0 +1,11 @@
+{
+  "owner": "xeusoc",
+  "slug": "nightscout-local",
+  "displayName": "Nightscout-Local",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773289648583,
+    "commit": null
+  },
+  "history": []
+}
