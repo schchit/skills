@@ -1,0 +1,11 @@
+{
+  "owner": "volc-sdk-team",
+  "slug": "volcengine-cli",
+  "displayName": "Volcengine CLI",
+  "latest": {
+    "version": "1.0.5",
+    "publishedAt": 1773397981662,
+    "commit": null
+  },
+  "history": []
+}
