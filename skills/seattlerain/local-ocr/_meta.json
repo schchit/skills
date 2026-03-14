@@ -1,0 +1,11 @@
+{
+  "owner": "seattlerain",
+  "slug": "local-ocr",
+  "displayName": "Local OCR",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773469931039,
+    "commit": null
+  },
+  "history": []
+}
