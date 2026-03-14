@@ -1,11 +1,17 @@
 {
   "owner": "bytesagain1",
   "slug": "notion-template",
-  "displayName": "notion-template",
+  "displayName": "Notion Template",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773317883764,
-    "commit": "https://github.com/openclaw/skills/commit/3ea9e07859365a9df96923427c63457f23c216f8"
+    "version": "2.3.0",
+    "publishedAt": 1773447632401,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773317883764,
+      "commit": "https://github.com/openclaw/skills/commit/3ea9e07859365a9df96923427c63457f23c216f8"
+    }
+  ]
 }
