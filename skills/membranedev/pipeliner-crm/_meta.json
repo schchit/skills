@@ -1,0 +1,11 @@
+{
+  "owner": "membranedev",
+  "slug": "pipeliner-crm",
+  "displayName": "Pipeliner Crm",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773280969224,
+    "commit": null
+  },
+  "history": []
+}
