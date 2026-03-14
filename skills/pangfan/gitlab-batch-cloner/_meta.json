@@ -1,0 +1,11 @@
+{
+  "owner": "pangfan",
+  "slug": "gitlab-batch-cloner",
+  "displayName": "GitLab Batch Cloner",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1773394188502,
+    "commit": null
+  },
+  "history": []
+}
