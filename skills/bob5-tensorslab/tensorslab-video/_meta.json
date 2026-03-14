@@ -1,0 +1,11 @@
+{
+  "owner": "bob5-tensorslab",
+  "slug": "tensorslab-video",
+  "displayName": "Video Generation",
+  "latest": {
+    "version": "1.0.3",
+    "publishedAt": 1773457898329,
+    "commit": null
+  },
+  "history": []
+}
