@@ -1,11 +1,17 @@
 {
   "owner": "bytesagain3",
   "slug": "database-design",
-  "displayName": "Database Designer",
+  "displayName": "Database Design",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773249499127,
-    "commit": "https://github.com/openclaw/skills/commit/cc4cf64a0821cc5a7ce6373e707ffb7d6e9a3ecf"
+    "version": "2.2.0",
+    "publishedAt": 1773444749715,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773249499127,
+      "commit": "https://github.com/openclaw/skills/commit/cc4cf64a0821cc5a7ce6373e707ffb7d6e9a3ecf"
+    }
+  ]
 }
