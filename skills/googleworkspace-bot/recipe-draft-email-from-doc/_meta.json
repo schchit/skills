@@ -1,0 +1,11 @@
+{
+  "owner": "googleworkspace-bot",
+  "slug": "recipe-draft-email-from-doc",
+  "displayName": "Recipe Draft Email From Doc",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773400364818,
+    "commit": null
+  },
+  "history": []
+}
