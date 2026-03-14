@@ -3,11 +3,16 @@
   "slug": "agent-commerce-engine",
   "displayName": "Agent Commerce Engine",
   "latest": {
-    "version": "1.6.5",
-    "publishedAt": 1773092770253,
-    "commit": "https://github.com/openclaw/skills/commit/6e1aacdd520cb9a02725e422b1ac87897c96f3c8"
+    "version": "1.7.1",
+    "publishedAt": 1773430813198,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.6.5",
+      "publishedAt": 1773092770253,
+      "commit": "https://github.com/openclaw/skills/commit/6e1aacdd520cb9a02725e422b1ac87897c96f3c8"
+    },
     {
       "version": "1.6.2",
       "publishedAt": 1772748046579,
