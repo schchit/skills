@@ -1,0 +1,11 @@
+{
+  "owner": "openwaygate",
+  "slug": "youtube-channel-banner",
+  "displayName": "YouTube Channel Banner",
+  "latest": {
+    "version": "0.10.6-3",
+    "publishedAt": 1773327778091,
+    "commit": null
+  },
+  "history": []
+}
