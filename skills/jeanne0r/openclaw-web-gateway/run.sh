@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
-if [ ! -d ".venv" ]; then
-  python3 -m venv .venv
+cd "$(dirname "$0")"
+
+if [ -f .venv/bin/activate ]; then
+  # shellcheck source=/dev/null
+  source .venv/bin/activate
 fi
 
-source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-
-python app.py
+exec python app.py

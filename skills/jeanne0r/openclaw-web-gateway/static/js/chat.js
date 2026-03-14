@@ -1,59 +1,112 @@
-(function () {
-  const dom = {
-    form: document.getElementById("chatForm"),
-    input: document.getElementById("messageInput"),
-    messages: document.getElementById("messages"),
-    sendBtn: document.getElementById("sendBtn"),
-    userSelect: document.getElementById("userSelect"),
-  };
-
-  function addMessage(role, content, label) {
-    const wrapper = document.createElement("div");
-    wrapper.className = `message ${role}`;
-
-    if (label) {
-      const meta = document.createElement("span");
-      meta.className = "meta";
-      meta.textContent = label;
-      wrapper.appendChild(meta);
-    }
-
-    const text = document.createElement("div");
-    text.textContent = content;
-    wrapper.appendChild(text);
-
-    dom.messages.appendChild(wrapper);
-    dom.messages.scrollTop = dom.messages.scrollHeight;
+(() => {
+  function waitForUI(retries = 80) {
+    return new Promise((resolve, reject) => {
+      function check() {
+        if (window.GatewayUI) {
+          resolve(window.GatewayUI);
+          return;
+        }
+        if (retries <= 0) {
+          reject(new Error("GatewayUI not found"));
+          return;
+        }
+        retries -= 1;
+        setTimeout(check, 50);
+      }
+      check();
+    });
   }
 
-  addMessage("system", "Gateway loaded. Send a message to test your OpenClaw connection.", "System");
-
-  dom.form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const message = dom.input.value.trim();
-    const user = dom.userSelect.value || "Family";
-    if (!message) return;
-
-    addMessage("user", message, user);
-    dom.input.value = "";
-    dom.sendBtn.disabled = true;
-
+  async function init() {
+    let ui;
     try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user, message }),
-      });
-      const data = await response.json();
-      if (!response.ok || !data.ok) {
-        throw new Error(data.error || "Request failed");
-      }
-      addMessage("assistant", data.reply, "Jarvis");
-    } catch (error) {
-      addMessage("system", String(error.message || error), "Error");
-    } finally {
-      dom.sendBtn.disabled = false;
-      dom.input.focus();
+      ui = await waitForUI();
+    } catch (err) {
+      console.error(err);
+      return;
     }
-  });
+
+    const dom = ui.dom;
+    const state = ui.state;
+    const typingRow = document.getElementById("typingRow");
+
+    function showTyping(flag) {
+      if (typingRow) typingRow.style.display = flag ? "flex" : "none";
+    }
+
+    async function sendMessage() {
+      if (!dom.messageInput) return;
+      const text = (dom.messageInput.value || "").trim();
+      if (!text || state.thinking) return;
+
+      const userAtSendTime = state.activeUser;
+      ui.appendMessage("user", text, userAtSendTime);
+      dom.messageInput.value = "";
+      ui.autoResizeTextarea();
+      ui.setThinking(true);
+      showTyping(true);
+
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user: userAtSendTime,
+            message: text,
+            history: ui.state.histories[userAtSendTime] || [],
+          }),
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          ui.appendMessage("assistant", data.error || `Server error (${response.status})`, userAtSendTime);
+          return;
+        }
+
+        ui.appendMessage("assistant", data.reply || "No reply received.", userAtSendTime);
+
+        if (data.action?.type === "open_route") {
+          ui.openRoute(data.action.origin || "", data.action.destination || "");
+        }
+        if (data.action?.type === "open_route_search") {
+          ui.openRouteSearch(data.action.query || "");
+        }
+        if (data.action?.type === "open_web") {
+          ui.openWebSearch(data.action.query || "");
+        }
+        if (data.action?.type === "open_map") {
+          ui.openMapSearch(data.action.query || "");
+        }
+      } catch (err) {
+        console.error("Fetch error /api/chat:", err);
+        ui.appendMessage("assistant", "Connection error.", userAtSendTime);
+      } finally {
+        ui.setThinking(false);
+        showTyping(false);
+        dom.messageInput?.focus();
+      }
+    }
+
+    dom.sendBtn?.addEventListener("click", (e) => {
+      e.preventDefault();
+      sendMessage();
+    });
+
+    dom.messageInput?.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    dom.messageInput?.addEventListener("focus", () => setTimeout(ui.autoScroll, 150));
+    window.addEventListener("load", () => ui.autoScroll());
+    window.addEventListener("resize", () => setTimeout(ui.autoScroll, 100));
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init, { once: true });
+  } else {
+    init();
+  }
 })();

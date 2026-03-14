@@ -1,23 +1,46 @@
+from __future__ import annotations
+
 import json
-from typing import Any
 
-from config import STATE_FILE
+from config import DEFAULT_USER, STATE_FILE, canonical_user
 
 
-def load_state() -> dict[str, Any]:
+def sanitize_state(data):
+    if not isinstance(data, dict):
+        return {"activeUser": DEFAULT_USER, "histories": {}}
+
+    active_user = canonical_user(data.get("activeUser", DEFAULT_USER))
+    raw_histories = data.get("histories", {})
+    histories = {}
+
+    if isinstance(raw_histories, dict):
+        for raw_user, items in raw_histories.items():
+            user = canonical_user(raw_user)
+            if not isinstance(items, list):
+                continue
+            cleaned_items = []
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                role = item.get("role")
+                content = str(item.get("content") or "").strip()
+                if role in {"user", "assistant"} and content:
+                    cleaned_items.append({"role": role, "content": content})
+            histories[user] = cleaned_items
+
+    return {"activeUser": active_user, "histories": histories}
+
+
+def load_state():
     if not STATE_FILE.exists():
-        return {}
+        return {"activeUser": DEFAULT_USER, "histories": {}}
     try:
-        with STATE_FILE.open("r", encoding="utf-8") as handle:
-            data = json.load(handle)
-        return data if isinstance(data, dict) else {}
-    except (json.JSONDecodeError, OSError):
-        return {}
+        return sanitize_state(json.loads(STATE_FILE.read_text(encoding="utf-8")))
+    except Exception:
+        return {"activeUser": DEFAULT_USER, "histories": {}}
 
 
-
-def save_state(state: dict[str, Any]) -> dict[str, Any]:
+def save_state(data):
+    cleaned = sanitize_state(data)
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with STATE_FILE.open("w", encoding="utf-8") as handle:
-        json.dump(state, handle, ensure_ascii=False, indent=2)
-    return state
+    STATE_FILE.write_text(json.dumps(cleaned, ensure_ascii=False, indent=2), encoding="utf-8")

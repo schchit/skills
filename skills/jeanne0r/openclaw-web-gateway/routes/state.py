@@ -1,28 +1,17 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 
-from config import APP_SUBTITLE, APP_TITLE, DEFAULT_USER, GOOGLE_MAPS_EMBED_API_KEY, load_participants
-from openclaw_client import OpenClawClient
-
-state_bp = Blueprint("state", __name__, url_prefix="/api")
-client = OpenClawClient()
+from state_manager import load_state, save_state
 
 
-@state_bp.get("/health")
-def health() -> tuple:
-    upstream = client.health()
-    return jsonify({"ok": True, "app": "openclaw-web-gateway", "upstream": upstream})
+state_bp = Blueprint("state", __name__)
 
 
-@state_bp.get("/bootstrap")
-def bootstrap() -> tuple:
-    participants = load_participants()
-    return jsonify(
-        {
-            "ok": True,
-            "app_title": APP_TITLE,
-            "app_subtitle": APP_SUBTITLE,
-            "default_user": DEFAULT_USER,
-            "participants": participants,
-            "google_maps_embed_api_key_present": bool(GOOGLE_MAPS_EMBED_API_KEY),
-        }
-    )
+@state_bp.route("/api/state", methods=["GET"])
+def api_get_state():
+    return jsonify(load_state())
+
+
+@state_bp.route("/api/state", methods=["POST"])
+def api_post_state():
+    save_state(request.get_json(silent=True) or {})
+    return jsonify({"ok": True})

@@ -1,121 +1,77 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import requests
 
-from config import (
-    OPENCLAW_AGENT,
-    OPENCLAW_BASE,
-    OPENCLAW_CHANNEL,
-    OPENCLAW_MODEL,
-    OPENCLAW_TIMEOUT,
-    OPENCLAW_TOKEN,
-)
+from config import CHANNEL, MODEL, OPENCLAW_BASE, OPENCLAW_TOKEN, canonical_user, user_slug
 from prompts import get_prompt
 
 
-@dataclass
-class ChatResult:
-    ok: bool
-    reply: str
-    status_code: int
-    raw: dict | None = None
-    error: str | None = None
+def build_messages(user: str, history: list[dict] | None = None, message: str | None = None) -> list[dict]:
+    user = canonical_user(user)
+    messages = [{"role": "system", "content": get_prompt(user)}]
+
+    for item in history or []:
+        if not isinstance(item, dict):
+            continue
+        role = item.get("role")
+        content = str(item.get("content") or "").strip()
+        if role in {"system", "user", "assistant"} and content:
+            messages.append({"role": role, "content": content})
+
+    if message:
+        messages.append({"role": "user", "content": message})
+
+    return messages
 
 
-class OpenClawClient:
-    def __init__(
-        self,
-        base_url: str = OPENCLAW_BASE,
-        agent: str = OPENCLAW_AGENT,
-        token: str = OPENCLAW_TOKEN,
-        channel: str = OPENCLAW_CHANNEL,
-        model: str = OPENCLAW_MODEL,
-        timeout: float = OPENCLAW_TIMEOUT,
-    ) -> None:
-        self.base_url = base_url.rstrip("/")
-        self.agent = agent
-        self.token = token
-        self.channel = channel
-        self.model = model
-        self.timeout = timeout
-
-    def _headers(self) -> dict[str, str]:
-        headers = {
-            "Content-Type": "application/json",
-            "x-openclaw-message-channel": self.channel,
-        }
-        if self.token:
-            headers["Authorization"] = f"Bearer {self.token}"
-        return headers
-
-    def health(self) -> dict:
-        try:
-            response = requests.get(f"{self.base_url}/health", timeout=10)
-            return {
-                "ok": response.ok,
-                "status_code": response.status_code,
-                "text": response.text[:500],
-            }
-        except requests.RequestException as exc:
-            return {"ok": False, "status_code": 0, "error": str(exc)}
-
-    def chat(self, user: str, message: str) -> ChatResult:
-        payload = {
-            "model": self.model,
-            "stream": False,
-            "user": f"{self.channel}:{user.lower()}",
-            "messages": [
-                {"role": "system", "content": get_prompt(user)},
-                {"role": "user", "content": message},
-            ],
-            "metadata": {
-                "agent": self.agent,
-                "speaker": user,
-                "channel": self.channel,
-            },
-        }
-
-        try:
-            response = requests.post(
-                f"{self.base_url}/v1/chat/completions",
-                headers=self._headers(),
-                json=payload,
-                timeout=self.timeout,
-            )
-        except requests.RequestException as exc:
-            return ChatResult(
-                ok=False,
-                reply="",
-                status_code=0,
-                error=str(exc),
-            )
-
-        try:
-            data = response.json()
-        except ValueError:
-            data = {"raw_text": response.text}
-
-        if not response.ok:
-            return ChatResult(
-                ok=False,
-                reply="",
-                status_code=response.status_code,
-                raw=data,
-                error=data.get("error") if isinstance(data, dict) else response.text,
-            )
-
-        reply = self._extract_reply(data)
-        return ChatResult(ok=True, reply=reply, status_code=response.status_code, raw=data)
-
-    @staticmethod
-    def _extract_reply(data: dict) -> str:
+def extract_reply(data: dict) -> str:
+    try:
         choices = data.get("choices") or []
         if choices:
             message = choices[0].get("message") or {}
             content = message.get("content")
             if isinstance(content, str) and content.strip():
                 return content.strip()
-        if isinstance(data.get("reply"), str):
-            return data["reply"].strip()
-        return "No response returned by OpenClaw."
+            if isinstance(content, list):
+                parts = []
+                for part in content:
+                    if isinstance(part, dict) and part.get("text"):
+                        parts.append(part["text"])
+                joined = "\n".join(parts).strip()
+                if joined:
+                    return joined
+    except Exception:
+        pass
+
+    error_message = data.get("error")
+    if error_message:
+        return f"OpenClaw error: {error_message}"
+
+    return "OpenClaw returned no complete reply. The generation may have been interrupted."
+
+
+def call_openclaw(user: str, message: str | None = None, history: list[dict] | None = None) -> str:
+    user = canonical_user(user)
+
+    headers = {
+        "Content-Type": "application/json",
+        "x-openclaw-message-channel": CHANNEL,
+    }
+    if OPENCLAW_TOKEN:
+        headers["Authorization"] = f"Bearer {OPENCLAW_TOKEN}"
+
+    payload = {
+        "model": MODEL,
+        "stream": False,
+        "user": f"web-gateway:{user_slug(user)}",
+        "messages": build_messages(user=user, history=history, message=message),
+    }
+
+    response = requests.post(
+        f"{OPENCLAW_BASE}/v1/chat/completions",
+        headers=headers,
+        json=payload,
+        timeout=180,
+    )
+    response.raise_for_status()
+    return extract_reply(response.json())

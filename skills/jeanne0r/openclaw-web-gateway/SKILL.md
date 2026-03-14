@@ -1,6 +1,5 @@
-# OpenClaw Web Gateway
 
-A minimal Flask-based web interface for OpenClaw agents.
+# OpenClaw Web Gateway
 
 ## Type
 interface
@@ -8,73 +7,49 @@ interface
 ## Runtime
 python
 
-## Features
+## Description
+Lightweight Flask web interface that forwards chat requests to a configured OpenClaw HTTP endpoint.
 
-- Multi-user chat interface
-- OpenClaw HTTP integration
-- Persistent UI state
-- Simple memory helper
-- Optional Google Maps integration
+The gateway provides a browser chat UI and stores minimal local state.
 
 ## Requirements
-
 - Python 3.10+
-- An OpenClaw instance running locally or remotely
+- A reachable OpenClaw instance
 
-## Installation
+## Configuration
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+Configuration is done using environment variables.
 
+Typical values:
 
-Local configuration
+OPENCLAW_BASE=http://127.0.0.1:18789
 
-Create a local .env file in the project root with the following content:
-
-APP_TITLE=OpenClaw Web Gateway
-APP_SUBTITLE=Local chat UI for OpenClaw
-HOST=0.0.0.0
-PORT=5002
-OPENCLAW_BASE_URL=http://127.0.0.1:18789
-OPENCLAW_TOKEN=
-OPENCLAW_MODEL=default
+OPENCLAW_AUTH=
+OPENCLAW_AGENT=main
 OPENCLAW_CHANNEL=web-gateway
-GOOGLE_MAPS_EMBED_API_KEY=
-STATE_FILE=./gateway_state.json
-MEMORY_ROOT=~/.openclaw/memory
-PARTICIPANTS_FILE=./config/participants.json
-DEFAULT_USER=alex
-
-Then create config/participants.json from this example:
-
-[
-  {
-    "key": "alex",
-    "display_name": "Alex",
-    "aliases": ["alex", "a"]
-  },
-  {
-    "key": "sam",
-    "display_name": "Sam",
-    "aliases": ["sam", "s"]
-  }
-]
+OPENCLAW_MODEL=default
+DEFAULT_USER=family
+PORT=5002
 
 
-Then run:
-./run.sh
+`OPENCLAW_AUTH` is optional and only required if the upstream OpenClaw endpoint requires authentication.
+
+## Run
+
+
+python app.py
+
+Then open:
+
 http://127.0.0.1:5002
 
 
-Notes
+## Notes
 
-Do not commit your real .env
-Do not commit your real config/participants.json
-OPENCLAW_TOKEN can be left empty if your gateway does not require authentication
+The application may create small local runtime files in directories such as:
+
+memory/
+state/
 
 
-Author
-
-Romain Jeanneret
+These directories are intended for local runtime data and should not be committed to version control.

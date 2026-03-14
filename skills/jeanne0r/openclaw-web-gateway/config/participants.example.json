@@ -1,12 +1,17 @@
 [
   {
-    "key": "family",
-    "display_name": "Family",
-    "aliases": ["famille"]
+    "key": "alex",
+    "display_name": "Alex",
+    "aliases": ["alex"]
   },
   {
-    "key": "user1",
-    "display_name": "User 1",
-    "aliases": []
+    "key": "sam",
+    "display_name": "Sam",
+    "aliases": ["sam"]
+  },
+  {
+    "key": "family",
+    "display_name": "Family",
+    "aliases": ["family"]
   }
 ]
