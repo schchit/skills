@@ -252,12 +252,15 @@ Optionally pass `vendorId` to pick a specific vendor; otherwise the best availab
 GET /api/agent/p2p/orders/:id
 ```
 
-Poll this endpoint to check status. Key statuses:
-- `escrow_locked` — waiting for vendor to accept
+**Poll every 15–20 seconds** to keep the user informed in near-real-time. Key statuses:
+- `escrow_locked` — waiting for vendor to accept (up to 3 min). If the vendor doesn't accept in time, the order is **automatically rerouted** to the next best vendor — no action needed from you or the user. Let the user know this may happen.
 - `accepted` — vendor accepted, will send naira soon
-- `fiat_sent` — vendor says naira was sent, check your bank
+- `fiat_sent` — vendor says naira was sent, **immediately tell the user to check their bank**
 - `completed` — you confirmed, escrow released
+- `cancelled` — order was cancelled (vendor unavailable, reroute limit reached, etc.)
 - `disputed` — dispute opened, admin reviewing
+
+When polling, tell the user each status change as it happens. Don't wait for them to ask.
 
 ### 5. Confirm naira received
 
@@ -269,13 +272,19 @@ POST /api/agent/p2p/orders/:id/confirm
 
 This releases escrow to the vendor. **Irreversible.**
 
+**Important: auto-release.** When vendor marks payment as sent (`fiat_sent`), a 2-hour countdown starts. If the user doesn't confirm or dispute within 2 hours, escrow **auto-releases to the vendor**. Always warn the user:
+
+> The vendor says they've sent ₦{amount} to your bank. **Check your bank now.** If you received it, tell me and I'll confirm. If you did NOT receive it within a reasonable time, open a dispute on the web app at [payme.feedom.tech](https://payme.feedom.tech) — the escrow will auto-release to the vendor in 2 hours if you don't act.
+
 ### 6. Dispute (if needed)
 
-If naira was not received or something is wrong:
+Disputes require evidence (bank statement screenshots) which **can only be uploaded on the web app**. Direct the user to [payme.feedom.tech](https://payme.feedom.tech) to open and manage disputes. They already have web access since email verification (required for P2P) is only possible there.
+
+You can open a basic dispute via the API as a fallback, but the user should follow up with evidence on the web app:
 
 ```
 POST /api/agent/p2p/orders/:id/dispute
-{ "reason": "Vendor marked paid but naira not received after 1 hour" }
+{ "reason": "Vendor marked paid but naira not received" }
 ```
 
 This cancels auto-release and triggers admin investigation.
@@ -290,6 +299,7 @@ POST /api/agent/p2p/orders/:id/rate
 ## Security & Token Handling
 
 - **NEVER ask for PINs, passwords, or private keys.** Always guide the user to generate a connection code via `/agentcode` on @veedombot. Only use identifier+PIN if the user volunteers it unprompted.
+- **Tokens are hashed at rest.** The server stores a SHA-256 hash of the agent token — the raw token is returned only once at creation and never stored. A database breach does not expose usable tokens.
 - **Store the agent token securely.** Save it to an environment variable (`PAYME_AGENT_TOKEN`), a secrets manager, or an encrypted config file. Never store it in plain text in code, logs, or chat history.
 - **Tokens expire based on user choice** (default 90 days, max 365). Re-authenticate via `/api/agent/connect` when expired. Revoke tokens you no longer need via `POST /api/agent/revoke`.
 - **All requests go to `https://api.feedom.tech` only.** Never send your agent token to any other domain.
@@ -308,4 +318,4 @@ POST /api/agent/p2p/orders/:id/rate
 
 ## Full API Reference
 
-For complete request/response schemas and error codes, see [references/api-reference.md](references/api-reference.md).
+For complete request/response schemas and error codes, see the [API Reference](https://github.com/variousfoot/payme-skill/blob/main/references/api-reference.md).
