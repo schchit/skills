@@ -1,0 +1,11 @@
+{
+  "owner": "diagnostikon",
+  "slug": "polymarket-climate-trader",
+  "displayName": "Climate & Weather Trader",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773429346169,
+    "commit": null
+  },
+  "history": []
+}
