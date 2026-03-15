@@ -3,11 +3,16 @@
   "slug": "shieldcortex",
   "displayName": "ShieldCortex",
   "latest": {
-    "version": "2.20.0",
-    "publishedAt": 1772895130506,
-    "commit": "https://github.com/openclaw/skills/commit/68f9cd6e71dcd0cb4527757833823c53c78ba71e"
+    "version": "3.4.3",
+    "publishedAt": 1773352371833,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.20.0",
+      "publishedAt": 1772895130506,
+      "commit": "https://github.com/openclaw/skills/commit/68f9cd6e71dcd0cb4527757833823c53c78ba71e"
+    },
     {
       "version": "2.19.1",
       "publishedAt": 1772631179531,
