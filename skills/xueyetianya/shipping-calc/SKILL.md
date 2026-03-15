@@ -37,3 +37,18 @@ A: 主要输出Markdown格式，方便复制和编辑。
 ---
 💬 Feedback & Feature Requests: https://bytesagain.com/feedback
 Powered by BytesAgain | bytesagain.com
+
+
+## Examples
+
+```bash
+# Show help
+shipping-calc help
+
+# Run
+shipping-calc run
+```
+
+## Commands
+
+Run `shipping-calc help` to see all available commands.
