@@ -22,9 +22,28 @@ description: "Succession Planner. Use when you need succession plan capabilities
   emergency       emergency
 ```
 
-
 ---
 *Succession Plan by BytesAgain*
 ---
 💬 Feedback & Feature Requests: https://bytesagain.com/feedback
 Powered by BytesAgain | bytesagain.com
+
+- Run `succession-plan help` for commands
+- No API keys needed
+
+- Run `succession-plan help` for all commands
+
+## Commands
+
+Run `succession-plan help` to see all available commands.
+
+- Run `succession-plan help` for all commands
+
+## When to Use
+
+- Quick succession tasks from terminal
+- Automation pipelines
+
+## Output
+
+Results go to stdout. Save with `succession-plan run > output.txt`.

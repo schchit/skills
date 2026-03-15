@@ -3,9 +3,15 @@
   "slug": "succession-plan",
   "displayName": "Succession Plan",
   "latest": {
-    "version": "2.3.0",
-    "publishedAt": 1773447687831,
-    "commit": "https://github.com/openclaw/skills/commit/152524777d208f96dc90cd4c0df67f214c62a68b"
+    "version": "2.3.3",
+    "publishedAt": 1773578514126,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "2.3.0",
+      "publishedAt": 1773447687831,
+      "commit": "https://github.com/openclaw/skills/commit/152524777d208f96dc90cd4c0df67f214c62a68b"
+    }
+  ]
 }
