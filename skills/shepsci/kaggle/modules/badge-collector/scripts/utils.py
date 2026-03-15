@@ -85,7 +85,10 @@ def check_credentials() -> bool:
         )
         print(result.stdout.strip())
         return result.returncode == 0
-    # Fallback: check env vars directly
+    # Fallback: check credential sources directly (priority order)
+    access_token = Path.home() / ".kaggle" / "access_token"
+    if access_token.exists():
+        return True
     if os.getenv("KAGGLE_API_TOKEN"):
         return True
     if os.getenv("KAGGLE_USERNAME") and os.getenv("KAGGLE_KEY"):
