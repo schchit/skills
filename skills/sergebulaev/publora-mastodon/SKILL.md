@@ -7,64 +7,48 @@ description: >
 
 # Publora — Mastodon
 
-Post and schedule Mastodon content via the Publora API.
+Mastodon / Fediverse platform skill for the Publora API. For auth, core scheduling, media upload, and workspace/webhook docs, see the `publora` core skill.
 
-> **Prerequisite:** Install the `publora` core skill for auth setup and getting platform IDs.
+**Base URL:** `https://api.publora.com/api/v1`  
+**Header:** `x-publora-key: sk_YOUR_KEY`  
+**Platform ID format:** `mastodon-{accountId}`
 
-## Platform ID Format
+> **Note:** Publora currently posts to the **mastodon.social** instance. Other instances are not supported at this time.
 
-`mastodon-{accountId}` — get your exact ID from `GET /api/v1/platform-connections`.
+## Platform Limits (API)
 
-## Instance Support
+| Property | Limit | Notes |
+|----------|-------|-------|
+| Text (toot) | **500 characters** | Instance-configurable; some allow 5,000+ |
+| Images | Up to **4** × **16 MB** | JPEG, PNG, GIF, WebP |
+| Video | ~**99 MB** | MP4, MOV, WebM; no duration limit, capped by size |
+| Text only | ✅ Yes | — |
+| Rate limit | 30 media uploads/30 min | 300 requests/5 min per account |
 
-⚠️ **mastodon.social only** — Publora currently supports only mastodon.social. Other Mastodon instances are not yet supported.
-
-## Character Limit
-
-**500 characters STRICT.** The API returns an error if exceeded.
-
-Unlike X/Threads, Mastodon does **NOT auto-thread** when you exceed the limit. Your post will be rejected.
-
-## Supported Content
-
-| Type | Supported | Notes |
-|------|-----------|-------|
-| Text only | ✅ | Up to 500 chars |
-| Images | ✅ | JPEG and PNG only (up to 4 per post) |
-| Videos | ✅ | MP4 |
-| Hashtags | ✅ | Work and **count toward 500 char limit** |
-| Content warnings | ❌ | Not supported via API yet |
-
-## Post to Mastodon
+## Post a Toot (text)
 
 ```javascript
 await fetch('https://api.publora.com/api/v1/create-post', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json', 'x-publora-key': 'sk_YOUR_KEY' },
   body: JSON.stringify({
-    content: 'Just shipped a new open-source tool for managing social media posts. Check it out! 🎉 #opensource #developer #tools',
-    platforms: ['mastodon-ACCOUNT_ID']
+    content: 'Hello Fediverse! Building open, decentralized tools for everyone. #fediverse #opensource',
+    platforms: ['mastodon-123456789']
   })
 });
 ```
 
-## Schedule a Post
+## Schedule a Toot
 
 ```javascript
-await fetch('https://api.publora.com/api/v1/create-post', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json', 'x-publora-key': 'sk_YOUR_KEY' },
-  body: JSON.stringify({
-    content: 'Weekly update: what we shipped this week. Thread below ⬇️ #indiedev #buildinpublic',
-    platforms: ['mastodon-ACCOUNT_ID'],
-    scheduledTime: '2026-03-16T09:00:00.000Z'
-  })
-});
+body: JSON.stringify({
+  content: 'Your Mastodon post here',
+  platforms: ['mastodon-123456789'],
+  scheduledTime: '2026-03-20T10:00:00.000Z'
+})
 ```
 
-## Post with Images
-
-**JPEG and PNG only.** Up to 4 images per post. Uses the standard 3-step upload workflow.
+## Post with Image
 
 ```python
 import requests
@@ -73,56 +57,29 @@ HEADERS = { 'Content-Type': 'application/json', 'x-publora-key': 'sk_YOUR_KEY' }
 
 # Step 1: Create post
 post = requests.post('https://api.publora.com/api/v1/create-post', headers=HEADERS, json={
-    'content': 'New UI screenshot! Fresh redesign dropping soon 👀 #design #ux',
-    'platforms': ['mastodon-ACCOUNT_ID']
+    'content': 'Here is a photo from our event 📷 #community',
+    'platforms': ['mastodon-123456789']
 }).json()
-post_group_id = post['postGroupId']
 
-# Step 2: Get upload URL
+# Step 2: Get upload URL (up to 16 MB, JPEG/PNG/GIF/WebP)
 upload = requests.post('https://api.publora.com/api/v1/get-upload-url', headers=HEADERS, json={
-    'fileName': 'screenshot.png', 'contentType': 'image/png',
-    'type': 'image', 'postGroupId': post_group_id
+    'postGroupId': post['postGroupId'],
+    'fileName': 'photo.jpg',
+    'contentType': 'image/jpeg',
+    'type': 'image'
 }).json()
 
-# Step 3: Upload to S3
-with open('screenshot.png', 'rb') as f:
-    requests.put(upload['uploadUrl'], headers={'Content-Type': 'image/png'}, data=f)
+# Step 3: Upload
+with open('photo.jpg', 'rb') as f:
+    requests.put(upload['uploadUrl'], headers={'Content-Type': 'image/jpeg'}, data=f)
 ```
 
-⚠️ **WebP and GIF are not supported** — use JPEG or PNG only for Mastodon.
+## Platform Quirks
 
-## Hashtags
-
-Hashtags work and become clickable on Mastodon. However, **they count toward the 500 character limit** — budget for them in your character count.
-
-```
-Building in public: day 47.
-
-Shipped the new API today. Docs are live.
-
-#buildinpublic #indiedev #mastodon
-```
-The above is ~97 chars — well within 500.
-
-## Visibility
-
-Posts are **public by default** and appear on the federated timeline (visible to users across other Mastodon instances).
-
-## Federation
-
-After posting, expect a **few seconds delay** for your post to propagate to other federated instances. This is normal Mastodon behavior.
-
-## Limitations
-
-- **mastodon.social only** — other instances (fosstodon.org, hachyderm.io, etc.) not yet supported
-- **No content warnings (CW)** via API — not yet implemented
-- **No auto-threading** — if your content exceeds 500 chars, the API returns an error; split manually
-- **JPEG/PNG only** — no WebP, GIF not supported for images
-
-## Tips for Mastodon
-
-- **500 char limit is strict** — count including hashtags
-- **Public by default** — federated timeline exposure
-- **JPEG or PNG only** for images — no other formats
-- **Up to 4 images** per post
-- **No auto-threading** — keep each post under 500 chars
+- **mastodon.social only** — Publora currently supports this instance
+- **Generous image limit**: 16 MB per image, much more than most platforms
+- **Video capped by size** (~99 MB default) — no explicit duration limit
+- **WebP supported** — unlike Instagram, Mastodon accepts WebP natively
+- **Federation**: Posts federate automatically to the broader Fediverse
+- **Hashtags**: Important for discoverability on Mastodon — use them in posts
+- **Content warnings**: Not directly supported via Publora API yet; use text conventions if needed
