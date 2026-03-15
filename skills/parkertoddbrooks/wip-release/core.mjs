@@ -90,19 +90,27 @@ export function syncSkillVersion(repoPath, newVersion) {
 export function updateChangelog(repoPath, newVersion, notes) {
   const changelogPath = join(repoPath, 'CHANGELOG.md');
   const date = new Date().toISOString().split('T')[0];
-  const entry = `## ${newVersion} (${date})\n\n${notes || 'Release.'}\n`;
+
+  // Bug fix #121: never silently default to "Release." when notes are empty.
+  // If notes are empty at this point, warn loudly.
+  if (!notes || !notes.trim()) {
+    console.warn(`  ! WARNING: No release notes provided for v${newVersion}. CHANGELOG entry will be minimal.`);
+    notes = 'No release notes provided.';
+  }
+
+  const entry = `## ${newVersion} (${date})\n\n${notes}\n`;
 
   if (!existsSync(changelogPath)) {
-    writeFileSync(changelogPath, `# Changelog\n\n${entry}\n`);
+    writeFileSync(changelogPath, `# Changelog\n\n${entry}`);
     return;
   }
 
   let content = readFileSync(changelogPath, 'utf8');
-  // Insert after the # Changelog header
-  const headerMatch = content.match(/^# Changelog\s*\n/);
+  // Insert after the # Changelog header (single newline, no accumulation)
+  const headerMatch = content.match(/^# Changelog\s*\n+/);
   if (headerMatch) {
     const insertPoint = headerMatch[0].length;
-    content = content.slice(0, insertPoint) + '\n' + entry + '\n' + content.slice(insertPoint);
+    content = content.slice(0, insertPoint) + entry + '\n' + content.slice(insertPoint);
   } else {
     content = `# Changelog\n\n${entry}\n${content}`;
   }
@@ -217,32 +225,69 @@ function categorizeCommit(subject) {
  */
 function checkReleaseNotes(notes, notesSource, level) {
   const issues = [];
-  const isMinorOrMajor = level === 'minor' || level === 'major';
 
   if (!notes) {
-    issues.push('No release notes provided. Write a RELEASE-NOTES-v{version}.md file.');
-    return { ok: false, issues };
+    issues.push('No release notes provided. Write a RELEASE-NOTES-v{version}.md or ai/dev-updates/ file.');
+    return { ok: false, issues, block: true };
   }
 
-  // Bare --notes flag is not acceptable for minor/major.
-  // Agents must write a file, not pass a one-liner.
-  if (notesSource === 'flag') {
-    if (isMinorOrMajor) {
-      issues.push('Release notes came from --notes flag, not a file.');
-      issues.push('Write RELEASE-NOTES-v{version}.md (dashes not dots) and commit it.');
-      issues.push('wip-release auto-detects the file. No --notes flag needed.');
-    } else if (notes.length < 50) {
-      issues.push('Release notes are very short. Consider writing a RELEASE-NOTES file.');
-    }
+  // Notes too short. All levels blocked.
+  if (notes.length < 50) {
+    issues.push('Release notes are too short (under 50 chars). Explain what changed and why.');
+    issues.push('Write a RELEASE-NOTES-v{version}.md or ai/dev-updates/ file.');
+  }
+
+  // Bare --notes flag for minor/major is never acceptable.
+  if (notesSource === 'flag' && (level === 'minor' || level === 'major')) {
+    issues.push('Minor/major releases require a file, not --notes flag.');
+    issues.push('Write RELEASE-NOTES-v{version}.md (dashes not dots) and commit it.');
   }
 
   // Check for changelog-style one-liners regardless of source
   const looksLikeChangelog = /^(fix|add|update|remove|bump|chore|refactor|docs?)[\s:]/i.test(notes);
   if (looksLikeChangelog && notes.length < 100) {
-    issues.push('Notes look like a changelog entry, not a narrative.');
+    issues.push('Notes look like a changelog entry, not a narrative. Explain the impact.');
   }
 
-  return { ok: issues.length === 0, issues };
+  return { ok: issues.length === 0, issues, block: issues.length > 0 };
+}
+
+/**
+ * Scaffold a RELEASE-NOTES-v{version}.md template if one doesn't exist.
+ * Called when the release notes gate blocks. Gives the agent a file to fill in.
+ */
+export function scaffoldReleaseNotes(repoPath, version) {
+  const dashed = version.replace(/\./g, '-');
+  const notesPath = join(repoPath, `RELEASE-NOTES-v${dashed}.md`);
+  if (existsSync(notesPath)) return notesPath;
+
+  const pkg = JSON.parse(readFileSync(join(repoPath, 'package.json'), 'utf8'));
+  const name = pkg.name?.replace(/^@[^/]+\//, '') || basename(repoPath);
+
+  const template = `# Release Notes: ${name} v${version}
+
+**One-line summary of what this release does**
+
+## What changed
+
+Describe the changes. Not a commit list. Explain:
+- What was built or fixed
+- Why it matters
+- What the user should know
+
+## Why
+
+What problem does this solve? What was broken or missing?
+
+## How to verify
+
+\`\`\`bash
+# Commands to test the changes
+\`\`\`
+`;
+
+  writeFileSync(notesPath, template);
+  return notesPath;
 }
 
 /**
@@ -273,19 +318,23 @@ function checkProductDocs(repoPath) {
   const aiDir = join(repoPath, 'ai');
   if (!existsSync(aiDir)) return { missing: [], ok: true, skipped: true };
 
-  // 1. Dev update: file from today (or last 3 days)
+  // 1. Dev update: must have a file modified since last release tag.
+  // Old check ("any file from last 3 days") let the same stale file pass
+  // across 11 releases in one session. Now uses the same git-based check
+  // as roadmap and readme-first: was the file actually changed since the tag?
   const devUpdatesDir = join(aiDir, 'dev-updates');
   if (existsSync(devUpdatesDir)) {
-    const now = new Date();
-    const recentDates = [];
-    for (let i = 0; i < 3; i++) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - i);
-      recentDates.push(d.toISOString().split('T')[0]);
-    }
     const files = readdirSync(devUpdatesDir).filter(f => f.endsWith('.md'));
-    const hasRecent = files.some(f => recentDates.some(d => f.startsWith(d)));
-    if (!hasRecent) missing.push('ai/dev-updates/ (no dev update from last 3 days)');
+    if (files.length === 0) {
+      missing.push('ai/dev-updates/ (no dev update files)');
+    } else {
+      const anyModified = files.some(f =>
+        fileModifiedSinceLastTag(repoPath, `ai/dev-updates/${f}`)
+      );
+      if (!anyModified) {
+        missing.push('ai/dev-updates/ (no dev update modified since last release)');
+      }
+    }
   }
 
   // 2. Roadmap: modified since last tag
@@ -391,7 +440,7 @@ export function buildReleaseNotes(repoPath, currentVersion, newVersion, notes) {
   }
 
   // Install section
-  lines.push('### Install\n');
+  lines.push('### Install');
   lines.push('```bash');
   lines.push(`npm install -g ${pkg.name}@${newVersion}`);
   lines.push('```');
@@ -434,6 +483,18 @@ export function createGitHubRelease(repoPath, newVersion, notes, currentVersion)
       '--notes-file', '.release-notes-tmp.md',
       '--repo', repoSlug
     ], { cwd: repoPath, stdio: 'inherit' });
+
+    // Bug fix #121: verify the release was actually created
+    try {
+      const verify = execFileSync('gh', [
+        'release', 'view', `v${newVersion}`,
+        '--repo', repoSlug, '--json', 'body', '--jq', '.body | length'
+      ], { cwd: repoPath, encoding: 'utf8' }).trim();
+      const bodyLen = parseInt(verify, 10);
+      if (bodyLen < 50) {
+        console.warn(`  ! GitHub release body is only ${bodyLen} chars. Notes may be truncated.`);
+      }
+    } catch {}
   } finally {
     try { execFileSync('rm', ['-f', tmpFile]); } catch {}
   }
@@ -456,6 +517,102 @@ export function publishClawHub(repoPath, newVersion, notes) {
     '--changelog', changelog
   ], { cwd: repoPath, stdio: 'inherit' });
   return true;
+}
+
+// ── Skill Publish ────────────────────────────────────────────────────
+
+/**
+ * Publish SKILL.md to website as plain text.
+ *
+ * Auto-detects: if SKILL.md exists and WIP_WEBSITE_REPO is set,
+ * publishes automatically. No config file needed.
+ *
+ * Name resolution (first match wins):
+ *   1. .publish-skill.json { "name": "memory-crystal" }
+ *   2. SKILL.md frontmatter name: field
+ *   3. Directory name (basename of repoPath)
+ *
+ * Copies SKILL.md to {website}/wip.computer/install/{name}.txt
+ * Then runs deploy.sh to push to VPS.
+ *
+ * Non-blocking: returns result, never throws.
+ */
+export function publishSkillToWebsite(repoPath) {
+  // Resolve website repo: .publish-skill.json > env var
+  let websiteRepo;
+  let targetName;
+  const configPath = join(repoPath, '.publish-skill.json');
+  let publishConfig = {};
+  if (existsSync(configPath)) {
+    try { publishConfig = JSON.parse(readFileSync(configPath, 'utf8')); } catch {}
+  }
+
+  websiteRepo = publishConfig.websiteRepo || process.env.WIP_WEBSITE_REPO;
+  if (!websiteRepo) return { skipped: true, reason: 'no websiteRepo in .publish-skill.json and WIP_WEBSITE_REPO not set' };
+
+  // Find SKILL.md: check root, then skills/*/SKILL.md
+  let skillFile = join(repoPath, 'SKILL.md');
+  if (!existsSync(skillFile)) {
+    const skillsDir = join(repoPath, 'skills');
+    if (existsSync(skillsDir)) {
+      for (const sub of readdirSync(skillsDir)) {
+        const candidate = join(skillsDir, sub, 'SKILL.md');
+        if (existsSync(candidate)) { skillFile = candidate; break; }
+      }
+    }
+  }
+  if (!existsSync(skillFile)) return { skipped: true, reason: 'no SKILL.md found' };
+
+  // Resolve target name: config > package.json > directory name
+  // SKILL.md frontmatter name is skipped because it's a short slug
+  // (e.g., "memory") not the full install name (e.g., "memory-crystal").
+
+  // 1. Explicit config (optional, overrides auto-detect)
+  if (publishConfig.name) targetName = publishConfig.name;
+
+  // 2. package.json name (strip @scope/ prefix, most reliable)
+  if (!targetName) {
+    const pkgPath = join(repoPath, 'package.json');
+    if (existsSync(pkgPath)) {
+      try {
+        const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+        if (pkg.name) targetName = pkg.name.replace(/^@[^/]+\//, '');
+      } catch {}
+    }
+  }
+
+  // 3. Directory name fallback (strip -private suffix)
+  if (!targetName) {
+    targetName = basename(repoPath).replace(/-private$/, '').toLowerCase();
+  }
+
+  // Copy to website install dir
+  const installDir = join(websiteRepo, 'wip.computer', 'install');
+  if (!existsSync(installDir)) {
+    try { mkdirSync(installDir, { recursive: true }); } catch {}
+  }
+
+  const targetFile = join(installDir, `${targetName}.txt`);
+  try {
+    const content = readFileSync(skillFile, 'utf8');
+    writeFileSync(targetFile, content);
+  } catch (e) {
+    return { ok: false, error: `copy failed: ${e.message}` };
+  }
+
+  // Deploy to VPS (non-blocking ... warn on failure)
+  const deployScript = join(websiteRepo, 'deploy.sh');
+  if (existsSync(deployScript)) {
+    try {
+      execSync(`bash deploy.sh`, { cwd: websiteRepo, stdio: 'pipe', timeout: 30000 });
+    } catch (e) {
+      return { ok: true, deployed: false, target: targetName, error: `deploy failed: ${e.message}` };
+    }
+  } else {
+    return { ok: true, deployed: false, target: targetName, error: 'no deploy.sh found' };
+  }
+
+  return { ok: true, deployed: true, target: targetName };
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -552,7 +709,7 @@ export function checkStaleBranches(repoPath, level) {
 /**
  * Run the full release pipeline.
  */
-export async function release({ repoPath, level, notes, notesSource, dryRun, noPublish, skipProductCheck, skipStaleCheck }) {
+export async function release({ repoPath, level, notes, notesSource, dryRun, noPublish, skipProductCheck, skipStaleCheck, skipWorktreeCheck }) {
   repoPath = repoPath || process.cwd();
   const currentVersion = detectCurrentVersion(repoPath);
   const newVersion = bumpSemver(currentVersion, level);
@@ -561,6 +718,36 @@ export async function release({ repoPath, level, notes, notesSource, dryRun, noP
   console.log('');
   console.log(`  ${repoName}: ${currentVersion} -> ${newVersion} (${level})`);
   console.log(`  ${'─'.repeat(40)}`);
+
+  // -1. Worktree guard: block releases from linked worktrees
+  if (!skipWorktreeCheck) {
+    try {
+      const gitDir = execFileSync('git', ['rev-parse', '--git-dir'], {
+        cwd: repoPath, encoding: 'utf8'
+      }).trim();
+
+      // Linked worktrees have "/worktrees/" in their git-dir path
+      if (gitDir.includes('/worktrees/')) {
+        // Get the main working tree path from `git worktree list`
+        const worktreeList = execFileSync('git', ['worktree', 'list', '--porcelain'], {
+          cwd: repoPath, encoding: 'utf8'
+        });
+        const mainWorktree = worktreeList.split('\n')
+          .find(line => line.startsWith('worktree '));
+        const mainPath = mainWorktree ? mainWorktree.replace('worktree ', '') : '(unknown)';
+
+        console.log(`  \u2717 wip-release must run from the main working tree, not a worktree.`);
+        console.log(`    Current: ${repoPath}`);
+        console.log(`    Main working tree: ${mainPath}`);
+        console.log(`    Switch to the main working tree and run again.`);
+        console.log('');
+        return { currentVersion, newVersion, dryRun: false, failed: true };
+      }
+      console.log('  \u2713 Running from main working tree');
+    } catch {
+      // Git command failed... skip check gracefully
+    }
+  }
 
   // 0. License compliance gate
   const configPath = join(repoPath, '.license-guard.json');
@@ -631,17 +818,15 @@ export async function release({ repoPath, level, notes, notesSource, dryRun, noP
       const sourceLabel = notesSource === 'file' ? 'from file' : notesSource === 'dev-update' ? 'from dev update' : 'from --notes';
       console.log(`  ✓ Release notes OK (${sourceLabel})`);
     } else {
-      const isMinorOrMajor = level === 'minor' || level === 'major';
-      const prefix = isMinorOrMajor ? '✗' : '!';
-      console.log(`  ${prefix} Release notes need attention:`);
+      console.log(`  ✗ Release notes blocked:`);
       for (const issue of notesCheck.issues) console.log(`    - ${issue}`);
-      if (isMinorOrMajor) {
-        console.log('');
-        console.log('  Minor/major releases require a RELEASE-NOTES file, not a --notes one-liner.');
-        console.log('  Write RELEASE-NOTES-v{version}.md (dashes not dots), commit it, then release.');
-        console.log('');
-        return { currentVersion, newVersion, dryRun: false, failed: true };
-      }
+      console.log('');
+      // Scaffold a template so the agent has something to fill in
+      const templatePath = scaffoldReleaseNotes(repoPath, newVersion);
+      console.log(`  Scaffolded template: ${basename(templatePath)}`);
+      console.log('  Fill it in, commit, then run wip-release again.');
+      console.log('');
+      return { currentVersion, newVersion, dryRun: false, failed: true };
     }
   }
 
@@ -715,6 +900,28 @@ export async function release({ repoPath, level, notes, notesSource, dryRun, noP
       console.log(`  [dry run] Would publish to GitHub Packages`);
       console.log(`  [dry run] Would create GitHub release v${newVersion}`);
       if (hasSkill) console.log(`  [dry run] Would publish to ClawHub`);
+      // Skill-to-website dry run (auto-detects SKILL.md, no config needed)
+      if (hasSkill) {
+        const envSet = !!process.env.WIP_WEBSITE_REPO;
+        if (envSet) {
+          // Resolve name same way as publishSkillToWebsite
+          let dryName;
+          const publishConfig = join(repoPath, '.publish-skill.json');
+          if (existsSync(publishConfig)) {
+            try { dryName = JSON.parse(readFileSync(publishConfig, 'utf8')).name; } catch {}
+          }
+          if (!dryName) {
+            const pkgPath = join(repoPath, 'package.json');
+            if (existsSync(pkgPath)) {
+              try { dryName = JSON.parse(readFileSync(pkgPath, 'utf8')).name?.replace(/^@[^/]+\//, ''); } catch {}
+            }
+          }
+          if (!dryName) dryName = basename(repoPath).replace(/-private$/, '').toLowerCase();
+          console.log(`  [dry run] Would publish SKILL.md to website: install/${dryName}.txt`);
+        } else {
+          console.log(`  [dry run] Would publish SKILL.md to website but WIP_WEBSITE_REPO not set`);
+        }
+      }
     }
     console.log('');
     console.log(`  Dry run complete. No changes made.`);
@@ -847,6 +1054,22 @@ export async function release({ repoPath, level, notes, notesSource, dryRun, noP
           }
         }
       }
+    }
+
+    // 9.5. Publish SKILL.md to website as plain text
+    const skillWebResult = publishSkillToWebsite(repoPath);
+    if (skillWebResult.skipped) {
+      // Silent skip ... no config or env var
+    } else if (skillWebResult.ok) {
+      const deployNote = skillWebResult.deployed ? '' : ' (copied, deploy skipped)';
+      distResults.push({ target: 'Website', status: 'ok', detail: `install/${skillWebResult.target}.txt${deployNote}` });
+      console.log(`  ✓ Published to website: install/${skillWebResult.target}.txt${deployNote}`);
+      if (!skillWebResult.deployed && skillWebResult.error) {
+        console.log(`    ! ${skillWebResult.error}`);
+      }
+    } else {
+      distResults.push({ target: 'Website', status: 'failed', detail: skillWebResult.error });
+      console.log(`  ✗ Website publish failed: ${skillWebResult.error}`);
     }
   }
 
