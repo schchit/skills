@@ -6,7 +6,7 @@
 
 ## 🎯 Core Value
 
-When your agents need to send messages **larger than 30 characters**, `sessions_send` tends to timeout. AgentRelay provides the solution:
+When your agents need to send messages **larger than 30 characters**, `sessions_send` can become unreliable. AgentRelay provides the solution:
 
 | Traditional Approach | AgentRelay Approach |
 |---------------------|---------------------|
@@ -33,11 +33,15 @@ from agentrelay import AgentRelayTool
 content = {"task": "write_poem", "theme": "spring"}
 
 # Write to shared file and get CSV message
-result = AgentRelayTool.send("yellow", "REQ", "hop1", content)
+result = AgentRelayTool.send("agent:worker:main", "REQ", "event_001", {
+    **content,
+    "sender_agent": "agent:sender:main",
+    "receiver_agent": "agent:worker:main",
+})
 
 # Send to target agent
 sessions_send(
-    target='agent:yellow:yellow',
+    target='agent:worker:main',
     message=f"AgentRelay: {result['csv_message']}"
 )
 ```
@@ -46,14 +50,14 @@ sessions_send(
 
 ```bash
 # Use unified script to parse
-python3 scripts/run_relay.py receive "REQ,hop1,s/hop1.json,,"
+python3 run_relay.py receive "REQ,event_001,s/event_001.json,,"
 ```
 
 Output:
 ```json
 {
   "type": "REQ",
-  "event_id": "hop1",
+  "event_id": "event_001",
   "content": {"task": "write_poem", ...},
   "secret": "ABC123"
 }
@@ -62,13 +66,13 @@ Output:
 ### 4️⃣ Complete Task and Reply
 
 ```bash
-python3 scripts/run_relay.py complete hop1 "Task completed" "agent:red:red"
+python3 run_relay.py complete event_001 "Task completed" "agent:sender:main"
 ```
 
 Output:
 ```
-✅ Updated hop1
-✅ CMP: CMP,hop1,,,ABC123
+✅ Updated event_001
+✅ CMP: CMP,event_001,,,ABC123
 ```
 
 ---
@@ -81,13 +85,13 @@ Sender                          Receiver
   |-- 1. REQ (with file ptr) --->|
   |                              |-- receive()
   |                              |-- 📍 LOG #1: REQ/RECEIVED
-  |                              |-- 📍 LOG #2: ACK/ACKNOWLEDGED
+  |                              |-- 📍 LOG #2: CONFIRMED
   |                              |
-  |<-- 2. ACK (implicit confirm)-|  
+  |<-- 2. Implicit confirm ------|
   |                              |
   |                    [Executing task...]
   |                              |
-  |<-- 3. CMP (with Secret) -----|-- ack()
+  |<-- 3. CMP (with Secret) -----|-- cmp()
   |                              |-- 📍 LOG #3: CMP/COMPLETED
   |                              |
   |                    [Preparing for next hop]
@@ -116,6 +120,8 @@ CMP,event_001,,,ABC123                     # Complete (with Secret)
 AgentRelay: REQ,event_001,s/event_001.json,,
 ```
 
+`receive` accepts either the bare CSV string or the full prefixed message.
+
 ---
 
 ## 🔒 Security Mechanisms
@@ -126,6 +132,19 @@ AgentRelay: REQ,event_001,s/event_001.json,,
 2. Secret is written to file
 3. Receiver must return the same Secret in CMP
 4. Sender verifies Secret matches
+
+### Burn On Read
+
+Set `burn_on_read=true` in the event metadata or payload content to delete the shared file immediately after a successful read.
+
+### Retention and Cleanup
+
+Set `ttl_hours` in the payload content to override the default 24-hour retention for a specific event.
+
+Sweep expired event files and stale registry entries with:
+```bash
+python3 cleanup_relay.py
+```
 
 ### Complete Logging
 
@@ -141,49 +160,14 @@ Each record contains:
 
 ---
 
-## 🎮 Real-World Examples
+## 🎮 Real-World Usage
 
-### Example 1: 5-Hop Poetry Relay
-- **Theme**: Four Seasons Cycle
-- **Format**: Seven-character regulated verse with topological linkage
-- **Validates**: Basic protocol functionality
-- [View Details](./examples/5hop_relay.md)
+AgentRelay works best when each event declares explicit routing metadata:
+- `sender_agent`
+- `receiver_agent`
+- optional `ttl_hours`
 
-### Example 2: Wuxia + Disney Story Relay
-- **Theme**: Legend of Peach Blossom Island Overseas
-- **Format**: Creative writing with continuous plot twists
-- **Validates**: Autonomous agent communication + new logging system
-- **Highlights**: 5 brilliant plot twists, converging into epic narrative
-- [View Details](./examples/wuxia_disney_relay_final.md)
-
-### Example 3: Autonomous Mahjong Game 🀄
-- **Theme**: Multi-agent mahjong game with 5 players
-- **Format**: Complex coordination (30-60 min autonomous gameplay)
-- **Validates**: Advanced multi-agent collaboration + state management
-- **Highlights**: 
-  - 5 agents (Yellow=Dealer, Red/Green/Blue/Orange=Players)
-  - Blood Flow mode (game continues after first win)
-  - Complete game state synchronization via AgentRelay
-  - Automatic win validation and scoring
-- **Duration**: ~1 hour (setup + game + scoring)
-- [View Full Guide](./examples/mahjong_relay.md)
-
-#### Mahjong Example Quick Preview
-
-```
-Game Flow:
-1. Yellow shuffles 108 tiles and deals hands
-2. Yellow sends each player their hand via AgentRelay
-3. Red (East) draws 14th tile and plays
-4. Yellow broadcasts move to all players
-5. Green/Blue/Orange respond (PONG/KONG/WIN/PASS)
-6. Next player's turn (clockwise)
-7. Repeat until someone wins
-8. Blood Flow: continue until 3 players win
-9. Yellow calculates scores and announces ranking
-```
-
-**Key Learning**: See how AgentRelay handles complex state synchronization across 5 agents with complete audit trail!
+This keeps the protocol generic and avoids hidden assumptions about agent names.
 
 ---
 
@@ -194,18 +178,11 @@ skills/agentrelay/
 ├── SKILL.md              # ClawHub skill documentation
 ├── SKILL.py              # Skill entry point
 ├── __init__.py           # Core implementation (AgentRelayTool)
-├── handle_relay.py       # Legacy handler script
 ├── run_relay.py          # Unified execution script ✨Recommended
+├── cleanup_relay.py      # Expired file / registry sweeper
+├── test_agentrelay.py    # Pytest regression suite
 ├── clawhub.json          # ClawHub manifest
-├── README.md             # This document
-├── docs/
-│   ├── PROTOCOL.md       # Protocol specification
-│   ├── API.md            # API reference
-│   ├── LOGGING.md        # Logging system
-│   └── CHANGELOG.md      # Change log
-└── examples/
-    ├── 5hop_relay.md     # Poetry relay example
-    └── wuxia_disney_relay_final.md  # Wuxia+Disney example
+└── README.md             # This document
 ```
 
 ---
@@ -219,7 +196,7 @@ Send message to shared file.
 
 **Parameters**:
 - `agent_id` (str): Target agent ID
-- `msg_type` (str): "REQ", "CMP", "NACK"
+- `msg_type` (str): "REQ" or another explicit protocol type
 - `event_id` (str): Unique event identifier
 - `content` (dict): Message content
 
@@ -243,7 +220,7 @@ Parse and read shared file.
 ```python
 {
     "type": "REQ",
-    "event_id": "hop1",
+    "event_id": "event_001",
     "content": {...},
     "secret": "ABC123"
 }
@@ -257,7 +234,7 @@ Create pointer file for next hop.
 - `updates` (dict): Fields to update
 - `next_event_id` (str, optional): Next hop event ID
 
-#### ack(event_id, secret)
+#### cmp(event_id, secret)
 Generate CMP (Complete) message.
 
 **Parameters**:
@@ -266,27 +243,29 @@ Generate CMP (Complete) message.
 
 **Returns**: `str` - `"CMP,event_id,,,ABC123"`
 
+#### verify(cmp_message)
+Verify that a CMP message matches the stored secret for the event.
+
+**Returns**:
+```python
+{
+    "status": "ok",
+    "event_id": "event_id",
+    "verified": True
+}
+```
+
 ---
 
-## 📝 Changelog
+## 📌 Current Status
 
-### v2.0.0 - English Documentation
+AgentRelay is now aligned around one protocol shape:
+- explicit `sender_agent` / `receiver_agent`
+- `REQ` for requests
+- `CMP` for completion
+- registry-backed verification and cleanup
 
-**Changes**:
-- ✅ All documentation converted to English
-- ✅ Removed all personal information and hardcoded paths
-- ✅ Environment variable configuration for data directory
-- ✅ Cross-platform compatibility (macOS/Linux/Windows)
-
-### v1.4.0 - Critical Security Fix
-
-**Fixes**:
-- ✅ Removed all hardcoded paths
-- ✅ Use `Path(__file__)` for dynamic script path resolution
-- ✅ Use `OPENCLAW_DATA_DIR` environment variable for data directory
-- ✅ Safe multi-user environment isolation
-
-[View Full Changelog](./docs/CHANGELOG.md)
+For historical release details, see [RELEASE_NOTES.md](./RELEASE_NOTES.md).
 
 ---
 

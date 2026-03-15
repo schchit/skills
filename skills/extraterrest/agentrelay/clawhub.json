@@ -1,6 +1,6 @@
 {
   "name": "agentrelay",
-  "version": "1.0.1-alpha.3",
+  "version": "1.1.0",
   "description": "Reliable agent-to-agent communication protocol for transferring large payloads via shared files with pointer references and secret code verification. Triggered by explicit 'AgentRelay:' prefix in messages.",
   "author": "AgentRelay Team",
   "license": "MIT",
@@ -15,15 +15,23 @@
   "main": "SKILL.md",
   "scripts": {
     "receive": "python3 run_relay.py receive",
-    "complete": "python3 run_relay.py complete"
+    "update": "python3 run_relay.py update",
+    "cmp": "python3 run_relay.py cmp",
+    "verify": "python3 run_relay.py verify",
+    "complete": "python3 run_relay.py complete",
+    "cleanup": "python3 cleanup_relay.py",
+    "smoke-test": "python3 smoke_test.py"
   },
   "files": [
     "SKILL.md",
     "SKILL.py",
     "__init__.py",
-    "handle_relay.py",
     "run_relay.py",
+    "cleanup_relay.py",
+    "smoke_test.py",
+    "test_agentrelay.py",
     "README.md",
+    "RELEASE_NOTES.md",
     "LICENSE"
   ],
   "engines": {
@@ -43,5 +51,5 @@
     "inter-agent protocol",
     "reliable messaging"
   ],
-  "releaseNotes": "v1.0.1-alpha.3 - Added comprehensive Mahjong example (5-agent autonomous game with complete guide), English documentation, removed hardcoded paths, environment variable configuration for data directory, cross-platform compatible."
+  "releaseNotes": "v1.1.0 - Removed legacy compatibility layers, switched fully to explicit sender/receiver metadata, added cleanup tooling, and aligned the public CLI/docs around REQ/CMP."
 }

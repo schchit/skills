@@ -14,7 +14,7 @@ metadata: {"openclaw":{"triggerPatterns":["AgentRelay:","Please use AgentRelay s
 
 ```
 Please use AgentRelay skill to handle this message:
-REQ,r1_r,s/r1_r.json,,
+REQ,event_001,s/event_001.json,,
 ```
 
 Or
@@ -24,8 +24,8 @@ Or
 
 Please use AgentRelay skill to handle:
 - Message Type: REQ
-- Event ID: r1_r  
-- File Pointer: s/r1_r.json
+- Event ID: event_001
+- File Pointer: s/event_001.json
 ```
 
 **Key Trigger Phrases**:
@@ -41,15 +41,19 @@ When you see these keywords, **immediately execute the Commands below**!
 
 **Step 1: Parse Message**
 ```bash
-python3 {baseDir}/run_relay.py receive "REQ,r1_r,s/r1_r.json,,"
+python3 {baseDir}/run_relay.py receive "REQ,event_001,s/event_001.json,,"
 ```
 
 Example output:
 ```json
 {
   "type": "REQ",
-  "event_id": "r1_r",
-  "content": {"task": "write_poem", "sender_color": "red"},
+  "event_id": "event_001",
+  "content": {
+    "task": "write_poem",
+    "sender_agent": "agent:sender:main",
+    "receiver_agent": "agent:worker:main"
+  },
   "secret": "ABC123"
 }
 ```
@@ -60,15 +64,15 @@ Check the `content` field to understand what needs to be done (e.g., write poem,
 
 **Step 3: Update Result**
 ```bash
-python3 {baseDir}/run_relay.py complete r1_r "Task completed" "agent:red:red"
+python3 {baseDir}/run_relay.py complete event_001 "Task completed" "agent:sender:main"
 ```
 
 **Step 4: Send CMP Confirmation**
 ```bash
 # generate CMP message (done automatically by run_relay.py complete)
-# Output: CMP,r1_r,,,ABC123
+# Output: CMP,event_001,,,ABC123
 # Then send via sessions_send
-sessions_send(target='agent:red:red', message='CMP,r1_r,,,ABC123')
+sessions_send(target='agent:sender:main', message='CMP,event_001,,,ABC123')
 ```
 
 ---
@@ -78,21 +82,22 @@ sessions_send(target='agent:red:red', message='CMP,r1_r,,,ABC123')
 ### `receive <csv_message>`
 
 Parse AgentRelay CSV message and read shared file content.
+Accepts either bare CSV or a full message with the `AgentRelay:` prefix.
 
 **Parameters**:
 - `csv_message`: CSV format message (without `AgentRelay:` prefix)
 
 **Example**:
 ```bash
-python3 {baseDir}/run_relay.py receive "REQ,r1_r,s/r1_r.json,,"
+python3 {baseDir}/run_relay.py receive "REQ,event_001,s/event_001.json,,"
 ```
 
 **Output** (JSON):
 ```json
 {
   "type": "REQ",
-  "event_id": "r1_r",
-  "ptr": "s/r1_r.json",
+  "event_id": "event_001",
+  "ptr": "s/event_001.json",
   "content": {...},
   "secret": "ABC123"
 }
@@ -100,7 +105,7 @@ python3 {baseDir}/run_relay.py receive "REQ,r1_r,s/r1_r.json,,"
 
 ---
 
-### `update <event_id> <json_updates>`
+### `update <event_id> <json_updates> [next_event_id]`
 
 Update shared file content.
 
@@ -110,19 +115,19 @@ Update shared file content.
 
 **Example**:
 ```bash
-python3 {baseDir}/scripts/handle_relay.py update r1_r '{"status":"completed","result":"done"}'
+python3 {baseDir}/run_relay.py update event_001 '{"status":"completed","result":"done"}'
 ```
 
 **Output**:
 ```json
-{"status":"ok","file":"/path/to/r1_r.json","ptr":"s/r1_r.json"}
+{"status":"ok","file":"/path/to/event_001.json","ptr":"s/event_001.json"}
 ```
 
 ---
 
-### `ack <event_id> <secret>`
+### `cmp <event_id> [secret]`
 
-Generate ACK confirmation message.
+Generate CMP confirmation message.
 
 **Parameters**:
 - `event_id`: Event ID
@@ -130,15 +135,35 @@ Generate ACK confirmation message.
 
 **Example**:
 ```bash
-python3 {baseDir}/scripts/handle_relay.py ack r1_r ABC123
+python3 {baseDir}/run_relay.py cmp event_001 ABC123
 ```
 
 **Output**:
 ```json
 {
   "status": "ok",
-  "ack_message": "ACK,r1_r,,,ABC123",
-  "instruction": "Call sessions_send with message='ACK,r1_r,,,ABC123'"
+  "cmp_message": "CMP,event_001,,,ABC123",
+  "instruction": "Call sessions_send with message='CMP,event_001,,,ABC123'"
+}
+```
+
+---
+
+### `verify <cmp_message>`
+
+Verify that a received `CMP` message matches the secret stored in the event file.
+
+**Example**:
+```bash
+python3 {baseDir}/run_relay.py verify "CMP,event_001,,,ABC123"
+```
+
+**Output**:
+```json
+{
+  "status": "ok",
+  "event_id": "event_001",
+  "verified": true
 }
 ```
 
@@ -152,40 +177,38 @@ python3 {baseDir}/scripts/handle_relay.py ack r1_r ABC123
 # 1. Prepare data
 content = {
     "task": "write_poem",
-    "sender": "red",
-    "receiver": "orange",
-    "sender_color": "red",
-    "receiver_color": "orange"
+    "sender_agent": "agent:sender:main",
+    "receiver_agent": "agent:worker:main"
 }
 
 # 2. Write to shared file
-from agentrelay.api import agentrelay_send
-result = agentrelay_send("orange", "REQ", "r1_r", content)
+from agentrelay import agentrelay_send
+result = agentrelay_send("agent:worker:main", "REQ", "event_001", content)
 
 # 3. Send message with prefix
 message = f"AgentRelay: {result['csv_message']}"
-sessions_send(target='agent:orange:main', message=message)
+sessions_send(target='agent:worker:main', message=message)
 ```
 
 ### Receiver Agent
 
 ```bash
-# 1. Receive message: AgentRelay: REQ,r1_r,s/r1_r.json,,
+# 1. Receive message: AgentRelay: REQ,event_001,s/event_001.json,,
 
 # 2. Parse message
-python3 {baseDir}/scripts/handle_relay.py receive "REQ,r1_r,s/r1_r.json,,"
+python3 {baseDir}/run_relay.py receive "REQ,event_001,s/event_001.json,,"
 # → Get content and secret
 
 # 3. Understand task, call LLM to execute
 # (This is your LLM capability)
 
 # 4. Update result
-python3 {baseDir}/scripts/handle_relay.py update r1_r '{"status":"completed"}'
+python3 {baseDir}/run_relay.py update event_001 '{"status":"completed"}'
 
-# 5. Send ACK
-ACK_OUTPUT=$(python3 {baseDir}/scripts/handle_relay.py ack r1_r SECRET)
-ACK_MSG=$(echo "$ACK_OUTPUT" | jq -r '.ack_message')
-sessions_send(target='agent:red:main', message="$ACK_MSG")
+# 5. Send CMP
+CMP_OUTPUT=$(python3 {baseDir}/run_relay.py cmp event_001 SECRET)
+CMP_MSG=$(echo "$CMP_OUTPUT" | jq -r '.cmp_message')
+sessions_send(target='agent:sender:main', message="$CMP_MSG")
 ```
 
 ---
@@ -199,24 +222,22 @@ TYPE,ID,PTR,,DATA
 ```
 
 **Field Descriptions**:
-- `TYPE`: Message type (REQ | ACK | NACK | PING)
+- `TYPE`: Message type (REQ | CMP)
 - `ID`: Event ID (unique identifier)
 - `PTR`: File pointer (e.g., `s/event_id.json`)
 - `RESERVED`: Reserved field (leave empty)
-- `DATA`: Additional data (Secret Code for ACK)
+- `DATA`: Additional data (Secret Code for CMP)
 
 **Examples**:
 ```
-REQ,r1_r,s/r1_r.json,,          # Request
-ACK,r1_r,,,ABC123               # Confirmation
-NACK,r1_r,,,File not found      # Rejection
-PING,test_1,,,,                 # Heartbeat test
+REQ,event_001,s/event_001.json,,  # Request
+CMP,event_001,,,ABC123            # Completion confirmation
 ```
 
 ### Full Message (with prefix)
 
 ```
-AgentRelay: REQ,r1_r,s/r1_r.json,,
+AgentRelay: REQ,event_001,s/event_001.json,,
 ```
 
 **Why need prefix?**
@@ -232,18 +253,12 @@ AgentRelay: REQ,r1_r,s/r1_r.json,,
 
 - Sender generates 6-character random code (e.g., `ABC123`)
 - Secret is written to file
-- Receiver must return the same Secret when ACKing
+- Receiver must return the same Secret when sending CMP
 - Sender verifies Secret matches, ensuring receiver actually read the file
 
 ### 2. Burn-on-read (Optional)
 
-When `burn_on_read=true` is set, file is automatically deleted after reading to protect sensitive data.
-
-### 3. Integrity Check
-
-File content includes SHA-256 hash to prevent tampering.
-
----
+When `burn_on_read=true` is set in `meta` or `payload.content`, the file is automatically deleted after reading to protect sensitive data.
 
 ## 📁 Data Storage
 
@@ -255,19 +270,24 @@ File content includes SHA-256 hash to prevent tampering.
 
 ## 🧪 Testing and Examples
 
-### Ping Test
+### Smoke Test
 ```bash
-python3 {baseDir}/scripts/ping_relay.py
+python3 {baseDir}/smoke_test.py
 ```
 
-### 5-Hop Relay Test
+### Pytest Regression Suite
 ```bash
-python3 {baseDir}/examples/relay_5hops.py
+pytest {baseDir}/test_agentrelay.py
 ```
 
-### 10-Hop Relay Test
+### Cleanup Expired Events
 ```bash
-python3 {baseDir}/examples/relay_10hops.py
+python3 {baseDir}/cleanup_relay.py
+```
+
+### Verify a CMP
+```bash
+python3 {baseDir}/run_relay.py verify "CMP,r1_r,,,ABC123"
 ```
 
 ---
@@ -280,24 +300,22 @@ A: `sessions_send` tends to timeout when transmitting messages larger than 30 ch
 
 ### Q: What is Secret Code for?
 
-A: Secret Code is a 6-character random code used to verify the receiver actually read the file. Receiver must return the correct Secret in ACK.
+A: Secret Code is a 6-character random code used to verify the receiver actually read the file. Receiver must return the correct Secret in CMP, and sender can verify it with `verify`.
 
 ### Q: How long are files retained?
 
-A: Files are retained for 24 hours by default. You can adjust this with `ttl_hours` parameter, or enable `burn_on_read` to delete immediately after reading.
+A: Files are retained for 24 hours by default. You can adjust this with `ttl_hours`, enable `burn_on_read` to delete immediately after reading, and run `cleanup_relay.py` to sweep expired files and old registry entries.
 
 ---
 
 ## 📖 More Documentation
 
-- [README.md](https://github.com/your-repo/agentrelay/blob/main/README.md) - Project overview
-- [ARCHITECTURE.md](https://github.com/your-repo/agentrelay/blob/main/ARCHITECTURE.md) - Architecture design
-- [API.md](https://github.com/your-repo/agentrelay/blob/main/API.md) - API reference
-- [DEPLOYMENT.md](https://github.com/your-repo/agentrelay/blob/main/DEPLOYMENT.md) - Deployment guide
+- [README.md](/Users/gavinliu/.openclaw/workspace/skills/agentrelay/README.md) - Project overview
+- [RELEASE_NOTES.md](/Users/gavinliu/.openclaw/workspace/skills/agentrelay/RELEASE_NOTES.md) - Release notes
 
 ---
 
-**Version**: v1.0.1-alpha.3  
+**Version**: v1.1.0
 **Last Updated**: 2026-02-28  
 **Author**: AgentRelay Team  
 **Maintainer**: AgentRelay Team
