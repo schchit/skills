@@ -41,3 +41,18 @@ A: 主要输出Markdown格式，方便复制和编辑。
 ---
 💬 Feedback & Feature Requests: https://bytesagain.com/feedback
 Powered by BytesAgain | bytesagain.com
+
+## How It Works
+
+Reads input, processes with built-in logic, outputs structured results.
+
+## Tips
+
+- Run `survey-designer help` for all commands
+- No API keys required
+- Works offline
+
+
+## Commands
+
+Run `survey-designer help` to see all available commands.
