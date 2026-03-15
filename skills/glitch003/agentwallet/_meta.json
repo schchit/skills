@@ -3,11 +3,16 @@
   "slug": "agentwallet",
   "displayName": "Vincent - Wallet",
   "latest": {
-    "version": "1.0.69",
-    "publishedAt": 1773087875251,
-    "commit": "https://github.com/openclaw/skills/commit/0529de73ffe57053e5861b35915cff8506e1a069"
+    "version": "1.0.70",
+    "publishedAt": 1773275998975,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.69",
+      "publishedAt": 1773087875251,
+      "commit": "https://github.com/openclaw/skills/commit/0529de73ffe57053e5861b35915cff8506e1a069"
+    },
     {
       "version": "1.0.68",
       "publishedAt": 1773009024975,
