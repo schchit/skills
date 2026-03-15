@@ -1,0 +1,11 @@
+{
+  "owner": "yes999zc",
+  "slug": "gateway-monitor",
+  "displayName": "Gateway Monitor",
+  "latest": {
+    "version": "1.0.3",
+    "publishedAt": 1773565430527,
+    "commit": null
+  },
+  "history": []
+}
