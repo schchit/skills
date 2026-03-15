@@ -13,7 +13,7 @@ BudgetLy is a category-based budget tracker that helps you stay on top of your s
 
 ## Why BudgetLy?
 
-- **Visual tracking**: Progress bars show budget utilization at a glance
+- **Visual tracking**: Progress bars show budget usage at a glance
 - **Smart warnings**: Get alerts when approaching or exceeding limits
 - **Category-based**: Organize spending by food, transport, entertainment, etc.
 - **Monthly reports**: See where your money goes with percentage breakdowns
