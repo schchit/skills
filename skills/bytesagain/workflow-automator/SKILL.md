@@ -1,3 +1,10 @@
+---
+name: workflow-automator
+version: 1.1.0
+author: BytesAgain
+license: MIT-0
+---
+
 # Workflow Automator
 
 > OpenClaw-native workflow automation engine — define, run, schedule, and manage task pipelines from the CLI.
