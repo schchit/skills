@@ -2,13 +2,8 @@
 """Run the eval + improve loop until all pass or max iterations reached.
 
 Combines run_eval.py and improve_description.py in a loop, tracking history
-and returning the best description found. Supports train/test split.
-
-Adapted from Anthropic's Claude Code skill-creator. Licensed under Apache 2.0.
-
-Note: This script requires the `claude` CLI for automated evaluation.
-In OpenClaw environments without it, run description optimization manually
-using the workflow described in SKILL.md.
+and returning the best description found. Supports train/test split to prevent
+overfitting.
 """
 
 import argparse
@@ -30,15 +25,19 @@ def split_eval_set(eval_set: list[dict], holdout: float, seed: int = 42) -> tupl
     """Split eval set into train and test sets, stratified by should_trigger."""
     random.seed(seed)
 
+    # Separate by should_trigger
     trigger = [e for e in eval_set if e["should_trigger"]]
     no_trigger = [e for e in eval_set if not e["should_trigger"]]
 
+    # Shuffle each group
     random.shuffle(trigger)
     random.shuffle(no_trigger)
 
+    # Calculate split points
     n_trigger_test = max(1, int(len(trigger) * holdout))
     n_no_trigger_test = max(1, int(len(no_trigger) * holdout))
 
+    # Split
     test_set = trigger[:n_trigger_test] + no_trigger[:n_no_trigger_test]
     train_set = trigger[n_trigger_test:] + no_trigger[n_no_trigger_test:]
 
@@ -65,6 +64,7 @@ def run_loop(
     name, original_description, content = parse_skill_md(skill_path)
     current_description = description_override or original_description
 
+    # Split into train/test if holdout > 0
     if holdout > 0:
         train_set, test_set = split_eval_set(eval_set, holdout)
         if verbose:
@@ -83,6 +83,7 @@ def run_loop(
             print(f"Description: {current_description}", file=sys.stderr)
             print(f"{'='*60}", file=sys.stderr)
 
+        # Evaluate train + test together in one batch for parallelism
         all_queries = train_set + test_set
         t0 = time.time()
         all_results = run_eval(
@@ -98,6 +99,7 @@ def run_loop(
         )
         eval_elapsed = time.time() - t0
 
+        # Split results back into train/test by matching queries
         train_queries_set = {q["query"] for q in train_set}
         train_result_list = [r for r in all_results["results"] if r["query"] in train_queries_set]
         test_result_list = [r for r in all_results["results"] if r["query"] not in train_queries_set]
@@ -127,12 +129,14 @@ def run_loop(
             "test_failed": test_summary["failed"] if test_summary else None,
             "test_total": test_summary["total"] if test_summary else None,
             "test_results": test_results["results"] if test_results else None,
+            # For backward compat with report generator
             "passed": train_summary["passed"],
             "failed": train_summary["failed"],
             "total": train_summary["total"],
             "results": train_results["results"],
         })
 
+        # Write live report if path provided
         if live_report_path:
             partial_output = {
                 "original_description": original_description,
@@ -182,10 +186,12 @@ def run_loop(
                 print(f"\nMax iterations reached ({max_iterations}).", file=sys.stderr)
             break
 
+        # Improve the description based on train results
         if verbose:
             print(f"\nImproving description...", file=sys.stderr)
 
         t0 = time.time()
+        # Strip test scores from history so improvement model can't see them
         blinded_history = [
             {k: v for k, v in h.items() if not k.startswith("test_")}
             for h in history
@@ -207,6 +213,7 @@ def run_loop(
 
         current_description = new_description
 
+    # Find the best iteration by TEST score (or train if no test set)
     if test_set:
         best = max(history, key=lambda h: h["test_passed"] or 0)
         best_score = f"{best['test_passed']}/{best['test_total']}"
@@ -244,11 +251,11 @@ def main():
     parser.add_argument("--max-iterations", type=int, default=5, help="Max improvement iterations")
     parser.add_argument("--runs-per-query", type=int, default=3, help="Number of runs per query")
     parser.add_argument("--trigger-threshold", type=float, default=0.5, help="Trigger rate threshold")
-    parser.add_argument("--holdout", type=float, default=0.4, help="Holdout fraction for testing")
+    parser.add_argument("--holdout", type=float, default=0.4, help="Fraction of eval set to hold out for testing (0 to disable)")
     parser.add_argument("--model", required=True, help="Model for improvement")
     parser.add_argument("--verbose", action="store_true", help="Print progress to stderr")
-    parser.add_argument("--report", default="auto", help="HTML report path ('auto', 'none', or path)")
-    parser.add_argument("--results-dir", default=None, help="Save outputs to timestamped subdirectory")
+    parser.add_argument("--report", default="auto", help="Generate HTML report at this path (default: 'auto' for temp file, 'none' to disable)")
+    parser.add_argument("--results-dir", default=None, help="Save all outputs (results.json, report.html, log.txt) to a timestamped subdirectory here")
     args = parser.parse_args()
 
     eval_set = json.loads(Path(args.eval_set).read_text())
@@ -260,20 +267,20 @@ def main():
 
     name, _, _ = parse_skill_md(skill_path)
 
+    # Set up live report path
     if args.report != "none":
         if args.report == "auto":
             timestamp = time.strftime("%Y%m%d_%H%M%S")
             live_report_path = Path(tempfile.gettempdir()) / f"skill_description_report_{skill_path.name}_{timestamp}.html"
         else:
             live_report_path = Path(args.report)
+        # Open the report immediately so the user can watch
         live_report_path.write_text("<html><body><h1>Starting optimization loop...</h1><meta http-equiv='refresh' content='5'></body></html>")
-        try:
-            webbrowser.open(str(live_report_path))
-        except Exception:
-            print(f"Report available at: {live_report_path}", file=sys.stderr)
+        webbrowser.open(str(live_report_path))
     else:
         live_report_path = None
 
+    # Determine output directory (create before run_loop so logs can be written)
     if args.results_dir:
         timestamp = time.strftime("%Y-%m-%d_%H%M%S")
         results_dir = Path(args.results_dir) / timestamp
@@ -299,11 +306,13 @@ def main():
         log_dir=log_dir,
     )
 
+    # Save JSON output
     json_output = json.dumps(output, indent=2)
     print(json_output)
     if results_dir:
         (results_dir / "results.json").write_text(json_output)
 
+    # Write final HTML report (without auto-refresh)
     if live_report_path:
         live_report_path.write_text(generate_html(output, auto_refresh=False, skill_name=name))
         print(f"\nReport: {live_report_path}", file=sys.stderr)

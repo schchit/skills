@@ -1,14 +1,8 @@
 #!/usr/bin/env python3
 """Run trigger evaluation for a skill description.
 
-Tests whether a skill's description causes the agent to trigger (read the skill)
+Tests whether a skill's description causes Claude to trigger (read the skill)
 for a set of queries. Outputs results as JSON.
-
-Adapted from Anthropic's Claude Code skill-creator. Licensed under Apache 2.0.
-
-In Claude Code environments, this uses `claude -p` for evaluation.
-In OpenClaw environments without the `claude` CLI, the agent can run
-description optimization manually by spawning sub-agents to test each query.
 """
 
 import argparse
@@ -26,7 +20,11 @@ from scripts.utils import parse_skill_md
 
 
 def find_project_root() -> Path:
-    """Find the project root by walking up from cwd looking for .claude/."""
+    """Find the project root by walking up from cwd looking for .claude/.
+
+    Mimics how Claude Code discovers its project root, so the command file
+    we create ends up where claude -p will look for it.
+    """
     current = Path.cwd()
     for parent in [current, *current.parents]:
         if (parent / ".claude").is_dir():
@@ -44,19 +42,12 @@ def run_single_query(
 ) -> bool:
     """Run a single query and return whether the skill was triggered.
 
-    Creates a command file in .claude/commands/ so it appears in the
+    Creates a command file in .claude/commands/ so it appears in Claude's
     available_skills list, then runs `claude -p` with the raw query.
-
-    Note: This function requires the `claude` CLI. In OpenClaw environments
-    without it, use the manual evaluation workflow described in SKILL.md.
+    Uses --include-partial-messages to detect triggering early from
+    stream events (content_block_start) rather than waiting for the
+    full assistant message, which only arrives after tool execution.
     """
-    # Check if claude CLI is available
-    try:
-        subprocess.run(["claude", "--version"], capture_output=True, timeout=5)
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        print("Warning: `claude` CLI not available. Use manual eval workflow.", file=sys.stderr)
-        return False
-
     unique_id = uuid.uuid4().hex[:8]
     clean_name = f"{skill_name}-skill-{unique_id}"
     project_commands_dir = Path(project_root) / ".claude" / "commands"
@@ -64,6 +55,7 @@ def run_single_query(
 
     try:
         project_commands_dir.mkdir(parents=True, exist_ok=True)
+        # Use YAML block scalar to avoid breaking on quotes in description
         indented_desc = "\n  ".join(skill_description.split("\n"))
         command_content = (
             f"---\n"
@@ -85,6 +77,9 @@ def run_single_query(
         if model:
             cmd.extend(["--model", model])
 
+        # Remove CLAUDECODE env var to allow nesting claude -p inside a
+        # Claude Code session. The guard is for interactive terminal conflicts;
+        # programmatic subprocess usage is safe.
         env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
 
         process = subprocess.Popen(
@@ -98,6 +93,7 @@ def run_single_query(
         triggered = False
         start_time = time.time()
         buffer = ""
+        # Track state for stream event detection
         pending_tool_name = None
         accumulated_json = ""
 
@@ -129,6 +125,7 @@ def run_single_query(
                     except json.JSONDecodeError:
                         continue
 
+                    # Early detection via stream events
                     if event.get("type") == "stream_event":
                         se = event.get("event", {})
                         se_type = se.get("type", "")
@@ -156,6 +153,7 @@ def run_single_query(
                             if se_type == "message_stop":
                                 return False
 
+                    # Fallback: full assistant message
                     elif event.get("type") == "assistant":
                         message = event.get("message", {})
                         for content_item in message.get("content", []):
@@ -172,6 +170,7 @@ def run_single_query(
                     elif event.get("type") == "result":
                         return triggered
         finally:
+            # Clean up process on any exit path (return, exception, timeout)
             if process.poll() is None:
                 process.kill()
                 process.wait()
@@ -266,7 +265,7 @@ def main():
     parser.add_argument("--timeout", type=int, default=30, help="Timeout per query in seconds")
     parser.add_argument("--runs-per-query", type=int, default=3, help="Number of runs per query")
     parser.add_argument("--trigger-threshold", type=float, default=0.5, help="Trigger rate threshold")
-    parser.add_argument("--model", default=None, help="Model to use")
+    parser.add_argument("--model", default=None, help="Model to use for claude -p (default: user's configured model)")
     parser.add_argument("--verbose", action="store_true", help="Print progress to stderr")
     args = parser.parse_args()
 
