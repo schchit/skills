@@ -12,7 +12,12 @@ env:
 
 # Polymarket Simmer FastLoop Trader
 
-Automated trading skill for Polymarket BTC/ETH/SOL 5-minute and 15-minute fast markets. Uses a mean reversion strategy with momentum exhaustion detection, order book imbalance confirmation, and volatility-adjusted position sizing.
+> [!TIP]
+> **This is a template.** The default signal is a **Mean Reversion** strategy using Binance momentum exhaustion and L2 order book imbalance.
+> Remix it with alternative signals like trend-following momentum, social sentiment feeds, or cross-venue arbitrage models.
+> The skill handles all the **plumbing** (market discovery, fee-accurate EV math, position tracking). Your agent provides the **alpha**.
+
+Automated trading skill for Polymarket BTC/ETH/SOL 5-minute and 15-minute fast markets.
 
 > **Default is paper mode.** Use `--live` for real trades.
 
@@ -110,6 +115,23 @@ openclaw cron add \
 | `fee_buffer` | 0.05 | Extra edge above fee breakeven |
 | `daily_budget` | 10.0 | Max spend per UTC day |
 | `starting_balance` | 1000.0 | Paper portfolio starting balance |
+
+## 🎨 Remixing the Signal
+
+This skill is a **remixable template**. We distinguish between **Plumbing** (Infrastructure) and **Alpha** (Strategy).
+
+### Core Components:
+*   **The Plumbing (Structural)**: Market discovery (Gamma/Simmer fallback), Pre-Caching, execution via Simmer SDK, and fee-accurate EV calculations.
+*   **The Alpha (Replaceable)**: The decision-making logic inside `run_strategy` where `side` is determined based on CEX signals.
+
+### How to Remix:
+1. **Find the Signal logic**: In `polymarket-simmer-fastloop.py`, look for the `run_strategy` function around line ~950.
+2. **Modify the Decision**: 
+   - Swap the `side = "no"` and `side = "yes"` logic to change from Mean Reversion to Trend Following.
+   - Replace `get_momentum` with your own model or API (e.g., custom XGBoost classifier or GPT-4o signal).
+3. **Refine Execution**: Edit `calculate_position_size` to implement custom risk management formulas.
+
+*Use this template to bypass the complexity of Polymarket's order book and focus entirely on your strategy logic.*
 
 ## Troubleshooting
 

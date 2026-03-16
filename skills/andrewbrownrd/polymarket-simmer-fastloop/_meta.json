@@ -3,11 +3,16 @@
   "slug": "polymarket-simmer-fastloop",
   "displayName": "Polymarket FastLoop Trader",
   "latest": {
-    "version": "1.0.8",
-    "publishedAt": 1773247691815,
-    "commit": "https://github.com/openclaw/skills/commit/80420df00286dd27b7cc02a5088f2634c3f17dc4"
+    "version": "1.0.10",
+    "publishedAt": 1773668038458,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.8",
+      "publishedAt": 1773247691815,
+      "commit": "https://github.com/openclaw/skills/commit/80420df00286dd27b7cc02a5088f2634c3f17dc4"
+    },
     {
       "version": "1.0.7",
       "publishedAt": 1772883119531,
