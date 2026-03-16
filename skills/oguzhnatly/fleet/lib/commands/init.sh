@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# fleet init · Interactive configuration setup with auto-PATH
+# fleet init: Interactive configuration setup with auto-PATH
 
 cmd_init() {
     out_header "Fleet Setup"
@@ -120,7 +120,11 @@ config_path = os.path.join(config_dir, "config.json")
 with open(config_path, "w") as f:
     json.dump(config, f, indent=2)
 
+# Restrict config permissions immediately: it stores auth tokens in plaintext
+os.chmod(config_path, 0o600)
+
 print(f"\n  Config written to: {config_path}")
+print(f"  {D}Permissions set to 600 (owner read/write only). Tokens stored here are plaintext.{N}")
 print(f"\n  {D}Edit it to add agent names, tokens, repos, and endpoints.{N}")
 print(f"  {D}Then run: fleet health{N}")
 INIT_PY
@@ -159,7 +163,7 @@ _ensure_path() {
         if [ -f "$rc" ]; then
             if ! grep -q '\.local/bin' "$rc" 2>/dev/null; then
                 echo '' >> "$rc"
-                echo '# Added by fleet · https://github.com/oguzhnatly/fleet' >> "$rc"
+                echo '# Added by fleet: https://github.com/oguzhnatly/fleet' >> "$rc"
                 echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$rc"
                 out_ok "Added $bin_dir to PATH in $(basename "$rc")"
                 added=true
