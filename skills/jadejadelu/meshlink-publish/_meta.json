@@ -1,0 +1,11 @@
+{
+  "owner": "jadejadelu",
+  "slug": "meshlink-publish",
+  "displayName": "MeshLink 服务发布",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1773128904603,
+    "commit": null
+  },
+  "history": []
+}
