@@ -84,6 +84,14 @@ After a supported interpreter is found, always create a repo-local .venv and con
 
 Do not duplicate the rest of the workflow for pyenv or conda unless the user explicitly asks to stay inside a conda environment.
 
+## Clone repository
+
+If you don't have a local repository yet, clone the repository first.
+```bash
+git clone https://github.com/FireRedTeam/FireRed-OpenStoryline.git
+cd FireRed-OpenStoryline
+```
+
 ## Preferred Install Path
 
 From the repo root:
