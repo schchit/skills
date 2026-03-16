@@ -1,7 +1,9 @@
 ---
+version: "2.0.0"
 name: Journal Prompt
 description: "Journal Prompts. Use when you need journal prompt capabilities. Triggers on: journal prompt."
   日记引导助手。每日写作引导、感恩日记、反思日记、晨间日记、晚间总结、周总结模板。Journal prompts for daily writing, gratitude, reflection, morning pages, evening review, weekly summary. 日记、写作、反思、感恩。
+author: BytesAgain
 ---
 # Journal Prompt
 
@@ -24,7 +26,6 @@ A: 主要输出Markdown格式，方便复制和编辑。
 - **evening** — evening
 - **weekly** — weekly
 
-
 ## 专业建议
 
 - 不追求完美，写就对了
@@ -38,3 +39,17 @@ A: 主要输出Markdown格式，方便复制和编辑。
 ---
 💬 Feedback & Feature Requests: https://bytesagain.com/feedback
 Powered by BytesAgain | bytesagain.com
+
+## Examples
+
+```bash
+# Show help
+journal-prompt help
+
+# Run
+journal-prompt run
+```
+
+## Commands
+
+Run `journal-prompt help` to see all available commands.
