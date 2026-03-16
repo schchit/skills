@@ -3,11 +3,16 @@
   "slug": "database-design",
   "displayName": "Database Design",
   "latest": {
-    "version": "2.2.0",
-    "publishedAt": 1773444749715,
-    "commit": "https://github.com/openclaw/skills/commit/b431a29484cd30b544fb09c0ad2d28ecb894605e"
+    "version": "2.3.5",
+    "publishedAt": 1773665660220,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.2.0",
+      "publishedAt": 1773444749715,
+      "commit": "https://github.com/openclaw/skills/commit/b431a29484cd30b544fb09c0ad2d28ecb894605e"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773249499127,
