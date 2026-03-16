@@ -1,39 +1,39 @@
 ---
-name: flashcard
-description: "闪卡生成与间隔复习系统。创建闪卡、智能复习、测验模式、导出(Markdown/Anki)、间隔复习算法、学习统计分析。Flashcard creator with spaced repetition, quiz mode, export (Markdown/Anki), learning statistics. Use when you need flashcard capabilities. Triggers on: flashcard."
+name: Flashcard
+description: "Spaced repetition study tool with deck management. Create flashcard decks, add question-answer pairs, study with prioritized review (weakest cards first), track correct and wrong answers, view mastery progress, and manage multiple subject decks. Learn anything more efficiently."
+version: "2.0.0"
+author: "BytesAgain"
+tags: ["flashcard","study","learning","spaced-repetition","education","memory","quiz","anki"]
+categories: ["Education", "Productivity", "Personal Management"]
 ---
-# flashcard
 
-闪卡生成与间隔复习系统。创建闪卡、智能复习、测验模式、导出(Markdown/Anki)、间隔复习算法、学习统计分析。Flashcard creator with spaced repetition, quiz mode, export (Markdown/Anki), learning statistics.
+# Flashcard
 
-## 核心特点
+Study smarter with spaced repetition. Cards you struggle with come up more often.
 
-🎯 **精准** — 针对具体场景定制化输出
-📋 **全面** — 多个命令覆盖完整工作流
-🇨🇳 **本土化** — 完全适配中文用户习惯
+## Commands
 
-## 命令速查
+- `create <deck>` — Create a new flashcard deck
+- `add <deck> <front> <back>` — Add a card to a deck
+- `study <deck>` — Study weakest cards first
+- `correct <deck>` — Mark current card as correct
+- `wrong <deck>` — Mark current card as wrong (will repeat sooner)
+- `decks` — List all decks with card counts
+- `stats` — Overall study statistics
+- `help` — Show commands
 
+## Usage Examples
+
+```bash
+flashcard create Spanish
+flashcard add Spanish "hola" "hello"
+flashcard add Spanish "gracias" "thank you"
+flashcard study Spanish
+flashcard correct Spanish
+flashcard decks
+flashcard stats
 ```
-  create          create
-  review          review
-  quiz            quiz
-  export          export
-  spaced          spaced
-  stats           stats
-```
 
-
-## 专业建议
-
-- 创建闪卡时**：指定主题和数量，如"Python基础 10张"，AI会生成正反面内容
-- 复习模式**：基于艾宾浩斯遗忘曲线安排复习时间
-- 测验模式**：随机打乱顺序，支持选择题和填空题
-- 导出格式**：
-- Markdown：适合笔记软件（Obsidian、Notion）
-
----
-*flashcard by BytesAgain*
 ---
 💬 Feedback & Feature Requests: https://bytesagain.com/feedback
 Powered by BytesAgain | bytesagain.com

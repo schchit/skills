@@ -3,11 +3,16 @@
   "slug": "flashcard",
   "displayName": "Flashcard",
   "latest": {
-    "version": "2.2.0",
-    "publishedAt": 1773444857882,
-    "commit": "https://github.com/openclaw/skills/commit/d69a82a6f475c9c36e4a7c9b231f006620ee3a67"
+    "version": "2.3.4",
+    "publishedAt": 1773666001102,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.2.0",
+      "publishedAt": 1773444857882,
+      "commit": "https://github.com/openclaw/skills/commit/d69a82a6f475c9c36e4a7c9b231f006620ee3a67"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773242305620,
