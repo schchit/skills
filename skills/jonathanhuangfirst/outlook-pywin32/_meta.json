@@ -3,9 +3,15 @@
   "slug": "outlook-pywin32",
   "displayName": "Outlook Pywin32",
   "latest": {
-    "version": "0.7.0",
-    "publishedAt": 1773372672835,
-    "commit": "https://github.com/openclaw/skills/commit/40050d8c6fd1b086f90bb5a88ba5442cde885727"
+    "version": "0.8.0",
+    "publishedAt": 1773650206057,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.7.0",
+      "publishedAt": 1773372672835,
+      "commit": "https://github.com/openclaw/skills/commit/40050d8c6fd1b086f90bb5a88ba5442cde885727"
+    }
+  ]
 }
