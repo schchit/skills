@@ -3,9 +3,15 @@
   "slug": "azuredatastudio",
   "displayName": "Azuredatastudio",
   "latest": {
-    "version": "2.3.0",
-    "publishedAt": 1773447036484,
-    "commit": "https://github.com/openclaw/skills/commit/515237613066621d2daf8e66ebb03db4b1652560"
+    "version": "2.3.6",
+    "publishedAt": 1773664713648,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "2.3.0",
+      "publishedAt": 1773447036484,
+      "commit": "https://github.com/openclaw/skills/commit/515237613066621d2daf8e66ebb03db4b1652560"
+    }
+  ]
 }
