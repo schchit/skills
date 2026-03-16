@@ -3,9 +3,15 @@
   "slug": "soul",
   "displayName": "Soul",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1772992596484,
-    "commit": "https://github.com/openclaw/skills/commit/cdf9a53e6dd929c165cd4084b662817a92ddafb7"
+    "version": "1.0.0",
+    "publishedAt": 1773652848035,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1772992596484,
+      "commit": "https://github.com/openclaw/skills/commit/cdf9a53e6dd929c165cd4084b662817a92ddafb7"
+    }
+  ]
 }
