@@ -1,247 +1,267 @@
 ---
 name: antigravity-bridge
-version: 1.2.2
-description: >-
-  One-directional knowledge bridge from Google Antigravity IDE to OpenClaw.
-  Keeps the OpenClaw agent informed about project development without replacing
-  Antigravity as the primary coding agent. Antigravity has deep codebase awareness
-  (IDE, LSP, vectors, code tracker, annotations) — OpenClaw has breadth (24/7 availability,
-  cross-project awareness, business ops, monitoring, communications).
-  The bridge syncs: Knowledge Items, tasks (.agent/tasks.md), lessons learned
-  (.agent/memory/), rules, skills, workflows, and session handoffs.
-  Use when: (1) syncing Antigravity knowledge to OpenClaw context,
-  (2) analyzing tasks for next-task recommendations,
-  (3) running cross-agent self-improve (updates both systems),
-  (4) checking what Antigravity sessions produced,
-  (5) user says "sync antigravity", "pick task", "what did antigravity do",
-  "bridge sync", or "antigravity status".
-  NOT for: primary coding (use Antigravity), model/provider config,
-  or starting the IDE (use `agy` CLI).
-homepage: https://github.com/heintonny/antigravity-bridge
-metadata: {"openclaw":{"emoji":"🌉","tags":["antigravity","gemini","knowledge-sync","multi-agent","bridge","ide","tasks","coding"]}}
+version: 2.0.1
+description: "One-directional knowledge bridge from Google Antigravity IDE to OpenClaw. Syncs only .md documentation files from Antigravity projects into OpenClaw workspace for native vector indexing. No secrets, credentials, or binary state are synced — rsync filters enforce .md-only transfer. Supports multiple projects."
+author: heintonny
+metadata: {"openclaw":{"emoji":"🌉","tags":["antigravity","gemini","knowledge-sync","multi-agent","bridge","ide","sync"],"requires":{"bins":["rsync","yq"]},"install":[{"id":"yq","kind":"brew","package":"yq","bins":["yq"],"label":"Install yq YAML parser"},{"id":"rsync","kind":"system","package":"rsync","bins":["rsync"],"label":"rsync (usually pre-installed)"}]}}
 ---
 
 # Antigravity Bridge
 
-Bidirectional knowledge bridge between OpenClaw and Google Antigravity IDE.
-Both agents share the same knowledge, tasks, and learnings — no manual sync needed.
+One-directional knowledge bridge from Google Antigravity IDE to OpenClaw.
 
-## Prerequisites
+Syncs `.md` files from your Antigravity/Gemini projects into the OpenClaw workspace, where they are natively embedded and indexed for `memory_search`. No MEMORY.md dumping, no custom state tracking — just files on disk, indexed automatically.
 
-- Google Antigravity IDE installed (with `~/.gemini/antigravity/` directory)
-- A project with `.agent/` directory (Antigravity's standard agent config)
-- Python 3.10+ (for sync scripts)
+## When to Use
 
-## Configuration
+- User says "sync antigravity", "bridge sync", "pull antigravity docs"
+- You need cross-project awareness of Antigravity-managed context
+- After an Antigravity session, to surface new decisions/rules/tasks to OpenClaw
+- Scheduled (cron) to keep the knowledge fresh automatically
 
-Before first use, create a config file:
+## When NOT to Use
 
-```bash
-python3 "$(dirname "$0")/scripts/configure.py"
-```
+- Primary coding work (use Antigravity for that — it has IDE, LSP, deep code awareness)
+- Writing back to Antigravity projects (this is **one-way only**: Antigravity → OpenClaw)
+- Querying the synced knowledge (just use `memory_search` — the files are already indexed)
 
-Or create `~/.openclaw/antigravity-bridge.json` manually:
-
-```json
-{
-  "knowledge_dir": "~/.gemini/antigravity/knowledge",
-  "project_dir": "~/path/to/your/project",
-  "agent_dir": "~/path/to/your/project/.agent",
-  "gemini_md": "~/path/to/your/project/.gemini/GEMINI.md",
-  "auto_commit": false
-}
-```
-
-## Sync Command — The Core Workflow
-
-### Running the sync
-
-```bash
-python3 scripts/sync_knowledge.py
-```
-
-This outputs **structured JSON to stdout** with two sections:
-- `diff` — what changed since last sync (or "first sync" if no previous state)
-- `current` — full snapshot of current Antigravity state
-
-State is tracked in `~/.openclaw/workspace/antigravity-sync-state.json`.
-
-### Agent responsibilities after sync
-
-**The agent (not the script) is responsible for updating OpenClaw memory.**
-
-After running the sync script, the agent MUST:
-
-1. **Read the JSON output**, focusing on the `diff` section
-2. **If `diff.is_first_sync` is true or `diff.summary` shows changes:**
-   - Update `MEMORY.md` with significant changes:
-     - Task count changes (done/todo deltas)
-     - New or removed KI topics
-     - New active tasks or phase changes
-     - New lessons learned (from memory files)
-   - Append a sync log entry to `memory/YYYY-MM-DD.md`:
-     ```
-     HH:MM — Antigravity Bridge sync: <diff.summary>
-     ```
-3. **If `diff.summary` is "No changes since last sync":**
-   - No updates needed. Optionally log the sync attempt.
-
-### What goes where
-
-| Change type | Target | What to write |
-|---|---|---|
-| Task count deltas | `MEMORY.md` → CodePact section | Update done/todo counts |
-| New active `[>]` tasks | `MEMORY.md` → Current Phase | Replace active task info |
-| New KI topics | `MEMORY.md` → CodePact section | Note new topic names |
-| New memory/lessons files | `MEMORY.md` → relevant section | Summarize key lessons |
-| New rules/skills/workflows | `MEMORY.md` → CodePact section | Update inventory counts |
-| Session handoff changes | `MEMORY.md` → CodePact section | Note current handoff context |
-| Any sync event | `memory/YYYY-MM-DD.md` | Timestamped log entry |
-
-### What NOT to do
-
-- Do NOT create standalone reference docs (no ANTIGRAVITY.md, no antigravity-sync.md)
-- Do NOT dump raw sync data into files — distill into MEMORY.md
-- Do NOT ask the user whether to update MEMORY.md — just do it
-
-## Other Commands
-
-### Diff Tasks (`diff`)
-
-Show what changed in tasks since last sync:
-
-```bash
-python3 scripts/diff_tasks.py
-```
-
-### Next Task (`pick-task`) — mirrors Antigravity's /next-task
-
-Gather project context for intelligent task selection:
-
-```bash
-python3 scripts/pick_task.py
-```
-
-This outputs **structured JSON context** (does NOT modify tasks.md). The agent uses this to reason.
-
-**Agent workflow after running pick-task:**
-
-1. Read the JSON output (tasks, git log, sessions, memory)
-2. Analyze:
-   - Active `[>]` tasks that need finishing
-   - Session handoffs (continuation prompts from Antigravity)
-   - Recent commits (what was just worked on)
-   - Phase dependencies (what's unblocked)
-3. Recommend **2-3 tasks** to the user with:
-   - Context: why this task now
-   - Scope: what's involved
-   - Effort: Small / Medium / Large
-4. Present as numbered options:
-   ```
-   🎯 Recommended Next Tasks — Reply 1, 2, or 3
-
-   ### Option 1: [Task Name] ⭐
-   - Context: ...
-   - Scope: ...
-   - Effort: Medium
-
-   ### Option 2: [Task Name]
-   ...
-   ```
-5. User picks → agent marks task `[>]` in tasks.md
-6. Agent spawns coding sub-agent with task brief (rules + relevant memory + KIs)
-7. After completion: mark `[x]`, run self-improve
-
-**Priority criteria (in order):**
-1. Active but incomplete (`[>]` tasks)
-2. Unblocking (enables other work)
-3. Quick wins (low effort, high value)
-4. Technical debt (flagged in audits/lessons)
-5. Natural progression (next step in current phase)
-
-**The script gathers data. The agent thinks. The user decides.**
-
-### Self-Improve (`self-improve`)
-
-Update BOTH knowledge systems with session learnings:
-
-```bash
-python3 scripts/self_improve.py --topic "<topic>" --lesson "<what was learned>"
-```
-
-What it does:
-1. **OpenClaw side:** Updates `MEMORY.md` and `memory/YYYY-MM-DD.md`
-2. **Antigravity side:**
-   - Creates/updates `.agent/memory/lessons-learned-<topic>.md`
-   - Creates/updates KI artifacts in `knowledge/<topic>/artifacts/`
-   - Updates `metadata.json` and `timestamps.json`
-3. Optionally commits changes
-
-### Write Knowledge Item (`write-ki`)
-
-Write directly to Antigravity's native Knowledge Item system:
-
-```bash
-python3 scripts/write_ki.py \
-  --topic "my_topic" \
-  --title "My Topic" \
-  --summary "What this knowledge covers" \
-  --artifact "pattern_name" \
-  --content "# Pattern\n\nDetailed content here..."
-```
-
-### Create Antigravity Skill (`create-agy-skill`)
-
-Generate the reverse-direction Antigravity skill:
-
-```bash
-python3 scripts/create_agy_skill.py --project-dir ~/path/to/project
-```
+---
 
 ## Architecture
 
 ```
-┌─────────────────────┐       ┌─────────────────────┐
-│    Antigravity       │       │    OpenClaw          │
-│    (Gemini)          │       │    (Any LLM)         │
-│                      │       │                      │
-│  knowledge/       ◄──┼───────┼──► MEMORY.md         │
-│  .agent/tasks.md  ◄──┼───────┼──► MEMORY.md (tasks) │
-│  .agent/memory/   ◄──┼───────┼──► MEMORY.md (lessons)│
-│  .agent/sessions/ ◄──┼───────┼──► MEMORY.md (handoff)│
-│  .agent/rules/    ───┼───────┼──► MEMORY.md (counts) │
-│  .agent/skills/   ───┼───────┼──► MEMORY.md (counts) │
-│  .agent/workflows/───┼───────┼──► MEMORY.md (counts) │
-└─────────────────────┘       └─────────────────────┘
-         │                              │
-         └──── state.json ◄─────────────┘
-              (diff tracking)
+Antigravity IDE                  OpenClaw Workspace
+─────────────────                ─────────────────────────────
+~/repo/acme-corp/acme-platform/
+  .agent/memory/       ──rsync──► antigravity/acme-platform/
+  .agent/rules/        ──rsync──►   .agent/memory/
+  .agent/skills/       ──rsync──►   .agent/rules/
+  .agent/sessions/     ──rsync──►   .agent/skills/
+  .agent/tasks.md      ──rsync──►   .agent/sessions/
+  .gemini/GEMINI.md    ──rsync──►   .agent/tasks.md
+  docs/                ──rsync──►   .gemini/GEMINI.md
+  *.md (root)          ──rsync──►   docs/
+                                    *.md (root)
+~/.gemini/antigravity/
+  knowledge/           ──rsync──► antigravity/gemini-knowledge/
+─────────────────                ─────────────────────────────
+                                         │
+                                  OpenClaw native embedder
+                                  (memorySearch.extraPaths)
+                                         │
+                                  memory_search queries ✓
 ```
 
-## State File
+**Key design decisions:**
+- Files land in `antigravity/<project-name>/` under the OpenClaw workspace destination
+- OpenClaw's native embedder indexes them automatically via `memorySearch.extraPaths`
+- `sync.sh` is idempotent — safe to run repeatedly or on cron
+- Source paths that don't exist are skipped gracefully (no failure)
 
-`~/.openclaw/workspace/antigravity-sync-state.json` tracks:
-- Last sync timestamp
-- KI topic hashes and artifact counts
-- Task file hash and counts
-- Memory/rules/skills/workflows file hashes
+---
 
-This enables precise change detection without markdown diffing.
+## Setup Guide
+
+### Step 1: Prerequisites
+
+```bash
+# rsync (usually pre-installed on macOS/Linux)
+rsync --version
+
+# yq — YAML parser (required)
+brew install yq          # macOS
+# or: sudo apt install yq   # Ubuntu/Debian
+# or: snap install yq       # Ubuntu snap
+yq --version
+```
+
+### Step 2: Copy the config template
+
+```bash
+cp ~/.openclaw/workspace/skills/antigravity-bridge/config-template.yaml \
+   ~/.openclaw/workspace/antigravity-bridge.yaml
+```
+
+### Step 3: Edit the config
+
+Open `~/.openclaw/workspace/antigravity-bridge.yaml` and configure your projects:
+
+```yaml
+projects:
+  - name: acme-platform
+    repo: ~/repo/acme-corp/acme-platform
+    paths:
+      - .agent/memory
+      - .agent/rules
+      - .agent/skills
+      - .agent/tasks.md
+      - .gemini/GEMINI.md
+      - docs
+    include_root_md: true
+
+knowledge:
+  - name: gemini-knowledge
+    path: ~/.gemini/antigravity/knowledge
+
+destination: antigravity
+```
+
+- **`projects`** — list of Antigravity-managed repos
+- **`knowledge`** — standalone knowledge directories (e.g. Gemini's global knowledge store)
+- **`destination`** — subfolder within the OpenClaw workspace (default: `antigravity`)
+
+### Step 4: Configure OpenClaw extraPaths
+
+Tell OpenClaw to index the synced directory. In your OpenClaw config (`~/.openclaw/config.yaml` or equivalent), add:
+
+```yaml
+memorySearch:
+  extraPaths:
+    - ~/path/to/openclaw/workspace/antigravity
+```
+
+Replace with the actual workspace path. After saving, restart OpenClaw or reload memory indexing.
+
+### Step 5: Test with --dry-run
+
+```bash
+~/.openclaw/workspace/skills/antigravity-bridge/sync.sh --dry-run --verbose
+```
+
+You'll see what *would* be synced without touching anything.
+
+### Step 6: Run for real
+
+```bash
+~/.openclaw/workspace/skills/antigravity-bridge/sync.sh --verbose
+```
+
+### Step 7: Verify with memory_search
+
+After syncing, query OpenClaw memory to confirm indexing:
+
+```
+memory_search: "acme-platform agent rules"
+memory_search: "GEMINI.md"
+```
+
+If results come back from the synced files, the bridge is working.
+
+---
+
+## Config Reference
+
+```yaml
+# ~/.openclaw/workspace/antigravity-bridge.yaml
+
+projects:
+  - name: <string>          # Identifier — used as subfolder name
+    repo: <path>            # Root of the Antigravity project (~ expanded)
+    paths:                  # List of paths relative to repo root
+      - .agent/memory       # Directory → recursively sync *.md
+      - .agent/tasks.md     # Single file → synced directly
+      - docs                # Directory → recursively sync *.md
+    include_root_md: true   # Also sync *.md files at repo root (optional, default: false)
+
+knowledge:
+  - name: <string>          # Identifier — used as subfolder name
+    path: <path>            # Source path to rsync *.md from (~ expanded)
+
+destination: antigravity    # Target subfolder in OpenClaw workspace
+                            # Full path: <workspace>/<destination>/
+```
+
+**Path types:**
+- **Directory** — rsync runs with `--include='*.md' --exclude='*'` recursively
+- **Single file** — rsync copies the file directly (must end in `.md`)
+
+**Missing sources:** If a configured path doesn't exist, sync.sh logs a warning and skips it. Other paths continue normally. Exit code remains 0.
+
+---
+
+## CLI Reference
+
+```
+sync.sh [options]
+
+Options:
+  --config <path>      Config file (default: ~/.openclaw/workspace/antigravity-bridge.yaml)
+  --project <name>     Sync only this project (by name)
+  --dry-run            Show what would be synced, without making changes
+  --verbose            Show rsync output and detailed progress
+  --help               Show this help
+```
+
+Examples:
+
+```bash
+# Sync everything
+sync.sh
+
+# Sync one project only
+sync.sh --project acme-platform
+
+# Preview without touching files
+sync.sh --dry-run --verbose
+
+# Use a custom config
+sync.sh --config ~/my-bridge.yaml
+```
+
+---
+
+## Cron Integration
+
+Add to crontab (`crontab -e`) for automatic syncing:
+
+```cron
+# Antigravity Bridge — hourly during business hours (Mon-Fri, 08:00-18:00)
+0 8-18 * * 1-5 ~/.openclaw/workspace/skills/antigravity-bridge/sync.sh >> ~/.openclaw/logs/antigravity-bridge.log 2>&1
+
+# Nightly full sync (all days, 02:00)
+0 2 * * * ~/.openclaw/workspace/skills/antigravity-bridge/sync.sh --verbose >> ~/.openclaw/logs/antigravity-bridge.log 2>&1
+```
+
+Create the log directory first:
+
+```bash
+mkdir -p ~/.openclaw/logs
+```
+
+---
+
+## Troubleshooting
+
+**`yq: command not found`**
+Install yq: `brew install yq` (macOS) or see https://github.com/mikefarah/yq
+
+**`Config file not found`**
+Copy the template: `cp config-template.yaml ~/.openclaw/workspace/antigravity-bridge.yaml`
+
+**`rsync: command not found`**
+Install rsync: `brew install rsync` (macOS) or `sudo apt install rsync`
+
+**No results from memory_search**
+- Check that `memorySearch.extraPaths` includes the destination folder
+- Restart OpenClaw after changing extraPaths
+- Verify files landed in the right place: `ls ~/.openclaw/workspace/antigravity/`
+
+**Files not updating**
+- Run with `--verbose` to see rsync output
+- Check source paths exist: `ls ~/repo/acme-corp/acme-platform/.agent/memory/`
+
+**Wrong files synced**
+- Only `.md` files are synced (rsync filter: `--include='*.md' --exclude='*'`)
+- To sync other file types, edit sync.sh patterns
+
+---
 
 ## Security & Privacy
 
-- **All data stays local.** No external API calls. No cloud sync.
-- Scripts only read/write files within configured directories.
-- No credentials or tokens are required.
-- The skill never modifies code — only knowledge/task/memory files.
-
-## External Endpoints
-
-None. This skill operates entirely on local files.
-
-## Trust Statement
-
-This skill reads and writes files within your Antigravity knowledge directory
-(`~/.gemini/antigravity/`) and your project's `.agent/` directory. It does not
-send any data to external services. Only install if you trust the skill to
-modify these directories.
+- **All data stays local.** No external API calls, no cloud sync, no network access.
+- **Only `.md` files are synced.** rsync filters (`--filter='+ *.md' --filter='- *'`) enforce markdown-only transfer. No secrets, credentials, API keys, binary state, session tokens, or config files are ever copied.
+- `.agent/` and `.gemini/` directories are Antigravity's documentation folders containing markdown notes about rules, tasks, memory, and project context. They do **not** contain credentials or sensitive runtime state — those are stored elsewhere by the IDE.
+- sync.sh only reads from user-configured source paths and writes to a designated OpenClaw workspace subfolder.
+- No credentials or tokens required to run.
+- Safe to run with `--dry-run` to inspect behavior before committing.
+- **Dependencies:** `rsync` (system), `yq` (YAML parser) — both declared in manifest metadata.
