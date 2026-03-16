@@ -1,0 +1,11 @@
+{
+  "owner": "ordiy",
+  "slug": "watadot-aws-iam",
+  "displayName": "Watadot Aws Iam",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773664196504,
+    "commit": null
+  },
+  "history": []
+}
