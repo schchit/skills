@@ -1,7 +1,7 @@
 ---
 name: elevenlabs-toolkit
 description: ElevenLabs voice API integration — TTS, sound effects, music generation, speech-to-text, voice isolation, and streaming. Use when building voice-enabled apps, generating narration, creating audio content, or transcribing speech. Requires ELEVENLABS_API_KEY.
-version: 1.0.0
+version: 1.0.1
 metadata:
   {
       "openclaw": {
@@ -16,7 +16,8 @@ metadata:
             "network": {
                   "outbound": true,
                   "reason": "Calls ElevenLabs API (api.elevenlabs.io) for TTS, SFX, music generation, STT, and voice operations."
-            }
+            },
+            "security_notes": "base64 used for encoding audio binary responses from ElevenLabs API. UploadFile is FastAPI's multipart type for audio input to STT endpoint. 'system prompt' refers to ElevenLabs agent system prompt configuration field — not a prompt injection vector."
       }
 }
 ---
