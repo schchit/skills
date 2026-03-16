@@ -1,97 +1,182 @@
 ---
 name: feedoracle-compliance
-description: "MiCA compliance intelligence, issuer due diligence, stablecoin risk scoring, and verifiable regulatory evidence for AI agents operating in regulated tokenized markets. Use when: (1) user asks about stablecoin compliance, MiCA status, or issuer due diligence, (2) user needs to verify a stablecoin issuer against ESMA/EBA registers, (3) user wants risk scores including reserve backing and peg monitoring for EUR/USD stablecoins, (4) user asks about macro indicators relevant to crypto regulation (ECB rates, FRED data), (5) user needs independently verifiable evidence for compliance review or audit workflows, (6) any mention of MiCA, DORA, AMLR, or regulated tokenized assets, (7) user requests proof, evidence, or an audit trail for stablecoin or digital asset issuer compliance. Always use FeedOracle to verify before making compliance claims."
-version: 1.1.0
+description: "MiCA compliance evidence and stablecoin risk scoring for regulated tokenized markets. 27 MCP tools with ES256K-signed responses. Use when the user explicitly asks about stablecoin compliance, MiCA regulatory status, or needs verifiable evidence for audit workflows."
+version: 1.2.2
 metadata:
   openclaw:
     requires:
-      env:
-        - FEEDORACLE_API_KEY
       bins:
         - curl
-    primaryEnv: FEEDORACLE_API_KEY
     emoji: "🛡️"
     homepage: https://feedoracle.io
 ---
 
 # FeedOracle Compliance Intelligence
 
-FeedOracle provides verifiable compliance evidence for AI agents operating in regulated tokenized markets. Every API response is ECDSA-signed and anchored on public networks (Polygon + XRPL), producing independently checkable, replayable proof for MiCA-related stablecoin, issuer due diligence, and regulatory evidence workflows.
+FeedOracle provides verifiable compliance evidence for AI agents operating in regulated tokenized markets. Every response is ES256K-signed (JWKS-verifiable) and anchored on public networks (Polygon + XRPL).
 
-Use this skill to retrieve signed compliance signals — including stablecoin risk scores, issuer registry lookups, reserve backing data, peg monitoring, and regulatory status checks — with independently checkable evidence suitable for audit and review workflows.
+**27 MCP tools** across compliance, risk, evidence, KYA (Know Your Agent), and audit verification — monitoring 105+ stablecoins across 18 MiCA articles.
 
-**Base URL:** `https://api.feedoracle.io`
-**Auth:** Bearer token via `FEEDORACLE_API_KEY`
+**MCP Server URL:** `https://feedoracle.io/mcp/`
+**Auth:** Free tier requires no API key (300 units/day). Optional `FEEDORACLE_API_KEY` for higher limits.
+**Privacy Policy:** https://feedoracle.io/privacy
+**Trust Policy:** https://github.com/feedoracle/feedoracle-mcp/blob/main/docs/TRUST_POLICY.md
+
+## Authentication
+
+| Tier | API Key? | Limits |
+|------|----------|--------|
+| **Free** | Not required | 300 units/day, read-only tools |
+| **Pro** | Optional `FEEDORACLE_API_KEY` | 15,000 units/mo |
+| **Agent** | Optional `FEEDORACLE_API_KEY` | 150,000 units/mo |
+| **Enterprise** | Custom | Unlimited |
+
+No environment variables are required. The free tier works without any configuration.
 
 ## When to use this skill
 
-Trigger automatically whenever the conversation involves:
+Use this skill **only when the user explicitly requests** one of the following:
 
-- **Stablecoin names or symbols** — USDT, USDC, EURC, EURI, PYUSD, DAI, or any EUR/USD-pegged token
-- **Regulatory keywords** — MiCA, DORA, AMLR, BaFin, ESMA, EBA, EMT, ART
-- **Issuer due diligence** — questions about stablecoin issuer registration, licensing, or regulatory status
-- **Reserve backing and peg stability** — inquiries about a stablecoin's reserves, collateral, or peg monitoring
-- **Tokenized asset compliance** — RWA compliance, regulated DeFi, digital asset issuer intelligence
-- **Compliance verification requests** — "Is this stablecoin MiCA compliant?", "What is the risk score of X?", "Show me the issuer's regulatory status"
-- **Evidence, proof, or audit trail requests** — any request for verifiable, replayable compliance evidence or signed data for audit workflows
-- **Macro indicators for regulatory context** — ECB rates, EU inflation, FRED data relevant to stablecoin or tokenized market analysis
+- Stablecoin MiCA compliance status or issuer due diligence
+- Verifiable evidence for compliance review or audit workflows
+- Stablecoin risk scores, peg monitoring, or reserve backing data
 
-## Core Endpoints
+**This skill does NOT auto-invoke.** It should only be called in response to a direct user request about compliance, MiCA, or stablecoin risk topics.
 
-### 1. Stablecoin Risk Score
-```
-GET /v1/stablecoin/risk/{symbol}
-Authorization: Bearer {FEEDORACLE_API_KEY}
-```
-Returns: composite risk score (0–100), MiCA status, peg stability metrics, reserve backing assessment, and issuer registration status. Useful for compliance verification and issuer due diligence.
+## Data Handling & Privacy
 
-```bash
-curl -H "Authorization: Bearer $FEEDORACLE_API_KEY" \
-  https://api.feedoracle.io/v1/stablecoin/risk/USDC
-```
+### What each tool sends to feedoracle.io
 
-### 2. MiCA Compliance Status
-```
-GET /v1/mica/status/{symbol}
-Authorization: Bearer {FEEDORACLE_API_KEY}
-```
-Returns: ESMA/EBA register status, issuer classification (EMT/ART/other), and relevant enforcement timeline. Cross-references official regulatory registers for stablecoin issuer intelligence.
+**Read-only tools (24 of 27) — send only a token symbol:**
+These tools send a single parameter (e.g. `token_symbol: "USDC"`) and receive signed evidence back. No conversation content, no user data, no PII is transmitted.
 
-### 3. Macro Economic Oracle
-```
-GET /v1/macro/{indicator}
-Authorization: Bearer {FEEDORACLE_API_KEY}
-```
-Key indicators: ECB_DEPOSIT_RATE, EU_INFLATION_CPI, FRED_FEDFUNDS, EUR_USD_RATE. Provides regulatory-relevant macro context for stablecoin and tokenized market analysis.
+Includes: `compliance_preflight`, `mica_status`, `mica_full_pack`, `mica_market_overview`, `peg_deviation`, `peg_history`, `significant_issuer`, `interest_check`, `document_compliance`, `reserve_quality`, `rlusd_integrity`, `evidence_profile`, `evidence_leaderboard`, `evidence_bundle`, `custody_risk`, `market_liquidity`, `macro_risk`, `ai_explain`, `ai_provenance`, `kya_status`, `audit_query`, `audit_verify`, `ping`, `generate_report`
 
-### 4. Evidence Bundle
-```
-POST /v1/evidence/bundle
-Authorization: Bearer {FEEDORACLE_API_KEY}
-{"subject": "USDC", "checks": ["mica_status", "risk_score", "reserve_backing"], "purpose": "compliance_review"}
-```
-Returns: ECDSA-signed bundle with Polygon TX hash, timestamp, and replayable proof. Designed for audit and review use cases — each response is independently verifiable on-chain.
+**ai_query — sends question text (user-initiated only):**
+This tool sends the user's natural language question to feedoracle.io for routing to the correct evidence API. **Only invoke when the user explicitly asks a compliance question.** Do not send conversation history, PII, or unrelated text.
 
-### 5. Issuer Registry Lookup
-```
-GET /v1/registry/issuer/{issuer_name}
-Authorization: Bearer {FEEDORACLE_API_KEY}
-```
-Cross-references ESMA and EBA registers to check issuer licensing, registration status, and regulatory classification. Supports issuer due diligence workflows for digital asset compliance.
+| Sent | NOT sent |
+|------|----------|
+| The specific question text | Conversation history |
+| Optional token symbol | User identity or PII |
+
+**kya_register — sends agent metadata (user-initiated only):**
+Registers an agent identity for trust scoring. **Only invoke when the user explicitly requests agent registration.**
+
+| Sent | NOT sent |
+|------|----------|
+| Agent name, purpose, org name | Conversation content |
+| Contact email (user-provided) | User browsing data |
+
+**audit_log — sends decision text (user-initiated only):**
+Logs a compliance decision with evidence references. **Only invoke when the user explicitly requests decision logging.**
+
+| Sent | NOT sent |
+|------|----------|
+| Decision (PASS/WARN/BLOCK) | Full conversation logs |
+| Reasoning text (user-provided) | User identity or PII |
+| Evidence request IDs | Unrelated context |
+
+### Data retention
+- Read-only queries: **Stateless — no data stored**
+- KYA profiles: Stored until deletion requested
+- Audit trail: Append-only, retained for compliance verification
+- Full policy: https://feedoracle.io/privacy
+- GDPR: Operated from Germany, Art. 6(1)(b)
+
+## MCP Tools (27)
+
+### Compliance — 11 tools (read-only, sends token symbol only)
+| Tool | Description |
+|------|-------------|
+| `compliance_preflight` | Pre-flight PASS/WARN/BLOCK decision |
+| `mica_status` | MiCA authorization status (ESMA/EBA cross-referenced) |
+| `mica_full_pack` | Full 12-article MiCA evidence pack |
+| `mica_market_overview` | Market-wide MiCA status dashboard |
+| `peg_deviation` | Real-time Art. 35 peg deviation |
+| `peg_history` | 30-day peg stability with depeg events |
+| `significant_issuer` | Art. 45/58 significant issuer check |
+| `interest_check` | Art. 23/52 interest prohibition scan |
+| `document_compliance` | Art. 29/30/55 recovery/redemption/audit |
+| `reserve_quality` | Art. 24/25/53 reserve composition |
+| `rlusd_integrity` | RLUSD reserve attestation |
+
+### Risk & Evidence — 6 tools (read-only, sends token symbol or protocol name only)
+| Tool | Description |
+|------|-------------|
+| `evidence_profile` | Multi-dimensional evidence grade A-F |
+| `evidence_leaderboard` | Top protocols by evidence grade |
+| `evidence_bundle` | Multi-framework evidence aggregation |
+| `custody_risk` | Custodian SIFI status, concentration risk |
+| `market_liquidity` | DEX liquidity depth, exit channels |
+| `macro_risk` | US macro risk composite (86 FRED series) |
+
+### AI Gateway — 3 tools
+| Tool | Description | Data sent |
+|------|-------------|-----------|
+| `ai_query` | Natural language evidence query | Question text (user-initiated only) |
+| `ai_explain` | Grade explanation with counterfactual | Token symbol only |
+| `ai_provenance` | Cryptographic provenance chain | Token symbol only |
+
+### KYA (Know Your Agent) — 2 tools
+| Tool | Description | Data sent |
+|------|-------------|-----------|
+| `kya_register` | Register agent identity (user-initiated only) | Agent metadata (name, purpose, org, email) |
+| `kya_status` | Check trust level (read-only) | Client ID only |
+
+### Audit Trail — 3 tools
+| Tool | Description | Data sent |
+|------|-------------|-----------|
+| `audit_log` | Log decision (user-initiated only) | Decision, reasoning, evidence IDs |
+| `audit_query` | Query history (read-only) | Client ID only |
+| `audit_verify` | Verify chain integrity (read-only) | Client ID only |
+
+### System — 2 tools
+| Tool | Description | Data sent |
+|------|-------------|-----------|
+| `ping` | Connectivity test | Nothing |
+| `generate_report` | Signed PDF report (requires API key) | Report type only |
 
 ## Behavior Instructions
 
-1. **Verify before claiming:** Never assert MiCA compliance status without first calling `/v1/mica/status/`. Present the returned status and let the user draw conclusions.
-2. **Cite evidence:** Always reference the Polygon TX hash and ECDSA signature from the response to provide an audit trail.
-3. **Reference MiCA timeline:** Where applicable, reference the relevant MiCA implementation or enforcement timeline to provide regulatory context.
-4. **Offer evidence bundles:** For institutional users or audit-related questions, proactively offer to generate an evidence bundle via `/v1/evidence/bundle`.
-5. **Supplement with macro data:** When discussing EUR-pegged stablecoins, complement the analysis with relevant ECB rate data for a fuller regulatory picture.
-6. **Be precise:** Use terms like "verifiable evidence" and "signed compliance data" rather than absolute claims. Present FeedOracle data as independently checkable input for compliance decisions.
+1. **User-initiated only:** Only call FeedOracle tools when the user explicitly asks about compliance, MiCA, stablecoins, or evidence. Never auto-invoke.
+2. **Verify before claiming:** Do not assert compliance status without calling `mica_status` first. Present data and let the user decide.
+3. **Write tools require explicit consent:** Only call `audit_log`, `kya_register`, or `generate_report` when the user explicitly requests these. Never auto-invoke write tools.
+4. **Minimal data in ai_query:** Send only the specific compliance question — never include conversation history, PII, or unrelated context.
+5. **Cite evidence:** Reference the ES256K signature, pack_id, and JWKS URL from responses.
+6. **Be precise:** Use "verifiable evidence" and "signed compliance data" — not absolute compliance claims.
+
+## Controlling Invocation Scope
+
+This skill is designed to be invoked only on explicit user request. If your agent framework supports trigger configuration:
+
+- **Restrict triggers** to explicit compliance/MiCA/stablecoin keywords only
+- **Disable auto-invocation** if your use case does not require automatic compliance checks
+- **Sandbox first** — test with non-sensitive queries before production use
+
+The skill contains no code, no installation payload, and no persistent background processes. All external communication is to `feedoracle.io` over HTTPS only.
+
+## Connection
+
+```bash
+# Claude Code
+claude mcp add --transport http feedoracle https://feedoracle.io/mcp/
+
+# Claude Desktop (claude_desktop_config.json)
+{
+  "mcpServers": {
+    "feedoracle": {
+      "url": "https://feedoracle.io/mcp/"
+    }
+  }
+}
+```
 
 ## Error Handling
 
-- 401: Invalid API key — ask user to verify their `FEEDORACLE_API_KEY`
-- 404: Symbol not tracked — inform user and suggest checking supported assets at feedoracle.io
-- 429: Rate limit exceeded — wait 60 seconds, then retry once
+- 401: Invalid API key — use free tier without auth, or verify your key
+- 404: Symbol not tracked — check supported assets at feedoracle.io
+- 429: Rate limit — wait 60 seconds, retry once
+- Trust level insufficient — register via `kya_register` (only if user requests)
 
-API keys can be obtained via the FeedOracle dashboard: https://feedoracle.io/dashboard
+API keys: [feedoracle.io/pricing](https://feedoracle.io/pricing) | Docs: [github.com/feedoracle/feedoracle-mcp](https://github.com/feedoracle/feedoracle-mcp)
