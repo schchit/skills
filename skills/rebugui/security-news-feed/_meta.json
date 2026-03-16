@@ -3,9 +3,15 @@
   "slug": "security-news-feed",
   "displayName": "Security News Feed",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773094399299,
-    "commit": "https://github.com/openclaw/skills/commit/a83b8918ad9cb5445c767d3c4d2f66a214789d55"
+    "version": "1.0.1",
+    "publishedAt": 1773474473065,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773094399299,
+      "commit": "https://github.com/openclaw/skills/commit/a83b8918ad9cb5445c767d3c4d2f66a214789d55"
+    }
+  ]
 }
