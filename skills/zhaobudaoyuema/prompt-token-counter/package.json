@@ -1,6 +1,6 @@
 {
   "name": "prompt-token-counter",
-  "version": "1.0.7",
+  "version": "1.0.9",
   "description": "OpenClaw skill: Count tokens and estimate costs for 300+ LLM models. Audit workspace token consumption (memory, persona, skills).",
   "keywords": [
     "openclaw",

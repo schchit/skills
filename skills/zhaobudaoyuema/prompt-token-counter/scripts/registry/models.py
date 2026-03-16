@@ -6,6 +6,8 @@ OpenAI encoding selection, approximate token formulas, and pricing lookup.
 
 from __future__ import annotations
 
+import difflib
+import re
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Optional
 
@@ -72,6 +74,7 @@ MODELS: Dict[str, ModelInfo] = {
     "o1-mini": ModelInfo("o1-mini", "openai", encoding="cl100k_base"),
     "o1-preview-2024-09-12": ModelInfo("o1-preview-2024-09-12", "openai", encoding="cl100k_base"),
     "o1-mini-2024-09-12": ModelInfo("o1-mini-2024-09-12", "openai", encoding="cl100k_base"),
+    "gpt-5.2-codex": ModelInfo("gpt-5.2-codex", "openai", encoding="cl100k_base"),
     "gpt-4-vision": ModelInfo("gpt-4-vision", "openai", encoding="cl100k_base"),
     "gpt-4-vision-preview-0409": ModelInfo("gpt-4-vision-preview-0409", "openai", encoding="cl100k_base"),
     "gpt-4-vision-preview-1106": ModelInfo("gpt-4-vision-preview-1106", "openai", encoding="cl100k_base"),
@@ -109,6 +112,9 @@ MODELS: Dict[str, ModelInfo] = {
     "claude-instant-2.0": ModelInfo("claude-instant-2.0", "anthropic", formula="anthropic"),
     "claude-3-opus-latest": ModelInfo("claude-3-opus-latest", "anthropic", formula="anthropic", pricing_id="claude-3-opus-20240229"),
     "claude-3-sonnet-latest": ModelInfo("claude-3-sonnet-latest", "anthropic", formula="anthropic", pricing_id="claude-3-sonnet-20240229"),
+    "claude-sonnet-4-6": ModelInfo("claude-sonnet-4-6", "anthropic", formula="anthropic"),
+    "claude-sonnet-4-5": ModelInfo("claude-sonnet-4-5", "anthropic", formula="anthropic"),
+    "claude-opus-4.6": ModelInfo("claude-opus-4.6", "anthropic", formula="anthropic"),
 
     # Google
     "gemini-pro": ModelInfo("gemini-pro", "google", formula="google"),
@@ -130,6 +136,7 @@ MODELS: Dict[str, ModelInfo] = {
     "gemini-1.0-pro-001": ModelInfo("gemini-1.0-pro-001", "google", formula="google"),
     "gemini-1.0-pro-latest": ModelInfo("gemini-1.0-pro-latest", "google", formula="google"),
     "gemini-1.0-pro-vision-latest": ModelInfo("gemini-1.0-pro-vision-latest", "google", formula="google"),
+    "gemini-3.1-pro-preview": ModelInfo("gemini-3.1-pro-preview", "google", formula="google"),
 
     # Meta
     "llama-2-7b": ModelInfo("llama-2-7b", "meta", formula="meta"),
@@ -312,6 +319,7 @@ MODELS: Dict[str, ModelInfo] = {
     "abab6-chat": ModelInfo("abab6-chat", "minimax", formula="minimax"),
     "abab6.5-chat": ModelInfo("abab6.5-chat", "minimax", formula="minimax"),
     "abab6.5s-chat": ModelInfo("abab6.5s-chat", "minimax", formula="minimax"),
+    "minimax-m2.5": ModelInfo("minimax-m2.5", "minimax", formula="minimax_m25"),
 
     # Aleph Alpha
     "luminous-base": ModelInfo("luminous-base", "aleph_alpha", formula="aleph_alpha"),
@@ -330,6 +338,7 @@ MODELS: Dict[str, ModelInfo] = {
     "deepseek-llm-67b": ModelInfo("deepseek-llm-67b", "deepseek", formula="deepseek"),
     "deepseek-v3": ModelInfo("deepseek-v3", "deepseek", formula="deepseek"),
     "deepseek-v3-base": ModelInfo("deepseek-v3-base", "deepseek", formula="deepseek"),
+    "deepseek-v3.2": ModelInfo("deepseek-v3.2", "deepseek", formula="deepseek"),
 
     # Tsinghua
     "chatglm-6b": ModelInfo("chatglm-6b", "tsinghua", formula="tsinghua"),
@@ -337,6 +346,13 @@ MODELS: Dict[str, ModelInfo] = {
     "chatglm3-6b": ModelInfo("chatglm3-6b", "tsinghua", formula="tsinghua"),
     "glm-4": ModelInfo("glm-4", "tsinghua", formula="tsinghua"),
     "glm-4v": ModelInfo("glm-4v", "tsinghua", formula="tsinghua"),
+    "glm-5": ModelInfo("glm-5", "tsinghua", formula="glm5"),
+
+    # Volcengine (Doubao)
+    "doubao-seed-2-0-pro": ModelInfo("doubao-seed-2-0-pro", "volcengine", formula="volcengine"),
+
+    # Moonshot (Kimi)
+    "kimi-k2.5": ModelInfo("kimi-k2.5", "moonshot", formula="moonshot"),
 
     # RWKV
     "rwkv-4-169m": ModelInfo("rwkv-4-169m", "rwkv", formula="rwkv"),
@@ -429,9 +445,56 @@ ALIASES: Dict[str, str] = _build_alias_map(MODELS.values())
 MODEL_LOOKUP: Dict[str, ModelInfo] = {normalize_model_name(k): v for k, v in MODELS.items()}
 MODEL_LOOKUP.update({alias: MODELS[target] for alias, target in ALIASES.items()})
 
+# All normalized model names for fuzzy matching
+_ALL_NORMALIZED_NAMES: List[str] = list(MODEL_LOOKUP.keys())
+
+
+def _extract_model_part(name: str) -> str:
+    """Extract model part from 'provider/model' or 'provider:model' format."""
+    name = name.strip()
+    for sep in ("/", ":"):
+        if sep in name:
+            return name.split(sep, 1)[-1].strip()
+    return name
+
+
+def _fuzzy_match_model(model_name: str) -> Optional[ModelInfo]:
+    """Fuzzy match model name when exact lookup fails."""
+    normalized = normalize_model_name(model_name)
+    model_part = normalize_model_name(_extract_model_part(model_name))
+
+    # 1. Try model part only (e.g. anthropic/claude-sonnet-4-6 -> claude-sonnet-4-6)
+    if model_part != normalized:
+        info = MODEL_LOOKUP.get(model_part)
+        if info:
+            return info
+
+    # 2. Substring match: input contains a known model, or known model contains input
+    for key, info in MODEL_LOOKUP.items():
+        if model_part in key or key in model_part:
+            return info
+
+    # 3. difflib fuzzy match (cutoff 0.5 = 50% similarity)
+    candidates = difflib.get_close_matches(model_part, _ALL_NORMALIZED_NAMES, n=1, cutoff=0.5)
+    if candidates:
+        return MODEL_LOOKUP.get(candidates[0])
+
+    # 4. Relaxed: match key parts (e.g. claude-sonnet-4 matches claude-3.5-sonnet)
+    model_tokens = set(re.split(r"[-_.]", model_part)) - {""}
+    for key in _ALL_NORMALIZED_NAMES:
+        key_tokens = set(re.split(r"[-_.]", key)) - {""}
+        overlap = len(model_tokens & key_tokens) / max(len(model_tokens), 1)
+        if overlap >= 0.6:
+            return MODEL_LOOKUP.get(key)
+
+    return None
+
 
 def get_model_info(model_name: str) -> Optional[ModelInfo]:
-    return MODEL_LOOKUP.get(normalize_model_name(model_name))
+    info = MODEL_LOOKUP.get(normalize_model_name(model_name))
+    if info:
+        return info
+    return _fuzzy_match_model(model_name)
 
 
 def get_all_supported_models() -> List[str]:

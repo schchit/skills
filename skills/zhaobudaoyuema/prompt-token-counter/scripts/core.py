@@ -116,7 +116,32 @@ FORMULAS = {
     "bigcode": (3.4, 0.2),
     "databricks": (4.0, 0.25),
     "voyage": (3.8, 0.25),
+    "volcengine": (3.3, 0.2),
+    "moonshot": (3.7, 0.2),
+    "glm5": (3.63, 0.15),
+    "minimax_m25": (3.68, 0.15),
 }
+
+# Chars per token for CJK-heavy text (3050 chars benchmark). Used when cjk_ratio > 0.2.
+CJK_RATIO = {
+    "anthropic": 1.59,
+    "google": 2.07,
+    "volcengine": 2.04,
+    "moonshot": 2.43,
+    "glm5": 2.31,
+    "minimax_m25": 2.37,
+    "minimax": 2.37,
+    "deepseek": 2.24,
+}
+DEFAULT_CJK_RATIO = 2.0
+
+
+def _cjk_ratio(text: str) -> float:
+    """Return fraction of CJK characters (0..1). CJK chars tokenize ~1 char/token vs ~4 for English."""
+    if not text:
+        return 0.0
+    cjk = sum(1 for c in text if "\u4e00" <= c <= "\u9fff" or "\u3400" <= c <= "\u4dbf" or "\u3000" <= c <= "\u303f")
+    return cjk / len(text)
 
 
 class TokenCounter:
@@ -552,6 +577,11 @@ class TokenCounter:
             raise TokenizationError(f"Failed to process text: {str(e)}", model=self.model, text_preview=text)
         
         ratio, adjustment_factor = FORMULAS.get(self.model_info.formula or self.provider, DEFAULT_FORMULA)
+        formula_key = self.model_info.formula or self.provider
+        cjk = _cjk_ratio(text)
+        if cjk > 0.2:
+            cjk_chars_per_token = CJK_RATIO.get(formula_key) or CJK_RATIO.get(self.provider) or DEFAULT_CJK_RATIO
+            ratio = ratio * (1 - cjk) + cjk_chars_per_token * cjk
         base_tokens = char_count / ratio
         adjustment = (whitespace_count + punctuation_count) * adjustment_factor
 
