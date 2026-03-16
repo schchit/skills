@@ -3,11 +3,16 @@
   "slug": "agricultural-output-forecasting",
   "displayName": "Agricultural Output Forecasting",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1772947781276,
-    "commit": "https://github.com/openclaw/skills/commit/cfad12c44b8f775ebf407c16b9b4671562d9cf6c"
+    "version": "1.2.0",
+    "publishedAt": 1773650530465,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1772947781276,
+      "commit": "https://github.com/openclaw/skills/commit/cfad12c44b8f775ebf407c16b9b4671562d9cf6c"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1772775681742,

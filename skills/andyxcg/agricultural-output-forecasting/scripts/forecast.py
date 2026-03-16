@@ -2,27 +2,87 @@
 """
 Agricultural Output Forecasting with SkillPay Billing Integration and Free Trial
 Predicts crop yields using big data analytics.
+Version: 1.1.0
+
+农产品产量预测 - 支持计费集成和免费试用
+使用大数据分析预测作物产量
 """
 
 import json
+from functools import lru_cache
 import sys
 import argparse
 import os
 import random
+import csv
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import urllib.request
 import urllib.error
 
 # ═══════════════════════════════════════════════════
+# Version Info / 版本信息
+# ═══════════════════════════════════════════════════
+VERSION = "1.1.0"
+
+# ═══════════════════════════════════════════════════
 # SkillPay Billing Integration / 计费接入
 # ═══════════════════════════════════════════════════
-# [EN] 1 USDT = 1000 tokens | 1 call = 1 token | Min deposit 8 USDT
-# [中文] 1 USDT = 1000 tokens | 每次 1 token | 最低充值 8 USDT
 BILLING_URL = 'https://skillpay.me/api/v1/billing'
-API_KEY = os.environ.get('SKILL_BILLING_API_KEY', '')
-SKILL_ID = os.environ.get('SKILL_ID', '')
+API_KEY = os.environ.get('SKILLPAY_API_KEY', '')
+SKILL_ID = os.environ.get('SKILLPAY_SKILL_ID', '')
 
+# ═══════════════════════════════════════════════════
+# I18n / 国际化
+# ═══════════════════════════════════════════════════
+I18N = {
+    'zh': {
+        'error_no_user_id': '需要提供用户ID',
+        'error_no_api_key': '计费配置缺失。请设置 SKILLPAY_API_KEY 和 SKILLPAY_SKILL_ID 环境变量。',
+        'error_payment_failed': '支付失败或余额不足',
+        'error_insufficient_balance': '余额不足',
+        'trial_mode_active': '演示/试用模式',
+        'trial_remaining': '剩余试用次数',
+        'balance': '余额',
+        'success': '成功',
+        'forecast_result': '预测结果',
+        'demo_notice': '【演示模式】使用模拟数据展示功能',
+        'demo_data_notice': '当前使用演示数据，无需API密钥',
+        'historical_comparison': '历史对比',
+        'export_csv': '导出CSV',
+        'crop_type': '作物类型',
+        'region': '地区',
+        'season': '季节',
+        'yield_forecast': '产量预测',
+        'risk_assessment': '风险评估',
+        'recommendations': '建议',
+    },
+    'en': {
+        'error_no_user_id': 'User ID is required',
+        'error_no_api_key': 'Billing configuration missing. Set SKILLPAY_API_KEY and SKILLPAY_SKILL_ID environment variables.',
+        'error_payment_failed': 'Payment failed or insufficient balance',
+        'error_insufficient_balance': 'Insufficient balance',
+        'trial_mode_active': 'Demo/Trial Mode',
+        'trial_remaining': 'Trial calls remaining',
+        'balance': 'Balance',
+        'success': 'Success',
+        'forecast_result': 'Forecast Result',
+        'demo_notice': '[DEMO MODE] Using simulated data to demonstrate functionality',
+        'demo_data_notice': 'Currently using demo data, no API key required',
+        'historical_comparison': 'Historical Comparison',
+        'export_csv': 'Export CSV',
+        'crop_type': 'Crop Type',
+        'region': 'Region',
+        'season': 'Season',
+        'yield_forecast': 'Yield Forecast',
+        'risk_assessment': 'Risk Assessment',
+        'recommendations': 'Recommendations',
+    }
+}
+
+def get_text(key: str, lang: str = 'zh') -> str:
+    """Get localized text."""
+    return I18N.get(lang, I18N['zh']).get(key, key)
 
 # ═══════════════════════════════════════════════════
 # Free Trial Manager / 免费试用管理
@@ -132,7 +192,7 @@ class SkillPayBilling:
     
     def charge_user(self, user_id: str) -> Dict[str, Any]:
         """
-        Charge / 扣费 / 課金 / 차감 / Списание
+        Charge / 扣费 / 課金
         Deduct 1 token per call (~0.001 USDT)
         """
         result = self._make_request('/charge', method='POST', data={
@@ -155,7 +215,7 @@ class SkillPayBilling:
     
     def get_balance(self, user_id: str) -> float:
         """
-        Balance / 余额 / 残高 / 잔액 / Баланс
+        Balance / 余额 / 残高
         Returns token balance.
         """
         result = self._make_request(f'/balance?user_id={user_id}')
@@ -163,7 +223,7 @@ class SkillPayBilling:
     
     def get_payment_link(self, user_id: str, amount: float = 8) -> str:
         """
-        Payment link / 充值链接 / 入金リンク / 결제링크 / Ссылка на оплату
+        Payment link / 充值链接 / 入金リンク
         Generate BNB Chain USDT payment link.
         Default minimum deposit: 8 USDT
         """
@@ -197,6 +257,15 @@ class AgriculturalForecaster:
         'sugarcane': 80.0,
     }
     
+    # Historical data for comparison (simulated)
+    HISTORICAL_DATA = {
+        'wheat': {'avg_yield': 5.8, 'min_yield': 4.5, 'max_yield': 7.2, 'years': 5},
+        'rice': {'avg_yield': 7.2, 'min_yield': 6.0, 'max_yield': 8.5, 'years': 5},
+        'corn': {'avg_yield': 9.5, 'min_yield': 7.5, 'max_yield': 11.5, 'years': 5},
+        'tomato': {'avg_yield': 33.0, 'min_yield': 28.0, 'max_yield': 38.0, 'years': 5},
+        'potato': {'avg_yield': 24.0, 'min_yield': 20.0, 'max_yield': 28.0, 'years': 5},
+    }
+    
     # Weather impact factors
     WEATHER_FACTORS = {
         'excellent': 1.15,
@@ -206,9 +275,12 @@ class AgriculturalForecaster:
         'bad': 0.70,
     }
     
-    def __init__(self, api_key: str = API_KEY, skill_id: str = SKILL_ID):
+    def __init__(self, api_key: str = API_KEY, skill_id: str = SKILL_ID, 
+                 demo_mode: bool = False, lang: str = 'zh'):
         self.billing = SkillPayBilling(api_key, skill_id)
         self.trial = TrialManager("agricultural-output-forecasting")
+        self.demo_mode = demo_mode
+        self.lang = lang
     
     def get_weather_factor(self, region: str, season: str) -> float:
         """Simulate weather factor based on region and season."""
@@ -232,8 +304,32 @@ class AgriculturalForecaster:
         }
         return confidence_map.get(data_quality, 0.80)
     
+    def get_historical_comparison(self, crop_type: str, current_yield: float) -> Dict[str, Any]:
+        """Get historical comparison data for the crop."""
+        crop_type_lower = crop_type.lower()
+        historical = self.HISTORICAL_DATA.get(crop_type_lower)
+        
+        if not historical:
+            return None
+        
+        avg_yield = historical['avg_yield']
+        variance = ((current_yield - avg_yield) / avg_yield) * 100
+        
+        return {
+            'historical_avg': avg_yield,
+            'historical_min': historical['min_yield'],
+            'historical_max': historical['max_yield'],
+            'comparison_years': historical['years'],
+            'current_vs_avg_percent': round(variance, 2),
+            'trend': 'above_average' if variance > 5 else 'below_average' if variance < -5 else 'average',
+            'comparison_text': {
+                'zh': f"较历史平均{'高' if variance > 0 else '低'} {abs(variance):.1f}%",
+                'en': f"{variance:.1f}% {'above' if variance > 0 else 'below'} historical average"
+            }
+        }
+    
     def forecast(self, crop_type: str, area_hectares: float, 
-                 region: str, season: str) -> Dict[str, Any]:
+                 region: str, season: str, include_historical: bool = True) -> Dict[str, Any]:
         """
         Main forecasting method.
         Returns detailed forecast results.
@@ -262,14 +358,26 @@ class AgriculturalForecaster:
         
         # Generate recommendations
         recommendations = []
-        if weather_factor < 0.9:
-            recommendations.append("建议增加灌溉设施投资")
-        if market_factor > 1.1:
-            recommendations.append("市场价格有利，建议扩大种植面积")
-        if risk_level == 'high':
-            recommendations.append("建议购买农业保险以降低风险")
+        if self.lang == 'zh':
+            if weather_factor < 0.9:
+                recommendations.append("建议增加灌溉设施投资")
+            if market_factor > 1.1:
+                recommendations.append("市场价格有利，建议扩大种植面积")
+            if risk_level == 'high':
+                recommendations.append("建议购买农业保险以降低风险")
+            if yield_per_hectare > baseline * 1.1:
+                recommendations.append("预计产量高于平均水平，提前规划收获和储存")
+        else:
+            if weather_factor < 0.9:
+                recommendations.append("Consider investing in irrigation infrastructure")
+            if market_factor > 1.1:
+                recommendations.append("Favorable market prices, consider expanding planting area")
+            if risk_level == 'high':
+                recommendations.append("Consider purchasing agricultural insurance to reduce risk")
+            if yield_per_hectare > baseline * 1.1:
+                recommendations.append("Above-average yield expected, plan harvest and storage early")
         
-        return {
+        result = {
             "forecast_id": f"AGR_{datetime.now().strftime('%Y%m%d%H%M%S')}",
             "crop_type": crop_type,
             "region": region,
@@ -294,18 +402,91 @@ class AgriculturalForecaster:
                 "weather_risk": "high" if weather_factor < 0.9 else "low"
             },
             "recommendations": recommendations,
-            "generated_at": datetime.now().isoformat()
+            "generated_at": datetime.now().isoformat(),
+            "version": VERSION
         }
+        
+        # Add historical comparison if requested
+        if include_historical:
+            historical = self.get_historical_comparison(crop_type, yield_per_hectare)
+            if historical:
+                result["historical_comparison"] = historical
+        
+        return result
+    
+    def export_to_csv(self, forecast_result: Dict[str, Any], output_path: str) -> bool:
+        """Export forecast results to CSV file."""
+        try:
+            with open(output_path, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                
+                # Write header
+                writer.writerow(['Field', 'Value'])
+                
+                # Basic info
+                writer.writerow(['Forecast ID', forecast_result.get('forecast_id', '')])
+                writer.writerow(['Crop Type', forecast_result.get('crop_type', '')])
+                writer.writerow(['Region', forecast_result.get('region', '')])
+                writer.writerow(['Season', forecast_result.get('season', '')])
+                writer.writerow(['Area (hectares)', forecast_result.get('area_hectares', '')])
+                
+                # Yield forecast
+                yield_data = forecast_result.get('yield_forecast', {})
+                writer.writerow(['Yield per hectare', yield_data.get('per_hectare', '')])
+                writer.writerow(['Total yield', yield_data.get('total', '')])
+                writer.writerow(['Unit', yield_data.get('unit', '')])
+                
+                # Confidence interval
+                ci = yield_data.get('confidence_interval', {})
+                writer.writerow(['Confidence Lower', ci.get('lower', '')])
+                writer.writerow(['Confidence Upper', ci.get('upper', '')])
+                writer.writerow(['Confidence Level', ci.get('confidence', '')])
+                
+                # Risk assessment
+                risk = forecast_result.get('risk_assessment', {})
+                writer.writerow(['Risk Level', risk.get('level', '')])
+                
+                # Recommendations
+                writer.writerow(['Recommendations', ''])
+                for rec in forecast_result.get('recommendations', []):
+                    writer.writerow(['', rec])
+                
+                # Historical comparison
+                hist = forecast_result.get('historical_comparison', {})
+                if hist:
+                    writer.writerow(['', ''])
+                    writer.writerow(['Historical Comparison', ''])
+                    writer.writerow(['Historical Average', hist.get('historical_avg', '')])
+                    writer.writerow(['Historical Min', hist.get('historical_min', '')])
+                    writer.writerow(['Historical Max', hist.get('historical_max', '')])
+                    writer.writerow(['Comparison Years', hist.get('comparison_years', '')])
+                    writer.writerow(['Variance %', hist.get('current_vs_avg_percent', '')])
+            
+            return True
+        except Exception as e:
+            print(f"Error exporting to CSV: {e}", file=sys.stderr)
+            return False
     
     def process(self, crop_type: str, area_hectares: float, 
-                region: str, season: str, user_id: str = "") -> Dict[str, Any]:
+                region: str, season: str, user_id: str = "",
+                include_historical: bool = True) -> Dict[str, Any]:
         """
         Full processing pipeline with SkillPay billing and free trial support.
         """
-        if not user_id:
+        if not user_id and not self.demo_mode:
             return {
                 "success": False,
-                "error": "User ID is required"
+                "error": get_text('error_no_user_id', self.lang)
+            }
+        
+        # Demo mode - no billing
+        if self.demo_mode:
+            forecast_result = self.forecast(crop_type, area_hectares, region, season, include_historical)
+            return {
+                "success": True,
+                "demo_mode": True,
+                "notice": get_text('demo_data_notice', self.lang),
+                "forecast": forecast_result
             }
         
         # Check free trial status
@@ -314,7 +495,7 @@ class AgriculturalForecaster:
         if trial_remaining > 0:
             # Free trial mode - no billing
             self.trial.use_trial(user_id)
-            forecast_result = self.forecast(crop_type, area_hectares, region, season)
+            forecast_result = self.forecast(crop_type, area_hectares, region, season, include_historical)
             
             return {
                 "success": True,
@@ -330,7 +511,7 @@ class AgriculturalForecaster:
                 "success": False,
                 "trial_mode": False,
                 "trial_remaining": 0,
-                "error": "Billing configuration missing. Set SKILL_BILLING_API_KEY and SKILL_ID environment variables."
+                "error": get_text('error_no_api_key', self.lang)
             }
         
         # Step 1: Charge user (1 token per call)
@@ -341,13 +522,13 @@ class AgriculturalForecaster:
                 "success": False,
                 "trial_mode": False,
                 "trial_remaining": 0,
-                "error": "Payment failed or insufficient balance",
+                "error": get_text('error_payment_failed', self.lang),
                 "balance": charge_result.get('balance', 0),
                 "paymentUrl": charge_result.get('payment_url'),
             }
         
         # Step 2: Generate forecast
-        forecast_result = self.forecast(crop_type, area_hectares, region, season)
+        forecast_result = self.forecast(crop_type, area_hectares, region, season, include_historical)
         
         return {
             "success": True,
@@ -360,34 +541,74 @@ class AgriculturalForecaster:
 
 def forecast_output(crop_type: str, area_hectares: float, region: str, 
                    season: str, user_id: str = "", 
-                   api_key: str = API_KEY, skill_id: str = SKILL_ID) -> Dict[str, Any]:
+                   api_key: str = API_KEY, skill_id: str = SKILL_ID,
+                   demo_mode: bool = False, lang: str = 'zh',
+                   include_historical: bool = True) -> Dict[str, Any]:
     """
     Convenience function for agricultural output forecasting.
     """
-    forecaster = AgriculturalForecaster(api_key, skill_id)
-    return forecaster.process(crop_type, area_hectares, region, season, user_id)
+    forecaster = AgriculturalForecaster(api_key, skill_id, demo_mode, lang)
+    return forecaster.process(crop_type, area_hectares, region, season, user_id, include_historical)
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Agricultural Output Forecasting')
+    parser = argparse.ArgumentParser(
+        description='Agricultural Output Forecasting - Predict crop yields using big data analytics',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Basic forecast
+  python forecast.py -c wheat -a 100 -r "North China Plain" -s spring -u user_123
+  
+  # Demo mode (no API key required)
+  python forecast.py -c rice -a 50 -r "Hunan" -s summer --demo
+  
+  # With historical comparison and CSV export
+  python forecast.py -c corn -a 200 -r "Henan" -s autumn -u user_123 --historical --export forecast.csv
+  
+  # English output
+  python forecast.py -c wheat -a 100 -r "North China" -s spring --language en
+        """
+    )
     parser.add_argument('--crop', '-c', required=True, help='Crop type (e.g., wheat, rice, corn)')
     parser.add_argument('--area', '-a', type=float, required=True, help='Area in hectares')
     parser.add_argument('--region', '-r', required=True, help='Region/location')
     parser.add_argument('--season', '-s', required=True, help='Season (spring, summer, autumn, winter)')
-    parser.add_argument('--user-id', '-u', required=True, help='User ID for billing')
+    parser.add_argument('--user-id', '-u', help='User ID for billing')
     parser.add_argument('--api-key', '-k', default=API_KEY, help='SkillPay API key')
     parser.add_argument('--skill-id', default=SKILL_ID, help='Skill ID')
     parser.add_argument('--output', '-o', help='Output file path (optional)')
+    parser.add_argument('--export', '-e', help='Export to CSV file path')
+    parser.add_argument('--demo', action='store_true', help='Run in demo mode (no API key required)')
+    parser.add_argument('--language', '-l', choices=['zh', 'en'], default='zh', help='Output language (zh/en)')
+    parser.add_argument('--historical', action='store_true', help='Include historical comparison')
     
     args = parser.parse_args()
     
+    # Check for demo mode
+    demo_mode = args.demo or (not API_KEY and not args.api_key)
+    
+    if demo_mode:
+        print(f"\n{'='*50}", file=sys.stderr)
+        print(get_text('demo_notice', args.language), file=sys.stderr)
+        print(f"{'='*50}\n", file=sys.stderr)
+    
+    if not args.user_id and not demo_mode:
+        parser.error("--user-id is required (unless using --demo mode)")
+    
     # Use environment variables if not provided
-    api_key = args.api_key or os.environ.get('SKILL_BILLING_API_KEY', '')
-    skill_id = args.skill_id or os.environ.get('SKILL_ID', '')
+    api_key = args.api_key or API_KEY
+    skill_id = args.skill_id or SKILL_ID
     
     # Process the forecast
-    result = forecast_output(args.crop, args.area, args.region, args.season, 
-                            args.user_id, api_key, skill_id)
+    forecaster = AgriculturalForecaster(api_key, skill_id, demo_mode, args.language)
+    result = forecaster.process(args.crop, args.area, args.region, args.season, 
+                                args.user_id or "demo_user", args.historical)
+    
+    # Export to CSV if requested
+    if args.export and result.get('success'):
+        if forecaster.export_to_csv(result['forecast'], args.export):
+            print(f"Exported to CSV: {args.export}", file=sys.stderr)
     
     # Output result
     output_json = json.dumps(result, ensure_ascii=False, indent=2)
