@@ -3,9 +3,15 @@
   "slug": "rapay",
   "displayName": "Ra Pay",
   "latest": {
-    "version": "1.1.0",
-    "publishedAt": 1771982358732,
-    "commit": "https://github.com/openclaw/skills/commit/3cf5a7f8d5b8b93a1a8e003e16987f08f08d3541"
+    "version": "1.1.1",
+    "publishedAt": 1773618883837,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1771982358732,
+      "commit": "https://github.com/openclaw/skills/commit/3cf5a7f8d5b8b93a1a8e003e16987f08f08d3541"
+    }
+  ]
 }
