@@ -1,6 +1,6 @@
 ---
 name: ai-cost-calculator
-version: 1.2.0
+version: 1.2.24
 description: AI 成本计算器 - 对比各大模型成本，优化 API 支出。适合：AI 应用开发者、成本敏感用户。
 metadata:
   openclaw:
