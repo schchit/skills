@@ -3,9 +3,15 @@
   "slug": "family-chef-cn",
   "displayName": "家庭厨师",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773284850499,
-    "commit": "https://github.com/openclaw/skills/commit/c723d1829937f1528842b2d81d781af7fecba8cd"
+    "version": "3.0.0",
+    "publishedAt": 1773323369682,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773284850499,
+      "commit": "https://github.com/openclaw/skills/commit/c723d1829937f1528842b2d81d781af7fecba8cd"
+    }
+  ]
 }
