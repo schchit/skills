@@ -1,9 +1,8 @@
 ---
+version: "2.0.0"
 name: ab-test-calculator
-version: 1.0.0
-description: "A/B测试计算器。样本量计算、统计显著性检验、实验时长预估、结果报告、贝叶斯分析。AB test calculator with sample size, significance testing, duration estimation, reports, and Bayesian analysis."
+description: "A/B测试计算器。样本量计算、统计显著性检验、实验时长预估、结果报告、贝叶斯分析。AB test calculator with sample size, significance testing, duration estimation, reports, and Bayesian analysis. Use when you need ab test calculator capabilities. Triggers on: ab test calculator."
 author: BytesAgain
-tags: [ab-test, statistics, significance, sample-size, bayesian, conversion, 统计, A/B测试, 转化率]
 ---
 
 # A/B Test Calculator Skill
@@ -41,3 +40,6 @@ bash scripts/abtest.sh bayesian 1000 50 1000 65
 # 生成报告
 bash scripts/abtest.sh report 1000 50 1000 65 "按钮颜色测试"
 ```
+---
+💬 Feedback & Feature Requests: https://bytesagain.com/feedback
+Powered by BytesAgain | bytesagain.com
