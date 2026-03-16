@@ -1,11 +1,17 @@
 {
   "owner": "fly3094",
   "slug": "rss-to-social",
-  "displayName": "RSS to Social Auto-Poster",
+  "displayName": "Rss To Social",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1772855900469,
-    "commit": "https://github.com/openclaw/skills/commit/c66c27a05ab8ceb62b42de99a8e125d1af6ddfc5"
+    "version": "1.0.2",
+    "publishedAt": 1773634795956,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1772855900469,
+      "commit": "https://github.com/openclaw/skills/commit/c66c27a05ab8ceb62b42de99a8e125d1af6ddfc5"
+    }
+  ]
 }

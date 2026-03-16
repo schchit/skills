@@ -2,8 +2,13 @@
 name: rss-to-social
 description: Automatically monitor RSS feeds and post to social media. Schedule content, generate posts with AI, and publish to Twitter/LinkedIn.
 author: fly3094
-version: 1.0.0
+version: 1.0.2
 tags: [rss, social-media, automation, twitter, linkedin, scheduling, content]
+support: 
+  paypal: 492227637@qq.com
+  wechat: "请扫码打赏（微信支付）"
+  alipay: "请扫码打赏（支付宝）"
+  email: 492227637@qq.com
 metadata:
   clawdbot:
     emoji: 📰
@@ -40,16 +45,36 @@ metadata:
 
 # RSS to Social Media Auto-Poster 📰
 
-Automatically monitor RSS feeds, generate engaging social media posts with AI, and publish on schedule.
+**Stop manually sharing content.** This skill monitors your RSS feeds 24/7 and auto-posts engaging content to Twitter, LinkedIn, or both.
+
+**Time saved:** 5-10 hours/week → 30 minutes/week
 
 ## What It Does
 
-- 📰 **RSS Monitoring**: Track multiple RSS feeds for new content
-- 🤖 **AI Content Generation**: Create platform-optimized posts automatically
-- ⏰ **Scheduled Publishing**: Post at optimal times (configurable interval)
-- 🔄 **Multi-Platform**: Support Twitter, LinkedIn, or both
-- 📊 **Smart Deduplication**: Never post the same content twice
-- 🔗 **Auto Linking**: Include original article links
+- 📰 **RSS Monitoring**: Track unlimited RSS feeds for new content
+- 🤖 **AI Content Generation**: Create platform-optimized posts (Twitter threads, LinkedIn articles)
+- ⏰ **Scheduled Publishing**: Post at optimal times (configurable: every 2-24 hours)
+- 🔄 **Multi-Platform**: Twitter, LinkedIn, or both simultaneously
+- 📊 **Smart Deduplication**: Never post the same content twice (30-day memory)
+- 🔗 **Auto Linking**: Include original article links + UTM tracking
+- 🎯 **Engagement Optimization**: AI-generated hooks, hashtags, and CTAs
+
+## Quick Start (60 seconds)
+
+```bash
+# 1. Install
+clawhub install rss-to-social
+
+# 2. Configure (add to your env)
+export RSS_FEED_URLS="https://techcrunch.com/feed/,https://news.ycombinator.com/rss"
+export SOCIAL_PLATFORMS="twitter"
+export POST_INTERVAL_HOURS="4"
+
+# 3. Run
+# Check RSS and post new content
+```
+
+**That's it!** The skill will monitor your feeds and post automatically.
 
 ## Installation
 
@@ -263,3 +288,19 @@ Contact: PayPal 492227637@qq.com
 - Twitter/LinkedIn support
 - Deduplication system
 - Scheduling integration
+
+---
+
+## 💖 支持作者
+
+如果你觉得这个技能有用，请考虑打赏支持：
+
+- **PayPal**: 492227637@qq.com
+- **微信支付**: 请扫码打赏
+- **支付宝**: 请扫码打赏
+- **邮箱**: 492227637@qq.com
+
+你的支持是我持续改进的动力！
+
+![微信支付收款码](../assets/wechat-qr.png)
+![支付宝收款码](../assets/alipay-qr.png)
