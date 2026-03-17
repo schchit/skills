@@ -3,11 +3,16 @@
   "slug": "credential-tester",
   "displayName": "Credential Tester",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773536927836,
-    "commit": "https://github.com/openclaw/skills/commit/7ac82cc56660a4dd4d769b49b119ff9f4c3b95c8"
+    "version": "1.0.5",
+    "publishedAt": 1773673662931,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773536927836,
+      "commit": "https://github.com/openclaw/skills/commit/7ac82cc56660a4dd4d769b49b119ff9f4c3b95c8"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773450836084,
