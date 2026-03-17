@@ -1,0 +1,11 @@
+{
+  "owner": "agentsignals",
+  "slug": "test-skill-demo",
+  "displayName": "Test Skill Demo",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773772739983,
+    "commit": null
+  },
+  "history": []
+}
