@@ -3,9 +3,15 @@
   "slug": "chinese-voice-skill",
   "displayName": "chinese-voice-skill",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773474889578,
-    "commit": "https://github.com/openclaw/skills/commit/1523be66c0c9791f9f6574d60054fdfa5de173f8"
+    "version": "1.0.2",
+    "publishedAt": 1773638015012,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773474889578,
+      "commit": "https://github.com/openclaw/skills/commit/1523be66c0c9791f9f6574d60054fdfa5de173f8"
+    }
+  ]
 }
