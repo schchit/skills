@@ -3,9 +3,15 @@
   "slug": "founder-briefing",
   "displayName": "Real Estate Buyer Follow-Up Pro",
   "latest": {
-    "version": "0.2.0",
-    "publishedAt": 1773522092394,
-    "commit": "https://github.com/openclaw/skills/commit/2a3c0e4a08c11328387073afc99bff46550057b1"
+    "version": "0.2.1",
+    "publishedAt": 1773522274308,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.2.0",
+      "publishedAt": 1773522092394,
+      "commit": "https://github.com/openclaw/skills/commit/2a3c0e4a08c11328387073afc99bff46550057b1"
+    }
+  ]
 }

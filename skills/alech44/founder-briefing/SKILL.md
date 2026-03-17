@@ -1,7 +1,6 @@
 ---
 name: founder-briefing
-description: Generate real-estate buyer lead follow-up plans from open house notes, inquiry messages, or CRM exports. Use when the user asks to prioritize leads, write personalized SMS/email follow-ups, handle objections, or produce a 7-day cadence to book buyer appointments.
----
+description: Generate real-estate buyer lead follow-up plans from open house notes, inquiry messages, or CRM exports. Use when the user asks to prioritize leads, write personalized SMS/email follow-ups, handle objections, or produce a 7-day cadence to book buyer appointments.---
 
 # Real Estate Buyer Follow-Up Pro
 
