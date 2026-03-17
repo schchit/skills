@@ -3,11 +3,16 @@
   "slug": "home-organizer",
   "displayName": "Home Organizer",
   "latest": {
-    "version": "2.3.1",
-    "publishedAt": 1773536823142,
-    "commit": "https://github.com/openclaw/skills/commit/df4dc4999d4a7c65619d3b639a529ecc09423fd9"
+    "version": "2.3.6",
+    "publishedAt": 1773666165423,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.3.1",
+      "publishedAt": 1773536823142,
+      "commit": "https://github.com/openclaw/skills/commit/df4dc4999d4a7c65619d3b639a529ecc09423fd9"
+    },
     {
       "version": "2.3.0",
       "publishedAt": 1773447735198,
