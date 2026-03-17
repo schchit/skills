@@ -3,11 +3,16 @@
   "slug": "api-docs",
   "displayName": "Api Docs",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1773661903008,
-    "commit": "https://github.com/openclaw/skills/commit/c105efe6ebe3584f83ee52719fa9bc1ae3132c4c"
+    "version": "1.0.5",
+    "publishedAt": 1773664547244,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1773661903008,
+      "commit": "https://github.com/openclaw/skills/commit/c105efe6ebe3584f83ee52719fa9bc1ae3132c4c"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773450679049,
