@@ -3,9 +3,15 @@
   "slug": "claw-openwebui-api",
   "displayName": "open-webui-api  操作技能",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1773549288028,
-    "commit": "https://github.com/openclaw/skills/commit/2daaa9391cdaa7cd739480c6066d7c3dcc0c2f08"
+    "version": "1.0.3",
+    "publishedAt": 1773556038033,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1773549288028,
+      "commit": "https://github.com/openclaw/skills/commit/2daaa9391cdaa7cd739480c6066d7c3dcc0c2f08"
+    }
+  ]
 }

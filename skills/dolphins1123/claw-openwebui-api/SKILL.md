@@ -2,8 +2,8 @@
 
 name: Claw\_OpenWebUI\_API
 slug: claw-openwebui-api
-author: Ken
-version: 1.0.2
+author: kuanlin.huang
+version: 1.0.3
 description: |
 整合 Open WebUI RAG 知識庫 API，讓 OpenClaw 能自動上傳文件和查詢知識庫。
 triggers:
@@ -45,13 +45,20 @@ label: Install requests library
 2. 已建立知識庫
 3. 取得 API Token
 
+## 安裝
+
+```bash
+# 安裝技能
+git clone https://github.com/你的帳號/Claw\\\_OpenWebUI\\\_API.git \\\~/.openclaw/workspace/skills/Claw\\\_OpenWebUI\\\_API
+```
+
 ## 設定
 
 ### 環境變數（必須設定）
 
 ```bash
 # 必需設定環境變數
-export OPENWEBUI\\\_URL="http://你的OPENWEBUI伺服器IP:3000"
+export OPENWEBUI\\\_URL="http://你的伺服器IP:3000"
 export OPENWEBUI\\\_API\\\_KEY="你的API\\\_Token"
 ```
 
@@ -69,7 +76,7 @@ export OPENWEBUI\\\_API\\\_KEY="你的API\\\_Token"
 {
   "skills": {
     "Claw\\\_OpenWebUI\\\_API": {
-      "url": "http://127.0.0.1:3000",
+      "url": "http://192.168.0.176:3000",
       "api\\\_key": "your\\\_api\\\_token"
     }
   }
@@ -78,7 +85,48 @@ export OPENWEBUI\\\_API\\\_KEY="你的API\\\_Token"
 
 ## 使用方式
 
-### 上傳文件
+### 🚀 OpenClaw 指令（自然語法）
+
+安裝技能後，可以直接用自然語法呼叫：
+
+```
+# 設定環境變數（只需設定一次）
+小蝦，設定 OPENWEBUI\\\_URL 為 http://127.0.0.1:3000
+小蝦，設定 OPENWEBUI\\\_API\\\_KEY 為 your-jwt-token
+
+# 上傳檔案到知識庫
+小蝦，上傳 note.txt 到知識庫 test3
+小蝦，把 report.pdf 上傳到知識庫 mydocs
+
+# 列出知識庫
+小蝦，列出所有知識庫
+小蝦，有哪些知識庫？
+
+# 查詢檔案
+小蝦，查詢上傳的檔案列表
+
+# 對話（自動引用知識庫）
+小蝦，用 Qwen3-4B 問關於 test3 的內容
+```
+
+### 📝 Bash 指令（直接執行）
+
+```bash
+# 設定環境變數
+export OPENWEBUI\\\_URL="http://127.0.0.1:3000"
+export OPENWEBUI\\\_API\\\_KEY="your-jwt-token"
+
+# 列出知識庫
+\\\~/.openclaw/workspace/skills/Claw\\\_OpenWebUI\\\_API/claw-openwebui.sh list-knowledge
+
+# 上傳檔案到知識庫（需指定知識庫名稱）
+\\\~/.openclaw/workspace/skills/Claw\\\_OpenWebUI\\\_API/claw-openwebui.sh upload-rag /path/to/file.txt test3
+
+# 發送聊天
+\\\~/.openclaw/workspace/skills/Claw\\\_OpenWebUI\\\_API/claw-openwebui.sh chat "Qwen3-4B-Instruct-2507-4bit" "你好"
+```
+
+### 📜 Python 指令（可選）
 
 ```bash
 # 上傳 PDF 文件
@@ -129,7 +177,7 @@ Claw\\\_OpenWebUI\\\_API/
 ```python
 import requests
 
-OPENWEBUI\\\_URL = "http://OPENWEBUI\_IP:3000"
+OPENWEBUI\\\_URL = "http://192.168.0.176:3000"
 API\\\_KEY = "your\\\_token"
 
 headers = {
@@ -177,6 +225,6 @@ MIT License
 
 \---
 
-*Author: Ken
-Version: 1.0.2*
+*Author:* kuanlin.huang
+*Version: 1.0.3*
 
