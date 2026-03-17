@@ -3,9 +3,15 @@
   "slug": "productivity-tracker",
   "displayName": "Productivity Tracker",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773658770195,
-    "commit": "https://github.com/openclaw/skills/commit/eadf71bf0da0eb4b772ee4ba606533ef8414b9b5"
+    "version": "2.0.0",
+    "publishedAt": 1773659068300,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773658770195,
+      "commit": "https://github.com/openclaw/skills/commit/eadf71bf0da0eb4b772ee4ba606533ef8414b9b5"
+    }
+  ]
 }
