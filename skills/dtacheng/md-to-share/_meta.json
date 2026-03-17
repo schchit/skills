@@ -1,11 +1,17 @@
 {
   "owner": "dtacheng",
   "slug": "md-to-share",
-  "displayName": "Md To Share",
+  "displayName": "MD to Share",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773470932304,
-    "commit": "https://github.com/openclaw/skills/commit/844b9aef1d83c700898d63713f7c1b729821610f"
+    "version": "2.1.0",
+    "publishedAt": 1773509039002,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773470932304,
+      "commit": "https://github.com/openclaw/skills/commit/844b9aef1d83c700898d63713f7c1b729821610f"
+    }
+  ]
 }
