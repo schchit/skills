@@ -114,7 +114,7 @@ export function buildFormCard(params: {
             tag: "button",
             text: { tag: "plain_text", content: submitLabel },
             type: "primary",
-            action_type: "form_submit",
+            form_action_type: "submit", // JSON 2.0 正确字段（旧 action_type: "form_submit" 已废弃）
             name: "submit_btn",
             behaviors: [{ type: "callback", value: actionValue }],
           },
@@ -129,7 +129,7 @@ export function buildFormCard(params: {
             tag: "button",
             text: { tag: "plain_text", content: resetLabel },
             type: "default",
-            action_type: "form_reset",
+            form_action_type: "reset", // JSON 2.0 正确字段（旧 action_type: "form_reset" 已废弃）
             name: "reset_btn",
           },
         ],
