@@ -1,0 +1,11 @@
+{
+  "owner": "ezviz-open",
+  "slug": "ezviz-open-camera-broadcast",
+  "displayName": "Ezviz Open Camera Broadcast",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773652807776,
+    "commit": null
+  },
+  "history": []
+}
