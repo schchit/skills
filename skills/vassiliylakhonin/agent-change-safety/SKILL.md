@@ -1,139 +1,250 @@
 ---
 name: agent-change-safety
-description: >-
-  Production-safe change protocol for AI agents: preflight checks, risk
-  scoring, rollback planning, HITL gates, and post-change validation. Use when
-  users ask to update config, restart services, connect integrations, change
-  automations, modify routing, rotate secrets, or run any potentially
-  disruptive production change.
+description: Evaluate safety of AI agent changes before deployment using structured risk scoring, blast radius analysis, rollback planning, and deployment safety gates.
+author: vassiliylakhonin
+tags:
+  - ai
+  - agent
+  - safety
+  - deployment
+  - devops
+  - change-management
+homepage: https://clawhub.ai/vassiliylakhonin/agent-change-safety
 ---
 
-# Agent Change Safety
+# AI Agent Change Safety
 
-## Objective
+## What this skill does
 
-Prevent avoidable incidents when agents change configs, automations, integrations, or production behavior.
+This skill evaluates whether a change to an AI agent or workflow is safe to deploy.
 
-## Quickstart (5 minutes)
+It helps teams:
 
-```bash
-python3 scripts/change_gate.py \
-  --input references/change-check.sample.json \
-  --strict \
-  --out /tmp/change_gate_report.json
-```
+- score deployment risk
+- estimate blast radius
+- define safeguards
+- prepare rollback plans
+- decide Go / Conditional Go / No-Go
 
-Expected output: deterministic gate report with safety score, verdict, blockers, and gate reasons.
+---
 
-## Use This Skill When
+## Security constraints
 
-- A config/system change is planned
-- A new integration/channel is being connected
-- A deployment or automation adjustment is about to run
-- A recent change caused instability and requires structured recovery
+To ensure safe operation:
 
-Typical trigger phrases:
-- "update config" / "change openclaw.json"
-- "restart gateway/service"
-- "connect integration" / "set up webhook"
-- "rotate token/secret"
-- "deploy this change" / "push to production"
-- "roll back" / "something broke after update"
+- use only information explicitly provided by the user
+- do not access local files, credentials, or system configuration automatically
+- do not execute external scripts unless explicitly provided and approved
+- do not retrieve external data sources automatically
 
-## Change Safety Workflow
+All analysis must rely only on user-provided information or synthetic examples.
 
-1. Define the change
-- What is changing
-- Why now
-- Expected user-visible impact
-- Blast radius (what can break)
+---
 
-2. Run preflight checklist
-- Preconditions satisfied (auth, dependencies, backup path)
-- Success criteria defined
-- Rollback path documented and tested where feasible
-- Human approval required for high-risk/irreversible steps
+# Change evaluation workflow
 
-3. Score risk (deterministic + policy)
-- Low: reversible, local scope, no user-facing critical path
-- Medium: shared service impact or external dependency risk
-- High: irreversible action, production routing, credentials, billing, or message delivery path
-- Run `scripts/change_gate.py --input <check.json> --strict` to produce deterministic safety score + verdict.
+Follow these stages when reviewing a change.
 
-4. Execute with safeguards
-- Smallest viable change first
-- Observe immediately after each step
-- Stop on first unexpected signal
+## 1. Change description
 
-5. Post-change validation (required)
-- Status/health checks green
-- Critical user path test passed
-- No new error spikes/log anomalies
-- Confirm rollback still possible
+Identify the exact modification.
 
-6. Decision
-- Go
-- Conditional Go (with mitigation and re-check time)
-- Rollback now
+Possible categories:
 
-## Deterministic Gates
+- Prompt change
+- Model change
+- Tool integration
+- Workflow logic change
+- System configuration change
 
-- Hard gate: health check failure => no Go.
-- Hard gate: critical path failure => Rollback.
-- Hard gate: high-risk + missing HITL => no Go.
-- Hard gate: irreversible high-risk change without HITL => Rollback.
-- Strict mode applies hard gates deterministically before recommendation.
+Record:
 
-## Required Output Format
+- purpose of change
+- expected improvement
+- affected components
 
-1. Change Summary
-- Change ID/title
-- Scope
-- Risk score (Low/Medium/High)
+---
 
-2. Preflight Checklist
-- Preconditions
-- Assumptions
-- Approval requirements
+## 2. Risk scoring matrix
 
-3. Rollback Plan
-- Trigger conditions
-- Exact rollback steps
-- Maximum tolerated degradation window
+Score each factor from **1 (low risk) to 5 (high risk)**.
 
-4. Validation Plan
-- Immediate checks
-- 15-minute checks
-- 24-hour checks
+Risk factors:
 
-5. Final Verdict
-- Go / Conditional Go / Rollback
-- Owner and next checkpoint time
-- Deterministic gate output (score + blockers + gate reasons)
-- Exact fix/rollback commands
+Operational impact – could the change break workflows?
 
-6. Before/After Impact Delta
-- incidents prevented (expected)
-- blocker delta
-- risk exposure delta
+Safety risk – could the change cause harmful outputs?
 
-## HITL Triggers (must require explicit confirmation)
+Tool reliability – could tool calls fail or behave differently?
 
-- Credentials/tokens/secrets changes
-- External messaging/delivery routing changes
-- Billing/financial side effects
-- Irreversible deletions or migrations
-- Security posture reductions
+User impact – could users receive incorrect responses?
 
-## Quality Rules
+Reversibility – how easy is rollback?
 
-- Prefer reversible steps over big-bang updates.
-- Never execute high-risk changes without explicit rollback path.
-- If evidence is mixed, choose Conditional Go or Rollback.
-- Record what changed, what improved, and what remains risky.
-- Include deterministic gate evidence before final recommendation when check data is available.
+Risk classification:
 
-## Reference
+5–8 → Low risk  
+9–15 → Medium risk  
+16–25 → High risk
 
-- Read `references/checklists.md` for reusable preflight, validation, and incident templates.
-- Read `references/ops-report-template.md` for a standard change release memo format.
+---
+
+## 3. Blast radius analysis
+
+Estimate how widely the change may affect the system.
+
+Questions to evaluate:
+
+- which workflows are affected
+- which users or systems depend on this change
+- could failures cascade across tools or workflows
+
+Blast radius levels:
+
+Low – isolated feature or workflow  
+Medium – multiple workflows affected  
+High – core system logic affected
+
+---
+
+## 4. Safeguard requirements
+
+Determine required protections.
+
+Examples:
+
+- human approval checkpoints
+- validation prompts
+- tool-call verification
+- monitoring alerts
+- rate limiting
+
+High-risk changes should require human-in-the-loop validation.
+
+---
+
+## 5. Incident prevention checks
+
+Check for:
+
+- hallucination risk increases
+- tool misuse patterns
+- infinite loop conditions
+- unsafe autonomous actions
+- missing safety prompts
+
+Document mitigation strategies.
+
+---
+
+## 6. Rollback planning
+
+Every deployment must include a rollback plan.
+
+Define:
+
+- previous working version
+- rollback trigger conditions
+- rollback procedure
+- rollback validation tests
+
+Rollback must be executable quickly if failures occur.
+
+---
+
+# Deployment safety gates
+
+Before approving deployment verify:
+
+- change purpose clearly documented
+- risk score calculated
+- blast radius assessed
+- regression tests executed
+- rollback plan validated
+- monitoring enabled
+
+High-risk changes require explicit human approval.
+
+---
+
+# Validation checklist
+
+Confirm before deployment:
+
+- agent responses remain correct
+- tool calls remain valid
+- safety boundaries remain intact
+- failure rates do not increase
+- rollback procedure is tested
+
+---
+
+# Required output format
+
+## Executive summary
+
+Describe the change and evaluation result.
+
+## Risk score
+
+Provide numeric score and classification.
+
+## Blast radius
+
+Explain potential system impact.
+
+## Required safeguards
+
+List protections required before deployment.
+
+## Rollback plan
+
+Provide rollback trigger and rollback steps.
+
+## Final recommendation
+
+Possible outcomes:
+
+Go  
+Conditional Go  
+No-Go
+
+Explain reasoning clearly.
+
+---
+
+# Minimal output example
+
+Change type: Prompt update
+
+Risk score: 12 (Medium risk)
+
+Blast radius: Medium – affects multiple workflows
+
+Safeguards:
+Add monitoring for tool-call failures.
+
+Rollback:
+Revert to previous prompt version if error rate increases.
+
+Final verdict:
+Conditional Go
+
+---
+
+# Related skills
+
+This skill is part of an AI agent reliability toolkit.
+
+- agent-evals-lab – evaluate agent quality
+- agent-incident-analyzer – analyze agent failures
+
+---
+
+# Search phrases
+
+- ai deployment safety
+- agent change review
+- prompt change risk
+- safe ai rollout
+- ai change management
