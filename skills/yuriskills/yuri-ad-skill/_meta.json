@@ -1,0 +1,11 @@
+{
+  "owner": "yuriskills",
+  "slug": "yuri-ad-skill",
+  "displayName": "Yuri广告平台 MCP API - Facebook广告创建、投放管理、数据监控。支持创建Campaign/Ad Set/Ad、查询余额、受众定位、文案素材管理、预算调整等。",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773652473538,
+    "commit": null
+  },
+  "history": []
+}
