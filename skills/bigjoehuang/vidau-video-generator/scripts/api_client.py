@@ -1,19 +1,49 @@
 #!/usr/bin/env python3
 """
-Vidau API 请求封装：发起 HTTP 请求并将 URL、方法、参数、响应写入日志文件。
-日志路径由环境变量 VIDAU_API_LOG 指定，默认当前目录下的 vidau_api.log。
+Vidau API client: sends HTTP requests and logs URL, method, params, and response to a file.
+Log path is set by env VIDAU_API_LOG; default is ~/vidau_api.log so one log file is used regardless of cwd.
+API Key is read from env VIDAU_API_KEY first; if unset, from OpenClaw config ~/.openclaw/openclaw.json skills.entries.vidau.
 """
+import json
 import os
 from datetime import datetime
+from typing import Optional
 from typing import Optional, Tuple
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
-LOG_PATH = os.environ.get("VIDAU_API_LOG", "vidau_api.log")
+LOG_PATH = os.environ.get("VIDAU_API_LOG", os.path.join(os.path.expanduser("~"), "vidau_api.log"))
+
+
+def get_api_key() -> Optional[str]:
+    """
+    Get Vidau API Key: prefer env VIDAU_API_KEY; else read from OpenClaw config
+    ~/.openclaw/openclaw.json skills.entries.vidau.apiKey or env.VIDAU_API_KEY.
+    """
+    key = os.environ.get("VIDAU_API_KEY")
+    if key and key.strip():
+        return key.strip()
+    config_path = os.path.expanduser("~/.openclaw/openclaw.json")
+    if not os.path.isfile(config_path):
+        return None
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        entries = (cfg.get("skills") or {}).get("entries") or {}
+        vidau = entries.get("vidau") or {}
+        if isinstance(vidau.get("apiKey"), str) and vidau["apiKey"].strip():
+            return vidau["apiKey"].strip()
+        env = vidau.get("env") or {}
+        key = env.get("VIDAU_API_KEY")
+        if isinstance(key, str) and key.strip():
+            return key.strip()
+    except (OSError, json.JSONDecodeError, TypeError):
+        pass
+    return None
 
 
 class APIError(Exception):
-    """HTTP 错误，携带状态码与响应 body，便于调用方打印。"""
+    """HTTP error with status code and response body for caller to log."""
     def __init__(self, message: str, status_code: int, body: str = ""):
         super().__init__(message)
         self.code = status_code
@@ -31,18 +61,18 @@ def _write_log(
     try:
         with open(LOG_PATH, "a", encoding="utf-8") as f:
             f.write("\n" + "=" * 60 + "\n")
-            f.write(f"[{datetime.now().isoformat()}] API 请求\n")
+            f.write(f"[{datetime.now().isoformat()}] API request\n")
             f.write("-" * 40 + "\n")
             f.write(f"URL:    {url}\n")
-            f.write(f"方法:   {method}\n")
-            f.write(f"参数:   {params_or_body or '(无)'}\n")
+            f.write(f"Method: {method}\n")
+            f.write(f"Params: {params_or_body or '(none)'}\n")
             f.write("-" * 40 + "\n")
-            f.write(f"响应状态: {response_status}\n")
+            f.write(f"Status: {response_status}\n")
             if error:
-                f.write(f"错误:   {error}\n")
-            f.write(f"响应体: {response_body[:2000]}\n")
+                f.write(f"Error:  {error}\n")
+            f.write(f"Body:   {response_body[:2000]}\n")
             if len(response_body) > 2000:
-                f.write("...(截断)\n")
+                f.write("...(truncated)\n")
             f.write("=" * 60 + "\n")
     except OSError:
         pass
@@ -56,9 +86,9 @@ def api_request(
     timeout: float = 30,
 ) -> Tuple[bytes, int]:
     """
-    发起 HTTP 请求，并将请求 URL、方法、参数与响应结果写入日志文件。
-    返回 (响应 body 字节, HTTP 状态码)。
-    若发生 HTTPError，会先记录日志再抛出；URLError 同理。
+    Send HTTP request and log URL, method, params, and response to the log file.
+    Returns (response body bytes, HTTP status code).
+    On HTTPError or URLError, logs first then re-raises.
     """
     params_str: Optional[str] = None
     if data:

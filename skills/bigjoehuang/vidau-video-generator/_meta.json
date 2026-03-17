@@ -1,11 +1,17 @@
 {
   "owner": "bigjoehuang",
   "slug": "vidau-video-generator",
-  "displayName": "Vidau",
+  "displayName": "VidAU Video Generator",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773626483450,
-    "commit": "https://github.com/openclaw/skills/commit/d06afdba8f4b089bb27b224590a2fe44a253a843"
+    "version": "1.0.6",
+    "publishedAt": 1773719657687,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773626483450,
+      "commit": "https://github.com/openclaw/skills/commit/d06afdba8f4b089bb27b224590a2fe44a253a843"
+    }
+  ]
 }

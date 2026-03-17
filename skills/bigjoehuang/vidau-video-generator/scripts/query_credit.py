@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Query current Vidau account credits. Reads API key from env VIDAU_API_KEY.
+Query current Vidau account credits. Reads API key from env VIDAU_API_KEY or OpenClaw config.
 Prints API JSON to stdout with data.userId, data.availableCredit.
 """
 import argparse
@@ -8,7 +8,7 @@ import json
 import os
 import sys
 
-# 保证同目录下的 api_client 可被导入（脚本直接运行时）
+# Ensure api_client in same directory can be imported when script is run directly
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import api_client
 from urllib.error import HTTPError, URLError
@@ -23,8 +23,8 @@ def main() -> None:
     )
     parser.parse_args()
 
-    api_key = os.environ.get("VIDAU_API_KEY")
-    if not api_key or not api_key.strip():
+    api_key = api_client.get_api_key()
+    if not api_key:
         print(
             "Error: VIDAU_API_KEY is not set. Register at https://www.superaiglobal.com/ to get an API key, then configure apiKey or env.VIDAU_API_KEY in OpenClaw skills.entries.vidau.",
             file=sys.stderr,
@@ -33,7 +33,7 @@ def main() -> None:
 
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key.strip()}",
+        "Authorization": f"Bearer {api_key}",
     }
     try:
         raw, _ = api_client.api_request(

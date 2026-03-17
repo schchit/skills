@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Wait for a Vidau video task to finish by polling queryTask. Reads API key from env VIDAU_API_KEY.
+Wait for a Vidau video task to finish by polling queryTask. Reads API key from env VIDAU_API_KEY or OpenClaw config.
 Prints final API JSON to stdout when task reaches succeeded/failed; on success also prints
 [VIDAU_VIDEO_URL]..[/VIDAU_VIDEO_URL] and [VIDAU_THUMB_PATH]..[/VIDAU_THUMB_PATH] with raw URLs.
 Exit code: 0 = succeeded, 1 = failed or API error, 2 = timeout.
@@ -23,7 +23,7 @@ def query_task(api_key: str, task_uuid: str) -> dict:
     url = f"{API_BASE}/queryTask/{task_uuid}/creations"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key.strip()}",
+        "Authorization": f"Bearer {api_key}",
     }
     raw, _ = api_client.api_request("GET", url, headers=headers, timeout=30)
     out = json.loads(raw.decode("utf-8"))
@@ -51,8 +51,8 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    api_key = os.environ.get("VIDAU_API_KEY")
-    if not api_key or not api_key.strip():
+    api_key = api_client.get_api_key()
+    if not api_key:
         print(
             "Error: VIDAU_API_KEY is not set. Register at https://www.superaiglobal.com/ to get an API key, then configure apiKey or env.VIDAU_API_KEY in OpenClaw skills.entries.vidau.",
             file=sys.stderr,

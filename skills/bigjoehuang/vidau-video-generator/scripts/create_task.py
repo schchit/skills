@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Create a Vidau video generation task. Reads API key from env VIDAU_API_KEY.
+Create a Vidau video generation task. Reads API key from env VIDAU_API_KEY or OpenClaw config.
 Prints API JSON to stdout for the agent to parse data.taskUUID.
 """
 import argparse
@@ -56,8 +56,8 @@ def main() -> None:
     parser.add_argument("--task-uuid", default="", help="Optional task UUID")
     args = parser.parse_args()
 
-    api_key = os.environ.get("VIDAU_API_KEY")
-    if not api_key or not api_key.strip():
+    api_key = api_client.get_api_key()
+    if not api_key:
         print(
             "Error: VIDAU_API_KEY is not set. Register at https://www.superaiglobal.com/ to get an API key, then configure apiKey or env.VIDAU_API_KEY in OpenClaw skills.entries.vidau.",
             file=sys.stderr,
@@ -91,7 +91,7 @@ def main() -> None:
     data = json.dumps(body).encode("utf-8")
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key.strip()}",
+        "Authorization": f"Bearer {api_key}",
     }
     try:
         raw, _ = api_client.api_request(
