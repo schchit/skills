@@ -1,0 +1,11 @@
+{
+  "owner": "jolestar",
+  "slug": "webmcp-bridge",
+  "displayName": "WebMCP Bridge",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1773759390367,
+    "commit": null
+  },
+  "history": []
+}
