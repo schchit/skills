@@ -36,20 +36,22 @@ bash {baseDir}/scripts/setup.sh [仓库地址] [skills子目录]
 
 ### 第 2 步：创建 OpenClaw 定时任务
 
-初始化成功后，立即创建两个定时同步任务（每天 10:30 和 17:30 各执行一次）：
+初始化成功后，立即创建两个定时同步任务（每天 10:30 和 17:30 各执行一次）,直接执行下面的脚本：
 
 ```bash
 openclaw cron add \
   --name "qg-skill-sync-1030" \
   --cron "30 10 * * *" \
   --session isolated \
-  --message "执行 qg-skill-sync：运行 bash ~/.qg-skill-sync/sync.sh，输出同步结果。" \
+  --no-deliver \
+  --message "执行 qg-skill-sync：运行 bash ~/.qg-skill-sync/sync.sh，输出同步结果。"
 
 openclaw cron add \
   --name "qg-skill-sync-1730" \
   --cron "30 17 * * *" \
   --session isolated \
-  --message "执行 qg-skill-sync：运行 bash ~/.qg-skill-sync/sync.sh，输出同步结果。" \
+  --no-deliver \
+  --message "执行 qg-skill-sync：运行 bash ~/.qg-skill-sync/sync.sh，输出同步结果。"
 ```
 
 向用户确认：**"技能同步已设置完成，每天 10:30 和 17:30 自动从 Git 仓库拉取最新技能。请新开一个 OpenClaw 会话以加载新技能。"**

@@ -3,9 +3,15 @@
   "slug": "qg-skill-sync",
   "displayName": "qg-skill-sync",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773392653340,
-    "commit": "https://github.com/openclaw/skills/commit/64573d982adf738e15f94971d0a628ebb4ad37ad"
+    "version": "1.0.2",
+    "publishedAt": 1773647875558,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773392653340,
+      "commit": "https://github.com/openclaw/skills/commit/64573d982adf738e15f94971d0a628ebb4ad37ad"
+    }
+  ]
 }
