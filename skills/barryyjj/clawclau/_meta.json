@@ -3,9 +3,15 @@
   "slug": "clawclau",
   "displayName": "ClawClau",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773684088514,
-    "commit": "https://github.com/openclaw/skills/commit/c6f98b2d3721c07a28b5799627779a42d2472141"
+    "version": "1.2.0",
+    "publishedAt": 1773742629961,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773684088514,
+      "commit": "https://github.com/openclaw/skills/commit/c6f98b2d3721c07a28b5799627779a42d2472141"
+    }
+  ]
 }

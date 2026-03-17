@@ -1,6 +1,6 @@
 ---
 name: clawclau
-description: 'Async Claude Code task dispatcher via tmux. Use when ACP protocol fails or hangs. Spawns Claude Code in isolated tmux sessions, monitors completion, and retrieves results asynchronously. NOT for: tasks that fit in one exec call, interactive Claude Code sessions, or environments without tmux/claude/jq.'
+description: 'ClawClau v1.1.0 — The ONLY authorized way to dispatch Claude Code tasks. Spawns Claude Code in isolated tmux sessions with automatic background monitoring and completion notification. NOT for: interactive Claude Code sessions or environments without tmux/claude/jq.'
 metadata:
   {
     "openclaw":
@@ -22,19 +22,19 @@ metadata:
   }
 ---
 
-# ClawClau — Async Claude Code via tmux
+# ClawClau v1.1.0 — Claude Code 唯一调度方式
 
-Dispatch Claude Code tasks asynchronously through tmux. Bypasses ACP protocol deadlocks.
+小八调度 Claude Code 的唯一合法方式。通过 tmux 隔离会话派发任务，自动启动后台 monitor，任务完成后自动通知。
 
 ## When to Use
 
-Use ClawClau instead of `sessions_spawn` with `runtime: "acp"` when:
-- ACP initialization hangs (common with custom API proxies)
-- You need non-blocking task dispatch
-- You want to check results later without waiting
+**所有** Claude Code 任务都必须通过 ClawClau 派发（`exec` 调用 `claude-spawn.sh`）。
+
+**绝对禁止**：
+- ❌ `exec` 直接调用 `claude -p`（会超时挂死）
+- ❌ `sessions_spawn` + `runtime: "acp"`（ACP 已弃用）
 
 Do NOT use for:
-- Simple one-liner commands (use `exec` directly)
 - Tasks requiring real-time streaming output
 - Environments without tmux, jq, or Claude Code
 
@@ -56,7 +56,7 @@ echo 'export CLAWCLAU_HOME="$HOME/.clawclau"' >> ~/.zshrc
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `CLAWCLAU_HOME` | `~/.openclaw/workspace/.clawdbot` | Base directory for registry and logs |
+| `CLAWCLAU_HOME` | `~/.clawclau` | Base directory for registry and logs |
 | `CLAWCLAU_SHELL` | `bash` | Shell for launching Claude Code in tmux |
 
 ## Scripts
@@ -129,6 +129,12 @@ running → failed   (tmux ended, log empty)
 running → timeout  (exceeded timeout)
 running → killed   (manually terminated)
 ```
+
+## v1.1.0 Key Features
+
+- **spawn 自动启动后台 monitor**：无需手动 cron，`claude-spawn.sh` 完成后自动在后台运行 `claude-monitor.sh`
+- **完成自动通知**：monitor 检测到任务结束后自动执行 `openclaw system event --mode now`
+- **数据目录**：`~/.clawclau/`（active-tasks.json + logs/ + prompts/）
 
 ## Security
 
