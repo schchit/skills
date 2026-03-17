@@ -1,0 +1,11 @@
+{
+  "owner": "diagnostikon",
+  "slug": "polymarket-btc-weekend-volatility-trader",
+  "displayName": "BTC Weekend Volatility Trader",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773658397128,
+    "commit": null
+  },
+  "history": []
+}
