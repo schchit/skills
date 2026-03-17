@@ -3,9 +3,15 @@
   "slug": "youtube-member",
   "displayName": "YouTube Member",
   "latest": {
-    "version": "0.10.6-3",
-    "publishedAt": 1773331685512,
-    "commit": "https://github.com/openclaw/skills/commit/d1badddbfefeb47ea6c9edc6e5d3e0645c2f21e3"
+    "version": "0.10.7-dev",
+    "publishedAt": 1773497039086,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.10.6-3",
+      "publishedAt": 1773331685512,
+      "commit": "https://github.com/openclaw/skills/commit/d1badddbfefeb47ea6c9edc6e5d3e0645c2f21e3"
+    }
+  ]
 }
