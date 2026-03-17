@@ -1,0 +1,11 @@
+{
+  "owner": "jimpang8",
+  "slug": "proxmox-ve",
+  "displayName": "Proxmox VE",
+  "latest": {
+    "version": "0.1.1",
+    "publishedAt": 1773565338720,
+    "commit": null
+  },
+  "history": []
+}
