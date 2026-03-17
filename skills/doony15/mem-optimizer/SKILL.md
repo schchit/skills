@@ -1,9 +1,11 @@
 ---
 name: MemOptimizer (记忆优化器)
 slug: mem-optimizer
-version: 1.1.0
-description: "记忆优化与压缩工具。结合 self-improving 机制，自动统计、压缩和优化记忆文件，减少 token 消耗。触发关键词：优化记忆、记忆优化、总结你自己、MemOptimizer、memopt"
-changelog: "v1.1.0 - 整合 self-improving 反思机制，支持每日定时任务"
+version: 1.2.0
+description: "记忆优化与压缩工具。结合 self-improving 机制，自动统计、压缩和优化记忆文件，减少 token 消耗。支持多智能体优化和24小时工作检测。触发关键词：优化记忆、记忆优化、总结你自己、MemOptimizer、memopt、执行多智能体记忆优化流程"
+changelog: |
+  v1.2.0 - 新增多智能体优化功能，支持24小时工作检测，生成详细报告
+  v1.1.0 - 整合 self-improving 反思机制，支持每日定时任务
 metadata:
   openclaw:
     global: true
@@ -15,6 +17,8 @@ metadata:
       - "总结你自己"
       - "MemOptimizer"
       - "memopt"
+      - "执行记忆优化流程"
+      - "执行多智能体记忆优化流程"
     tools:
       - mem_optimize
       - mem_stats
