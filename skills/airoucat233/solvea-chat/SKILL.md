@@ -1,21 +1,12 @@
 ---
 name: solvea-chat
-version: 0.4.0
+version: 0.5.3
 description: Call Solvea Web App chat API to get AI customer service replies. Use for real customer-service questions. On session boot message ("new session was started"), call with --mark-reset (no peer-id needed). For normal messages, call with --peer-id and --message. Never call for other slash-prefixed commands.
-metadata:
-  openclaw:
-    requires:
-      env:
-        - SOLVEA_API_KEY
-        - SOLVEA_AGENT_ID
-      bins:
-        - python3
-    primaryEnv: SOLVEA_API_KEY
 ---
 
 # Solvea AI 客服对话
 
-将 OpenClaw 渠道消息（飞书、钉钉等）接入 [Solvea](https://solvea.cn) Web App，一键部署 AI 客服 agent。
+将 OpenClaw 渠道消息（飞书、钉钉等）接入 [Solvea](https://solvea.cx) Web App，一键部署 AI 客服 agent。
 
 ## 安装
 
@@ -58,21 +49,20 @@ bash <上面输出的路径>/setup.sh
 
 **发送客服消息：**
 ```bash
-SKILL=<skill目录>
-$SKILL/.venv/bin/python $SKILL/scripts/chat.py \
-  --peer-id "feishu:<用户open_id>" \
+skills/solvea-chat/.venv/bin/python skills/solvea-chat/scripts/chat.py \
+  --peer-id "feishu:<open_id>" \
   --message "<用户消息内容>"
 ```
 
 **session 启动时记录 reset 标记（boot 消息时调用，无需 peer-id）：**
 ```bash
-$SKILL/.venv/bin/python $SKILL/scripts/chat.py --mark-reset
+skills/solvea-chat/.venv/bin/python skills/solvea-chat/scripts/chat.py --mark-reset
 ```
 
 **重置指定用户 session：**
 ```bash
-$SKILL/.venv/bin/python $SKILL/scripts/chat.py \
-  --peer-id "feishu:<用户open_id>" \
+skills/solvea-chat/.venv/bin/python skills/solvea-chat/scripts/chat.py \
+  --peer-id "feishu:<open_id>" \
   --reset
 ```
 

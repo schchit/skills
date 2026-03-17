@@ -1,4 +1,5 @@
 """Solvea Chat API 客户端（流式接口）"""
+import logging
 import os
 import sys
 import uuid
@@ -64,6 +65,9 @@ class SolveaClient:
         }
 
         final_data = {}
+
+        logging.debug("api request url: %s", url)
+        logging.debug("api request body: %s", json.dumps(body, ensure_ascii=False))
 
         with httpx.stream("POST", url, json=body, headers=self.headers, timeout=60) as resp:
             resp.raise_for_status()

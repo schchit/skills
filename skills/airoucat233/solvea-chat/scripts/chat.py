@@ -12,7 +12,7 @@ Solvea Chat CLI
     失败: 错误信息打印到 stderr，exit code 非 0
 """
 
-__version__ = "0.4.0"
+__version__ = "0.5.3"
 import argparse
 import json
 import logging
@@ -33,6 +33,8 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 
 def load_sessions() -> dict:

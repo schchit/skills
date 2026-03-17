@@ -27,6 +27,7 @@ render_template() {
             -e "s|{{AGENT_NAME}}|$AGENT_NAME|g" \
             -e "s|{{CHANNEL}}|$SELECTED_CHANNEL|g" \
             -e "s|{{BUSINESS_DESC}}|$BUSINESS_DESC|g" \
+            -e "s|{{SKILL_DIR}}|$TARGET_SKILL_DIR|g" \
             "$src" > "$dst"
         echo "  ✓ 写入 $dst"
     fi
@@ -180,10 +181,13 @@ echo "→ 写入 workspace 配置: $AGENT_WORKSPACE"
 if [ "$DRY_RUN" = false ]; then
     mkdir -p "$AGENT_WORKSPACE/memory"
 fi
-render_template "$TEMPLATES_DIR/IDENTITY.md" "$AGENT_WORKSPACE/IDENTITY.md"
+render_template "$TEMPLATES_DIR/IDENTITY.md"  "$AGENT_WORKSPACE/IDENTITY.md"
 render_template "$TEMPLATES_DIR/AGENTS.md"   "$AGENT_WORKSPACE/AGENTS.md"
 render_template "$TEMPLATES_DIR/SOUL.md"     "$AGENT_WORKSPACE/SOUL.md"
 render_template "$TEMPLATES_DIR/USER.md"     "$AGENT_WORKSPACE/USER.md"
+render_template "$TEMPLATES_DIR/TOOLS.md"    "$AGENT_WORKSPACE/TOOLS.md"
+render_template "$TEMPLATES_DIR/HEARTBEAT.md" "$AGENT_WORKSPACE/HEARTBEAT.md"
+render_template "$TEMPLATES_DIR/BOOTSTRAP.md" "$AGENT_WORKSPACE/BOOTSTRAP.md"
 echo "✓ workspace 配置完成"
 
 # ── 5. 将 skill 复制到 agent workspace ───────────────────────────────────────
