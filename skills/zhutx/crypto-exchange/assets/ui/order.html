@@ -209,6 +209,16 @@
             color: #ff4444;
         }
 
+        /* Status message highlight */
+        .status-highlight {
+            color: var(--neon-cyan);
+            font-weight: 600;
+            font-family: 'Orbitron', sans-serif;
+            background: rgba(0, 245, 255, 0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
         /* Deposit Section */
         .deposit-section {
             display: grid;
@@ -557,60 +567,63 @@
         }
 
         // Status messages from API documentation
+        // highlight: text to be highlighted with special styling
         const STATUS_MESSAGES = {
             'Awaiting Deposit': {
                 title: 'Awaiting Deposit',
                 lines: [
-                    'Your order will automatically proceed to the next step once your deposit receives its first confirmation on the blockchain.',
-                    'If you do not deposit the amount shown above, or your deposit does not arrive within 1 hour, for security purposes your order will not be processed automatically.'
+                    { text: 'Your order will automatically proceed to the next step once your deposit receives its first confirmation on the blockchain.' },
+                    { text: 'If you do not deposit the amount shown above, or your deposit does not arrive within 1 hour, for security purposes your order will not be processed automatically.' }
                 ]
             },
             'Confirming Deposit': {
                 title: 'Confirming Deposit',
                 lines: [
-                    'You successfully sent {sendAmount} {send}! Please wait while your deposit is being confirmed.',
-                    'Your order will automatically proceed to the next step after the deposit transaction gets 1 confirmation.',
-                    'Nothing more is expected from you in this step.'
+                    { text: 'You successfully sent {sendAmount} {send}! Please wait while your deposit is being confirmed.', highlight: 'You successfully sent {sendAmount} {send}!' },
+                    { text: 'Your order will automatically proceed to the next step after the deposit transaction gets 1 confirmation.' },
+                    { text: 'Nothing more is expected from you in this step.' }
                 ]
             },
             'Exchanging': {
                 title: 'Exchanging',
                 lines: [
-                    'Your deposit has been confirmed! We are now exchanging your {sendAmount} {send} to {receiveAmount} {receive}.',
-                    'This may take a few minutes, please be patient.'
+                    { text: 'Your deposit has been confirmed! We are now exchanging your {sendAmount} {send} to {receiveAmount} {receive}.', highlight: 'We are now exchanging your {sendAmount} {send} to {receiveAmount} {receive}' },
+                    { text: 'This may take a few minutes, please be patient.' }
                 ]
             },
             'Sending': {
                 title: 'Sending',
                 lines: [
-                    'Your order is almost complete! We are forwarding {receiveAmount} {receive} to the following address: {receiveAddress}'
+                    { text: 'Your order is almost complete! We are forwarding {receiveAmount} {receive} to the following address: {receiveAddress}', highlight: 'We are forwarding {receiveAmount} {receive}' }
                 ]
             },
             'Complete': {
                 title: 'Complete',
                 lines: [
-                    'Your order is successfully completed! We forwarded {receiveAmount} {receive} to the following address: {receiveAddress}'
+                    { text: 'Your order is successfully completed! We forwarded {receiveAmount} {receive} to the following address: {receiveAddress}', highlight: 'We forwarded {receiveAmount} {receive}' }
                 ]
             },
             'Action Request': {
                 title: 'Action Request',
                 lines: [
-                    'This transaction has been detected with risks and needs to be verified before proceeding.',
-                    'Please contact lightningex.io for support.'
+                    { text: 'This transaction has been detected with risks and needs to be verified before proceeding.' },
+                    { text: 'Please contact lightningex.io for support.' }
                 ]
             },
             'Failed': {
                 title: 'Failed',
                 lines: [
-                    'The transaction failed, possibly due to a timeout failure in depositing.',
-                    'If you have other questions, please seek support from lightningex.io.'
+                    { text: 'The order failed because of one of the following reasons:', highlight: 'The order failed' },
+                    { text: '• You didn\'t send {sendAmount} {send} on the {sendNetwork} network.' },
+                    { text: '• Your deposit was not confirmed within 2 hours.' },
+                    { text: '• For any other reason.' }
                 ]
             },
             'Request Overdue': {
                 title: 'Request Overdue',
                 lines: [
-                    'The transaction request has expired.',
-                    'If you have other questions, please seek support from lightningex.io.'
+                    { text: 'The transaction request has expired.', highlight: 'expired' },
+                    { text: 'If you have other questions, please seek support from lightningex.io.' }
                 ]
             }
         };
@@ -619,7 +632,10 @@
             const msgInfo = STATUS_MESSAGES[status];
             if (!msgInfo) return '';
 
-            return msgInfo.lines.map(line => {
+            return msgInfo.lines.map(lineObj => {
+                const line = typeof lineObj === 'string' ? lineObj : lineObj.text;
+                const highlight = typeof lineObj === 'object' ? lineObj.highlight : null;
+
                 // Replace placeholders with actual data
                 let formatted = line;
                 Object.keys(data).forEach(key => {
@@ -627,6 +643,18 @@
                         formatted = formatted.replace(new RegExp(`{${key}}`, 'g'), data[key]);
                     }
                 });
+
+                // Apply highlight styling to key phrases
+                if (highlight) {
+                    let highlightText = highlight;
+                    Object.keys(data).forEach(key => {
+                        if (data[key] !== null && data[key] !== undefined) {
+                            highlightText = highlightText.replace(new RegExp(`{${key}}`, 'g'), data[key]);
+                        }
+                    });
+                    formatted = formatted.replace(highlightText, `<span class="status-highlight">${highlightText}</span>`);
+                }
+
                 return formatted;
             }).join('<br>');
         }

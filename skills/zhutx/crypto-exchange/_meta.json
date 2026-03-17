@@ -3,9 +3,15 @@
   "slug": "crypto-exchange",
   "displayName": "Crypto Exchange",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1773401792548,
-    "commit": "https://github.com/openclaw/skills/commit/63e627e81ed761e4f0e89719a8bd6468edc9fa98"
+    "version": "1.3.2",
+    "publishedAt": 1773679148720,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1773401792548,
+      "commit": "https://github.com/openclaw/skills/commit/63e627e81ed761e4f0e89719a8bd6468edc9fa98"
+    }
+  ]
 }

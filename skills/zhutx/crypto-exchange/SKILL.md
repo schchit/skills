@@ -19,73 +19,49 @@ Simply talk to perform exchanges:
 - "Show me supported tokens"
 - "Check order status I1Y0EFP31Rwu"
 
-### CLI Mode - Interactive Wizard (Default)
+### CLI Mode
 
-**Setup (one-time):**
+**Run the CLI:**
 ```bash
-# Create symlink for easy command access
-sudo ln -sf ~/.openclaw/workspace/skills/crypto-exchange/scripts/cli.py /usr/local/bin/crypto-exchange
+# Navigate to skill directory
+cd /path/to/crypto-exchange
 
-# Or use Python directly without symlink
-python3 ~/.openclaw/workspace/skills/crypto-exchange/scripts/cli.py
+# Start interactive wizard (default)
+./crypto-exchange
 ```
 
-**Run the wizard:**
+**CLI Commands:**
 ```bash
-# Start interactive wizard (recommended)
-crypto-exchange
-# or
-crypto-exchange wizard
-```
-
-The wizard will guide you through:
-1. Load available currencies
-2. Select currency to send
-3. Select network for sending
-4. Select currency to receive
-5. Select network for receiving (with pair validation)
-6. Enter exchange amount
-7. Enter receive address
-8. Confirm and place order
-9. Auto-monitor order progress with deposit instructions
-
-**Features:**
-- Step 5 automatically filters networks that support the trading pair
-- Step 8 shows deposit address and QR code after order creation
-- Step 9 auto-monitors order progress with progress bar until completion
-
-### CLI Mode - Direct Commands
-
-> **Note:** If you haven't created the symlink, use `python3 ~/.openclaw/workspace/skills/crypto-exchange/scripts/cli.py` instead of `crypto-exchange`
-
-```bash
-# Get pair info
-crypto-exchange pair --send ETH --receive BTC --send-network BNB --receive-network BSC
-
-# Check exchange rate
-crypto-exchange rate --send ETH --receive BTC --amount 0.1
-
-# Validate address
-crypto-exchange validate --currency BTC --address 0x... --network BSC
-
-# Place order directly (advanced users)
-crypto-exchange order --send BTC --receive ETH --amount 0.123 --address 0x...
-
-# Check order status
-crypto-exchange status --id I1Y0EFP31Rwu
-
-# Monitor order until complete
-crypto-exchange monitor --id I1Y0EFP31Rwu
+# Start interactive wizard
+./crypto-exchange
 
 # List supported currencies
-crypto-exchange currencies
+./crypto-exchange currencies
 
-# Launch web UI
-crypto-exchange ui --port 8080
+# Get pair info
+./crypto-exchange pair --send USDT --sendNetwork TRX --receive USDT --receiveNetwork BSC
+
+# Check exchange rate
+./crypto-exchange rate --send USDT --sendNetwork TRX --receive USDT --receiveNetwork BSC --amount 100
+
+# Validate address
+./crypto-exchange validate --currency USDT --network BSC --address 0x...
+
+# Place order directly
+./crypto-exchange order --send USDT --sendNetwork TRX --receive USDT --receiveNetwork BSC --amount 100 --receiveAddress 0x...
+
+# Check order status
+./crypto-exchange status --id I1Y0EFP31Rwu
+
+# Monitor order until complete
+./crypto-exchange monitor --id I1Y0EFP31Rwu
+
+# Launch web UI (default port 8080, auto-assign if occupied)
+./crypto-exchange ui
 ```
 
 ### UI Mode
 ```bash
-crypto-exchange ui --port 8080
+./crypto-exchange ui
 ```
-Then open http://localhost:8080 in your browser for the DeFi-style trading interface.
+Then open http://localhost:8080 (or the displayed port) in your browser for the DeFi-style trading interface.
