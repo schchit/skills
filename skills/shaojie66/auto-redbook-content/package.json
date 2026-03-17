@@ -1,6 +1,6 @@
 {
   "name": "auto-redbook-content",
-  "version": "2.5.1",
+  "version": "2.5.2",
   "description": "小红书热点抓取与去AI味改写工具",
   "main": "scripts/fetch.js",
   "scripts": {

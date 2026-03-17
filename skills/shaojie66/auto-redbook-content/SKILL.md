@@ -1,7 +1,7 @@
 ---
 name: auto-redbook-content
 description: 小红书热点抓取与去AI味改写工具。抓取首页热点→生成去AI味改写提示词→本地存储。
-version: 2.5.1
+version: 2.5.2
 metadata:
   openclaw:
     emoji: 📕
@@ -61,13 +61,22 @@ JSON 文件包含：
 
 ## 安全说明
 
+**脚本本身：**
 - ✅ 无 shell 执行
-- ✅ 无网络访问
+- ✅ 无直接网络访问
 - ✅ 不读取 .env 文件
 - ✅ 仅读取必要环境变量
 - ✅ 仅写入 output 目录
 
+**在 OpenClaw agent 环境中：**
+- ⚠️ 可能通过 xiaohongshu MCP 工具进行网络抓取
+- ⚠️ MCP 工具由 OpenClaw 环境提供和管理
+- ⚠️ 网络访问由 MCP 执行，非脚本直接调用
+
 ## 版本历史
+
+### v2.5.2 (2026-03-15)
+- 📝 澄清安全说明：区分脚本本身和 agent 环境
 
 ### v2.5.1 (2026-03-15)
 - 🔧 删除 package-lock.json 和 node_modules

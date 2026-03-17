@@ -3,11 +3,16 @@
   "slug": "auto-redbook-content",
   "displayName": "Auto Redbook Content",
   "latest": {
-    "version": "2.5.1",
-    "publishedAt": 1773590173482,
-    "commit": "https://github.com/openclaw/skills/commit/6378864d7cc810260293fe669635f30c3313927c"
+    "version": "2.5.2",
+    "publishedAt": 1773590323034,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.5.1",
+      "publishedAt": 1773590173482,
+      "commit": "https://github.com/openclaw/skills/commit/6378864d7cc810260293fe669635f30c3313927c"
+    },
     {
       "version": "2.2.0",
       "publishedAt": 1773587762695,
