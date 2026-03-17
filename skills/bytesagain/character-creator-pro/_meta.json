@@ -3,9 +3,15 @@
   "slug": "character-creator-pro",
   "displayName": "Character Creator Pro",
   "latest": {
-    "version": "2.3.0",
-    "publishedAt": 1773446746328,
-    "commit": "https://github.com/openclaw/skills/commit/e92c555f8fc0f6a747c0d3df381322f472487f95"
+    "version": "2.3.4",
+    "publishedAt": 1773665066860,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "2.3.0",
+      "publishedAt": 1773446746328,
+      "commit": "https://github.com/openclaw/skills/commit/e92c555f8fc0f6a747c0d3df381322f472487f95"
+    }
+  ]
 }
