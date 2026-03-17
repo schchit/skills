@@ -5,14 +5,14 @@ metadata:
   openclaw:
     emoji: ⚖️
     tags: [governance, audit, constitution, safety, modes, postures]
-requires:
-  env:
-    - MOSES_OPERATOR_SECRET
-  bins:
-    - python3
-  stateDirs:
-    - ~/.openclaw/audits/moses
-    - ~/.openclaw/governance
+    version: 0.1.2
+    env:
+      - MOSES_OPERATOR_SECRET
+    bins:
+      - python3
+    stateDirs:
+      - ~/.openclaw/audits/moses
+      - ~/.openclaw/governance
 example: |
   export MOSES_OPERATOR_SECRET='your-secure-hmac-key-here'
   python3 ~/.openclaw/workspace/skills/moses-governance-single/scripts/init_state.py init
