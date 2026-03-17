@@ -1,9 +1,10 @@
 ---
 name: paint
-version: 1.0.0
+version: "2.0.0"
 author: BytesAgain
 license: MIT-0
 tags: [paint, tool, utility]
+description: "Paint - command-line tool for everyday use"
 ---
 
 # Paint
@@ -44,18 +45,20 @@ paint status
 paint export json
 ```
 
-## How It Works
-
-Processes input with built-in logic and outputs structured results. All data stays local.
-
-## Tips
-
 - Run `paint help` for all commands
 paint/`
 
+## When to Use
+
+- for batch processing paint operations
+- as part of a larger automation pipeline
+
+## Output
+
+Returns results to stdout. Redirect to a file with `paint run > output.txt`.
+
 ---
 *Powered by BytesAgain | bytesagain.com*
-
-## Tips
+*Feedback & Feature Requests: https://bytesagain.com/feedback*
 
 - Run `paint help` for all commands

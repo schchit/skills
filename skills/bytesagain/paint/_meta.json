@@ -3,9 +3,15 @@
   "slug": "paint",
   "displayName": "Paint",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773575425801,
-    "commit": "https://github.com/openclaw/skills/commit/b361f41686568a244d0910cce853243060eafaa4"
+    "version": "1.0.5",
+    "publishedAt": 1773663980109,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773575425801,
+      "commit": "https://github.com/openclaw/skills/commit/b361f41686568a244d0910cce853243060eafaa4"
+    }
+  ]
 }
