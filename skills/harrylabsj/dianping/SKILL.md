@@ -5,7 +5,15 @@ description: Help users use Dianping (大众点评) for restaurant discovery, re
 
 # Dianping
 
-Help users make better decisions on 大众点评 by combining rating interpretation, review reading, store vetting, deal analysis, and use-case matching. Prefer practical judgment over blindly trusting star scores.
+Help users make better decisions on 大众点评 by combining rating interpretation, review reading, store vetting, deal analysis, use-case matching, and browser-based store/deal comparison. Prefer practical judgment over blindly trusting star scores.
+
+## Browser Workflow Upgrade
+
+When the user needs live store-page or deal-page inspection, follow the shared **browser-commerce-base** workflow:
+- public store/deal pages → `openclaw`
+- logged-in coupon/order pages → `user` only when necessary
+- capture score, review count, recent complaints, deal constraints, and location fit
+- use screenshots when ranking several candidates
 
 ## Quick routing
 
