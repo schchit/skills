@@ -1,0 +1,11 @@
+{
+  "owner": "echoflying",
+  "slug": "openclaw-config-rollback",
+  "displayName": "Config Rollback",
+  "latest": {
+    "version": "1.0.2",
+    "publishedAt": 1773678174141,
+    "commit": null
+  },
+  "history": []
+}
