@@ -1,0 +1,11 @@
+{
+  "owner": "xipzer",
+  "slug": "base-osint",
+  "displayName": "Base Network OSINT",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773613770604,
+    "commit": null
+  },
+  "history": []
+}
