@@ -1,0 +1,11 @@
+{
+  "owner": "openwaygate",
+  "slug": "youtube-video-category",
+  "displayName": "YouTube Video Category",
+  "latest": {
+    "version": "0.10.7-dev",
+    "publishedAt": 1773497899250,
+    "commit": null
+  },
+  "history": []
+}
