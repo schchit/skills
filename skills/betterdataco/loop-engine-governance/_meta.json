@@ -3,9 +3,15 @@
   "slug": "loop-engine-governance",
   "displayName": "Loop Engine — Governed Loops for OpenClaw",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1773501026622,
-    "commit": "https://github.com/openclaw/skills/commit/e1c837f94e0e3bd3bea6c09494f540a046902283"
+    "version": "1.0.3",
+    "publishedAt": 1773720530557,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1773501026622,
+      "commit": "https://github.com/openclaw/skills/commit/e1c837f94e0e3bd3bea6c09494f540a046902283"
+    }
+  ]
 }
