@@ -3,11 +3,16 @@
   "slug": "git-workflow-cn",
   "displayName": "Git Workflow Cn",
   "latest": {
-    "version": "1.0.31",
-    "publishedAt": 1773629805221,
-    "commit": "https://github.com/openclaw/skills/commit/a70027a20f75864496da6f6bbcd0cb1a1f6b09ae"
+    "version": "1.1.0",
+    "publishedAt": 1773643774371,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.31",
+      "publishedAt": 1773629805221,
+      "commit": "https://github.com/openclaw/skills/commit/a70027a20f75864496da6f6bbcd0cb1a1f6b09ae"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773443523363,
