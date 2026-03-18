@@ -1,0 +1,11 @@
+{
+  "owner": "relayplane",
+  "slug": "relayplane-clawdoctor",
+  "displayName": "ClawDoctor",
+  "latest": {
+    "version": "0.4.8",
+    "publishedAt": 1773785188029,
+    "commit": null
+  },
+  "history": []
+}
