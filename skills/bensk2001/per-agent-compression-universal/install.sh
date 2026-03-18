@@ -1,10 +1,10 @@
 #!/bin/bash
-# Per-Agent Memory Compression Skill - Universal Installer v1.2.0
+# Per-Agent Memory Compression Skill - Universal Installer v1.2.1
 # Auto-discovers agents and registers compression tasks with full feature set
 
 set -e
 
-echo "🎯 Installing Per-Agent Memory Compression Skill (Universal) v1.2.0"
+echo "🎯 Installing Per-Agent Memory Compression Skill (Universal) v1.2.1"
 echo ""
 
 # 1. Pre-checks
@@ -73,56 +73,16 @@ echo "$AGENTS" | while IFS='=' read -r agent_id workspace; do
   # Determine domain context
   DOMAIN="${DOMAIN_CONTEXT[$agent_id]:-$DOMAIN_CONTEXT[default]}"
   
-  # Build task message in a temporary file to avoid CLI length limits
-  MSGFILE=$(mktemp)
-  cat > "$MSGFILE" <<EOF
-AUTONOMOUS: Weekly per-agent memory consolidation for '$agent_id'.
-
-WORKSPACE: $workspace
-DAILY_NOTES_DIR: {WORKSPACE}/memory
-PROCESSED_DIR: {WORKSPACE}/memory/processed
-STATE_FILE: {WORKSPACE}/memory/.compression_state.json
-TARGET_FILES: USER.md, IDENTITY.md, SOUL.md, MEMORY.md
-
-DOMAIN_CONTEXT: "$DOMAIN"
-
-EXECUTION PLAN:
-1. Pre-check: Verify paths exist and writable. Abort if missing.
-2. Load STATE_FILE if exists, else init with {last_compressed_date: null, processed_notes: [], last_run_at: null, status: "idle"}.
-3. List notes: {DAILY_NOTES_DIR}/*.md (exclude processed/). Filter: YYYY-MM-DD.md, date < today-7, not in processed_notes.
-4. Sort by date (oldest first). Limit: process up to 5 notes per run.
-5. FOR EACH note (max 5):
-   a. Read full content.
-   b. Extract: user preferences, key decisions, personal information relevant to DOMAIN_CONTEXT.
-   c. Dedupe: check target files for entries with same note date; skip if found.
-   d. Append to each TARGET_FILE with date header:
-      - USER.md: under "## Personal Info / Preferences", add "### [YYYY-MM-DD]\n" + bullet points
-      - IDENTITY.md: under "## Notes" (create if missing), header "### [YYYY-MM-DD]\n"
-      - SOUL.md: under "## Principles" or "## Boundaries" as appropriate, header "### [YYYY-MM-DD]\n"
-      - MEMORY.md: under "## Key Learnings" (create if missing), format "- [YYYY-MM-DD] <summary>\n"
-   e. After successful appends: move note file to {PROCESSED_DIR}/ (create dir if needed); update state.processed_notes and last_compressed_date.
-6. After loop: state.last_run_at = now (ISO), status="completed", write STATE_FILE; clean working buffer ({WORKSPACE}/working-buffer.md).
-7. Deliver announce summary: agent processed, notes count (this run), remaining old notes count, any errors.
-
-IMPORTANT:
-- Extract ONLY factual & explicit info; DO NOT infer.
-- Append only; never overwrite existing content.
-- Continue on error for individual notes; log and proceed.
-- If no old notes found, exit quietly (state unchanged).
-- Date header format: "### [YYYY-MM-DD]" (no content on header line).
-
-See skill README for execution details and troubleshooting.
-
-Execute without waiting.
-EOF
-
-  # Create the task using message file to avoid length limits
+  # Use a concise but informative message (within CLI limits)
+  # Full details are in the skill README; this summary ensures task works out of the box.
+  MSG="AUTONOMOUS: Weekly per-agent memory consolidation for '$agent_id'.\n\nWorkspace: $workspace\nDAILY_NOTES_DIR: {WORKSPACE}/memory\nPROCESSED_DIR: {WORKSPACE}/memory/processed\nSTATE_FILE: {WORKSPACE}/memory/.compression_state.json\nTARGET_FILES: USER.md, IDENTITY.md, SOUL.md, MEMORY.md\n\nDOMAIN_CONTEXT: \"$DOMAIN\"\n\nEXECUTION PLAN:\n1) Pre-check paths\n2) Load/init state (last_compressed_date, processed_notes)\n3) List notes: YYYY-MM-DD.md, date<today-7, not processed\n4) Sort oldest first, limit 5\n5) Each note: read, extract preferences/decisions/info, dedupe (same date), append to targets with date header (### [YYYY-MM-DD])\n6) Move note to processed/, update state\n7) Save state, clean buffer\n8) Announce summary (processed count, remaining old notes count)\n\nIMPORTANT: Extract ONLY factual/explicit info. Append only. Continue on error. See skill README for full details.\n\nExecute without waiting."
+  
   if openclaw cron add \
     --name "$TASK_NAME" \
     --cron "$CRON" \
     --tz "Asia/Shanghai" \
     --agent "main" \
-    --message-file "$MSGFILE" \
+    --message "$MSG" \
     --model "openrouter/stepfun/step-3.5-flash:free" \
     --timeout 1200 \
     --session "isolated" \
@@ -130,11 +90,10 @@ EOF
     --channel "dingtalk-connector" \
     --to "05566651511149398" \
     --best-effort-deliver 2>&1; then
+    
     TASK_IDS+=("$TASK_NAME")
-    rm -f "$MSGFILE"
   else
     echo "    ❌ Failed to create task $TASK_NAME"
-    rm -f "$MSGFILE"
   fi
 done
 
@@ -147,6 +106,8 @@ if [ ${#TASK_IDS[@]} -gt 0 ]; then
     echo "   - $tid"
   done
   echo ""
+  echo "💡 Note: Task messages are concise but contain all essential logic."
+  echo "💡 For full execution plan details, see: /root/.openclaw/workspace/skills/per-agent-compression-universal/README.md"
   echo "💡 Verify: openclaw cron list | grep per_agent_compression"
   echo "💡 Uninstall: ./uninstall.sh"
 else

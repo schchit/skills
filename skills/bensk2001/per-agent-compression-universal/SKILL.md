@@ -49,7 +49,7 @@ No configuration needed. To customize schedule or domain context, edit `install.
 ## Notes | 注意
 
 - This skill is in active testing; see CHANGELOG.md for known issues.
-- The task messages are concise due to CLI length limits; full details are in this README.
+- The task messages are concise due to CLI length limits; full details are in README.
 - If you need to edit a task's message manually: `openclaw cron edit per_agent_compression_<agent_id> --message "..."`
 
 ## Support | 支持

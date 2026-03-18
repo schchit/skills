@@ -1,6 +1,6 @@
 {
   "name": "per-agent-compression-universal",
-  "version": "1.2.2",
+  "version": "1.2.5",
   "description": "Zero-config memory consolidation for multi-agent OpenClaw deployments. Auto-discovers agents and registers staggered cron tasks with full state tracking, deduplication, and domain-aware extraction.",
   "author": "OpenClaw CTO",
   "license": "Internal",

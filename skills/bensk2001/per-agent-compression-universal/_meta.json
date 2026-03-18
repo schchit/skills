@@ -3,9 +3,15 @@
   "slug": "per-agent-compression-universal",
   "displayName": "Per-Agent Memory Compression (Universal)",
   "latest": {
-    "version": "1.2.2",
-    "publishedAt": 1773825864890,
-    "commit": "https://github.com/openclaw/skills/commit/8dfe009dd7110599a3ec6ae6ef5cc4e96f785af5"
+    "version": "1.2.5",
+    "publishedAt": 1773834405884,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.2.2",
+      "publishedAt": 1773825864890,
+      "commit": "https://github.com/openclaw/skills/commit/8dfe009dd7110599a3ec6ae6ef5cc4e96f785af5"
+    }
+  ]
 }
