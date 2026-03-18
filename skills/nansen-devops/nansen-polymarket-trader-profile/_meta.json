@@ -1,0 +1,11 @@
+{
+  "owner": "nansen-devops",
+  "slug": "nansen-polymarket-trader-profile",
+  "displayName": "Nansen Polymarket Trader Profile",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1773750702367,
+    "commit": null
+  },
+  "history": []
+}
