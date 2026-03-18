@@ -1,0 +1,11 @@
+{
+  "owner": "36kr-com",
+  "slug": "36kr-hotlist",
+  "displayName": "[36kr]获取36氪官方24小时热榜文章数据",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1773745803439,
+    "commit": null
+  },
+  "history": []
+}
