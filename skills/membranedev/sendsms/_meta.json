@@ -1,0 +1,11 @@
+{
+  "owner": "membranedev",
+  "slug": "sendsms",
+  "displayName": "Sendsms",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773795753779,
+    "commit": null
+  },
+  "history": []
+}
