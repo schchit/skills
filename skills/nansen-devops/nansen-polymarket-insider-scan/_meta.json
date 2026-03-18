@@ -1,0 +1,11 @@
+{
+  "owner": "nansen-devops",
+  "slug": "nansen-polymarket-insider-scan",
+  "displayName": "Nansen Polymarket Insider Scan",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1773746420667,
+    "commit": null
+  },
+  "history": []
+}
