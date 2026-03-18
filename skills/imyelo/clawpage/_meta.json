@@ -3,9 +3,15 @@
   "slug": "clawpage",
   "displayName": "Clawpage",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773609618143,
-    "commit": "https://github.com/openclaw/skills/commit/bd3046b44fe66de94d773b15fba346a2b0144811"
+    "version": "1.0.1",
+    "publishedAt": 1773863686421,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773609618143,
+      "commit": "https://github.com/openclaw/skills/commit/bd3046b44fe66de94d773b15fba346a2b0144811"
+    }
+  ]
 }
