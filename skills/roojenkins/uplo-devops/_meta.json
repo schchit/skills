@@ -1,0 +1,11 @@
+{
+  "owner": "roojenkins",
+  "slug": "uplo-devops",
+  "displayName": "Uplo Devops",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773813735629,
+    "commit": null
+  },
+  "history": []
+}
