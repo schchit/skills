@@ -1,0 +1,11 @@
+{
+  "owner": "roamer-remote",
+  "slug": "stocks-query-base-skill",
+  "displayName": "股市小灵通-信息查询基础版本",
+  "latest": {
+    "version": "0.0.5",
+    "publishedAt": 1773949455978,
+    "commit": null
+  },
+  "history": []
+}
