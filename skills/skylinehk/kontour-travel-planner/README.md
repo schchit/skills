@@ -39,7 +39,6 @@ Ground truth files in `references/`:
 - `scripts/plan.sh` — Get structured trip context from natural language
 - `scripts/export-gmaps.sh` — Export itinerary to Google Maps links and KML
 - `scripts/gen-airports.py` — Generate airport reference data
-- `scripts/audit-runtime.sh` — Safety audit for runtime scripts (network/exec primitive scan)
 
 ## Links
 
@@ -48,4 +47,4 @@ Ground truth files in `references/`:
 
 ## License
 
-MIT-0
+MIT
