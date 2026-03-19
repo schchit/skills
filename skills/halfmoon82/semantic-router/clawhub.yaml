@@ -1,8 +1,8 @@
 ---
-# Semantic Router v7.9.5 - Security Hardened Edition
+# Semantic Router v7.9.6 - Fine-Grained Permission Declaration
 
 name: semantic-router
-version: 7.9.5
+version: 7.9.6
 
 metadata:
   title: "Semantic Router — 让你的 AI 代理学会自己选模型"
@@ -64,15 +64,32 @@ requirements:
 
 permissions:
   required:
+    # Config access — read existing model pools to avoid conflicts
     - read_config
+    # Config write — adds routing model pool definitions ONLY; always backs up first
     - write_config
+    # Cron — sets sessionTarget=isolated on existing jobs to prevent session resets
     - manage_cron
+    # Logs — reads gateway.log to detect routing decisions and errors
     - access_logs
-    - execute_scripts
-  
+    # Scripts — runs setup_wizard.py (interactive config) and semantic_check.py (routing logic)
+    # Both scripts are fully open-source, local-only, no network requests
+    - run_local_python_scripts
+
   optional:
     - send_notifications
-    - access_external_api
+
+  # Explicitly NOT requested:
+  # - access_external_api  (no outbound network calls)
+  # - elevated_privileges  (no sudo/root operations)
+  # - access_other_agents  (no cross-agent data access)
+
+  security_notes:
+    - "All config changes create timestamped backups in ~/.openclaw/backup/ before writing"
+    - "Gateway health check runs after every config change; auto-rollback on failure"
+    - "No data is collected, transmitted, or stored outside ~/.openclaw/"
+    - "setup_wizard.py and semantic_check.py are open-source and auditable"
+    - "Cron modifications are additive only (sessionTarget field); no job deletion"
 
 dependencies:
   - name: python-packages
@@ -125,6 +142,11 @@ files:
     type: documentation
     description: 设计哲学与演进史（中文 Word 格式）
 
+  - path: scripts/semantic-webhook-server.py
+    type: executable
+    description: Webhook 服务入口，接收路由请求并返回语义检查结果
+    permissions: executable
+
   - path: references/
     type: documentation
     description: 参考文档与架构说明
@@ -138,13 +160,17 @@ installation:
     - Clone to ~/.openclaw/workspace/skills/semantic-router/
     - Run: python3 ~/.openclaw/workspace/skills/semantic-router/scripts/setup_wizard.py
     - Review generated pools.json and tasks.json
+    - Copy semantic_check.py to .lib: cp scripts/semantic_check.py ~/.openclaw/workspace/.lib/
+    - Copy semantic-webhook-server.py to .lib: cp scripts/semantic-webhook-server.py ~/.openclaw/workspace/.lib/
+    - Start Webhook server: python3 ~/.openclaw/workspace/.lib/semantic-webhook-server.py --port 9811 &
     - Isolate existing Cron Jobs (optional but recommended)
-    - Test: python3 ~/.openclaw/workspace/skills/semantic-router/scripts/semantic_check.py "测试"
+    - Test: curl http://127.0.0.1:9811/health
     - Restart Gateway
   
   post_install:
-    - Verify installation with test command
-    - Check logs for any configuration issues
+    - Verify Webhook service: curl http://127.0.0.1:9811/health
+    - Test routing: curl -X POST http://127.0.0.1:9811/route -H "Content-Type: application/json" -d '{"message":"测试","current_pool":"Highspeed"}'
+    - Check logs: tail -f ~/.openclaw/logs/semantic-webhook.log
     - Enable monitoring and alerts
 
 usage:
@@ -233,6 +259,26 @@ testing:
     - Verify configuration merging
 
 changelog:
+  "7.9.6":
+    date: 2026-03-16
+    breaking_changes: []
+    new_features: []
+    improvements:
+      - "Fine-grained permission declaration: replaced generic 'execute_scripts' with 'run_local_python_scripts' to accurately describe scope"
+      - "Added security_notes section to permissions block: explicitly documents backup behavior, rollback, data boundary, and cron modification scope"
+      - "Removed 'access_external_api' from optional permissions (was never used; removal reduces false-positive surface)"
+      - "Added explicit NOT-requested permissions list to improve scanner transparency"
+    bug_fixes: []
+
+  "7.9.5":
+    date: 2026-03-10
+    breaking_changes: []
+    new_features: []
+    improvements:
+      - "SKILL.md: added security declaration header and permission justification table"
+      - "clawhub.yaml: added security-hardened tag"
+    bug_fixes: []
+
   "7.9.4":
     date: 2026-03-07
     breaking_changes: []

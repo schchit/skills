@@ -1,7 +1,7 @@
 ---
 name: semantic-router
 description: 让 AI 代理根据对话内容自动选择最合适的模型。四层识别（系统过滤→关键词→指示词→语义相似度），四池架构（高速/智能/人文/代理），五分支路由，全自动 Fallback 回路。支持 trigger_groups_all 非连续词组命中。
-version: 7.9.5
+version: 7.9.6
 author: halfmoon82
 tags: [semantic, routing, model-pools, task-classification, fallback, system-passthrough, production]
 requires_approval: true
@@ -125,7 +125,24 @@ python3 ~/.openclaw/workspace/skills/semantic-router/scripts/setup_wizard.py
 # 4. 生成 pools.json 和 tasks.json
 ```
 
-### 第三步：隔离现有 Cron Job（重要！）
+### 第三步：启动 Webhook 服务（重要！）
+
+```bash
+# 复制核心文件到 .lib 目录
+cp ~/.openclaw/workspace/skills/semantic-router/scripts/semantic_check.py \
+   ~/.openclaw/workspace/.lib/
+cp ~/.openclaw/workspace/skills/semantic-router/scripts/semantic-webhook-server.py \
+   ~/.openclaw/workspace/.lib/
+
+# 启动 Webhook 服务（端口 9811）
+python3 ~/.openclaw/workspace/.lib/semantic-webhook-server.py --port 9811 &
+
+# 验证服务是否运行
+curl http://127.0.0.1:9811/health
+# 预期输出: {"status": "ok", "version": "7.9.x"}
+```
+
+### 第四步：隔离现有 Cron Job（重要！）
 
 ```bash
 # 列出你的所有 Cron Job
@@ -140,12 +157,13 @@ cron update ba28e228-473a-4963-8413-c228762bf2d1 \
   --patch '{"sessionKey": null, "sessionTarget": "isolated"}'
 ```
 
-### 第四步：验证安装
+### 第五步：验证安装
 
 ```bash
-# 测试语义检查
-python3 ~/.openclaw/workspace/skills/semantic-router/scripts/semantic_check.py \
-  "帮我写个Python爬虫" "Highspeed"
+# 测试 Webhook 路由接口
+curl -X POST http://127.0.0.1:9811/route \
+  -H "Content-Type: application/json" \
+  -d '{"message": "帮我写个Python爬虫", "current_pool": "Highspeed"}'
 
 # 预期输出
 # {
