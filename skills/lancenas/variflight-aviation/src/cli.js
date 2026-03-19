@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * Variflight CLI Entry
+ * Variflight Aviation Skill CLI Entry
+ * Powered by 飞常准（VariFlight）官方 MCP
  * Usage: variflight <command> [args...]
  */
 
@@ -16,28 +17,29 @@ const commands = {
 
 function showHelp() {
     console.log(`
-✈️  Variflight Aviation Skill v1.0.0
+✈️  Variflight Aviation Skill v3.0.0 (Powered by 飞常准 VariFlight MCP)
 
 Usage: variflight <command> [arguments]
 
 Commands:
-  search  <dep> <arr> <date>    搜索航班
-  info    <fnum> <date>         查询航班详情
-  comfort <fnum> <date>         舒适度指数
-  weather <airport>             机场天气
-  transfer <depcity> <arrcity> <date>  中转方案
-  track   <anum>                飞机追踪
+  search   <dep> <arr> [date]         搜索两机场间的航班
+  info     <fnum> [date]              查询航班详情（按航班号）
+  comfort  <fnum> [date]              乘机舒适度评估（准点率/机型/设施）
+  weather  <airport>                  机场天气预报（实况+3天）
+  transfer <dep> <arr> [date]         中转航班方案规划
+  track    <fnum>                     实时航班状态追踪
 
 Examples:
-  variflight search PEK SHA 2026-02-20
-  variflight info MU2157 2026-02-20
-  variflight comfort CA1501 2026-02-20
+  variflight search PEK SHA
+  variflight info CA1501
+  variflight comfort CA1501 2026-03-17
   variflight weather PEK
-  variflight transfer BJS SHA 2026-02-20
-  variflight track B-308M
+  variflight transfer BJS SZX
+  variflight track CA1501
 
 Environment:
-  VARIFLIGHT_API_KEY    Required. 飞常准 API Key
+  X_VARIFLIGHT_KEY         Required. 飞常准 API Key
+                           Get free key: https://ai.variflight.com/keys
 `);
 }
 

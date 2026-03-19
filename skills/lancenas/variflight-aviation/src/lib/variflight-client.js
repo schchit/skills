@@ -1,37 +1,52 @@
 const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
 const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio.js');
-const { loadConfig, validateConfig } = require('./config-loader');
+const path = require('path');
+const fs = require('fs');
+
+/**
+ * 加载配置（优先 config.local.json，其次环境变量）
+ * 环境变量优先级：X_VARIFLIGHT_KEY（官方）> VARIFLIGHT_API_KEY（兼容备用）
+ */
+function loadApiKey() {
+  const localConfig = path.join(__dirname, '../../config.local.json');
+  if (fs.existsSync(localConfig)) {
+    try {
+      const cfg = JSON.parse(fs.readFileSync(localConfig, 'utf8'));
+      if (cfg.apiKey) return cfg.apiKey;
+    } catch (_) {}
+  }
+  const envKey = process.env.X_VARIFLIGHT_KEY || process.env.VARIFLIGHT_API_KEY;
+  if (envKey) return envKey;
+  throw new Error(
+    'API Key 未配置。请在 config.local.json 中设置 "apiKey"，\n' +
+    '或设置环境变量 X_VARIFLIGHT_KEY。\n' +
+    '前往 https://ai.variflight.com/keys 获取 Key。'
+  );
+}
 
 class VariflightClient {
-  constructor(apiKey) {
-    const config = loadConfig();
-    validateConfig(config);
-
-    this.apiKey = apiKey || config.apiKey;
-    this.timeout = config.timeout || 30000;
+  constructor() {
+    this.apiKey = loadApiKey();
     this.client = null;
     this.transport = null;
     this.isConnected = false;
   }
 
-  /**
-   * 建立连接
-   */
   async connect() {
     if (this.isConnected) return;
 
-    // 创建传输层 - 使用正确的环境变量名 X_VARIFLIGHT_KEY
     this.transport = new StdioClientTransport({
-      command: '/Users/lixiao/.nvm/versions/node/v22.14.0/bin/npx',
+      command: 'npx',
       args: ['-y', '@variflight-ai/variflight-mcp'],
       env: {
+        ...process.env,
         X_VARIFLIGHT_KEY: this.apiKey,
-        PATH: '/Users/lixiao/.nvm/versions/node/v22.14.0/bin:/usr/local/bin:/usr/bin:/bin'
+        VARIFLIGHT_API_KEY: this.apiKey  // 兼容备用
       }
     });
 
     this.client = new Client({
-      name: 'variflight-openclaw-skill',
+      name: 'variflight-skill',
       version: '1.0.0'
     });
 
@@ -39,118 +54,95 @@ class VariflightClient {
     this.isConnected = true;
   }
 
-  /**
-   * 断开连接
-   */
   async disconnect() {
     if (this.client) {
-      try {
-        await this.client.close();
-      } catch (e) { }
+      try { await this.client.close(); } catch (_) {}
       this.client = null;
     }
     if (this.transport) {
-      try {
-        await this.transport.close();
-      } catch (e) { }
+      try { await this.transport.close(); } catch (_) {}
       this.transport = null;
     }
     this.isConnected = false;
   }
 
   /**
-   * 解析工具调用结果
-   * 处理 Variflight 的各种返回格式
-   */
-  parseResult(result) {
-    if (!result) return null;
-
-    // 如果已经是对象/数组，直接返回
-    if (typeof result !== 'string') {
-      return result;
-    }
-
-    // 尝试解析 JSON
-    try {
-      return JSON.parse(result);
-    } catch (e) {
-      // 不是 JSON，返回原始字符串
-      return result;
-    }
-  }
-
-  /**
-   * 调用工具
+   * 调用 MCP 工具，返回解析后的数据
    */
   async callTool(name, args) {
     await this.connect();
-
-    try {
-      const result = await this.client.callTool({
-        name: name,
-        arguments: args
-      });
-
-      // 解析 content
-      if (result && result.content && Array.isArray(result.content)) {
-        const textContent = result.content.find(c => c.type === 'text');
-        if (textContent && textContent.text) {
-          return this.parseResult(textContent.text);
+    const result = await this.client.callTool({ name, arguments: args });
+    if (result && result.content && Array.isArray(result.content)) {
+      const text = result.content.find(c => c.type === 'text');
+      if (text && text.text) {
+        // 检查是否错误字符串
+        if (text.text.startsWith('Error:')) {
+          throw new Error(text.text.replace(/^Error:\s*/, ''));
         }
+        try { return JSON.parse(text.text); } catch (_) { return text.text; }
       }
-
-      return result;
-    } catch (error) {
-      throw error;
     }
+    return result;
   }
 
-  // ===== 业务方法 =====
+  // ======== 业务封装 ========
 
+  /** 按航班号+日期查询（info / comfort / track 命令核心） */
+  async searchFlightsByNumber(fnum, date, dep, arr) {
+    const args = { fnum: fnum.toUpperCase(), date };
+    if (dep) args.dep = dep.toUpperCase();
+    if (arr) args.arr = arr.toUpperCase();
+    return this.callTool('searchFlightsByNumber', args);
+  }
+
+  /** 按出发/到达机场查询（search 命令核心） */
   async searchFlightsByDepArr(dep, arr, date) {
-    return this.callTool('searchFlightsByDepArr', { dep, arr, date });
+    const args = { date };
+    if (dep) args.dep = dep.toUpperCase();
+    if (arr) args.arr = arr.toUpperCase();
+    return this.callTool('searchFlightsByDepArr', args);
   }
 
-  async searchFlightsByNumber(fnum, date) {
-    return this.callTool('searchFlightsByNumber', { fnum, date });
-  }
-
-  async getTransferInfo(depcity, arrcity, date) {
-    return this.callTool('getFlightTransferInfo', { depcity, arrcity, depdate: date });
-  }
-
-  async getFlightHappinessIndex(fnum, date) {
-    return this.callTool('flightHappinessIndex', { fnum, date });
-  }
-
-  async trackAircraft(anum) {
-    return this.callTool('getRealtimeLocationByAnum', { anum });
-  }
-
-  async getAirportWeather(airport) {
-    return this.callTool('getFutureWeatherByAirport', { airport });
-  }
-
-  async searchItineraries(dep, arr, date) {
-    return this.callTool('searchFlightItineraries', {
-      depCityCode: dep,
-      arrCityCode: arr,
-      depDate: date
+  /** 中转方案查询（transfer 命令核心） */
+  async getFlightTransferInfo(depCity, arrCity, depdate) {
+    return this.callTool('getFlightTransferInfo', {
+      depcity: depCity.toUpperCase(),
+      arrcity: arrCity.toUpperCase(),
+      depdate
     });
   }
 
-  /**
-   * 列出可用工具（调试用）
-   */
-  async listTools() {
-    await this.connect();
-    try {
-      const tools = await this.client.listTools();
-      return tools;
-    } catch (e) {
-      console.error('Failed to list tools:', e.message);
-      return [];
-    }
+  /** 飞行幸福指数（comfort 命令核心） */
+  async flightHappinessIndex(fnum, date, dep, arr) {
+    const args = { fnum: fnum.toUpperCase(), date };
+    if (dep) args.dep = dep.toUpperCase();
+    if (arr) args.arr = arr.toUpperCase();
+    return this.callTool('flightHappinessIndex', args);
+  }
+
+  /** 飞机实时位置（track 命令使用，需要注册号 anum） */
+  async getRealtimeLocationByAnum(anum) {
+    return this.callTool('getRealtimeLocationByAnum', { anum });
+  }
+
+  /** 机场天气（weather 命令核心） */
+  async getFutureWeatherByAirport(airport) {
+    return this.callTool('getFutureWeatherByAirport', { airport: airport.toUpperCase() });
+  }
+
+  /** 最低票价搜索（search 命令附加） */
+  async searchFlightItineraries(depCity, arrCity, depDate) {
+    return this.callTool('searchFlightItineraries', {
+      depCityCode: depCity.toUpperCase(),
+      arrCityCode: arrCity.toUpperCase(),
+      depDate
+    });
+  }
+
+  /** 获取今日日期 */
+  async getTodayDate() {
+    const r = await this.callTool('getTodayDate', {});
+    return typeof r === 'string' ? r : new Date().toISOString().slice(0, 10);
   }
 }
 

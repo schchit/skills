@@ -1,7 +1,7 @@
 ---
 name: variflight-aviation
-description: 飞常准航班信息查询 - 实时航班动态、航线搜索、舒适度评估、机场天气、飞机追踪
-version: 1.0.0
+description: 航班信息查询 Skill（飞常准官方 MCP）- 实时航班动态、航线搜索、舒适度评估、机场天气、中转规划、实时定位
+version: 3.0.0
 author: lixiao
 license: MIT
 
@@ -13,10 +13,15 @@ metadata:
 
     env:
       - X_VARIFLIGHT_KEY
-      - VARIFLIGHT_API_KEY
 
-    install:
-      npm: "@variflight-ai/variflight-mcp"
+    requirements: |
+      系统要求：
+      - Node.js >= 18.0.0
+      - npx（随 Node.js 自带）
+
+      配置要求：
+      1. 前往 https://ai.variflight.com/keys 注册并获取 API Key
+      2. 在 config.local.json 中填写 "apiKey"，或设置环境变量 X_VARIFLIGHT_KEY
 
     os:
       - darwin
@@ -27,244 +32,167 @@ metadata:
       - network
       - env-read
       - file-read
-
-    requirements: |
-      系统要求：Node.js >= 18.0.0，npm >= 9.0.0
-
-      配置要求：
-      1. 注册 https://mcp.variflight.com/
-      2. 创建 API Key
-      3. 设置环境变量 X_VARIFLIGHT_KEY
-
-      技术说明：使用 stdio 模式与 MCP 服务器通信
 ---
 
 ## 功能概述
 
-本 Skill 通过飞常准 MCP 服务器提供全球航班信息查询服务，采用**按需启动**架构：
+本 Skill 接入 [飞常准（VariFlight）官方 MCP 服务](https://ai.variflight.com)，提供国内外航班全量数据查询。无需 Python/uvx，通过 `npx` 按需启动 MCP 服务器。
 
-1. 每次调用命令时自动启动 MCP 服务器
-2. 执行查询操作
-3. 完成后自动关闭 MCP 服务器，释放资源
+数据来源：飞常准是中国最大的航班数据服务商，覆盖国内外全量航班，含实时动态、准点率历史、飞机实时位置、舒适度指数等。
 
 ## 配置说明
 
-### 方法 1：环境变量（推荐）
-
-**注意**：Variflight 官方使用 `X_VARIFLIGHT_KEY`
-
-```bash
-export X_VARIFLIGHT_KEY="your_api_key_here"
-```
-
-或使用兼容变量名：
-```bash
-export VARIFLIGHT_API_KEY="your_api_key_here"
-```
-
-### 方法 2：本地配置文件
+### 方法 1：本地配置文件（推荐）
 
 创建 `config.local.json`（已加入 .gitignore）：
 
 ```json
 {
-  "apiKey": "your_api_key_here"
+  "apiKey": "your_variflight_key_here"
 }
 ```
 
-⚠️ 注意：请勿将包含真实 API Key 的 config.local.json 提交到 Git！
+### 方法 2：环境变量
+
+```bash
+export X_VARIFLIGHT_KEY="your_variflight_key_here"
+```
+
+前往 [https://ai.variflight.com/keys](https://ai.variflight.com/keys) 注册免费账号获取 Key（注册即赠 50 元体验额度）。
 
 ## 可用命令
 
-### 1. search - 航线搜索
+### 1. info - 航班详情查询
 
 ```bash
-@variflight-aviation search <dep> <arr> <date>
+@variflight-aviation info <fnum> [date]
 ```
 
-按出发地、目的地、日期搜索航班。
-
-**参数：**
-- `dep`: 出发机场 IATA 代码（如 PEK）
-- `arr`: 到达机场 IATA 代码（如 SHA）
-- `date`: 日期，格式 YYYY-MM-DD
+按航班号查询详细信息：出发/到达时间、延误、机型、准点率、值机柜台、行李转盘等。
 
 **示例：**
 ```bash
-@variflight-aviation search PEK SHA 2026-02-20
+@variflight-aviation info CA1501
+@variflight-aviation info CA1501 2026-03-17
 ```
 
-### 2. info - 航班号查询
+### 2. search - 航班搜索
 
 ```bash
-@variflight-aviation info <fnum> <date>
+@variflight-aviation search <dep> <arr> [date]
 ```
 
-按航班号查询详细信息。
-
-**参数：**
-- `fnum`: 航班号（如 MU2157）
-- `date`: 日期，格式 YYYY-MM-DD
+查询两机场之间的所有航班。支持机场三字码（PEK）或城市三字码（BJS）。
 
 **示例：**
 ```bash
-@variflight-aviation info HU7601 2026-02-20
+@variflight-aviation search PEK SHA
+@variflight-aviation search SZX PEK 2026-03-17
 ```
 
-### 3. comfort - 舒适度指数
+### 3. track - 实时航班追踪
 
 ```bash
-@variflight-aviation comfort <fnum> <date>
+@variflight-aviation track <fnum> [date]
 ```
 
-获取航班舒适度评估，包括准点率、机型评分等。
+查询航班今日实时状态（起降时间、延误、飞行阶段），并尝试获取飞机实时经纬度位置。
 
 **示例：**
 ```bash
-@variflight-aviation comfort CA1501 2026-02-20
+@variflight-aviation track CA1501
 ```
 
-### 4. weather - 机场天气
+### 4. comfort - 乘机舒适度评估
+
+```bash
+@variflight-aviation comfort <fnum> [date]
+```
+
+获取飞常准「飞行幸福指数」，涵盖机型、座椅、餐食、准点率等综合评分。
+
+**示例：**
+```bash
+@variflight-aviation comfort CA1501
+@variflight-aviation comfort MU2157 2026-03-17
+```
+
+### 5. weather - 机场天气
 
 ```bash
 @variflight-aviation weather <airport>
 ```
 
-查询机场未来3天天气预报。
-
-**参数：**
-- `airport`: 机场 IATA 代码（如 PEK）
+查询机场未来3天天气预报（今日/明日/后日），数据来自飞常准气象服务。
 
 **示例：**
 ```bash
 @variflight-aviation weather PEK
+@variflight-aviation weather SHA
 ```
 
-### 5. transfer - 中转方案
+### 6. transfer - 中转方案规划
 
 ```bash
-@variflight-aviation transfer <depcity> <arrcity> <date>
+@variflight-aviation transfer <dep> <arr> [date]
 ```
 
-查询最优中转方案。
-
-**参数：**
-- `depcity`: 出发城市代码（如 BJS）
-- `arrcity`: 到达城市代码（如 SHA）
-- `date`: 日期，格式 YYYY-MM-DD
+查询两城市间的中转航班方案，推荐使用城市三字码。
 
 **示例：**
 ```bash
-@variflight-aviation transfer BJS SHA 2026-02-20
+@variflight-aviation transfer BJS LAX 2026-03-17
+@variflight-aviation transfer SHA LHR
 ```
 
-### 6. track - 飞机追踪
+## 常用代码对照
 
-```bash
-@variflight-aviation track <anum>
-```
+| 城市/机场 | 机场代码 | 城市代码 |
+|----------|---------|---------|
+| 北京首都 | PEK | BJS |
+| 北京大兴 | PKX | BJS |
+| 上海虹桥 | SHA | SHA |
+| 上海浦东 | PVG | SHA |
+| 广州白云 | CAN | CAN |
+| 深圳宝安 | SZX | SZX |
+| 成都天府 | TFU | CTU |
+| 香港 | HKG | HKG |
+| 东京成田 | NRT | TYO |
+| 新加坡 | SIN | SIN |
+| 伦敦希思罗 | LHR | LON |
+| 纽约肯尼迪 | JFK | NYC |
+| 洛杉矶 | LAX | LAX |
 
-实时追踪飞机位置。
+## 飞常准 MCP 工具对照
 
-**参数：**
-- `anum`: 飞机注册号（如 B-308M）
-
-**示例：**
-```bash
-@variflight-aviation track B-308M
-```
-
-## 数据格式说明
-
-### 机场代码（IATA）
-- PEK: 北京首都
-- PKX: 北京大兴
-- SHA: 上海虹桥
-- PVG: 上海浦东
-- CAN: 广州白云
-- SZX: 深圳宝安
-- CTU: 成都天府
-- HGH: 杭州萧山
-- XIY: 西安咸阳
-- CKG: 重庆江北
-
-### 城市代码
-- BJS: 北京（含 PEK/PKX）
-- SHA: 上海（含 SHA/PVG）
-- CAN: 广州
-- SZX: 深圳
-
-### 日期格式
-- 标准格式：YYYY-MM-DD
-- 示例：2026-02-20
-
-## 返回数据示例
-
-### 航班搜索返回
-```json
-{
-  "code": 200,
-  "message": "Success",
-  "data": [
-    {
-      "FlightNo": "HU7601",
-      "FlightCompany": "海南航空股份有限公司",
-      "FlightDepcode": "PEK",
-      "FlightArrcode": "SHA",
-      "FlightDeptimePlanDate": "2026-02-20 07:25:00",
-      "FlightArrtimePlanDate": "2026-02-20 09:35:00",
-      "FlightState": "计划",
-      "OntimeRate": "93.33%",
-      "ftype": "78A",
-      "FlightHTerminal": "T2",
-      "FlightTerminal": "T2",
-      "CheckinTable": "F,G",
-      "distance": "1178"
-    }
-  ]
-}
-```
-
-## 隐私与安全声明
-
-1. **API Key 本地存储**：仅存储在用户本地环境变量或配置文件中
-2. **不上传云端**：敏感信息不会上传到 ClawHub 或任何远程服务器
-3. **日志脱敏**：日志中 API Key 等敏感信息已脱敏处理
-4. **Git 保护**：`config.local.json` 已加入 `.gitignore`，防止意外提交
+| 命令 | 飞常准 MCP 工具 |
+|------|--------------|
+| `info` | `searchFlightsByNumber` |
+| `search` | `searchFlightsByDepArr` |
+| `track` | `searchFlightsByNumber` + `getRealtimeLocationByAnum` |
+| `comfort` | `flightHappinessIndex` |
+| `weather` | `getFutureWeatherByAirport` |
+| `transfer` | `getFlightTransferInfo` |
 
 ## 故障排除
 
-### 错误：API Key not configured / 401 Unauthorized
-**原因**：未配置 API Key 或 Key 无效  
-**解决**：
-- 确认已设置 `X_VARIFLIGHT_KEY` 环境变量
-- 确认 API Key 已激活（验证邮箱）
-- 确认 Key 未过期
+### 错误：API Key 未配置
+**解决**：在 `config.local.json` 中设置 `apiKey`，前往 https://ai.variflight.com/keys 获取
 
-### 错误：MCP server start timeout
-**原因**：MCP 服务器启动超时  
-**解决**：
-- 检查网络连接
-- 确认 API Key 有效
-- 检查 Node.js 版本 >= 18.0.0
+### 错误：npx 命令找不到
+**解决**：确认已安装 Node.js（`node -v`），npx 随 npm 一同安装
 
-### 错误：No flights found / 未找到航班
-**原因**：未找到航班数据  
-**解决**：
-- 确认日期格式正确（YYYY-MM-DD）
-- 确认机场/城市代码正确
-- 确认该航线在指定日期有航班
-
-### 错误：Command not found
-**原因**：命令拼写错误  
-**解决**：使用上述列出的标准命令名称
+### 首次运行较慢
+**原因**：npx 首次自动下载 `@variflight-ai/variflight-mcp` 包  
+**解决**：手动预下载：`npx -y @variflight-ai/variflight-mcp`
 
 ## 相关链接
 
-- [飞常准 MCP 官方文档](https://mcp.variflight.com/)
+- [飞常准 MCP 官网](https://ai.variflight.com)
+- [获取 API Key](https://ai.variflight.com/keys)
+- [官方使用文档](https://bcnucz2nnop8.feishu.cn/wiki/SDFDwQIaAiM3hxk6uyhcJxSkn2b)
+- [@variflight-ai/variflight-mcp on npm](https://www.npmjs.com/package/@variflight-ai/variflight-mcp)
 - [Model Context Protocol 规范](https://modelcontextprotocol.io/)
-- [OpenClaw 文档](https://docs.openclaw.ai/)
-- [GitHub 仓库](https://github.com/your-username/variflight-aviation-skill)
 
 ## 许可证
 

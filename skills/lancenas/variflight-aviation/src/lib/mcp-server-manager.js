@@ -1,9 +1,28 @@
-const { spawn } = require('child_process');
+const { spawn, execSync } = require('child_process');
 const { EventEmitter } = require('events');
 
 /**
+ * 动态获取 npx 可执行文件路径
+ */
+function getNpxPath(envNpxPath) {
+  if (envNpxPath) return envNpxPath;
+  const path = require('path');
+  const fs = require('fs');
+  // 与当前运行的 node 同目录的 npx
+  const npxBesideNode = path.join(path.dirname(process.execPath), 'npx');
+  if (fs.existsSync(npxBesideNode)) {
+    return npxBesideNode;
+  }
+  try {
+    return execSync('which npx', { encoding: 'utf8' }).trim();
+  } catch (_) {
+    return 'npx';
+  }
+}
+
+/**
  * MCP 服务器管理器
- * 负责启动 MCP 服务器并提供直接的 stdio 访问
+ * 负责启动飞常准（VariFlight）MCP 服务器并提供直接的 stdio 访问
  */
 class MCPServerManager extends EventEmitter {
   constructor(options = {}) {
@@ -30,8 +49,8 @@ class MCPServerManager extends EventEmitter {
         reject(new Error(`MCP server start timeout (${this.timeout}ms)`));
       }, this.timeout);
 
-      // 使用绝对路径启动 npx
-      const npxPath = this.env.NPX_PATH || '/Users/lixiao/.nvm/versions/node/v22.14.0/bin/npx';
+      // 使用动态查找的 npx 路径（支持 NPX_PATH 环境变量覆盖）
+      const npxPath = getNpxPath(this.env.NPX_PATH);
       
       this.startTime = Date.now();
       

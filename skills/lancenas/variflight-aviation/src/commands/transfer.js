@@ -1,58 +1,74 @@
 const { VariflightClient } = require('../lib/variflight-client');
 
-module.exports = async function transfer(depcity, arrcity, date) {
-    if (!depcity || !arrcity || !date) {
-        console.error('Usage: transfer <depcity> <arrcity> <date>');
-        console.error('Example: transfer BJS SHA 2026-02-20');
-        process.exit(1);
-    }
-
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!dateRegex.test(date)) {
-        console.error('Error: Date must be in YYYY-MM-DD format');
+module.exports = async function transfer(dep, arr, date) {
+    if (!dep || !arr) {
+        console.error('Usage: transfer <dep> <arr> [date]');
+        console.error('Example: transfer BJS SZX 2026-03-17');
+        console.error('Example: transfer BJS CTU   (今日)');
+        console.error('提示: 使用城市三字码（如 BJS=北京, SHA=上海, SZX=深圳）');
         process.exit(1);
     }
 
     const client = new VariflightClient();
+    const depUpper = dep.toUpperCase();
+    const arrUpper = arr.toUpperCase();
+    const queryDate = date || new Date().toISOString().slice(0, 10);
 
     try {
-        console.log(`🔄 查询 ${depcity.toUpperCase()} → ${arrcity.toUpperCase()} 在 ${date} 的中转方案...\n`);
+        console.log(`🔄 查询 ${depUpper} → ${arrUpper}  ${queryDate} 的航班方案...\n`);
 
-        const result = await client.getTransferInfo(
-            depcity.toUpperCase(),
-            arrcity.toUpperCase(),
-            date
-        );
+        const result = await client.getFlightTransferInfo(depUpper, arrUpper, queryDate);
+        const raw = result && result.data ? result.data : result;
 
-        // 解析标准响应格式
-        if (!result || result.code !== 200) {
-            console.log('❌ 查询失败:', result?.message || '未知错误');
+        // 错误响应：{ error_code, error }
+        if (raw && raw.error_code) {
+            console.log(`❌ ${raw.error || '暂无数据'}`);
+            console.log('  提示：请使用城市三字码，如 BJS（北京）、SHA（上海）、SZX（深圳）');
             return;
         }
 
-        const transfers = result.data || [];
+        // 飞常准返回二维数组：每个元素是一个航段数组（直飞=1段，中转=2段）
+        const routes = Array.isArray(raw) ? raw : (raw ? [raw] : []);
 
-        if (transfers.length === 0) {
-            console.log('❌ 未找到中转方案');
+        if (routes.length === 0) {
+            console.log(`❌ 未找到 ${depUpper} → ${arrUpper} 的航班方案`);
             return;
         }
 
-        console.log(`找到 ${transfers.length} 个中转方案：\n`);
+        const fmt = s => s ? s.toString().substring(0, 16) : '待定';
 
-        transfers.forEach((transfer, index) => {
-            const transferCity = transfer.transferCity || transfer.city || '未知中转地';
-            const firstFlight = transfer.firstFlight || transfer.flight1 || '未知';
-            const secondFlight = transfer.secondFlight || transfer.flight2 || '未知';
-            const totalDuration = transfer.totalDuration || transfer.duration || '未知';
-            const layover = transfer.layoverDuration || transfer.layover || '未知';
-            const price = transfer.price || transfer.minPrice || '未知';
+        console.log(`找到 ${routes.length} 个方案（显示前5个）：\n`);
 
-            console.log(`${index + 1}. ${transferCity} 中转`);
-            console.log(`   第一程: ${firstFlight}`);
-            console.log(`   第二程: ${secondFlight}`);
-            console.log(`   总时长: ${totalDuration}分钟`);
-            console.log(`   中转时间: ${layover}分钟`);
-            console.log(`   价格: ¥${price}`);
+        routes.slice(0, 5).forEach((legs, idx) => {
+            // legs 是一个数组，每个元素是一个航班
+            const flightLegs = Array.isArray(legs) ? legs : [legs];
+            const isDirect = flightLegs.length === 1;
+
+            if (isDirect) {
+                const f = flightLegs[0];
+                const depCityZh = f.DepCityZh || f.DepCity || '';
+                const arrCityZh = f.ArrCityZh || f.ArrCity || '';
+                const terminal = f.DepTerminal ? ` ${f.DepTerminal}` : '';
+                const arrTerminal = f.ArrTerminal ? ` ${f.ArrTerminal}` : '';
+                const delay = f.AverageDelayTime > 0
+                    ? `  平均延误${f.AverageDelayTime}分`
+                    : f.AverageDelayTime < 0 ? `  历史提前${Math.abs(f.AverageDelayTime)}分` : '';
+
+                console.log(`方案 ${idx + 1}（直飞）：${f.FlightNo}`);
+                console.log(`  🛫 ${fmt(f.DepTime)} ${depCityZh}/${f.DepAirportCode || depUpper}${terminal}`);
+                console.log(`  🛬 ${fmt(f.ArrTime)} ${arrCityZh}/${f.ArrAirportCode || arrUpper}${arrTerminal}${delay}`);
+            } else {
+                console.log(`方案 ${idx + 1}（${flightLegs.length}程中转）：`);
+                flightLegs.forEach((f, li) => {
+                    const depCityZh = f.DepCityZh || f.DepCity || '';
+                    const arrCityZh = f.ArrCityZh || f.ArrCity || '';
+                    const terminal = f.DepTerminal ? ` ${f.DepTerminal}` : '';
+                    const arrTerminal = f.ArrTerminal ? ` ${f.ArrTerminal}` : '';
+                    console.log(`  第${li + 1}程: ${f.FlightNo}`);
+                    console.log(`    🛫 ${fmt(f.DepTime)} ${depCityZh}/${f.DepAirportCode}${terminal}`);
+                    console.log(`    🛬 ${fmt(f.ArrTime)} ${arrCityZh}/${f.ArrAirportCode}${arrTerminal}`);
+                });
+            }
             console.log('');
         });
 

@@ -1,73 +1,81 @@
 const { VariflightClient } = require('../lib/variflight-client');
 
 module.exports = async function info(fnum, date) {
-    if (!fnum || !date) {
-        console.error('Usage: info <fnum> <date>');
-        console.error('Example: info MU2157 2026-02-20');
-        process.exit(1);
-    }
-
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!dateRegex.test(date)) {
-        console.error('Error: Date must be in YYYY-MM-DD format');
+    if (!fnum) {
+        console.error('Usage: info <fnum> [date]');
+        console.error('Example: info CA1501');
+        console.error('Example: info CA1501 2026-03-17');
         process.exit(1);
     }
 
     const client = new VariflightClient();
+    const fnumUpper = fnum.toUpperCase();
 
     try {
-        console.log(`🛫 查询航班 ${fnum.toUpperCase()} 在 ${date} 的信息...\n`);
+        console.log(`🛫 查询航班 ${fnumUpper} 的实时信息...\n`);
 
-        const result = await client.searchFlightsByNumber(fnum.toUpperCase(), date);
+        const queryDate = date || new Date().toISOString().slice(0, 10);
+        const result = await client.searchFlightsByNumber(fnumUpper, queryDate);
 
-        // 解析标准响应格式
-        if (!result || result.code !== 200) {
-            console.log('❌ 查询失败:', result?.message || '未知错误');
-            return;
-        }
-
-        const flights = result.data || [];
+        // 飞常准返回 { code, data: [...] }
+        const raw = result && result.data ? result.data : result;
+        const flights = Array.isArray(raw) ? raw : (raw ? [raw] : []);
 
         if (flights.length === 0) {
-            console.log('❌ 未找到航班信息');
+            console.log(`❌ 未找到航班 ${fnumUpper} 在 ${queryDate} 的信息`);
             return;
         }
 
-        // 显示第一个航班的详细信息
-        const flight = flights[0];
+        const f = flights[0];
+        const fmt = s => (s || '待定').toString().substring(0, 16);
 
-        console.log(`航班号: ${flight.FlightNo || '未知'}`);
-        console.log(`航空公司: ${flight.FlightCompany || '未知'}`);
+        console.log(`航班号:     ${f.FlightNo || fnumUpper}`);
+        if (f.ShareFlightNo) console.log(`代码共享:   ${f.ShareFlightNo}`);
+        console.log(`航空公司:   ${f.FlightCompany || '未知'}`);
+        console.log(`飞行状态:   ${f.FlightState || '未知'}`);
+        console.log(`执飞日期:   ${queryDate}`);
         console.log('');
 
         console.log('出发信息:');
-        console.log(`  机场: ${flight.FlightDepAirport || flight.FlightDepcode || '未知'} (${flight.FlightDepcode || ''})`);
-        console.log(`  航站楼: ${flight.FlightHTerminal || '待定'}`);
-        console.log(`  计划时间: ${flight.FlightDeptimePlanDate || '待定'}`);
-        console.log(`  预计起飞: ${flight.VeryZhunReadyDeptimeDate || flight.FlightDeptimeReadyDate || '待定'}`);
-        console.log(`  实际起飞: ${flight.FlightDeptimeDate || '待定'}`);
-        console.log(`  值机柜台: ${flight.CheckinTable || '待定'}`);
-        console.log(`  登机口: ${flight.BoardGate || '待定'}`);
+        console.log(`  城市/机场: ${f.FlightDep || ''}  ${f.FlightDepAirport || f.FlightDepcode || '未知'}`);
+        console.log(`  航站楼:   ${f.FlightHTerminal || '待定'}  登机口: ${f.BoardGate || '待定'}`);
+        if (f.CheckinTable) console.log(`  值机柜台: ${f.CheckinTable}`);
+        if (f.CheckDoor)    console.log(`  安检口:   ${f.CheckDoor}`);
+        console.log(`  计划起飞: ${fmt(f.FlightDeptimePlanDate)}`);
+        console.log(`  预计起飞: ${fmt(f.FlightDeptimeReadyDate)}`);
+        console.log(`  实际起飞: ${fmt(f.FlightDeptimeDate)}`);
+        if (f.LastCheckinTime) console.log(`  截止值机: ${fmt(f.LastCheckinTime)}`);
         console.log('');
 
         console.log('到达信息:');
-        console.log(`  机场: ${flight.FlightArrAirport || flight.FlightArrcode || '未知'} (${flight.FlightArrcode || ''})`);
-        console.log(`  航站楼: ${flight.FlightTerminal || '待定'}`);
-        console.log(`  计划时间: ${flight.FlightArrtimePlanDate || '待定'}`);
-        console.log(`  预计到达: ${flight.VeryZhunReadyArrtimeDate || flight.FlightArrtimeReadyDate || '待定'}`);
-        console.log(`  实际到达: ${flight.FlightArrtimeDate || '待定'}`);
-        console.log(`  行李转盘: ${flight.BaggageID || '待定'}`);
+        console.log(`  城市/机场: ${f.FlightArr || ''}  ${f.FlightArrAirport || f.FlightArrcode || '未知'}`);
+        console.log(`  航站楼:   ${f.FlightTerminal || '待定'}  停机位: ${f.ArrStandGate || '待定'}`);
+        if (f.BaggageID) console.log(`  行李转盘: ${f.BaggageID}`);
+        if (f.ReachExit)  console.log(`  到达出口: ${f.ReachExit}`);
+        if (f.arr_bridge) console.log(`  廊桥:     ${f.arr_bridge}`);
+        console.log(`  计划到达: ${fmt(f.FlightArrtimePlanDate)}`);
+        console.log(`  预计到达: ${fmt(f.FlightArrtimeReadyDate)}`);
+        console.log(`  实际到达: ${fmt(f.FlightArrtimeDate)}`);
         console.log('');
 
-        console.log(`机型: ${flight.ftype || flight.generic || '未知'}`);
-        console.log(`餐食: ${flight.Food || '无'}`);
-        console.log(`状态: ${flight.FlightState || '计划中'}`);
+        if (f.generic || f.ftype) console.log(`机型:       ${f.generic || ''}${f.ftype ? ' (' + f.ftype + ')' : ''}`);
+        if (f.AircraftNumber)     console.log(`注册号:     ${f.AircraftNumber}`);
+        if (f.FlightDuration)     console.log(`飞行时长:   ${f.FlightDuration} 分钟`);
+        if (f.distance)           console.log(`航程距离:   ${f.distance} km`);
+        if (f.OntimeRate)         console.log(`起飞准点率: ${f.OntimeRate}`);
+        if (f.ArrOntimeRate)      console.log(`到达准点率: ${f.ArrOntimeRate}`);
 
-        if (flight.OntimeRate) {
-            console.log(`准点率: ${flight.OntimeRate}`);
-        }
-        if (flight.distance) {
-            console.log(`飞行距离: ${flight.distance}公里`);
+        const foodMap = { M: '提供餐食', S: '小食', N: '无餐食', G: '团餐' };
+        if (f.Food) console.log(`餐食:       ${foodMap[f.Food] || f.Food}`);
+
+        if (f.DelayReason) console.log(`延误原因:   ${f.DelayReason}`);
+
+        // 预计出口时间
+        if (f.FastestExitTime || f.SlowestExitTime) {
+            console.log('');
+            console.log('预计出口时间:');
+            if (f.FastestExitTime) console.log(`  最快: ${fmt(f.FastestExitTime)} (${f.FastestExitDuration} 分钟)`);
+            if (f.SlowestExitTime) console.log(`  最慢: ${fmt(f.SlowestExitTime)} (${f.SlowestExitDuration} 分钟)`);
         }
 
     } catch (error) {
