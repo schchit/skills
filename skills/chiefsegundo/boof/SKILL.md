@@ -9,6 +9,8 @@ Local-first document processing: PDF → markdown → RAG index → token-effici
 
 Documents stay local. Only relevant chunks go to the LLM. Maximum knowledge absorption, minimum token burn.
 
+Powered by [opendataloader-pdf](https://github.com/opendataloader-project/opendataloader-pdf) — #1 in PDF parsing benchmarks (0.90 overall, 0.93 table accuracy). CPU-only, no GPU required.
+
 ## Quick Reference
 
 ### Convert + index a document
@@ -28,7 +30,7 @@ qmd query "your question" -c collection-name
 
 ## Core Workflow
 
-1. **Boof it:** Run `boof.sh` on a PDF. This converts it to markdown via Marker (local ML, no API) and indexes it into QMD for semantic search.
+1. **Boof it:** Run `boof.sh` on a PDF. This converts it to markdown via opendataloader-pdf (local Java engine, no API, no GPU) and indexes it into QMD for semantic search.
 
 2. **Query it:** Use `qmd query` to retrieve only the relevant chunks. Send those chunks to the LLM — not the entire document.
 
@@ -50,10 +52,10 @@ Converted markdown files are saved to `knowledge/boofed/` by default (override w
 
 ## Setup
 
-If `boof.sh` reports missing dependencies, see [setup-guide.md](references/setup-guide.md) for installation instructions (Marker + QMD).
+If `boof.sh` reports missing dependencies, see [setup-guide.md](references/setup-guide.md) for installation instructions (Java + opendataloader-pdf + QMD).
 
 ## Environment
 
-- `MARKER_ENV` — Path to marker-pdf Python venv (default: `~/.openclaw/tools/marker-env`)
+- `ODL_ENV` — Path to opendataloader-pdf Python venv (default: `~/.openclaw/tools/odl-env`)
 - `QMD_BIN` — Path to qmd binary (default: `~/.bun/bin/qmd`)
 - `BOOF_OUTPUT_DIR` — Default output directory (default: `~/.openclaw/workspace/knowledge/boofed`)

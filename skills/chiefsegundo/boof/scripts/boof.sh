@@ -3,20 +3,32 @@
 # Usage: boof.sh <input_file> [--collection <name>] [--output-dir <dir>]
 #
 # Requirements:
-#   - marker-pdf (Python venv at $MARKER_ENV or ~/.openclaw/tools/marker-env)
+#   - Java 11+ (brew install openjdk or https://adoptium.net)
+#   - opendataloader-pdf Python package (pip install opendataloader-pdf)
+#     Install into a venv at $ODL_ENV or ~/.openclaw/tools/odl-env
 #   - qmd (installed via: bun install -g https://github.com/tobi/qmd)
 #
 # What it does:
-#   1. Converts PDF → markdown using Marker (local, no API calls)
+#   1. Converts PDF → markdown using opendataloader-pdf (local, no API calls)
 #   2. Indexes the markdown into QMD for RAG retrieval
 #   3. Outputs the path to the converted markdown file
 
 set -euo pipefail
 
 # --- Config ---
-MARKER_ENV="${MARKER_ENV:-$HOME/.openclaw/tools/marker-env}"
+ODL_ENV="${ODL_ENV:-$HOME/.openclaw/tools/odl-env}"
 QMD_BIN="${QMD_BIN:-$(command -v qmd 2>/dev/null || echo "$HOME/.bun/bin/qmd")}"
 DEFAULT_OUTPUT_DIR="${BOOF_OUTPUT_DIR:-$HOME/.openclaw/workspace/knowledge/boofed}"
+
+# Ensure Java is on PATH (Homebrew keg-only install)
+if ! command -v java &>/dev/null; then
+  for jpath in /opt/homebrew/opt/openjdk/bin /usr/local/opt/openjdk/bin; do
+    if [[ -x "$jpath/java" ]]; then
+      export PATH="$jpath:$PATH"
+      break
+    fi
+  done
+fi
 
 # --- Parse args ---
 INPUT_FILE=""
@@ -37,7 +49,7 @@ while [[ $# -gt 0 ]]; do
       echo "  --output-dir <dir>    Output directory (default: $DEFAULT_OUTPUT_DIR)"
       echo ""
       echo "Environment variables:"
-      echo "  MARKER_ENV            Path to marker-pdf venv (default: ~/.openclaw/tools/marker-env)"
+      echo "  ODL_ENV               Path to opendataloader-pdf venv (default: ~/.openclaw/tools/odl-env)"
       echo "  QMD_BIN               Path to qmd binary (default: ~/.bun/bin/qmd)"
       echo "  BOOF_OUTPUT_DIR       Default output directory"
       exit 0
@@ -58,10 +70,27 @@ if [[ ! -f "$INPUT_FILE" ]]; then
 fi
 
 # --- Validate dependencies ---
-MARKER_BIN="$MARKER_ENV/bin/marker_single"
-if [[ ! -f "$MARKER_BIN" ]]; then
-  echo "Error: marker-pdf not found at $MARKER_ENV" >&2
-  echo "Install: python3.13 -m venv $MARKER_ENV && $MARKER_ENV/bin/pip install marker-pdf psutil" >&2
+ODL_PYTHON="$ODL_ENV/bin/python3"
+if [[ ! -f "$ODL_PYTHON" ]]; then
+  echo "Error: opendataloader-pdf venv not found at $ODL_ENV" >&2
+  echo "Install:" >&2
+  echo "  python3 -m venv $ODL_ENV" >&2
+  echo "  $ODL_ENV/bin/pip install -U opendataloader-pdf" >&2
+  exit 1
+fi
+
+# Verify opendataloader-pdf is installed in the venv
+if ! "$ODL_PYTHON" -c "import opendataloader_pdf" 2>/dev/null; then
+  echo "Error: opendataloader-pdf not installed in $ODL_ENV" >&2
+  echo "Install: $ODL_ENV/bin/pip install -U opendataloader-pdf" >&2
+  exit 1
+fi
+
+# Verify Java
+if ! command -v java &>/dev/null; then
+  echo "Error: Java not found. Install Java 11+:" >&2
+  echo "  brew install openjdk" >&2
+  echo "  # Then add to PATH: export PATH=\"/opt/homebrew/opt/openjdk/bin:\$PATH\"" >&2
   exit 1
 fi
 
@@ -78,23 +107,27 @@ COLLECTION="${COLLECTION:-$SAFE_NAME}"
 
 # --- Step 1: Convert to markdown ---
 echo "🍑 Boofing: $INPUT_FILE"
-echo "   → Converting to markdown..."
+echo "   → Converting to markdown (opendataloader-pdf)..."
 mkdir -p "$OUTPUT_DIR"
 
-"$MARKER_BIN" "$INPUT_FILE" \
-  --output_dir "$OUTPUT_DIR" \
-  --output_format markdown \
-  --disable_image_extraction \
-  2>&1 | grep -v "^$" | sed 's/^/   /'
+"$ODL_PYTHON" - 2>&1 <<PYEOF | grep -v "^Mar\|^INFO\|^WARNING" | sed 's/^/   /' || true
+import opendataloader_pdf
+opendataloader_pdf.convert(
+    input_path=["$INPUT_FILE"],
+    output_dir="$OUTPUT_DIR/",
+    format="markdown"
+)
+PYEOF
 
-# Find the output markdown file
-MD_FILE=$(find "$OUTPUT_DIR" -name "*.md" -newer "$INPUT_FILE" -o -name "${BASENAME}*.md" 2>/dev/null | head -1)
-if [[ -z "$MD_FILE" ]]; then
-  # Marker creates a subfolder with the basename
-  MD_FILE=$(find "$OUTPUT_DIR/$BASENAME" -name "*.md" 2>/dev/null | head -1)
+# Find the output markdown file (ODL names it <basename>.md)
+MD_FILE="$OUTPUT_DIR/${BASENAME}.md"
+
+if [[ ! -f "$MD_FILE" ]]; then
+  # Fallback: find most recently created .md in output dir
+  MD_FILE=$(find "$OUTPUT_DIR" -name "*.md" -newer "$INPUT_FILE" 2>/dev/null | head -1)
 fi
 
-if [[ -z "$MD_FILE" ]]; then
+if [[ -z "$MD_FILE" ]] || [[ ! -f "$MD_FILE" ]]; then
   echo "Error: Could not find converted markdown file in $OUTPUT_DIR" >&2
   exit 1
 fi
@@ -104,7 +137,6 @@ echo "   ✅ Markdown: $MD_FILE"
 # --- Step 2: Index with QMD ---
 echo "   → Indexing for RAG retrieval..."
 
-# Add as a collection if qmd is available
 if "$QMD_BIN" collection add "$(dirname "$MD_FILE")" --name "$COLLECTION" --mask "*.md" 2>&1 | sed 's/^/   /'; then
   echo "   → Building embeddings..."
   "$QMD_BIN" embed 2>&1 | tail -3 | sed 's/^/   /'
