@@ -1,13 +1,18 @@
 {
   "owner": "dorukardahan",
   "slug": "twitterapi-io",
-  "displayName": "twitterapi-io",
+  "displayName": "TwitterAPI.io",
   "latest": {
-    "version": "3.4.0",
-    "publishedAt": 1773537776934,
-    "commit": "https://github.com/openclaw/skills/commit/fd268848a4f5a0390a8279f47abea125d92dbd41"
+    "version": "3.5.4",
+    "publishedAt": 1773758532674,
+    "commit": null
   },
   "history": [
+    {
+      "version": "3.4.0",
+      "publishedAt": 1773537776934,
+      "commit": "https://github.com/openclaw/skills/commit/fd268848a4f5a0390a8279f47abea125d92dbd41"
+    },
     {
       "version": "3.2.0",
       "publishedAt": 1771660939441,

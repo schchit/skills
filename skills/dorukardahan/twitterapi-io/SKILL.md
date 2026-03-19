@@ -1,13 +1,13 @@
 ---
 name: twitterapi-io
-description: Interact with Twitter/X via TwitterAPI.io — search tweets, get user info, post tweets, like, retweet, follow, send DMs, and more. Covers all 54 endpoints. Use when the user wants to read or write Twitter data.
+description: Interact with Twitter/X via TwitterAPI.io — search tweets, get user info, post tweets, like, retweet, follow, send DMs, and more. Covers all 58 endpoints. Use when the user wants to read or write Twitter data.
 metadata:
-  version: 3.4.0
-  updated: 2026-03-15
+  version: 3.5.4
+  updated: 2026-03-17
   author: dorukardahan
 ---
 
-# TwitterAPI.io skill v3.4.0
+# TwitterAPI.io skill v3.5.3
 
 Access Twitter/X data and perform actions via [TwitterAPI.io](https://twitterapi.io) REST API.
 Use TwitterAPI.io REST API for read, write, webhook, and stream operations.
@@ -40,6 +40,7 @@ Auth header: `X-API-Key: $TWITTERAPI_IO_KEY` (all requests)
 | List endpoint calls | 150 | $0.0015 |
 | Check follow relationship | 100 | $0.001 |
 | Get article | 100 | $0.001 |
+| Community info | 20 | $0.0002 |
 | Write actions (tweet, like, RT, follow) | 200-300 | $0.002-0.003 |
 | Login | 300 | $0.003 |
 
@@ -161,10 +162,10 @@ The API has an inconsistency in naming:
 
 For detailed endpoint documentation with curl examples, consult the reference files:
 
-- For READ endpoint documentation (31 endpoints), consult `references/read-endpoints.md`
-- For WRITE V2 endpoint documentation (17 endpoints), consult `references/write-endpoints.md`
-- For Webhook and Stream endpoint documentation (7 endpoints), consult `references/webhook-stream-endpoints.md`
-- For the complete endpoint index table (all 54 endpoints), consult `references/endpoint-index.md`
+- For READ endpoint documentation (33 endpoints), consult `references/read-endpoints.md`
+- For WRITE V2 endpoint documentation (19 endpoints), consult `references/write-endpoints.md`
+- For Webhook and Stream endpoint documentation (6 endpoints), consult `references/webhook-stream-endpoints.md`
+- For the complete endpoint index table (all 58 endpoints), consult `references/endpoint-index.md`
 
 ---
 
@@ -269,9 +270,10 @@ Pass `cursor=NEXT_CURSOR` to get next page. First page: omit cursor or `cursor="
 
 ## Common workflows
 
-### Get user ID from username (needed for follow, DM, mentions)
+### Get user ID from username (needed for follow, DM)
 1. `GET /twitter/user/info?userName=TARGET` -> extract `data.id`
-2. Use that numeric ID in follow/DM/mentions calls
+2. Use that numeric ID in follow/DM calls
+Note: `get_user_mentions` accepts `userName` directly -- no ID lookup needed.
 
 ### Post tweet with image
 1. Upload: `POST /twitter/upload_media_v2` -> get `media_id`
