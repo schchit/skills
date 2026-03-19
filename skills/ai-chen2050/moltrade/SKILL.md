@@ -48,12 +48,11 @@ clawhub search moltrade
 clawhub install moltrade
 ```
 
-- OR & Clone the repo and install Python deps locally (code is required for strategies, nostr, and CLI):
+- OR Clone the repo and install Python deps locally:
   - `git clone https://github.com/hetu-project/moltrade.git`
   - `cd moltrade/trader && pip install -r requirements.txt`
-- Initialize a fresh config with the built-in wizard (no trading):
-  - Prefer the human user to run `python main.py --init` (prompts for relayer URL, wallet, nostr, copy-trade follower defaults, and bot registration), so you can approve prompts, handle the wallet private key entry yourself, and capture the relayer’s returned `relayer_nostr_pubkey` when registering the bot.
-  - If you delegate to an agent, do so only if you trust it with the wallet key and ensure it completes the entire wizard—including the final bot registration step—so the `relayer_nostr_pubkey` gets written back to the config.
+- Initialize a fresh config with the built-in wizard:
+  - **Security Requirement**: Always ask the human user to run `python main.py --init` themselves in a separate terminal. Do not ask for or handle their wallet private keys directly or save them to disk via agent scripts.
 - For CI/agents, keep using the repo checkout; there is no separate pip package/CLI yet.
 
 ## Update Config Safely
@@ -160,6 +159,70 @@ python trader/backtest.py --config trader/config.example.json --strategy momentu
 | `cancel_order(order_id, symbol)`                       | Cancel by order ID                                            |
 | `cancel_all_orders(symbol)`                            | Cancel all orders (optionally for one symbol)                 |
 | `get_ticker_price(symbol)`                             | Latest traded price                                           |
+
+## Uniswap V3 Support
+
+Moltrade supports decentralized swaps on EVM chains using Uniswap V3 Router via `web3`. Set `trading.exchange` to `"uniswap"` in your config. Note that DEX swaps are atomic; there are no open limit orders or margin positions, and price charting requires an external oracle (currently returns empty or mock data locally).
+
+### Install Web3
+
+```bash
+pip install web3
+```
+
+### Config Fields
+
+Add a `uniswap` block alongside the existing `trading` block:
+
+```json
+{
+  "trading": {
+    "exchange": "uniswap",
+    "default_symbol": "WETH",
+    "default_strategy": "momentum"
+  },
+  "uniswap": {
+    "rpc_url": "https://eth-mainnet.g.alchemy.com/v2/...",
+    "private_key": "your_wallet_private_key",
+    "chain_id": 1,
+    "router_address": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+    "slippage_tolerance": 0.005,
+    "default_token_in": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    "default_token_out": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+  }
+}
+```
+
+## Polymarket Support
+
+Moltrade supports prediction markets on Polymarket via the official `py-clob-client`. Set `trading.exchange` to `"polymarket"` in your config.
+
+### Install CLOB Client
+
+```bash
+pip install py-clob-client
+```
+
+### Config Fields
+
+Add a `polymarket` block alongside the existing `trading` block:
+
+```json
+{
+  "trading": {
+    "exchange": "polymarket",
+    "default_symbol": "TOKEN_ID_HERE",
+    "default_strategy": "momentum"
+  },
+  "polymarket": {
+    "api_key": "your_polymarket_api_key",
+    "api_secret": "your_polymarket_api_secret",
+    "api_passphrase": "your_polymarket_api_passphrase",
+    "private_key": "your_wallet_private_key",
+    "chain_id": 137
+  }
+}
+```
 
 ## Add Exchange Adapter
 
