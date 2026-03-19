@@ -1,7 +1,7 @@
 ---
 name: ai-task-hub
 description: AI task hub for image analysis, background removal, speech-to-text, text-to-speech, markdown conversion, points balance/ledger lookup, and async execute/poll/presentation orchestration. Use when users need hosted AI outcomes while host runtime manages identity, credits, payment, and risk control.
-version: 3.2.23
+version: 3.2.25
 metadata:
   openclaw:
     skillKey: ai-task-hub
@@ -24,15 +24,15 @@ Public package boundary:
 - Only orchestrates `portal.skill.execute`, `portal.skill.poll`, `portal.skill.presentation`, `portal.account.balance`, and `portal.account.ledger`.
 - Does not exchange `api_key` or `userToken` inside this package.
 - Does not handle recharge or payment flows inside this package.
-- Prefers attachment URLs, and when host runtime explicitly exposes attachment bytes or an explicit attachment path, auto-uploads through the public bridge and injects the returned URL.
+- Prefers attachment URLs, and when host runtime explicitly exposes attachment bytes or an explicit attachment path, forwards only that explicit attachment material through the public bridge before execution.
 - Third-party agent entry uses `POST /agent/public-bridge/invoke`.
 
 ## User-Facing Response Policy
 
-- When users upload images, audio, documents, or video and ask for a capability, treat the input as ready to process and prefer executing immediately, then return results, progress, or the smallest necessary next step.
+- When users upload images, audio, documents, or video and ask for a capability, prefer executing immediately only when the host runtime has already supplied an explicit attachment object, explicit attachment bytes, or an explicit attachment path for that request.
 - Do not explain `image_url`, `attachment.url`, storage URLs, bridge layers, host uploads, input normalization, or controlled media domain details to end users unless they explicitly ask for technical debugging.
 - Do not ask end users to provide manual URLs, JSON field names, or upload-chain instructions; those are internal host-to-skill mechanics.
-- If the runtime supports attachment handling, complete upload, transfer, URL injection, and execute/poll/presentation orchestration silently.
+- If the runtime supports attachment handling, limit processing to the explicit attachment object supplied for the current request and keep the upload/URL handoff scoped to execute/poll/presentation for that same request.
 - Only when execution actually fails and the user must intervene should you mention missing processable files, incomplete authorization, or retry guidance, using user-oriented language without exposing internal layering.
 
 Chinese documentation: `SKILL.zh-CN.md`
@@ -243,9 +243,11 @@ Attachment normalization:
 
 - Prefer explicit `image_url` / `audio_url` / `file_url` / `video_url`.
 - `attachment.url` is mapped to target media field by capability.
-- When host runtime exposes attachment bytes or an explicit attachment path, this published package auto-uploads through the public bridge and injects the returned URL before execute.
-- There is no separate `portal.upload` action in this package; for third-party agent entry, callers should keep using `portal.skill.execute`, and the bundled runtime will auto-upload explicit bytes/path inputs when available.
+- When host runtime exposes attachment bytes or an explicit attachment path, this published package forwards only that explicit attachment material through the public bridge and injects the returned URL before execute.
+- There is no separate `portal.upload` action in this package; for third-party agent entry, callers should keep using `portal.skill.execute`, and the bundled runtime will only forward explicit bytes/path inputs already supplied by the host for the current request.
 - If a host bypasses the bundled auto-upload helper and implements upload itself, use `POST /agent/public-bridge/upload-file` for third-party/public entry, not `POST /agent/skill/bridge/upload-file`.
+- Local path handling is limited to explicit allowlisted fields only: `payload.file_path`, `input.file_path`, `attachment.path`, and `attachment.file_path`.
+- The runtime does not scan the local filesystem, guess file locations, expand directories/globs, or read hidden/sensitive paths such as dot-directories, SSH config, cloud credentials, git metadata, or system config paths.
 - Arbitrary unmanaged local filesystem access remains unsupported.
 - Example host upload endpoint: `/agent/public-bridge/upload-file`.
 - `tencent-video-face-fusion` requires 2 uploaded files from the user before execution:

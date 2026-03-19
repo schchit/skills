@@ -363,10 +363,22 @@ function decodeBytes(value) {
 async function assertReadableAttachmentPath(filePath, contentType, targetField) {
   assertNoParentTraversal(filePath);
   const resolvedPath = resolvePath(filePath);
-  const normalized = resolvedPath.replace(/\\/g, '/').toLowerCase();
-  const blockedSegments = ['/.ssh', '/.aws', '/.config', '/.git', '/etc'];
+  const normalized = resolvedPath.replace(/\\/g, '/');
+  const normalizedLower = normalized.toLowerCase();
+  const blockedSegments = [
+    '/.ssh',
+    '/.aws',
+    '/.config',
+    '/.git',
+    '/etc',
+    '/private/etc',
+    '/var/root',
+    '/private/var/root',
+    '/library',
+    '/users/shared'
+  ];
 
-  if (blockedSegments.some((segment) => normalized === segment || normalized.includes(`${segment}/`))) {
+  if (blockedSegments.some((segment) => normalizedLower === segment || normalizedLower.includes(`${segment}/`))) {
     throw createUploadError(
       400,
       'VALIDATION_BAD_REQUEST',
@@ -374,6 +386,8 @@ async function assertReadableAttachmentPath(filePath, contentType, targetField) 
       { bridge_step: 'prepare_upload' }
     );
   }
+
+  assertNoHiddenSegments(normalized);
 
   let fileStat;
   try {
@@ -413,6 +427,21 @@ function assertNoParentTraversal(filePath) {
     throw createUploadError(400, 'VALIDATION_BAD_REQUEST', 'attachment file_path must not contain parent traversal', {
       bridge_step: 'prepare_upload'
     });
+  }
+}
+
+function assertNoHiddenSegments(filePath) {
+  const normalized = filePath.replace(/\\/g, '/');
+  const segments = normalized.split('/').filter(Boolean);
+  for (const segment of segments) {
+    if (segment === '.' || segment === '..') {
+      continue;
+    }
+    if (segment.startsWith('.')) {
+      throw createUploadError(400, 'VALIDATION_BAD_REQUEST', 'attachment file_path must not target hidden files or directories', {
+        bridge_step: 'prepare_upload'
+      });
+    }
   }
 }
 

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "AI Task Hub Skill API",
-    "version": "3.2.23",
+    "version": "3.2.25",
     "description": "Public skill contract for execute/poll/presentation/account balance/account ledger via gateway-managed public bridge."
   },
   "servers": [
@@ -167,7 +167,7 @@
       "notes": [
         "Preferred production entrypoint for third-party agent-friendly integration.",
         "For end-user conversations, prefer direct execution and result delivery instead of explaining attachment upload or URL normalization internals.",
-        "When the host exposes attachment bytes or an explicit attachment path, the published skill auto-uploads through the public bridge before execute and injects the returned URL into the target media field.",
+        "When the host exposes attachment bytes or an explicit attachment path, the published skill forwards only that explicit attachment material through the public bridge before execute and injects the returned URL into the target media field.",
         "agent_uid should be the host-defined stable runtime agent identifier; bridge canonicalizes it server-side.",
         "conversation_id should be a host-generated opaque session or install identifier, not a public chat id, raw thread id, or PII.",
         "Public bridge should resolve a stable external user binding when available; if binding is missing, gateway returns authorization_url plus entry_user_key.",

@@ -1,7 +1,7 @@
 ---
 name: ai-task-hub
 description: AI Task Hub 用于图像检测与分析、去背景与抠图、语音转文字、文本转语音、文档转 Markdown、积分余额/流水查询和异步任务编排。适用于用户需要通过 execute/poll/presentation 与账户积分查询完成结果交付，且由宿主统一管理身份、积分、支付和风控的场景。
-version: 3.2.23
+version: 3.2.25
 metadata:
   openclaw:
     skillKey: ai-task-hub
@@ -24,15 +24,15 @@ metadata:
 - 只保留 `portal.skill.execute`、`portal.skill.poll`、`portal.skill.presentation`、`portal.account.balance`、`portal.account.ledger`。
 - 不在公开包内交换 `api_key` 或 `userToken`。
 - 不在公开包内处理支付、充值与积分 UI 闭环。
-- 优先使用附件 URL；当宿主运行时显式暴露附件 bytes 或显式附件路径时，会通过 public bridge 自动上传并注入返回的 URL。
+- 优先使用附件 URL；当宿主运行时显式暴露附件 bytes 或显式附件路径时，只会把这份显式附件材料通过 public bridge 转发后再执行。
 - 第三方 agent 入口统一走 `POST /agent/public-bridge/invoke`。
 
 ## 用户侧输出原则
 
-- 当用户上传图片、音频、文档或视频并请求执行能力时，默认把这些输入视为可直接处理，优先直接执行并返回结果、进度或必要的最小化下一步。
+- 当用户上传图片、音频、文档或视频并请求执行能力时，只有在宿主运行时已经为当前请求提供了显式附件对象、显式附件 bytes 或显式附件路径的前提下，才优先直接执行并返回结果、进度或必要的最小化下一步。
 - 不要向最终用户解释 `image_url`、`attachment.url`、对象存储 URL、bridge、宿主上传、输入归一化、受控媒体域名等内部实现细节，除非用户明确要求排查技术问题。
 - 不要要求用户手工提供 URL、JSON 字段名或上传链路说明；这些属于宿主与 skill 之间的内部处理。
-- 若运行时已具备附件处理能力，应静默完成上传、转存、URL 注入和 execute/poll/presentation 编排。
+- 若运行时已具备附件处理能力，也只应处理当前请求中宿主显式提供的附件对象，并把上传与 URL 交接严格限制在该次 execute/poll/presentation 编排内。
 - 只有在执行确实失败且用户必须介入时，才用面向用户的语言说明缺少可处理文件、授权未完成或稍后重试；不要泄漏内部链路分层。
 
 ## 适用场景
@@ -241,9 +241,11 @@ agent 侧决策流程：
 
 - 优先使用 `image_url` / `audio_url` / `file_url` / `video_url`。
 - 若存在 `attachment.url`，脚本会按 capability 自动映射到目标字段。
-- 当宿主显式提供附件 bytes 或显式附件路径时，公开包会先通过 public bridge 自动上传，再把返回的 URL 注入到目标字段。
-- 本包没有单独的 `portal.upload` action；对第三方 agent 入口，调用方应继续走 `portal.skill.execute`，只要运行时拿到了显式 bytes/路径，包内脚本会在 execute 前自动上传。
+- 当宿主显式提供附件 bytes 或显式附件路径时，公开包只会把这份显式附件材料通过 public bridge 转发，再把返回的 URL 注入到目标字段。
+- 本包没有单独的 `portal.upload` action；对第三方 agent 入口，调用方应继续走 `portal.skill.execute`，只有当运行时已为当前请求提供显式 bytes/路径时，包内脚本才会在 execute 前转发它们。
 - 如果宿主绕过包内自动上传逻辑而要自己实现上传，第三方/公开入口应使用 `POST /agent/public-bridge/upload-file`，不要使用 `POST /agent/skill/bridge/upload-file`。
+- 本地路径只允许来自显式白名单字段：`payload.file_path`、`input.file_path`、`attachment.path`、`attachment.file_path`。
+- 运行时不会扫描本地文件系统、猜测文件位置、展开目录或 glob，也不会读取隐藏路径或敏感目录，例如 dot 目录、SSH 配置、云凭证、git 元数据或系统配置路径。
 - 不支持任意未受控的本地文件系统访问。
 - 宿主可使用上传接口（示例）：`/agent/public-bridge/upload-file`。
 - `tencent-video-face-fusion` 在执行前必须拿到用户上传的 2 个文件：

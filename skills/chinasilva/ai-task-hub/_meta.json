@@ -3,11 +3,16 @@
   "slug": "ai-task-hub",
   "displayName": "Ai Task Hub",
   "latest": {
-    "version": "3.2.23",
-    "publishedAt": 1773930242329,
-    "commit": "https://github.com/openclaw/skills/commit/629e44595140c6a8ae78b0fd3f7e73948d0e9dda"
+    "version": "3.2.25",
+    "publishedAt": 1773932168599,
+    "commit": null
   },
   "history": [
+    {
+      "version": "3.2.23",
+      "publishedAt": 1773930242329,
+      "commit": "https://github.com/openclaw/skills/commit/629e44595140c6a8ae78b0fd3f7e73948d0e9dda"
+    },
     {
       "version": "3.2.11",
       "publishedAt": 1773677344668,
