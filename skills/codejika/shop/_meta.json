@@ -3,11 +3,16 @@
   "slug": "shop",
   "displayName": "Shopify | Give your Agent shopping creditcard & wallet with strict controls",
   "latest": {
-    "version": "1.5.5",
-    "publishedAt": 1773467513121,
-    "commit": "https://github.com/openclaw/skills/commit/0dd14b8caede40c8b78c3b7e9cd91c48e8353d43"
+    "version": "1.9.5",
+    "publishedAt": 1773808809010,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.5.5",
+      "publishedAt": 1773467513121,
+      "commit": "https://github.com/openclaw/skills/commit/0dd14b8caede40c8b78c3b7e9cd91c48e8353d43"
+    },
     {
       "version": "1.0.3",
       "publishedAt": 1771103352418,
