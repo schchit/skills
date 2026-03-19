@@ -1,0 +1,11 @@
+{
+  "owner": "bloomprotocol",
+  "slug": "bloom-discovery",
+  "displayName": "Bloom Discovery",
+  "latest": {
+    "version": "4.0.2",
+    "publishedAt": 1773913364778,
+    "commit": null
+  },
+  "history": []
+}
