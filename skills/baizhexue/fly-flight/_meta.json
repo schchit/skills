@@ -3,9 +3,15 @@
   "slug": "fly-flight",
   "displayName": "Fly Flight",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773272573956,
-    "commit": "https://github.com/openclaw/skills/commit/1610494686158cc75202e2a749dec337e8386e97"
+    "version": "1.1.1",
+    "publishedAt": 1773941767292,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773272573956,
+      "commit": "https://github.com/openclaw/skills/commit/1610494686158cc75202e2a749dec337e8386e97"
+    }
+  ]
 }

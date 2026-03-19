@@ -1,178 +1,249 @@
 # Fly Flight
 
-An OpenClaw skill for querying China domestic flights from publicly accessible Tongcheng flight pages, without requiring a private API key.
+An OpenClaw skill for querying China domestic transport in one place.  
+一个用于查询中国境内出行信息的 OpenClaw skill。
 
-## 中文介绍
+This version supports both flights and high-speed rail in one unified transport skill.  
+这个版本已经把航班和高铁统一进同一个 transport skill 里。
 
-`fly-flight` 是一个面向 OpenClaw 的国内航班查询技能。它不依赖私有航班 API，而是基于同程公开航班页面抓取国内航班信息，返回航司、航班号、起降机场、起降时间、飞行时长和公开页面参考票价。
+## Requirements | 依赖环境
 
-### 适用场景
-
-- 查询指定日期的中国国内航班
-- 对比不同航班的参考票价
-- 按中文城市名、机场名或 IATA 三字码查询
-- 给出行助手或旅行 agent 提供公开航班信息
-
-### 功能特点
-
-- 支持中国国内单程航班查询
-- 支持往返查询
-- 支持中文城市名、机场名和 IATA 三字码输入
-- 返回航司、航班号、起降机场、时间、时长和参考票价
-- 默认按价格排序
-- 支持按价格、最早出发、最早到达、最短时长排序
-- 支持仅直飞、航司筛选、机场偏好筛选
-- 不需要申请私有 API key
-- 支持直接命令行查询
-- 支持可选本地 HTTP 服务模式
-
-### 信息来源
-
-- 同程公开航班页面：`https://www.ly.com/flights/`
-- 通过抓取公开 HTML 并解析页面中的 `window.__NUXT__` 数据获取航班列表
-
-### 运行依赖
+This skill requires the following runtime dependencies:
 
 - `python3`
 - `node`
-- 可访问同程公开航班页面的网络环境
+- Network access to public flight pages and official 12306 endpoints
 
-### 使用说明
+这个 skill 运行前必须具备以下环境：
 
-直接命令行查询：
+- `python3`
+- `node`
+- 可以访问公开航班页面以及 12306 官方公开接口的网络环境
+
+These dependencies are required both for GitHub usage and for ClawHub / OpenClaw installation.  
+无论你是从 GitHub 使用，还是通过 ClawHub / OpenClaw 安装，这些依赖都是必须的。
+
+## Overview | 项目简介
+
+Fly Flight now supports:
+
+- Domestic flights from public Tongcheng flight pages
+- High-speed rail from official 12306 public query and public fare endpoints
+
+Fly Flight 当前支持：
+
+- 基于同程公开页面查询国内航班
+- 基于 12306 官方公开查询与公开票价接口查询高铁/动车
+
+The skill keeps a single transport entrypoint and routes requests by mode, so one skill can handle both flight and train queries.  
+这个 skill 现在使用统一入口，并根据 mode 路由到底层 provider，因此一个 skill 就能同时处理航班和高铁查询。
+
+## What's New in 1.1.0 | 1.1.0 更新内容
+
+- Added a unified `transport_service.py` entrypoint
+- Added `train` mode for China high-speed rail lookup
+- Kept existing `flight` mode and legacy flight-only entrypoint compatible
+- Added sample train query/price data and regression coverage
+- Updated skill instructions so OpenClaw can route flight and train requests through the same skill
+
+- 新增统一入口 `transport_service.py`
+- 新增 `train` 模式，支持中国高铁/动车查询
+- 保留已有 `flight` 模式，并兼容旧的航班单入口脚本
+- 新增高铁样例数据与回归测试
+- 更新 skill 指令，使 OpenClaw 能在同一个 skill 内路由航班和高铁请求
+
+## Features | 功能特性
+
+- One skill for `flight` and `train`
+- One-way and round-trip queries
+- City / airport / station / code input support
+- Sorting by price, departure, arrival, or duration
+- Flight filters: airline, direct-only, preferred airports
+- Train filters: train type, seat type, preferred stations
+- CLI and local HTTP modes
+
+- 一个 skill 同时支持 `flight` 和 `train`
+- 支持单程与往返查询
+- 支持城市 / 机场 / 车站 / 代码输入
+- 支持按价格、出发时间、到达时间、时长排序
+- 航班筛选：航司、直飞、机场偏好
+- 高铁筛选：车次类型、席别、车站偏好
+- 支持 CLI 和本地 HTTP 服务模式
+
+## Data Sources | 数据来源
+
+Flight mode:
+
+- Tongcheng public flight pages
+- `https://www.ly.com/flights/`
+
+Train mode:
+
+- Official 12306 public query endpoints
+- `https://kyfw.12306.cn/`
+
+航班模式：
+
+- 同程公开航班页面
+- `https://www.ly.com/flights/`
+
+高铁模式：
+
+- 12306 官方公开查询接口
+- `https://kyfw.12306.cn/`
+
+## Usage | 使用方式
+
+## Add to OpenClaw | 在 OpenClaw 中添加 Skill
+
+### Install from ClawHub | 从 ClawHub 安装
+
+Before installing, make sure the environment already has `python3` and `node`.  
+安装前请先确认运行环境已经具备 `python3` 和 `node`。
+
+If your OpenClaw environment already has ClawHub support, install the skill by slug:
+
+```bash
+npx clawhub install fly-flight
+```
+
+If needed, install into a specific OpenClaw workspace skills directory:
+
+```bash
+npx clawhub install fly-flight --workdir ~/.openclaw/workspace-xiaokui --dir skills
+```
+
+如果你的 OpenClaw 环境已经支持 ClawHub，可以直接按 slug 安装：
+
+```bash
+npx clawhub install fly-flight
+```
+
+如果你要安装到指定的 OpenClaw workspace 的 `skills` 目录，可以这样执行：
+
+```bash
+npx clawhub install fly-flight --workdir ~/.openclaw/workspace-xiaokui --dir skills
+```
+
+### Install from GitHub | 从 GitHub 手动添加
+
+Before cloning or using the skill, make sure the environment already has `python3` and `node`.  
+在克隆或使用这个 skill 之前，请先确认环境已经具备 `python3` 和 `node`。
+
+You can also place this repository directly into the target OpenClaw workspace skill directory:
+
+```bash
+cd ~/.openclaw/workspace-xiaokui/skills
+git clone https://github.com/baizhexue/fly-flight.git
+```
+
+If `fly-flight` already exists, update it in place:
+
+```bash
+cd ~/.openclaw/workspace-xiaokui/skills/fly-flight
+git pull
+```
+
+你也可以把这个仓库直接放进目标 OpenClaw workspace 的 skill 目录：
+
+```bash
+cd ~/.openclaw/workspace-xiaokui/skills
+git clone https://github.com/baizhexue/fly-flight.git
+```
+
+如果已经存在 `fly-flight` 目录，可以直接更新：
+
+```bash
+cd ~/.openclaw/workspace-xiaokui/skills/fly-flight
+git pull
+```
+
+### Reload in OpenClaw | 在 OpenClaw 中重新加载
+
+After adding or updating the skill, reload the target agent or restart the OpenClaw gateway if the old version is still cached.
+
+在添加或更新 skill 之后，如果 OpenClaw 里还显示旧版本，请重新加载对应 agent，或者重启 OpenClaw gateway。
+
+Flight:
+
+```bash
+python3 ./scripts/transport_service.py search \
+  --mode flight --from 北京 --to 上海 --date 2026-03-20 --sort-by price --pretty
+```
+
+High-speed rail:
+
+```bash
+python3 ./scripts/transport_service.py search \
+  --mode train --from 北京 --to 上海 --date 2026-03-20 \
+  --seat-type second_class --sort-by price --pretty
+```
+
+Legacy flight-only entrypoint:
 
 ```bash
 python3 ./scripts/domestic_flight_public_service.py search \
   --from 北京 --to 上海 --date 2026-03-20 --sort-by price --pretty
 ```
 
-往返查询：
+HTTP mode:
+
+```bash
+python3 ./scripts/transport_service.py serve --port 8766
+```
+
+航班查询：
+
+```bash
+python3 ./scripts/transport_service.py search \
+  --mode flight --from 北京 --to 上海 --date 2026-03-20 --sort-by price --pretty
+```
+
+高铁查询：
+
+```bash
+python3 ./scripts/transport_service.py search \
+  --mode train --from 北京 --to 上海 --date 2026-03-20 \
+  --seat-type second_class --sort-by price --pretty
+```
+
+兼容旧版航班入口：
 
 ```bash
 python3 ./scripts/domestic_flight_public_service.py search \
-  --from 北京 --to 上海 --date 2026-03-20 --return-date 2026-03-23 \
-  --direct-only --sort-by price --pretty
+  --from 北京 --to 上海 --date 2026-03-20 --sort-by price --pretty
 ```
 
 启动本地 HTTP 服务：
 
 ```bash
-python3 ./scripts/domestic_flight_public_service.py serve --port 8766
+python3 ./scripts/transport_service.py serve --port 8766
 ```
 
-然后请求：
+## Repository Layout | 仓库结构
 
-```bash
-curl 'http://127.0.0.1:8766/search?from=北京&to=上海&date=2026-03-20'
-```
+- `SKILL.md`: skill instructions and trigger description
+- `agents/openai.yaml`: OpenClaw display metadata
+- `scripts/transport_service.py`: unified transport CLI and HTTP entrypoint
+- `scripts/providers/flight_public_service.py`: flight provider
+- `scripts/providers/train_public_service.py`: train provider
+- `scripts/domestic_flight_public_service.py`: backward-compatible flight wrapper
+- `assets/sample-*.json`: local regression samples
 
-### 示例提问
+- `SKILL.md`：skill 指令与触发描述
+- `agents/openai.yaml`：OpenClaw 展示元数据
+- `scripts/transport_service.py`：统一 transport CLI 与 HTTP 入口
+- `scripts/providers/flight_public_service.py`：航班 provider
+- `scripts/providers/train_public_service.py`：高铁 provider
+- `scripts/domestic_flight_public_service.py`：兼容旧版本的航班包装层
+- `assets/sample-*.json`：本地回归测试样例数据
 
-- `帮我查 2026-03-20 北京到上海最便宜的航班`
-- `帮我查 2026-03-20 北京到上海往返直飞航班`
-- `查一下明天广州到成都的航班和价格`
-- `帮我看首都机场到深圳宝安当天有哪些航班`
-- `上海虹桥到重庆，按价格从低到高列 5 个`
-- `帮我找东航从北京到上海最早出发的航班`
+## Notes | 说明
 
-### 限制说明
+- Flight prices are public-page reference prices and may differ from final checkout prices.
+- Train prices come from official public fare data; seat availability comes from public query results.
+- Public web structures can change, so scraping-based behavior may require maintenance over time.
 
-- 仅支持中国国内航班
-- 价格来自公开页面，仅作参考，不保证等于最终出票价
-- 抓取逻辑依赖公开网页结构，页面改版或反爬加强后可能失效
-- 数据完整性和时效性由公开页面决定
-- 往返查询本质上由两次单程公开页抓取组合而成
-
-### 仓库结构
-
-- `SKILL.md`: skill 指令和触发描述
-- `agents/openai.yaml`: UI 展示信息
-- `scripts/domestic_flight_public_service.py`: 主查询脚本
-- `scripts/extract_tongcheng_state.js`: 页面数据提取脚本
-- `references/provider-public-web.md`: 信息源说明
-- `assets/data/*.json`: 城市与机场别名映射
-
-## English
-
-`fly-flight` is an OpenClaw skill for querying China domestic flights from publicly accessible Tongcheng flight pages. It does not rely on a private flight API. Instead, it fetches public route pages and extracts airline, flight number, airports, departure and arrival times, duration, and public reference fares.
-
-### Use Cases
-
-- Query China domestic flights for a specific date
-- Compare public reference fares across flight options
-- Search by Chinese city names, airport names, or IATA codes
-- Power travel assistants or flight lookup agents with public flight data
-
-### Features
-
-- China domestic one-way flight lookup
-- Round-trip lookup via paired one-way searches
-- Chinese city, airport, and IATA code input support
-- Airline, flight number, airport, time, duration, and fare output
-- Price-sorted results
-- Sorting by price, departure time, arrival time, or duration
-- Direct-only, airline, and airport-preference filters
-- No private API key required
-- Direct CLI usage
-- Optional local HTTP service mode
-
-### Data Source
-
-- Tongcheng public flight pages: `https://www.ly.com/flights/`
-- The scraper fetches public HTML and extracts flight data from the page's `window.__NUXT__` payload
-
-### Requirements
-
-- `python3`
-- `node`
-- Network access to Tongcheng public flight pages
-
-### Usage
-
-Direct CLI query:
-
-```bash
-python3 ./scripts/domestic_flight_public_service.py search \
-  --from 北京 --to 上海 --date 2026-03-20 --sort-by price --pretty
-```
-
-Round-trip query:
-
-```bash
-python3 ./scripts/domestic_flight_public_service.py search \
-  --from 北京 --to 上海 --date 2026-03-20 --return-date 2026-03-23 \
-  --direct-only --sort-by price --pretty
-```
-
-Start the optional local HTTP service:
-
-```bash
-python3 ./scripts/domestic_flight_public_service.py serve --port 8766
-```
-
-Then request:
-
-```bash
-curl 'http://127.0.0.1:8766/search?from=北京&to=上海&date=2026-03-20'
-```
-
-### Example Prompts
-
-- `Find the cheapest flights from Beijing to Shanghai on 2026-03-20`
-- `Find round-trip nonstop flights from Beijing to Shanghai`
-- `Show flights and fares from Guangzhou to Chengdu tomorrow`
-- `List today's flights from Beijing Capital to Shenzhen Bao'an`
-- `Show 5 Shanghai Hongqiao to Chongqing flights sorted by price`
-- `Find the earliest China Eastern flight from Beijing to Shanghai`
-
-### Limitations
-
-- China domestic flights only
-- Fares are public-page reference fares, not guaranteed checkout prices
-- The scraper depends on the public page structure and may break if the site changes
-- Data freshness and completeness depend on the public source
-- Round trips are assembled from two one-way public page lookups
-
-## Publishing
-
-This repository is structured so it can be used directly as a GitHub-backed OpenClaw skill source.
+- 航班价格来自公开页面，仅供参考，可能与最终出票价不同。
+- 高铁价格来自官方公开票价数据，余票信息来自公开查询结果。
+- 公开网页结构和接口可能变化，因此后续仍可能需要维护。
