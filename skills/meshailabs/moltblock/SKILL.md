@@ -1,7 +1,7 @@
 ---
 name: moltblock - Trust Layer for AI Agents
 description: Verification gating for AI-generated artifacts. Policy checks to catch dangerous patterns before execution.
-version: 0.11.4
+version: 0.11.8
 homepage: https://github.com/moltblock/moltblock
 repository: https://github.com/moltblock/moltblock
 metadata:
@@ -10,9 +10,9 @@ metadata:
       anyBins:
         - npx
         - node
-      config:
-        - moltblock.json
-        - ~/.moltblock/moltblock.json
+    optionalConfig:
+      - moltblock.json
+      - ~/.moltblock/moltblock.json
     primaryEnv: OPENAI_API_KEY
     optionalEnv:
       - ANTHROPIC_API_KEY
@@ -21,7 +21,7 @@ metadata:
     homepage: https://github.com/moltblock/moltblock
     install:
       - kind: node
-        package: moltblock@0.11.4
+        package: moltblock@0.11.8
         bins: [moltblock]
 ---
 
@@ -34,7 +34,7 @@ Moltblock provides verification gating for AI-generated artifacts. It runs polic
 **What moltblock does:**
 - Generates artifacts via LLM API calls, then runs policy checks against the output
 - Returns a structured verification result (pass/fail with evidence)
-- Reads its own config files (`moltblock.json`, `~/.moltblock/moltblock.json`) if present
+- Optionally reads config files (`moltblock.json`, `~/.moltblock/moltblock.json`) if present — no config is required
 - API keys are read from environment variables at runtime and sent only to the configured LLM provider endpoint
 - **No code execution occurs** — moltblock only performs policy checks on generated artifacts
 
@@ -53,7 +53,7 @@ Verify a task before execution.
 ### Usage
 
 ```bash
-npx moltblock@0.11.4 "<task description>" --provider <provider> --json
+npx moltblock@0.11.8 "<task description>" --provider <provider> --json
 ```
 
 ### Parameters
@@ -77,7 +77,7 @@ Moltblock auto-detects the LLM provider from whichever API key is set. If no key
 
 ```bash
 # Verify a task
-npx moltblock@0.11.4 "implement a function that validates email addresses" --json
+npx moltblock@0.11.8 "implement a function that validates email addresses" --json
 ```
 
 ### Output (JSON mode)
@@ -98,13 +98,13 @@ npx moltblock@0.11.4 "implement a function that validates email addresses" --jso
 Use directly with npx (recommended, no install needed):
 
 ```bash
-npx moltblock@0.11.4 "your task" --json
+npx moltblock@0.11.8 "your task" --json
 ```
 
 Or install globally:
 
 ```bash
-npm install -g moltblock@0.11.4
+npm install -g moltblock@0.11.8
 ```
 
 ## Configuration
@@ -137,7 +137,7 @@ See the [full configuration docs](https://github.com/moltblock/moltblock#configu
 
 When used as a skill, moltblock performs **policy checks only** — no code is generated, written to disk, or executed. The tool analyzes task descriptions against configurable policy rules and returns a pass/fail verification result.
 
-The CLI additionally supports a `--test` flag for direct user invocation that executes code verification via vitest. This flag is not exposed to agents through this skill and should only be used directly by developers in sandboxed environments. See the [CLI documentation](https://github.com/moltblock/moltblock#security) for details.
+**API key scope:** Consider using a limited-scope API key dedicated to verification rather than a key with broader permissions.
 
 ## Disclaimer
 
