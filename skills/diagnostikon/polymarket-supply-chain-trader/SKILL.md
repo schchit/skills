@@ -27,29 +27,59 @@ Research shows prediction markets can reduce supply chain forecasting errors by 
 
 ## Signal Logic
 
-### Default Signal: Keyword Discovery + Liquidity Filter
+### Default Signal: Conviction-Based Sizing with Disruption Bias
 
-1. Search Polymarket for active markets containing supply-chain keywords
-2. Filter for markets with >$5,000 volume and bid-ask spread <10%
-3. Apply probability mean-reversion: markets deviating >15% from 30-day moving average are flagged
-4. Check context for flip-flop risk and slippage before entering
-5. Enter YES if market probability is abnormally depressed despite strong fundamentals, NO otherwise
+1. Discover active supply chain markets on Polymarket
+2. Compute base conviction from distance to threshold (0% at boundary → 100% at p=0/p=1)
+3. Apply `disruption_bias()` — combines seasonal shipping cycles with commodity predictability
+4. Size = `max(MIN_TRADE, conviction × bias × MAX_POSITION)` — capped at MAX_POSITION
+5. Skip markets with spread > MAX_SPREAD or fewer than MIN_DAYS to resolution
+
+### Disruption Bias (built-in, no API required)
+
+`disruption_bias()` multiplies conviction using two independent factors simultaneously:
+
+**Factor 1 — Seasonal Shipping Cycle**
+
+Container shipping has a well-documented Q4 crunch (Oct–Dec) driven by pre-holiday inventory builds. Congestion and delay markets are structurally more likely to resolve YES in peak season.
+
+| Period | Multiplier | Why |
+|---|---|---|
+| Q4: Oct–Dec | **1.25x** | Peak season — pre-holiday crunch, port congestion likely |
+| Q1: Jan–Mar | **0.85x** | Off-season — lower disruption probability |
+| Apr–Sep | **1.05x** | Mild mid-year activity |
+
+*Only applied when the question contains shipping/port/freight/cargo keywords.*
+
+**Factor 2 — Commodity Predictability**
+
+| Commodity type | Multiplier | Why |
+|---|---|---|
+| Crude oil / energy / LNG | **1.20x** | Most liquid commodity — highly modeled, information-rich |
+| Semiconductors / chips / GPU | **1.15x** | Documented cycles, policy-driven — trackable |
+| Lithium / cobalt / EV battery | **1.15x** | China-concentrated supply — export data publicly trackable |
+| Chokepoints (Suez, Red Sea, Panama) | **1.10x** | Geopolitical risk well-documented and persistent |
+| Agricultural / grain / harvest | **0.85x** | Weather-dependent, high variance — hard to model |
+
+Combined multiplier capped at **1.40x**. A Q4 container shipping market mentioning Suez would score 1.25 × 1.10 = 1.375x.
 
 ### Remix Ideas
 
-- **Baltic Dry Index signal**: Long YES on shipping delay markets when BDI spikes >15% week-over-week
-- **USDA crop report**: Trade agricultural supply markets around report release dates
-- **Port authority RSS feeds**: Real-time congestion data as entry trigger
-- **Satellite AIS tracking**: Vessel queue counts for LA/Long Beach as direct oracle
+- **Baltic Dry Index**: BDI weekly change as direct conviction input — rising BDI = lean into shipping disruption YES
+- **AIS vessel tracking (MarineTraffic)**: Real vessel queue counts at LA/Long Beach as direct oracle for port congestion markets
+- **USDA crop reports**: Trade agricultural supply markets in the 48h window before/after report release
+- **Port authority RSS feeds**: Rotterdam, Singapore, Shanghai real-time congestion data as entry trigger
 
 ## Market Categories Tracked
 
 ```python
-SUPPLY_CHAIN_KEYWORDS = [
-    "shipping", "port", "container", "supply chain", "logistics",
-    "commodity", "crude oil", "steel price", "lithium", "semiconductor",
-    "chip shortage", "delivery delay", "Maersk", "Rotterdam", "Suez",
-    "GPU demand", "battery supply", "Amazon Prime"
+KEYWORDS = [
+    'shipping', 'port', 'container', 'supply chain', 'logistics',
+    'commodity', 'crude oil', 'Brent', 'natural gas', 'LNG',
+    'steel price', 'lithium', 'cobalt', 'critical mineral',
+    'semiconductor', 'chip shortage', 'TSMC', 'GPU',
+    'delivery delay', 'Maersk', 'Rotterdam', 'Suez', 'Panama Canal',
+    'Red Sea', 'freight', 'Baltic Dry', 'EV battery',
 ]
 ```
 
@@ -99,11 +129,14 @@ All risk parameters are declared in `clawhub.json` as `tunables` and adjustable 
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `SIMMER_SUPPLY_MAX_POSITION` | `25` | Max USDC per trade |
-| `SIMMER_SUPPLY_MIN_VOLUME` | `5000` | Min market volume filter (USD) |
-| `SIMMER_SUPPLY_MAX_SPREAD` | `0.10` | Max bid-ask spread (0.10 = 10%) |
-| `SIMMER_SUPPLY_MIN_DAYS` | `7` | Min days until market resolves |
-| `SIMMER_SUPPLY_MAX_POSITIONS` | `5` | Max concurrent open positions |
+| `SIMMER_MAX_POSITION` | `25` | Max USDC per trade (reached at 100% conviction) |
+| `SIMMER_MIN_VOLUME` | `5000` | Min market volume filter (USD) |
+| `SIMMER_MAX_SPREAD` | `0.10` | Max bid-ask spread (0.10 = 10%) |
+| `SIMMER_MIN_DAYS` | `7` | Min days until market resolves |
+| `SIMMER_MAX_POSITIONS` | `5` | Max concurrent open positions |
+| `SIMMER_YES_THRESHOLD` | `0.38` | Buy YES if market price ≤ this value |
+| `SIMMER_NO_THRESHOLD` | `0.62` | Sell NO if market price ≥ this value |
+| `SIMMER_MIN_TRADE` | `5` | Floor for any trade (min USDC regardless of conviction) |
 
 ## Dependency
 

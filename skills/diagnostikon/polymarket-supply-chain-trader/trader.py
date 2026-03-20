@@ -15,7 +15,14 @@ from simmer_sdk import SimmerClient
 TRADE_SOURCE = "sdk:polymarket-supply-chain-trader"
 SKILL_SLUG   = "polymarket-supply-chain-trader"
 
-KEYWORDS = ['shipping', 'port', 'container', 'supply chain', 'logistics', 'commodity', 'crude oil', 'steel price', 'lithium', 'semiconductor', 'chip shortage', 'delivery delay', 'Maersk', 'Rotterdam', 'Suez']
+KEYWORDS = [
+    'shipping', 'port', 'container', 'supply chain', 'logistics',
+    'commodity', 'crude oil', 'Brent', 'natural gas', 'LNG',
+    'steel price', 'lithium', 'cobalt', 'critical mineral',
+    'semiconductor', 'chip shortage', 'TSMC', 'GPU',
+    'delivery delay', 'Maersk', 'Rotterdam', 'Suez', 'Panama Canal',
+    'Red Sea', 'freight', 'Baltic Dry', 'EV battery',
+]
 
 # Risk parameters — declared as tunables in clawhub.json, tunable from Simmer UI.
 # Named SIMMER_* so apply_skill_config() can load automaton-managed overrides.
@@ -24,6 +31,12 @@ MIN_VOLUME     = float(os.environ.get("SIMMER_MIN_VOLUME",    "5000"))
 MAX_SPREAD     = float(os.environ.get("SIMMER_MAX_SPREAD",    "0.1"))
 MIN_DAYS       = int(os.environ.get(  "SIMMER_MIN_DAYS",      "7"))
 MAX_POSITIONS  = int(os.environ.get(  "SIMMER_MAX_POSITIONS", "5"))
+# Signal thresholds — buy YES below YES_THRESHOLD, sell NO above NO_THRESHOLD.
+# Position size scales with conviction, adjusted by seasonal shipping cycles
+# and commodity-specific predictability patterns.
+YES_THRESHOLD  = float(os.environ.get("SIMMER_YES_THRESHOLD", "0.38"))
+NO_THRESHOLD   = float(os.environ.get("SIMMER_NO_THRESHOLD",  "0.62"))
+MIN_TRADE      = float(os.environ.get("SIMMER_MIN_TRADE",     "5"))
 
 _client: SimmerClient | None = None
 
@@ -33,7 +46,7 @@ def get_client(live: bool = False) -> SimmerClient:
     live=False → venue="sim"  (paper trades — safe default).
     live=True  → venue="polymarket" (real trades, only with --live flag).
     """
-    global _client, MAX_POSITION, MIN_VOLUME, MAX_SPREAD, MIN_DAYS, MAX_POSITIONS
+    global _client, MAX_POSITION, MIN_VOLUME, MAX_SPREAD, MIN_DAYS, MAX_POSITIONS, YES_THRESHOLD, NO_THRESHOLD, MIN_TRADE
     if _client is None:
         venue = "polymarket" if live else "sim"
         _client = SimmerClient(
@@ -48,6 +61,9 @@ def get_client(live: bool = False) -> SimmerClient:
         MAX_SPREAD     = float(os.environ.get("SIMMER_MAX_SPREAD",    str(MAX_SPREAD)))
         MIN_DAYS       = int(os.environ.get(  "SIMMER_MIN_DAYS",      str(MIN_DAYS)))
         MAX_POSITIONS  = int(os.environ.get(  "SIMMER_MAX_POSITIONS", str(MAX_POSITIONS)))
+        YES_THRESHOLD  = float(os.environ.get("SIMMER_YES_THRESHOLD", str(YES_THRESHOLD)))
+        NO_THRESHOLD   = float(os.environ.get("SIMMER_NO_THRESHOLD",  str(NO_THRESHOLD)))
+        MIN_TRADE      = float(os.environ.get("SIMMER_MIN_TRADE",     str(MIN_TRADE)))
     return _client
 
 
@@ -65,17 +81,83 @@ def find_markets(client: SimmerClient) -> list:
     return unique
 
 
-def compute_signal(market) -> tuple[str | None, str]:
+def disruption_bias(question: str) -> float:
     """
-    Returns (side, reasoning) or (None, skip_reason).
-    Mean-reversion on supply chain markets far from 50%. Remix: Baltic Dry Index, AIS vessel tracking, port RSS feeds.
+    Returns a conviction multiplier (0.80–1.40) combining two supply chain
+    structural edges:
+
+    1. SEASONAL SHIPPING CYCLES
+       Container shipping has a well-documented Q4 crunch (Oct–Dec) driven
+       by pre-holiday inventory builds. Congestion and delay markets are
+       structurally more likely to resolve YES in Q4. Q1 is off-season.
+
+       Shipping market + Q4 (Oct–Dec) → 1.25x  (peak crunch, lean into disruption)
+       Shipping market + Q1 (Jan–Mar) → 0.85x  (off-season, dampen disruption)
+       Shipping market + other months  → 1.05x  (mild mid-year boost)
+
+    2. COMMODITY PREDICTABILITY
+       Different commodities have vastly different information availability.
+       Oil is the most liquid and well-modeled commodity in the world.
+       Agricultural markets depend heavily on weather — high variance.
+
+       Crude oil / energy / LNG       → 1.20x  (highly liquid, well-modeled)
+       Semiconductors / chips / GPU   → 1.15x  (documented cycles, policy-driven)
+       Lithium / cobalt / EV battery  → 1.15x  (China-concentrated, export data trackable)
+       Chokepoints (Suez, Red Sea)    → 1.10x  (geopolitical risk well-documented)
+       Agricultural / grain / harvest → 0.85x  (weather-dependent, high variance)
+
+    Combined and capped at 1.40x.
+    """
+    month = datetime.now(timezone.utc).month
+    q = question.lower()
+
+    # Factor 1: seasonal shipping multiplier
+    if any(w in q for w in ("shipping", "container", "port", "cargo", "freight", "maersk", "vessel", "congestion")):
+        if 10 <= month <= 12:
+            seasonal_mult = 1.25   # Q4 peak — pre-holiday inventory crunch
+        elif 1 <= month <= 3:
+            seasonal_mult = 0.85   # Q1 off-season — lower disruption risk
+        else:
+            seasonal_mult = 1.05   # mild mid-year activity
+    else:
+        seasonal_mult = 1.0
+
+    # Factor 2: commodity predictability multiplier
+    if any(w in q for w in ("crude oil", "brent", "wti", "oil price", "natural gas", "lng", "energy price")):
+        commodity_mult = 1.20
+    elif any(w in q for w in ("semiconductor", "chip", "tsmc", "nvidia", "gpu", "chip shortage", "wafer")):
+        commodity_mult = 1.15
+    elif any(w in q for w in ("lithium", "cobalt", "ev battery", "battery supply", "critical mineral")):
+        commodity_mult = 1.15
+    elif any(w in q for w in ("suez", "panama canal", "strait of hormuz", "red sea", "cape of good hope", "bab-el-mandeb")):
+        commodity_mult = 1.10
+    elif any(w in q for w in ("wheat", "corn", "soybean", "crop", "harvest", "agricultural", "grain", "rice")):
+        commodity_mult = 0.85
+    else:
+        commodity_mult = 1.0
+
+    return min(1.4, seasonal_mult * commodity_mult)
+
+
+def compute_signal(market) -> tuple[str | None, float, str]:
+    """
+    Returns (side, size, reasoning) or (None, 0, skip_reason).
+
+    Conviction-based sizing with seasonal and commodity disruption adjustment:
+    - Base conviction scales linearly with distance from threshold
+    - disruption_bias() combines Q4 shipping cycles with commodity predictability
+    - Result capped at 1.0 so size never exceeds MAX_POSITION
+    - MIN_TRADE floor prevents trivially small orders near the boundary
+
+    Remix: feed Baltic Dry Index weekly change or AIS vessel queue counts
+    into p to trade the divergence between real freight data and market price.
     """
     p = market.current_probability
     q = market.question
 
     # Spread gate
     if market.spread_cents is not None and market.spread_cents / 100 > MAX_SPREAD:
-        return None, f"Spread {market.spread_cents/100:.1%} > {MAX_SPREAD:.1%}"
+        return None, 0, f"Spread {market.spread_cents/100:.1%} > {MAX_SPREAD:.1%}"
 
     # Days-to-resolution gate
     if market.resolves_at:
@@ -83,15 +165,26 @@ def compute_signal(market) -> tuple[str | None, str]:
             resolves = datetime.fromisoformat(market.resolves_at.replace("Z", "+00:00"))
             days = (resolves - datetime.now(timezone.utc)).days
             if days < MIN_DAYS:
-                return None, f"Only {days} days to resolve"
+                return None, 0, f"Only {days} days to resolve"
         except Exception:
             pass
 
-    if p < 0.35:
-        return "yes", f"YES at {p:.0%} — {q[:80]}"
-    if p > 0.65:
-        return "no",  f"NO (YES={p:.0%}) — {q[:80]}"
-    return None, f"Neutral at {p:.1%}"
+    bias = disruption_bias(q)
+
+    if p <= YES_THRESHOLD:
+        # conviction=0 at threshold boundary, conviction=1 at p=0 — scaled by disruption bias
+        conviction = min(1.0, (YES_THRESHOLD - p) / YES_THRESHOLD * bias)
+        size = max(MIN_TRADE, round(conviction * MAX_POSITION, 2))
+        edge = YES_THRESHOLD - p
+        return "yes", size, f"YES {p:.0%} edge={edge:.0%} bias={bias:.2f}x size=${size} — {q[:65]}"
+
+    if p >= NO_THRESHOLD:
+        conviction = min(1.0, (p - NO_THRESHOLD) / (1 - NO_THRESHOLD) * bias)
+        size = max(MIN_TRADE, round(conviction * MAX_POSITION, 2))
+        edge = p - NO_THRESHOLD
+        return "no", size, f"NO YES={p:.0%} edge={edge:.0%} bias={bias:.2f}x size=${size} — {q[:65]}"
+
+    return None, 0, f"Neutral at {p:.1%} (outside {YES_THRESHOLD:.0%}/{NO_THRESHOLD:.0%} bands)"
 
 
 def context_ok(client: SimmerClient, market_id: str) -> tuple[bool, str]:
@@ -126,7 +219,7 @@ def run(live: bool = False) -> None:
         if placed >= MAX_POSITIONS:
             break
 
-        side, reasoning = compute_signal(m)
+        side, size, reasoning = compute_signal(m)
         if not side:
             print(f"  [skip] {reasoning}")
             continue
@@ -140,14 +233,14 @@ def run(live: bool = False) -> None:
             r = client.trade(
                 market_id=m.id,
                 side=side,
-                amount=MAX_POSITION,
+                amount=size,
                 source=TRADE_SOURCE,
                 skill_slug=SKILL_SLUG,
                 reasoning=reasoning,
             )
             tag = "(sim)" if r.simulated else "(live)"
             status = "OK" if r.success else f"FAIL:{r.error}"
-            print(f"  [trade] {side.upper()} ${MAX_POSITION} {tag} {status} — {reasoning[:70]}")
+            print(f"  [trade] {side.upper()} ${size} {tag} {status} — {reasoning[:70]}")
             if r.success:
                 placed += 1
         except Exception as e:
