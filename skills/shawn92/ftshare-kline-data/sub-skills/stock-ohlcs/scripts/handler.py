@@ -6,7 +6,36 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timedelta, timezone
 from typing import Optional
+
+BEIJING_TZ = timezone(timedelta(hours=8))
+
+
+def ms_to_iso(ts_ms: int) -> str:
+    """将毫秒时间戳转为 YYYY-MM-DDTHH:mm:ss（北京时间 UTC+8），便于大模型理解。"""
+    return datetime.fromtimestamp(ts_ms / 1000.0, tz=BEIJING_TZ).strftime("%Y-%m-%dT%H:%M:%S")
+
+
+def with_iso_timestamps(data: dict) -> dict:
+    """将响应中的毫秒时间戳字段替换为 ISO 时间字符串。"""
+    result = dict(data)
+    if "ohlcs" in result:
+        result["ohlcs"] = [
+            {
+                **item,
+                "otm": ms_to_iso(item["otm"]),
+                "ctm": ms_to_iso(item["ctm"]),
+            }
+            for item in result["ohlcs"]
+        ]
+    for key in ("ma5", "ma10", "ma20"):
+        if key in result and result[key]:
+            result[key] = [
+                {**item, "ctm": ms_to_iso(item["ctm"])}
+                for item in result[key]
+            ]
+    return result
 
 BASE_URL = "https://market.ft.tech/app"
 ENDPOINT = "/api/v2/stocks/{stock}/ohlcs"
@@ -62,6 +91,7 @@ def main():
     args = parser.parse_args()
 
     result = fetch(args.stock, args.span, args.limit, args.until_ts_ms)
+    result = with_iso_timestamps(result)
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 

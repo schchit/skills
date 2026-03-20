@@ -6,7 +6,15 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timedelta, timezone
 from typing import Optional
+
+BEIJING_TZ = timezone(timedelta(hours=8))
+
+
+def tm_ms_to_iso(ms: int) -> str:
+    """将毫秒时间戳转为 YYYY-MM-DDTHH:mm:ss 格式（北京时间 UTC+8），便于大模型理解。"""
+    return datetime.fromtimestamp(ms / 1000.0, tz=BEIJING_TZ).strftime("%Y-%m-%dT%H:%M:%S")
 
 BASE_URL = "https://market.ft.tech/app"
 ENDPOINT = "/api/v2/stocks/{stock}/prices"
@@ -64,6 +72,10 @@ def main():
     except ValueError as e:
         print(str(e), file=sys.stderr)
         sys.exit(1)
+    # 将 prices 中的 tm（毫秒时间戳）转为 YYYY-MM-DDTHH:mm:ss 便于大模型理解
+    for item in result.get("prices", []):
+        if "tm" in item:
+            item["tm"] = tm_ms_to_iso(item["tm"])
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 

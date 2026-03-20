@@ -83,3 +83,4 @@ python <RUN_PY> stock-prices --stock 000001.XSHG --since_ts_ms 1735689600000
 - 股票代码需携带市场后缀：沪市 .XSHG、深市 .SZ、北交所 .BJ
 - since 为 TRADE_DAYS_AGO(n) 时需带括号和数字，如 TRADE_DAYS_AGO(10)
 - 所有接口请求需携带 X-Client-Name: ft-web 请求头
+- 接口返回的是前复权数据，且不支持选择复权

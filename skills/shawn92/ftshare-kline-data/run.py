@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ftai-kline-data 统一调度入口。
+FTShare-kline-data 统一调度入口。
 
 用法：
     python run.py <subskill名> [handler参数...]

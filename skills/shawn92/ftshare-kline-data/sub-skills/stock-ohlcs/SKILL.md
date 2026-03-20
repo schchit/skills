@@ -92,3 +92,4 @@ python <RUN_PY> stock-ohlcs --stock 000001.SZ --span MONTH1 --limit 24 --until_t
 - `prev_close` 可为 null（无昨收数据时）
 - 均线 `p` 字段在不足周期时为 null，展示时需做空值处理
 - 所有接口请求需携带 `X-Client-Name: ft-web` 请求头
+- 接口返回的是前复权数据，且不支持选择复权
