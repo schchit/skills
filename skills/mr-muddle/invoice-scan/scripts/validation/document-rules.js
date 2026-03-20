@@ -93,7 +93,7 @@ function validateDocumentRules(invoice) {
   }
 
   // 10. Due date missing (invoices usually have one, receipts don't)
-  if (!h.dueDate && docType === 'invoice') {
+  if (!h.dueDate && ['invoice', 'debit-note'].includes(docType)) {
     warnings.push({
       field: 'header.dueDate',
       message: 'No due date detected — unusual for an invoice (common in receipts)',
@@ -101,7 +101,7 @@ function validateDocumentRules(invoice) {
   }
 
   // 11. Document classified as non-invoice type
-  if (docType && !['invoice', 'credit-note'].includes(docType)) {
+  if (docType && !['invoice', 'credit-note', 'debit-note'].includes(docType)) {
     warnings.push({
       field: 'metadata.documentType',
       message: `Document classified as "${docType}" — not a standard invoice`,

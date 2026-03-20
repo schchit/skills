@@ -1,9 +1,10 @@
 /**
  * Excel (XLSX) Output Formatter
- *
- * Sheet 1 "Invoice": Zoho-style flat table — one row per line item,
- *   header fields at the top (repeated on every row).
- * Sheet 2 "Validation": arithmetic results, errors, warnings, field confidence.
+ * 
+ * Produces a structured workbook with:
+ * - Header sheet: invoice metadata
+ * - Line Items sheet: line item details
+ * - Validation sheet: confidence scores, flags, errors
  */
 
 let XLSX;
@@ -13,115 +14,11 @@ try {
   XLSX = null;
 }
 
-const COLUMNS = [
-  // ── Header fields ──
-  'Customer Name',
-  'Invoice Number',
-  'LineItem ID',
-  'PurchaseOrder',
-  'Invoice Date',
-  'Due Date',
-  'Payment Terms',
-  'Invoice Status',
-  'Currency Code',
-  'Supplier Name',
-  'Supplier Address',
-  'Supplier VAT Number',
-  'Buyer Address',
-  'Buyer VAT Number',
-  'Payment Reference',
-  'IBAN',
-  'BIC',
-  'Account Number',
-  'Sort Code',
-  // ── Line item fields ──
-  'Is Inclusive Tax',
-  'Item Name',
-  'SKU',
-  'Item Desc',
-  'Quantity',
-  'Usage unit',
-  'Item Price',
-  'Item Tax',
-  'Item Tax %',
-  'Item Tax Amount',
-  'Line Total',
-  'Discount',
-  // ── Totals ──
-  'Net Total',
-  'Shipping / Delivery',
-  'VAT Total',
-  'Gross Total',
-  // ── Validation / metadata ──
-  'Arithmetic Valid',
-  'Confidence',
-  'Language',
-  'Provider',
-  'Document Type',
-  'Quality Rating',
-];
-
-function buildRow(invoice, li, lineIdx) {
-  const h = invoice.header;
-  const t = invoice.totals;
-  const m = invoice.metadata;
-  const v = invoice.validation;
-  const ex = invoice.exceptions;
-  li = li || {};
-
-  const po = (invoice.referencedDocuments || []).find(d => d.type === 'PO');
-  const lineVat = (li.lineTotal && li.vatRate)
-    ? +(li.lineTotal * li.vatRate / 100).toFixed(2)
-    : null;
-
-  return [
-    h.buyerName,
-    h.invoiceNumber,
-    lineIdx || null,
-    po ? po.reference : null,
-    h.invoiceDate,
-    h.dueDate,
-    h.paymentTerms,
-    ex.overallStatus,
-    h.currency,
-    h.supplierName,
-    h.supplierAddress,
-    h.supplierVatNumber,
-    h.buyerAddress,
-    h.buyerVatNumber,
-    h.paymentReference,
-    h.bankDetails?.iban,
-    h.bankDetails?.bic,
-    h.bankDetails?.accountNumber,
-    h.bankDetails?.sortCode,
-    // Line
-    false,
-    li.description || null,
-    li.sku || null,
-    li.description || null,
-    li.quantity,
-    li.unitOfMeasure || null,
-    li.unitPrice,
-    li.vatRate ? 'Standard Rate' : null,
-    li.vatRate,
-    lineVat,
-    li.lineTotal,
-    li.discount,
-    // Totals
-    t.netTotal,
-    t.delivery || t.shipping || null,
-    t.vatTotal,
-    t.grossTotal,
-    // Validation
-    v.arithmeticValid ? 'Y' : 'N',
-    m.confidence,
-    m.language,
-    m.provider,
-    m.documentType || null,
-    v.documentQuality?.rating || null,
-  ];
-}
-
+/**
+ * Convert canonical invoice to XLSX buffer.
+ * @param {object} invoice
+ * @returns {Buffer}
+ */
 function toExcel(invoice) {
   if (!XLSX) {
     throw new Error('xlsx package not installed. Run: npm install xlsx');
@@ -129,80 +26,110 @@ function toExcel(invoice) {
 
   const wb = XLSX.utils.book_new();
 
-  // ── Sheet 1: Invoice (flat, Zoho-style) ──
-  const dataRows = [];
-  if (invoice.lineItems.length === 0) {
-    dataRows.push(buildRow(invoice, null, null));
-  } else {
-    invoice.lineItems.forEach((li, i) => {
-      dataRows.push(buildRow(invoice, li, i + 1));
-    });
+  // --- Header Sheet ---
+  const h = invoice.header;
+  const headerData = [
+    ['Field', 'Value'],
+    ['Invoice Number', h.invoiceNumber],
+    ['Invoice Date', h.invoiceDate],
+    ['Due Date', h.dueDate],
+    ['Currency', h.currency],
+    ['Supplier Name', h.supplierName],
+    ['Supplier Address', h.supplierAddress],
+    ['Supplier VAT', h.supplierVatNumber],
+    ['Buyer Name', h.buyerName],
+    ['Buyer Address', h.buyerAddress],
+    ['Buyer VAT', h.buyerVatNumber],
+    ['Payment Terms', h.paymentTerms],
+    ['Payment Reference', h.paymentReference],
+    ['IBAN', h.bankDetails?.iban],
+    ['BIC', h.bankDetails?.bic],
+    ['Account Number', h.bankDetails?.accountNumber],
+    ['Sort Code', h.bankDetails?.sortCode],
+    ['', ''],
+    ['Net Total', invoice.totals.netTotal],
+    ['VAT Total', invoice.totals.vatTotal],
+    ['Gross Total', invoice.totals.grossTotal],
+    ['Amount Paid', invoice.totals.amountPaid],
+    ['Amount Due', invoice.totals.amountDue],
+    ['', ''],
+    ['Document Type', invoice.metadata?.documentType ?? invoice.documentType],
+    ['Confidence', invoice.metadata?.confidence ?? invoice.qualityScore?.score],
+    ['Language', invoice.metadata?.language ?? invoice.language],
+    ['Provider', invoice.metadata?.provider ?? invoice.provider],
+    ['Extracted At', invoice.metadata?.extractionTimestamp ?? invoice.extractedAt],
+  ];
+
+  // Add charges (shipping, handling, etc.)
+  const charges = invoice.charges || [];
+  if (charges.length > 0) {
+    headerData.push(['', '']);
+    headerData.push(['Charges / Surcharges', '']);
+    for (const ch of charges) {
+      const vatInfo = ch.vatRate !== null ? ` (VAT ${ch.vatRate}%)` : '';
+      headerData.push([ch.label || ch.type, ch.amount !== null ? ch.amount + vatInfo : '']);
+    }
   }
 
-  const invoiceSheet = XLSX.utils.aoa_to_sheet([COLUMNS, ...dataRows]);
+  // Add referenced documents
+  const refDocs = invoice.referencedDocuments || [];
+  if (refDocs.length > 0) {
+    headerData.push(['', '']);
+    headerData.push(['Referenced Documents', '']);
+    for (const rd of refDocs) {
+      headerData.push([rd.type, rd.reference]);
+    }
+  }
 
-  // Auto-width columns
-  invoiceSheet['!cols'] = COLUMNS.map((col, i) => {
-    const maxLen = Math.max(
-      col.length,
-      ...dataRows.map(r => String(r[i] ?? '').length),
-    );
-    return { wch: Math.min(maxLen + 2, 50) };
-  });
+  const headerSheet = XLSX.utils.aoa_to_sheet(headerData);
+  headerSheet['!cols'] = [{ wch: 20 }, { wch: 50 }];
+  XLSX.utils.book_append_sheet(wb, headerSheet, 'Header');
 
-  XLSX.utils.book_append_sheet(wb, invoiceSheet, 'Invoice');
+  // --- Line Items Sheet ---
+  const lineItemHeaders = [
+    'Description', 'Quantity', 'Unit', 'Unit Price',
+    'Line Total', 'VAT Rate %', 'SKU', 'Discount',
+  ];
+  const lineItemRows = invoice.lineItems.map(li => [
+    li.description, li.quantity, li.unitOfMeasure,
+    li.unitPrice, li.lineTotal, li.vatRate, li.sku, li.discount,
+  ]);
+  const lineSheet = XLSX.utils.aoa_to_sheet([lineItemHeaders, ...lineItemRows]);
+  lineSheet['!cols'] = [
+    { wch: 40 }, { wch: 10 }, { wch: 10 }, { wch: 12 },
+    { wch: 12 }, { wch: 12 }, { wch: 15 }, { wch: 12 },
+  ];
+  XLSX.utils.book_append_sheet(wb, lineSheet, 'Line Items');
 
-  // ── Sheet 2: Validation ──
+  // --- Validation Sheet ---
   const valData = [
     ['Arithmetic Valid', invoice.validation.arithmeticValid ? 'YES' : 'NO'],
-    ['Quality Score', invoice.validation.documentQuality?.score],
-    ['Quality Rating', invoice.validation.documentQuality?.rating],
     ['', ''],
     ['Errors', ''],
   ];
   for (const err of invoice.validation.errors) {
     valData.push([err.field, err.message]);
   }
-  if (invoice.validation.errors.length === 0) valData.push(['(none)', '']);
-
-  valData.push(['', ''], ['Warnings', '']);
+  if (invoice.validation.errors.length === 0) {
+    valData.push(['(none)', '']);
+  }
+  valData.push(['', '']);
+  valData.push(['Warnings', '']);
   for (const warn of invoice.validation.warnings) {
     valData.push([warn.field, warn.message]);
   }
-  if (invoice.validation.warnings.length === 0) valData.push(['(none)', '']);
-
-  // Field confidence
-  if (invoice.fields.length > 0) {
-    valData.push(['', ''], ['Field', 'Confidence', 'Method']);
-    for (const f of invoice.fields) {
-      valData.push([f.name, f.confidence, f.extractionMethod]);
-    }
+  if (invoice.validation.warnings.length === 0) {
+    valData.push(['(none)', '']);
   }
 
-  // Referenced documents
-  if (invoice.referencedDocuments.length > 0) {
-    valData.push(['', ''], ['Referenced Documents', '']);
-    valData.push(['Type', 'Reference']);
-    for (const rd of invoice.referencedDocuments) {
-      valData.push([rd.type, rd.reference]);
-    }
-  }
-
-  // Stamps
-  const stamps = (invoice.fields || []).filter(f => f.name.startsWith('stamp'));
-  if (stamps.length > 0) {
-    valData.push(['', ''], ['Stamps / Seals', '']);
-    for (const s of stamps) {
-      valData.push([s.name, s.value]);
-    }
-  }
-
-  // Handwriting
-  const hw = (invoice.fields || []).filter(f => f.extractionMethod === 'icr');
-  if (hw.length > 0) {
-    valData.push(['', ''], ['Handwritten Annotations', '']);
-    for (const h of hw) {
-      valData.push([h.name, h.value]);
+  // Add field confidence scores
+  const fields = invoice.fields || invoice.validation?.fieldConfidence || [];
+  if (fields.length > 0) {
+    valData.push(['', '']);
+    valData.push(['Field Confidence', '']);
+    valData.push(['Field', 'Confidence', 'Method']);
+    for (const f of fields) {
+      valData.push([f.name ?? f.field, f.confidence, f.extractionMethod ?? f.method]);
     }
   }
 

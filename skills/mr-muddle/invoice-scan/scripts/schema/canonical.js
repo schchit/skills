@@ -54,16 +54,15 @@ function createBlankInvoice() {
     //   vatRate: number,
     //   sku: string|null,
     //   discount: number|null,
-    //   type: "item"|"shipping"|"charge",  // default "item"
     // }
 
     totals: {
-      netTotal: null,              // line items only (excludes shipping)
-      shipping: null,              // invoice-level shipping/freight/postage
-      shippingVatRate: null,       // VAT rate applied to shipping (%)
-      vatBreakdown: [],            // [{ rate: number, amount: number, taxableBase: number }]
+      netTotal: null,
+      vatBreakdown: [],            // [{ rate: number, amount: number }]
       vatTotal: null,
-      grossTotal: null,            // net + shipping + VAT
+      grossTotal: null,
+      amountPaid: null,            // explicit "Amount Paid" if on document
+      amountDue: null,             // explicit "Amount Due" / "Balance Due" if on document
     },
 
     metadata: {
@@ -75,6 +74,21 @@ function createBlankInvoice() {
       extractionTimestamp: null,   // ISO 8601 datetime
       documentType: null,          // "invoice", "credit-note", etc.
     },
+
+    charges: [],
+    // Surcharges/fees outside line items (shipping, handling, etc.)
+    // Each: {
+    //   type: "shipping"|"handling"|"insurance"|"surcharge"|"discount"|"other",
+    //   label: string,          // original label from the document (e.g., "P&P", "Freight")
+    //   amount: number,         // net amount (before tax)
+    //   vatRate: number|null,   // VAT/tax rate if applicable
+    //   vatAmount: number|null, // VAT/tax amount if explicitly stated
+    // }
+
+    stamps: [],
+    // Each: { type: "company"|"paid"|"approved"|"date"|"tax"|"other", text: string }
+
+    remarks: null,               // freeform comments, notes, or remarks on the document
 
     fields: [],
     // Per-field detail: {

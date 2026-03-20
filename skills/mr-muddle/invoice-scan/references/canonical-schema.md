@@ -1,85 +1,55 @@
 # Canonical Invoice Schema v1.0.0
 
-Every scan produces this structure regardless of provider.
+Every scan produces this structure regardless of AI provider.
 
 ## Top-Level
 
-```json
-{
-  "schemaVersion": "1.0.0",
-  "header": {},
-  "referencedDocuments": [],
-  "lineItems": [],
-  "totals": {},
-  "metadata": {},
-  "fields": [],
-  "validation": {},
-  "exceptions": {}
-}
+```
+{ schemaVersion, header, referencedDocuments[], lineItems[], totals, metadata, fields[], validation, exceptions }
 ```
 
 ## header
 
-| Field | Type | Notes |
-|---|---|---|
-| invoiceNumber | string | |
-| invoiceDate | string | YYYY-MM-DD |
-| dueDate | string | YYYY-MM-DD |
-| currency | string | ISO 4217 |
-| supplierName | string | |
-| supplierAddress | string | |
-| supplierVatNumber | string | |
-| buyerName | string | |
-| buyerAddress | string | |
-| buyerVatNumber | string | |
-| paymentTerms | string | |
-| paymentReference | string | |
-| bankDetails.iban | string | |
-| bankDetails.bic | string | |
-| bankDetails.accountNumber | string | |
-| bankDetails.sortCode | string | |
+invoiceNumber, invoiceDate (YYYY-MM-DD), dueDate, currency (ISO 4217), supplierName, supplierAddress, supplierVatNumber, buyerName, buyerAddress, buyerVatNumber, paymentTerms, paymentReference, bankDetails: { iban, bic, accountNumber, sortCode }
 
 ## lineItems[]
 
-| Field | Type |
-|---|---|
-| description | string |
-| quantity | number |
-| unitOfMeasure | string |
-| unitPrice | number |
-| lineTotal | number |
-| vatRate | number | percentage |
-| sku | string |
-| discount | number |
+description, quantity, unitOfMeasure, unitPrice, lineTotal, vatRate (percentage), sku, discount
 
 ## referencedDocuments[]
 
-type: PO | contract | GRN | inspection | timesheet | project | proforma | other
-reference: string
+type (PO|contract|GRN|inspection|timesheet|project|proforma|other), reference
 
 ## totals
 
-netTotal (items only, excludes shipping), shipping (invoice-level shipping/freight), shippingVatRate (% applied to shipping), vatBreakdown[{rate, amount, taxableBase}], vatTotal, grossTotal (net + shipping + VAT)
+netTotal, vatBreakdown[]: { rate, amount }, vatTotal, grossTotal, amountPaid, amountDue
+
+## charges[]
+
+Surcharges and fees that appear outside the line items table (shipping, handling, etc.). Do NOT duplicate items already captured as line items.
+
+type (shipping|handling|insurance|surcharge|discount|other), label (original text from document, e.g. "P&P", "Freight"), amount (net, before tax), vatRate (percentage or null), vatAmount (explicit tax amount or null)
+
+## stamps[]
+
+type (company|paid|approved|date|tax|other), text
+
+## remarks
+
+Freeform string — any comments, notes, or remarks printed on the document (null if none).
 
 ## metadata
 
-confidence (0–1), language (ISO 639-1), pageCount, processingDurationMs, provider, extractionTimestamp (ISO 8601), documentType
+confidence (0.0–1.0), language (ISO 639-1), pageCount, processingDurationMs, provider, extractionTimestamp (ISO 8601), documentType
 
 ## fields[]
 
-Per-field: name, value, confidence, boundingBox ({x, y, width, height, page} or null), extractionMethod (ocr|icr|stamp|inferred), failureReason
-
-## lineItems[].type
-
-- `item` — regular line item (default)
-- `shipping` — auto-detected shipping/freight/postage charge (promoted to totals.shipping)
-- `charge` — other invoice-level charges (reserved for future use)
+Per-field detail: name, value, confidence, boundingBox ({ x, y, width, height, page } or null), extractionMethod (ocr|icr|stamp|inferred), failureReason
 
 ## validation
 
-arithmeticValid (bool), errors[{field, message}], warnings[{field, message}], documentQuality: {score, presentFields, totalChecked, rating}
+arithmeticValid (boolean), errors[]: { field, message }, warnings[]: { field, message }, documentQuality: { score, presentFields, totalChecked, rating (good|partial|poor) }
 
 ## exceptions
 
-overallStatus: success | partial | failed | rejected
-failedFields[], processingAttempts, rejectionReason
+overallStatus (success|partial|failed|rejected), failedFields[], processingAttempts, rejectionReason

@@ -20,10 +20,11 @@ function validateArithmetic(invoice) {
   const errors = [];
   const warnings = [];
 
-  // 1. Line items sum → net total (excluding shipping lines)
+  // 1. Line items sum → net total
   if (invoice.lineItems.length > 0 && invoice.totals.netTotal !== null) {
-    const itemLines = invoice.lineItems.filter(li => li.type !== 'shipping');
-    const lineSum = itemLines.reduce((sum, li) => sum + (li.lineTotal || 0), 0);
+    const lineSum = invoice.lineItems.reduce((sum, li) => {
+      return sum + (li.lineTotal || 0);
+    }, 0);
 
     if (Math.abs(lineSum - invoice.totals.netTotal) > TOLERANCE) {
       errors.push({
@@ -76,14 +77,13 @@ function validateArithmetic(invoice) {
     }
   }
 
-  // 4. Net + Shipping + VAT = Gross
+  // 4. Net + VAT = Gross
   if (invoice.totals.netTotal !== null && invoice.totals.vatTotal !== null && invoice.totals.grossTotal !== null) {
-    const shipping = invoice.totals.shipping || 0;
-    const expectedGross = invoice.totals.netTotal + shipping + invoice.totals.vatTotal;
+    const expectedGross = invoice.totals.netTotal + invoice.totals.vatTotal;
     if (Math.abs(expectedGross - invoice.totals.grossTotal) > TOLERANCE) {
       errors.push({
         field: 'totals.grossTotal',
-        message: `net (${invoice.totals.netTotal.toFixed(2)}) + shipping (${shipping.toFixed(2)}) + VAT (${invoice.totals.vatTotal.toFixed(2)}) = ${expectedGross.toFixed(2)}, but gross is ${invoice.totals.grossTotal.toFixed(2)}`,
+        message: `net (${invoice.totals.netTotal.toFixed(2)}) + VAT (${invoice.totals.vatTotal.toFixed(2)}) = ${expectedGross.toFixed(2)}, but gross is ${invoice.totals.grossTotal.toFixed(2)}`,
       });
     }
   }
@@ -94,6 +94,27 @@ function validateArithmetic(invoice) {
       warnings.push({
         field: 'totals.grossTotal',
         message: 'Gross total is less than net total — possible negative tax or error',
+      });
+    }
+  }
+
+  // 6. amountDue = grossTotal - amountPaid (when all present)
+  if (invoice.totals.amountDue !== null && invoice.totals.grossTotal !== null && invoice.totals.amountPaid !== null) {
+    const expectedDue = invoice.totals.grossTotal - Math.abs(invoice.totals.amountPaid);
+    if (Math.abs(expectedDue - invoice.totals.amountDue) > TOLERANCE) {
+      warnings.push({
+        field: 'totals.amountDue',
+        message: `gross (${invoice.totals.grossTotal.toFixed(2)}) - paid (${Math.abs(invoice.totals.amountPaid).toFixed(2)}) = ${expectedDue.toFixed(2)}, but amountDue is ${invoice.totals.amountDue.toFixed(2)}`,
+      });
+    }
+  }
+
+  // 7. amountPaid > grossTotal warning (overpayment)
+  if (invoice.totals.amountPaid !== null && invoice.totals.grossTotal !== null) {
+    if (Math.abs(invoice.totals.amountPaid) > invoice.totals.grossTotal + TOLERANCE) {
+      warnings.push({
+        field: 'totals.amountPaid',
+        message: `Amount paid (${Math.abs(invoice.totals.amountPaid).toFixed(2)}) exceeds gross total (${invoice.totals.grossTotal.toFixed(2)}) — possible overpayment or credit`,
       });
     }
   }

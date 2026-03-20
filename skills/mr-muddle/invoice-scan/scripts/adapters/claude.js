@@ -8,65 +8,9 @@
 const { BaseAdapter } = require('./base');
 const { createBlankInvoice } = require('../schema/canonical');
 
-// Shipping/freight keywords — case-insensitive match against line item descriptions
-const SHIPPING_KEYWORDS = [
-  'shipping', 'freight', 'delivery', 'carriage', 'transport',
-  'postage', 'handling', 'express post', 'courier', 'dispatch',
-  'p&p', 'packing', 'shipment',
-];
-
 class ClaudeAdapter extends BaseAdapter {
   constructor() {
     super('claude');
-  }
-
-  /**
-   * Detect whether a line item is a shipping/freight charge.
-   */
-  isShippingLine(description) {
-    if (!description) return false;
-    const lower = description.toLowerCase();
-    return SHIPPING_KEYWORDS.some(kw => lower.includes(kw));
-  }
-
-  /**
-   * Rebuild VAT breakdown with taxable base per rate band.
-   * Groups line items (including shipping) by VAT rate and calculates
-   * the taxable base and VAT amount for each band.
-   * Only rebuilds if we have line items with VAT rates.
-   */
-  rebuildVatBreakdown(invoice) {
-    const ratedItems = invoice.lineItems.filter(li => li.vatRate != null);
-    if (ratedItems.length === 0) return; // keep whatever Claude gave us
-
-    const bands = {};
-
-    // Group line items by rate
-    for (const li of invoice.lineItems) {
-      const rate = li.vatRate || 0;
-      if (!bands[rate]) bands[rate] = { rate, taxableBase: 0, amount: 0 };
-      bands[rate].taxableBase += (li.lineTotal || 0);
-    }
-
-    // Add shipping to its rate band
-    if (invoice.totals.shipping) {
-      const rate = invoice.totals.shippingVatRate || 0;
-      if (!bands[rate]) bands[rate] = { rate, taxableBase: 0, amount: 0 };
-      bands[rate].taxableBase += invoice.totals.shipping;
-    }
-
-    // Calculate VAT amount per band
-    for (const band of Object.values(bands)) {
-      band.taxableBase = +band.taxableBase.toFixed(2);
-      band.amount = +(band.taxableBase * band.rate / 100).toFixed(2);
-    }
-
-    // Only override if we computed something meaningful
-    const computed = Object.values(bands).filter(b => b.rate > 0 || b.taxableBase > 0);
-    if (computed.length > 0) {
-      invoice.totals.vatBreakdown = Object.values(bands)
-        .sort((a, b) => a.rate - b.rate);
-    }
   }
 
   /**
@@ -131,8 +75,19 @@ Return ONLY valid JSON with this exact structure (no markdown, no explanation):
     "netTotal": number or null,
     "vatBreakdown": [{ "rate": number, "amount": number }],
     "vatTotal": number or null,
-    "grossTotal": number or null
+    "grossTotal": number or null,
+    "amountPaid": number or null,
+    "amountDue": number or null
   },
+  "charges": [
+    {
+      "type": "shipping|handling|insurance|surcharge|discount|other",
+      "label": "original label from document (e.g. Postage & Packing, Freight, Delivery Charge)",
+      "amount": number or null,
+      "vatRate": number or null,
+      "vatAmount": number or null
+    }
+  ],
   "referencedDocuments": {
     "poNumber": "string or null",
     "contractNumber": "string or null",
@@ -166,7 +121,8 @@ Rules:
   - Russian: 1 234-56 or 1 234.56 → 1234.56
   - Indian: 1,23,456.78 → 123456.78
   - Never use spaces, commas as thousands separators, or hyphens as decimal points in output
-- If a number on the invoice uses a locale-specific format, YOU must convert it to standard decimal notation`;
+- If a number on the invoice uses a locale-specific format, YOU must convert it to standard decimal notation
+- CHARGES: Capture shipping, postage, delivery, freight, handling, insurance, eco-levies, surcharges, and similar fees that appear OUTSIDE the line items table. Use the "charges" array. Common labels include: Shipping, S&H, Postage, P&P, Delivery, Freight, Carriage, Dispatch, Handling, Insurance. If a charge IS already a line item, do NOT duplicate it in charges. If no separate charges exist, return an empty array.`;
   }
 
   /**
@@ -223,7 +179,7 @@ Rules:
       }
     }
 
-    // Line items — tag each as "item" or "shipping"
+    // Line items
     if (Array.isArray(raw.lineItems)) {
       invoice.lineItems = raw.lineItems.map(li => ({
         description: li.description || null,
@@ -234,7 +190,6 @@ Rules:
         vatRate: this.normaliseVatRate(li.vatRate),
         sku: li.sku || null,
         discount: typeof li.discount === 'number' ? li.discount : null,
-        type: this.isShippingLine(li.description) ? 'shipping' : 'item',
       }));
     }
 
@@ -243,6 +198,8 @@ Rules:
       invoice.totals.netTotal = this.parseLocaleNumber(raw.totals.netTotal);
       invoice.totals.vatTotal = this.parseLocaleNumber(raw.totals.vatTotal);
       invoice.totals.grossTotal = this.parseLocaleNumber(raw.totals.grossTotal);
+      invoice.totals.amountPaid = this.parseLocaleNumber(raw.totals.amountPaid);
+      invoice.totals.amountDue = this.parseLocaleNumber(raw.totals.amountDue);
       if (Array.isArray(raw.totals.vatBreakdown)) {
         invoice.totals.vatBreakdown = raw.totals.vatBreakdown.map(vb => ({
           rate: this.normaliseVatRate(vb.rate),
@@ -251,22 +208,16 @@ Rules:
       }
     }
 
-    // Promote shipping lines to invoice-level totals.shipping
-    const shippingLines = invoice.lineItems.filter(li => li.type === 'shipping');
-    if (shippingLines.length > 0) {
-      invoice.totals.shipping = shippingLines.reduce((sum, li) => sum + (li.lineTotal || li.unitPrice || 0), 0);
-      // Capture shipping VAT rate (use first shipping line's rate)
-      const shippingVat = shippingLines.find(li => li.vatRate != null);
-      if (shippingVat) invoice.totals.shippingVatRate = shippingVat.vatRate;
-
-      // Adjust netTotal: remove shipping from net (net = items only)
-      if (invoice.totals.netTotal != null) {
-        invoice.totals.netTotal = +(invoice.totals.netTotal - invoice.totals.shipping).toFixed(2);
-      }
+    // Charges (shipping, handling, etc.)
+    if (Array.isArray(raw.charges)) {
+      invoice.charges = raw.charges.map(ch => ({
+        type: ch.type || 'other',
+        label: ch.label || null,
+        amount: this.parseLocaleNumber(ch.amount),
+        vatRate: this.normaliseVatRate(ch.vatRate),
+        vatAmount: typeof ch.vatAmount === 'number' ? ch.vatAmount : null,
+      }));
     }
-
-    // Build/rebuild vatBreakdown with taxable base per rate
-    this.rebuildVatBreakdown(invoice);
 
     // Metadata
     invoice.metadata.provider = 'claude';

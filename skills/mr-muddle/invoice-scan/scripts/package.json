@@ -1,10 +1,10 @@
 {
   "name": "invoice-scan",
-  "version": "0.1.0",
+  "version": "1.8.1",
   "description": "AI-powered invoice scanning skill for OpenClaw — extract structured data from any invoice document",
-  "main": "src/index.js",
+  "main": "index.js",
   "bin": {
-    "invoice-scan": "./src/cli.js"
+    "invoice-scan": "./cli.js"
   },
   "scripts": {
     "test": "node tests/run-all.js",
@@ -34,7 +34,6 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "parquet-wasm": "^0.7.1",
     "sharp": "^0.33.0",
     "xlsx": "^0.18.5"
   }

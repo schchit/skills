@@ -1,10 +1,15 @@
 /**
  * Output Format Registry
+ * 
+ * formatOutput() is the single entry point for all exports.
+ * It runs the pre-export pipeline (normalise → validate → write)
+ * regardless of whether the invoice came from CLI or agent-native mode.
  */
 
 const { toJSON } = require('./json');
 const { toCSV } = require('./csv');
 const { toExcel } = require('./excel');
+const { prepareForExport } = require('./prepare');
 
 const formatters = {
   json: (invoice, opts) => toJSON(invoice, opts?.pretty !== false),
@@ -18,6 +23,10 @@ function formatOutput(invoice, format = 'json', options = {}) {
   if (!formatter) {
     throw new Error(`Unknown format "${format}". Available: ${Object.keys(formatters).join(', ')}`);
   }
+
+  // Run the pre-export pipeline: normalise → validate → then write
+  prepareForExport(invoice);
+
   return formatter(invoice, options);
 }
 
