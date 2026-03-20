@@ -3,11 +3,16 @@
   "slug": "labor-law",
   "displayName": "Labor Law",
   "latest": {
-    "version": "1.0.5",
-    "publishedAt": 1773666315747,
-    "commit": "https://github.com/openclaw/skills/commit/6b4a715041baf99e3dde0e8179e836075808f004"
+    "version": "2.0.1",
+    "publishedAt": 1773830725128,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.5",
+      "publishedAt": 1773666315747,
+      "commit": "https://github.com/openclaw/skills/commit/6b4a715041baf99e3dde0e8179e836075808f004"
+    },
     {
       "version": "2.3.0",
       "publishedAt": 1773447180292,
