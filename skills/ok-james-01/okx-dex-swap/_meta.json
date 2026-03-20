@@ -3,11 +3,16 @@
   "slug": "okx-dex-swap",
   "displayName": "Okx Dex Swap",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1773296161849,
-    "commit": "https://github.com/openclaw/skills/commit/c7fd1da822717c72361e72a98c986d2f3f9c9180"
+    "version": "2.0.0",
+    "publishedAt": 1773843851697,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1773296161849,
+      "commit": "https://github.com/openclaw/skills/commit/c7fd1da822717c72361e72a98c986d2f3f9c9180"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1773123772516,
