@@ -1,6 +1,6 @@
 ---
 name: content-creator-cn
-version: 1.0.22
+version: 1.2.1
 description: 中文内容创作助手 - 一键生成掘金/知乎/公众号/小红书风格文章。适合：内容创作者、自媒体运营。
 metadata:
   openclaw:
