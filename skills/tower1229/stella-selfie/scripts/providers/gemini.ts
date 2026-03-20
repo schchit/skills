@@ -1,8 +1,15 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
+import { asStellaError, shouldRetryGemini } from "../errors";
 
 const MODEL = "gemini-3.1-flash-image-preview";
+const STELLA_SELFIE_DIR = path.join(
+  os.homedir(),
+  ".openclaw",
+  "workspace",
+  "stella-selfie"
+);
 
 export type Resolution = "1K" | "2K" | "4K";
 
@@ -25,7 +32,7 @@ function getApiKey(provided?: string): string {
   const key = provided || process.env.GEMINI_API_KEY;
   if (!key) {
     throw new Error(
-      "GEMINI_API_KEY is not set. Configure it in .env.local or pass --api-key."
+      "GEMINI_API_KEY is not set. Set it in your environment (e.g. OpenClaw skills.entries.*.env/apiKey) or for local testing use .env.local / --api-key."
     );
   }
   return key;
@@ -78,7 +85,12 @@ export async function generateWithGemini(
   options: GeminiGenerateOptions
 ): Promise<GeminiResult[]> {
   const { prompt, referenceImages, resolution, count, apiKey } = options;
-  const key = getApiKey(apiKey);
+  let key: string;
+  try {
+    key = getApiKey(apiKey);
+  } catch (err) {
+    throw asStellaError("gemini", err);
+  }
 
   // Dynamic import to avoid loading the SDK when not needed
   const { GoogleGenAI } = await import("@google/genai");
@@ -88,7 +100,7 @@ export async function generateWithGemini(
   const contents = buildContents(prompt, referenceImages);
 
   const results: GeminiResult[] = [];
-  const tmpDir = os.tmpdir();
+  fs.mkdirSync(STELLA_SELFIE_DIR, { recursive: true });
 
   for (let i = 0; i < count; i++) {
     const generateConfig = {
@@ -97,11 +109,36 @@ export async function generateWithGemini(
       imageConfig: { imageSize: resolution },
     };
 
-    const response = await ai.models.generateContent({
-      model: MODEL,
-      contents,
-      config: generateConfig as object,
-    });
+    const maxAttempts = 3;
+    let lastErr: unknown;
+    let response: any = null;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        response = await ai.models.generateContent({
+          model: MODEL,
+          contents,
+          config: generateConfig as object,
+        });
+        break;
+      } catch (err) {
+        lastErr = err;
+        if (!shouldRetryGemini(err)) {
+          throw asStellaError("gemini", err);
+        }
+        // Small backoff for transient API/network errors
+        const delayMs = 500 * attempt;
+        await new Promise((r) => setTimeout(r, delayMs));
+      }
+    }
+
+    if (!response) {
+      if (lastErr) throw asStellaError("gemini", lastErr);
+      throw asStellaError(
+        "gemini",
+        new Error(`Gemini generateContent failed after ${maxAttempts} attempts`)
+      );
+    }
 
     let imageData: Buffer | null = null;
     let mimeType = "image/png";
@@ -109,10 +146,45 @@ export async function generateWithGemini(
 
     const candidate = response.candidates?.[0];
     if (!candidate?.content?.parts) {
-      throw new Error("Gemini returned no content parts");
+      // Some transient responses can be empty; retry a couple times before failing.
+      // Re-run the full request to avoid partial/invalid payloads.
+      let retried = false;
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        retried = true;
+        await new Promise((r) => setTimeout(r, 400 * attempt));
+        let r2: any;
+        try {
+          r2 = await ai.models.generateContent({
+            model: MODEL,
+            contents,
+            config: generateConfig as object,
+          });
+        } catch (err) {
+          if (!shouldRetryGemini(err)) {
+            throw asStellaError("gemini", err);
+          }
+          continue;
+        }
+        const c2 = r2.candidates?.[0];
+        if (c2?.content?.parts) {
+          response = r2;
+          break;
+        }
+      }
+
+      const cFinal = response.candidates?.[0];
+      if (!cFinal?.content?.parts) {
+        throw asStellaError(
+          "gemini",
+          new Error(
+          "Gemini returned no content parts (after retry). Try again; this is often transient."
+          )
+        );
+      }
     }
 
-    for (const part of candidate.content.parts) {
+    const finalCandidate = response.candidates?.[0];
+    for (const part of finalCandidate.content.parts) {
       if (part.text) {
         revisedPrompt = part.text;
       } else if (part.inlineData) {
@@ -131,14 +203,17 @@ export async function generateWithGemini(
     }
 
     if (!imageData) {
-      throw new Error("Gemini returned no image data in response");
+      throw asStellaError(
+        "gemini",
+        new Error("Gemini returned no image data in response")
+      );
     }
 
     const ext = mimeType.split("/")[1] || "png";
     // Use process.hrtime for sub-millisecond uniqueness when count > 1
     const [, ns] = process.hrtime();
     const outputPath = path.join(
-      tmpDir,
+      STELLA_SELFIE_DIR,
       `stella-${Date.now()}-${ns}-${i}.${ext}`
     );
     fs.writeFileSync(outputPath, imageData);

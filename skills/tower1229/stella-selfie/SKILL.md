@@ -6,7 +6,7 @@ metadata:
   openclaw:
     requires:
       env:
-        - GEMINI_API_KEY
+        - OPENCLAW_GATEWAY_TOKEN
       bins:
         - npx
     primaryEnv: GEMINI_API_KEY
@@ -80,7 +80,7 @@ Determine from the user's message:
 Run the Stella script:
 
 ```bash
-npx ts-node {baseDir}/scripts/stella.ts \
+npx ts-node {baseDir}/scripts/skill.ts \
   --prompt "<ASSEMBLED_PROMPT>" \
   --target "<TARGET_CHANNEL>" \
   --channel "<CHANNEL_PROVIDER>" \
@@ -106,7 +106,7 @@ a close-up selfie taken by herself at a cozy cafe with warm lighting, direct eye
 After the script completes, confirm to the user:
 - Image was generated successfully
 - Image was sent to the target channel
-- If any error occurred, report it directly
+- If any error occurred, send a concise actionable failure message
 
 ## Environment Variables
 
@@ -114,7 +114,15 @@ After the script completes, confirm to the user:
 |----------|----------|-------------|
 | `GEMINI_API_KEY` | Required (if Provider=gemini) | Google Gemini API key |
 | `FAL_KEY` | Required (if Provider=fal) | fal.ai API key |
-| `OPENCLAW_GATEWAY_TOKEN` | Required | OpenClaw gateway auth token |
+| `OPENCLAW_GATEWAY_TOKEN` | Required (for sending via OpenClaw Gateway / HTTP fallback) | OpenClaw gateway auth token |
+
+## Media File Handling (Gemini)
+
+When `Provider=gemini`, Stella writes generated files to:
+
+- `~/.openclaw/workspace/stella-selfie/`
+
+After successful send, Stella deletes the local file immediately. If send fails, the file is kept for debugging.
 
 ## Skill Environment Options
 
@@ -130,7 +138,7 @@ Configure in your OpenClaw `openclaw.json` under `skills.entries.stella-selfie.e
 
 ## User Configuration
 
-Before using this skill, you must configure your OpenClaw workspace. See `templates/IDENTITY.fragment.md` and `templates/SOUL.fragment.md` for the recommended configuration snippets to add to your `IDENTITY.md` and `SOUL.md`.
+Before using this skill, you must configure your OpenClaw workspace. See `templates/SOUL.fragment.md` for the recommended capability snippet to add to your `SOUL.md`.
 
 ### Required: IDENTITY.md
 
@@ -139,13 +147,11 @@ Add the following fields to `~/.openclaw/workspace/IDENTITY.md`:
 ```markdown
 Avatar: ./assets/avatar-main.png
 AvatarsDir: ./avatars
-AvatarMaxRefs: 3
 AvatarsURLs: https://cdn.example.com/ref1.jpg, https://cdn.example.com/ref2.jpg
 ```
 
 - `Avatar`: Path to your primary reference image (relative to workspace root)
 - `AvatarsDir`: Directory containing multiple reference photos of the same character (different styles, scenes, outfits)
-- `AvatarMaxRefs`: Maximum reference images to blend (optional, default 3)
 - `AvatarsURLs`: Comma-separated public URLs of reference images — required for `Provider=fal` (local files are not supported by fal's API)
 
 ### Required: avatars/ Directory
