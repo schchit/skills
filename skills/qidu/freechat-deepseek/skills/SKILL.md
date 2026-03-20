@@ -15,6 +15,270 @@ allowed-tools: Bash(npm:*) Bash(npx:*) Bash(openclaw:*) Bash(curl:*) Read Write 
 
 # DeepSeek Chat Automation Skill
 
+> **⚠️ Important for OpenClaw >= v3.13:** Use direct Chrome attachment (`profile: "user"`) instead of the relay extension. See "Direct Chrome Attachment" section below.
+> 
+> **Version Check:** Before executing any browser actions, check OpenClaw version (`openclaw --version`). If >= v3.13, use `profile: "user"` for direct Chrome attachment. This avoids the need for the Chrome relay extension and provides more stable browser automation.
+
+## Dynamic Profile Selection (Recommended)
+
+To make your code work with both old and new OpenClaw versions, use this dynamic profile selection:
+
+```javascript
+// Determine which profile to use based on OpenClaw version
+async function getBrowserProfile() {
+  try {
+    // Check OpenClaw version
+    const versionResult = await exec({ command: "openclaw --version" });
+    const versionMatch = versionResult.match(/(\d+)\.(\d+)\.(\d+)/);
+    
+    if (versionMatch) {
+      const major = parseInt(versionMatch[1]);
+      const minor = parseInt(versionMatch[2]);
+      const patch = parseInt(versionMatch[3]);
+      
+      // v3.13+ uses "user" profile for direct Chrome
+      if (major > 3 || (major === 3 && minor > 13) || (major === 3 && minor === 13 && patch >= 0)) {
+        console.log("✅ Using direct Chrome (profile: 'user') for OpenClaw >= v3.13");
+        return "user";
+      }
+    }
+    
+    console.log("ℹ️ Using legacy profile 'openclaw' for older OpenClaw versions");
+    return "openclaw";
+  } catch (error) {
+    console.warn("⚠️ Could not determine version, defaulting to 'user'");
+    return "user"; // Default to user profile
+  }
+}
+
+// Usage in your code:
+const profile = await getBrowserProfile();
+
+// Then use it in browser calls:
+const result = await browser({
+  action: "open",
+  profile: profile,
+  url: "https://chat.deepseek.com/"
+});
+```
+
+## Quick Start (OpenClaw >= v3.13)
+
+```javascript
+// 1. Check version - if >= v3.13, use "user" profile
+// 2. Open Chrome directly (no extension needed)
+const result = await browser({
+  action: "open",
+  profile: "user",  // Use "user" for v3.13+
+  url: "about:blank"
+});
+
+// 3. Navigate to DeepSeek
+await browser({
+  action: "navigate",
+  profile: "user",
+  targetId: result.targetId,
+  url: "https://chat.deepseek.com/"
+});
+
+// 4. Continue with the workflow below...
+```
+
+## Direct Chrome Attachment (OpenClaw >= v3.13)
+
+For OpenClaw version >= v3.13, use direct Chrome attachment:
+
+### Step 1: Check Browser Status
+
+```javascript
+// Check user browser status
+const browserStatus = await browser({
+  action: "status",
+  profile: "user"
+});
+console.log("Browser status:", browserStatus);
+```
+
+### Step 2: Open Chrome Directly
+
+```javascript
+// Open Chrome directly (no extension needed)
+const result = await browser({
+  action: "open",
+  profile: "user",
+  url: "about:blank"
+});
+const tabId = result.targetId;
+console.log("Opened tab:", tabId);
+```
+
+### Step 3: Navigate to DeepSeek
+
+```javascript
+// Navigate to DeepSeek
+await browser({
+  action: "navigate",
+  profile: "user",
+  targetId: tabId,
+  url: "https://chat.deepseek.com/"
+});
+```
+
+### Step 4: List/Manage Tabs
+
+```javascript
+// List all open tabs
+const tabs = await browser({
+  action: "tabs",
+  profile: "user"
+});
+console.log("Open tabs:", tabs);
+
+// Switch to specific tab
+await browser({
+  action: "focus",
+  profile: "user",
+  targetId: "1"  // Tab ID from tabs list
+});
+```
+
+### Key Differences: user vs openclaw profile
+
+| Feature | `profile: "user"` | `profile: "openclaw"` (legacy) |
+|---------|-------------------|-------------------------------|
+| Chrome extension needed | ❌ No | ✅ Yes |
+| Uses | Local Chrome installation | Openclaw-managed browser |
+| Reliability | ✅ More stable | May have issues |
+| Login state | Uses your logged-in Chrome | Fresh browser session |
+
+### Troubleshooting
+
+If `profile: "user"` times out:
+1. Restart the OpenClaw gateway: `openclaw gateway restart`
+2. Try again with browser action
+
+---
+
+## Prerequisites for Direct Chrome Attachment
+
+To use `profile: "user"` for direct Chrome attachment, users must configure Chrome properly:
+
+### 1. Chrome Version Requirement
+- Install **Chrome version >= 144**
+
+### 2. Enable Remote Debugging
+
+**Step-by-step:**
+
+1. **Open Chrome settings page:**
+   ```
+   chrome://inspect/#remote-debugging
+   ```
+
+2. **Enable the option:**
+   - Check/Enable: **"Allow remote debugging for this browser instance"**
+   
+   ![Chrome remote debugging settings](chrome-remote-debugging.png)
+
+3. **Restart Chrome** if the option was just enabled
+
+### 3. Verify Setup
+
+Run this to verify Chrome is ready:
+```javascript
+// Check user browser status
+const browserStatus = await browser({
+  action: "status",
+  profile: "user"
+});
+
+if (browserStatus.running === true) {
+  console.log("✅ Chrome is ready for direct attachment!");
+} else {
+  console.log("❌ Chrome not ready. Check chrome://inspect settings.");
+}
+```
+
+### Common Issues
+
+| Issue | Solution |
+|-------|----------|
+| Timeout errors | Ensure "Allow remote debugging" is enabled in chrome://inspect |
+| Chrome not detected | Make sure Chrome version >= 144 is installed |
+| Connection refused | Restart Chrome and try again |
+| Already in use | Close other Chrome instances or use a different Chrome profile |
+
+---
+
+## Option 2: Using Chrome Relay Extension (Legacy)
+
+For users who prefer using the Chrome relay extension instead of direct Chrome attachment:
+
+### Install the Extension
+
+1. **Open Chrome Web Store:**
+   ```
+   https://chromewebstore.google.com/detail/openclaw-browser-relay/nglingapjinhecnfejdcpihlpneeadjp
+   ```
+
+2. **Click "Add to Chrome"** to install the extension
+
+3. **Approve permissions** when prompted
+
+### Using the Relay
+
+Once installed, activate it before running browser automation:
+
+1. **Open the Chrome tab** you want to control
+2. **Click the OpenClaw Browser Relay toolbar icon** (usually in the top-right of Chrome)
+3. Wait for the badge to turn **ON** / green
+
+Then use `profile: "chrome-relay"` in your browser calls:
+
+```javascript
+// Check relay status
+const relayStatus = await browser({
+  action: "status",
+  profile: "chrome-relay"
+});
+
+// Open tab via relay
+const result = await browser({
+  action: "open",
+  profile: "chrome-relay",
+  url: "https://chat.deepseek.com/"
+});
+
+// Take snapshot
+await browser({
+  action: "snapshot",
+  profile: "chrome-relay",
+  targetId: result.targetId
+});
+```
+
+### Relay Status Indicators
+
+| Status | Meaning |
+|--------|---------|
+| `running: false` | Relay not activated - click the toolbar icon |
+| `cdpReady: false` | CDP not connected - click the toolbar icon |
+| `running: true` | Ready to use! |
+
+### Which Should I Use?
+
+| Feature | Direct Chrome (`user`) | Relay Extension (`chrome-relay`) |
+|---------|------------------------|----------------------------------|
+| Setup required | Chrome >= 144 + remote debugging | Install extension |
+| No. of steps | More initial setup | Easier install |
+| Stability | ✅ More stable | May have occasional issues |
+| Login state | Uses your Chrome profile | Uses extension's session |
+| Recommended for | Power users | Beginners |
+
+---
+
+## Workflow Overview (6 Steps)
+
 Automate login with scanning qr code snapshot, input questions from user messages, and extract responses from DeepSeek chat, then reply to user.
 
 **Key Feature:** Pure browser automation + DOM extraction. **No LLM requests or processing** - just raw text from the rendered page.
@@ -34,11 +298,16 @@ Automate login with scanning qr code snapshot, input questions from user message
 - Requires complex CAPTCHA solving
 - Need LLM-powered text processing (use Claude API directly)
 
-## Requirements
+## Requirements (Updated for OpenClaw >= v3.13)
 
+For OpenClaw >= v3.13:
+- Browser tool with `profile: "user"` (direct Chrome attachment)
+- No Chrome extension needed!
+- **No API keys or LLM credits needed**
+
+For older versions (legacy):
 - Check browser extension with `openclaw browser status`, get `enabled: true`
 - Browser tool with `profile: "openclaw"`
-- **No API keys or LLM credits needed**
 
 ## Workflow Overview (6 Steps)
 

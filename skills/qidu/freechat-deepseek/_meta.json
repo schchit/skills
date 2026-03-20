@@ -3,11 +3,16 @@
   "slug": "freechat-deepseek",
   "displayName": "Chat DeepSeek by Browser",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1773303838455,
-    "commit": "https://github.com/openclaw/skills/commit/d9ab5a85e21cd4a110fc3cd425274c36913fbf94"
+    "version": "1.0.4",
+    "publishedAt": 1773717882360,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1773303838455,
+      "commit": "https://github.com/openclaw/skills/commit/d9ab5a85e21cd4a110fc3cd425274c36913fbf94"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1773072504857,
