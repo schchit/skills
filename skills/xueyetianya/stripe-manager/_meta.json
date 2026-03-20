@@ -3,11 +3,16 @@
   "slug": "stripe-manager",
   "displayName": "Stripe Manager",
   "latest": {
-    "version": "2.4.7",
-    "publishedAt": 1773673927090,
-    "commit": "https://github.com/openclaw/skills/commit/1f35b4114ada946ee95e45629efe4ef3f830be70"
+    "version": "2.0.1",
+    "publishedAt": 1773831077618,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.4.7",
+      "publishedAt": 1773673927090,
+      "commit": "https://github.com/openclaw/skills/commit/1f35b4114ada946ee95e45629efe4ef3f830be70"
+    },
     {
       "version": "2.4.4",
       "publishedAt": 1773611814663,
