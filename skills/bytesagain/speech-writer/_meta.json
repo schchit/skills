@@ -3,11 +3,16 @@
   "slug": "speech-writer",
   "displayName": "Speech Writer",
   "latest": {
-    "version": "2.2.0",
-    "publishedAt": 1773421828474,
-    "commit": "https://github.com/openclaw/skills/commit/2c8ce15f4c777e64d6b218955212c32361a546fd"
+    "version": "2.0.0",
+    "publishedAt": 1773772954836,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.2.0",
+      "publishedAt": 1773421828474,
+      "commit": "https://github.com/openclaw/skills/commit/2c8ce15f4c777e64d6b218955212c32361a546fd"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773245901691,
