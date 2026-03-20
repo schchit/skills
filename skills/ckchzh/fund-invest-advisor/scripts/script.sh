@@ -141,8 +141,23 @@ cmd_fees() {
     local years="${3:-10}"
     echo "  Fee Impact Calculator: $fund"
     for rate in 0.1 0.5 1.0 1.5 2.0; do
-        local fee=$(python3 -c "print('{:,.0f}'.format($amount * $rate / 100 * $years))")
-        local pct=$(python3 -c "print('{:.1f}'.format($rate * $years))")
+        local fee
+        fee=$(AMOUNT="$amount" RATE="$rate" YEARS="$years" python3 << 'PYEOF'
+import os
+amount = float(os.environ["AMOUNT"])
+rate = float(os.environ["RATE"])
+years = float(os.environ["YEARS"])
+print('{:,.0f}'.format(amount * rate / 100 * years))
+PYEOF
+        )
+        local pct
+        pct=$(RATE="$rate" YEARS="$years" python3 << 'PYEOF'
+import os
+rate = float(os.environ["RATE"])
+years = float(os.environ["YEARS"])
+print('{:.1f}'.format(rate * years))
+PYEOF
+        )
         printf "  %4.1f%% fee × %d years = ¥%s (%s%% of principal)\n" "$rate" "$years" "$fee" "$pct"
     done
 }
@@ -155,12 +170,18 @@ cmd_dca() {
     echo "  Monthly: ¥$amount × $months months = ¥$total invested"
     echo ""
     for ret in -10 0 5 10 15; do
-        local final=$(python3 -c "
+        local final
+        final=$(AMOUNT="$amount" MONTHS="$months" RET="$ret" python3 << 'PYEOF'
+import os
+amount = float(os.environ["AMOUNT"])
+months = int(os.environ["MONTHS"])
+ret = float(os.environ["RET"])
 total = 0
-for i in range($months):
-    total = (total + $amount) * (1 + $ret / 100 / 12)
+for i in range(months):
+    total = (total + amount) * (1 + ret / 100 / 12)
 print('{:,.0f}'.format(total))
-")
+PYEOF
+        )
         local gain=$((${final//,/} - total))
         printf "  %+3d%% annual return → ¥%s (gain: ¥%d)\n" "$ret" "$final" "$gain" 2>/dev/null || true
     done
@@ -213,7 +234,12 @@ cmd_export() {
     local fmt="${1:-csv}"
     [ ! -f "$PORTFOLIO" ] && { echo "No data"; return; }
     case "$fmt" in
-        csv) echo "action,fund,amount,date"; while IFS= read -r line; do echo "$line" | python3 -c "import json,sys; d=json.load(sys.stdin); print('{},{},{},{}'.format(d['action'],d['fund'],d['amount'],d['date']))"; done < "$PORTFOLIO" ;;
+        csv) echo "action,fund,amount,date"; while IFS= read -r line; do echo "$line" | python3 << 'PYEOF'
+import json, sys
+d = json.load(sys.stdin)
+print('{},{},{},{}'.format(d['action'], d['fund'], d['amount'], d['date']))
+PYEOF
+done < "$PORTFOLIO" ;;
         json) echo "["; head -c -1 "$PORTFOLIO" | sed 's/$/,/'; tail -1 "$PORTFOLIO"; echo "]" ;;
         *) echo "Formats: csv, json" ;;
     esac
@@ -231,12 +257,12 @@ cmd_history() {
     [ ! -f "$PORTFOLIO" ] && { echo "No transactions"; return; }
     echo "  Transaction History:"
     while IFS= read -r line; do
-        echo "$line" | python3 -c "
+        echo "$line" | python3 << 'PYEOF'
 import json, sys
 d = json.load(sys.stdin)
 icon = '🟢' if d['action'] == 'buy' else '🔴'
 print('  {} {} {} ¥{:,.0f} on {}'.format(icon, d['action'].upper(), d['fund'], float(d['amount']), d['date']))
-" 2>/dev/null
+PYEOF
     done < "$PORTFOLIO"
 }
 

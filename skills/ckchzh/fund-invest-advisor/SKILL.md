@@ -4,6 +4,8 @@ name: Fund Advisor
 description: "基金定投顾问。定投计算（复利+真实年化）、收益模拟、资产配置、再平衡建议、止盈策略、基金类型科普。. Use when you need fund advisor capabilities. Triggers on: fund advisor."
   基金投资顾问。基金筛选、定投策略、资产配置、风险评估、收益计算、再平衡建议。Fund investment advisor with screening, DCA strategy, asset allocation, rebalancing. 基金理财、定投计划、投资组合、资产配置。Use when making fund investment decisions.
 author: BytesAgain
+homepage: https://bytesagain.com
+source: https://github.com/bytesagain/ai-skills
 ---
 
 # fund-advisor
@@ -63,3 +65,7 @@ bash scripts/fund.sh strategy 稳健
 ---
 💬 Feedback & Feature Requests: https://bytesagain.com/feedback
 Powered by BytesAgain | bytesagain.com
+
+## Requirements
+- bash 4+
+- python3 (standard library only)
