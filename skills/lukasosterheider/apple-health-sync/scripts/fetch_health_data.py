@@ -18,13 +18,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 from urllib import error, request
+from config import load_effective_config, resolve_state_dir, resolve_user_paths, write_user_config
 
-SUPABASE_REGION = "eu-west-1"
-SUPABASE_GET_DATA_URL = "https://snpiylxajnxpklpwdtdg.supabase.co/functions/v1/get-data"
-SUPABASE_PUBLISHABLE_KEY = "sb_publishable_HW9XhDFQLrcPoGsbYIz7zg_FnFOePtQ"
-STATE_DIR = Path.home() / ".apple-health-sync"
-CONFIG_DIR = STATE_DIR / "config"
-SECRETS_DIR = CONFIG_DIR / "secrets"
 MAX_VALIDATION_DEPTH = 12
 MAX_VALIDATION_NODES = 20000
 MAX_DICT_KEYS = 256
@@ -37,19 +32,6 @@ DROP_VALUE = object()
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-
-
-def load_config(path: Path) -> Dict[str, Any]:
-    if not path.exists():
-        raise RuntimeError(f"Missing config file: {path}")
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
-def atomic_write_json(path: Path, payload: Dict[str, Any]) -> None:
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-    os.chmod(tmp, 0o600)
-    tmp.replace(path)
 
 
 def normalize_public_key_base64(value: str) -> str:
@@ -69,14 +51,14 @@ def public_key_base64_from_pem(public_key_pem: str) -> str:
     return body
 
 
-def http_post_json(url: str, payload: Dict[str, Any], timeout: int, apikey: str) -> Dict[str, Any]:
+def http_post_json(url: str, payload: Dict[str, Any], timeout: int, apikey: str, region: str) -> Dict[str, Any]:
     body = json.dumps(payload).encode("utf-8")
     req = request.Request(
         url=url,
         data=body,
         headers={
             "Content-Type": "application/json",
-            "x-region": SUPABASE_REGION,
+            "x-region": region,
             "apikey": apikey,
         },
         method="POST",
@@ -346,7 +328,7 @@ def migrate_legacy_health_samples(conn: sqlite3.Connection) -> None:
     legacy_rows = conn.execute(
         "select record_id, fetched_at, payload_json from health_samples"
     ).fetchall()
-    for record_id, fetched_at, payload_json in legacy_rows:
+    for user_id, fetched_at, payload_json in legacy_rows:
         try:
             payload = json.loads(payload_json)
             if not isinstance(payload, dict):
@@ -363,13 +345,13 @@ def migrate_legacy_health_samples(conn: sqlite3.Connection) -> None:
                       set data=excluded.data,
                           updated_at=excluded.updated_at
                     """,
-                    (record_id, date_key, serialized, fetched_at, fetched_at),
+                    (user_id, date_key, serialized, fetched_at, fetched_at),
                 )
         except Exception:
             continue
 
 
-def write_sqlite(sqlite_path: Path, record_id: str, fetched_at: str, data: Dict[str, Any]) -> None:
+def write_sqlite(sqlite_path: Path, user_id: str, fetched_at: str, data: Dict[str, Any]) -> None:
     sqlite_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(sqlite_path)
     try:
@@ -386,7 +368,7 @@ def write_sqlite(sqlite_path: Path, record_id: str, fetched_at: str, data: Dict[
                   set data=excluded.data,
                       updated_at=excluded.updated_at
                 """,
-                (record_id, date_key, serialized, fetched_at, fetched_at),
+                (user_id, date_key, serialized, fetched_at, fetched_at),
             )
         conn.commit()
     finally:
@@ -397,17 +379,6 @@ def write_ndjson(json_path: Path, envelope: Dict[str, Any]) -> None:
     json_path.parent.mkdir(parents=True, exist_ok=True)
     with json_path.open("a", encoding="utf-8") as file_handle:
         file_handle.write(json.dumps(envelope, separators=(",", ":")) + "\n")
-
-
-def run_custom_sink(command: str, envelope: Dict[str, Any]) -> None:
-    if not command.strip():
-        raise RuntimeError("storage=custom selected but custom sink command is empty.")
-    subprocess.run(
-        command,
-        shell=True,
-        input=(json.dumps(envelope) + "\n").encode("utf-8"),
-        check=True,
-    )
 
 
 def parse_args() -> argparse.Namespace:
@@ -422,32 +393,36 @@ def parse_args() -> argparse.Namespace:
         default="",
         help="Supabase publishable key for Edge Function header validation.",
     )
-    parser.add_argument("--record-id", default="")
+    parser.add_argument("--user-id", default="")
+    parser.add_argument("--record-id", default="", help=argparse.SUPPRESS)
     parser.add_argument("--private-key-path", default="")
     parser.add_argument("--public-key", default="")
     parser.add_argument(
         "--storage",
-        choices=("auto", "sqlite", "json", "custom"),
+        choices=("auto", "sqlite", "json"),
         default="auto",
     )
     parser.add_argument("--sqlite-path", default="")
     parser.add_argument("--json-path", default="")
-    parser.add_argument("--custom-sink-command", default="")
     parser.add_argument("--timeout-seconds", type=int, default=20)
     return parser.parse_args()
 
 
-def resolve_runtime(args: argparse.Namespace, config: Dict[str, Any]) -> Tuple[str, str, Path, str, str]:
-    function_url = str(config.get("supabase_get_data_url", "")).strip() or SUPABASE_GET_DATA_URL
-    record_id = args.record_id or config.get("record_id", "")
+def resolve_runtime(
+    args: argparse.Namespace,
+    config: Dict[str, Any],
+    paths: Dict[str, Path],
+) -> Tuple[str, str, Path, str, str]:
+    function_url = str(config.get("supabase_get_data_url", "")).strip()
+    user_id = args.user_id or args.record_id or config.get("user_id", "") or config.get("record_id", "")
     private_key_path = Path(
-        args.private_key_path or config.get("private_key_path", SECRETS_DIR / "private_key.pem")
+        args.private_key_path or config.get("private_key_path", paths["secrets_dir"] / "private_key.pem")
     ).expanduser()
-    algorithm = str(config.get("algorithm", "Ed25519"))
+    algorithm = str(config.get("algorithm", "RSA-2048"))
     public_key_base64 = normalize_public_key_base64(args.public_key or config.get("public_key_base64", ""))
 
     if not public_key_base64:
-        public_key_path = Path(config.get("public_key_path", CONFIG_DIR / "public_key.pem")).expanduser()
+        public_key_path = Path(config.get("public_key_path", paths["config_dir"] / "public_key.pem")).expanduser()
         if public_key_path.exists():
             public_key_base64 = public_key_base64_from_pem(public_key_path.read_text(encoding="utf-8"))
         else:
@@ -455,35 +430,37 @@ def resolve_runtime(args: argparse.Namespace, config: Dict[str, Any]) -> Tuple[s
                 "Missing public key. Set --public-key or config.public_key_base64/public_key_path."
             )
 
-    if not record_id:
-        raise RuntimeError("Missing record ID. Set --record-id or config.record_id.")
+    if not user_id:
+        raise RuntimeError("Missing user ID. Set --user-id or config.user_id.")
+    if not function_url:
+        raise RuntimeError("Missing app-owned get-data URL in scripts/config.py.")
     if not private_key_path.exists():
         raise RuntimeError(f"Missing private key file: {private_key_path}")
-    return function_url, record_id, private_key_path, algorithm, public_key_base64
+    return function_url, user_id, private_key_path, algorithm, public_key_base64
 
 
 def main() -> int:
     args = parse_args()
-    state_dir = STATE_DIR.expanduser().resolve()
-    if args.state_dir:
-        requested_dir = Path(args.state_dir).expanduser().resolve()
-        if requested_dir != state_dir:
-            print(f"Ignoring --state-dir={requested_dir}; using fixed path {state_dir}.")
-    config_path = CONFIG_DIR.expanduser().resolve() / "config.json"
-    config = load_config(config_path)
+    state_dir = resolve_state_dir(args.state_dir)
+    paths = resolve_user_paths(state_dir)
+    user_config: Dict[str, Any] = {}
+    config: Dict[str, Any] = {}
 
     try:
-        function_url, record_id, private_key_path, algorithm, public_key_base64 = resolve_runtime(args, config)
-        publishable_key = (
-            args.apikey
-            or str(config.get("supabase_publishable_key", "")).strip()
-            or SUPABASE_PUBLISHABLE_KEY
-        )
+        user_config, config = load_effective_config(state_dir)
+        function_url, user_id, private_key_path, algorithm, public_key_base64 = resolve_runtime(args, config, paths)
+        publishable_key = args.apikey or str(config.get("supabase_publishable_key", "")).strip()
+        region = str(config.get("supabase_region", "")).strip()
+        if not publishable_key:
+            raise RuntimeError("Missing app-owned publishable key in scripts/config.py or --apikey.")
+        if not region:
+            raise RuntimeError("Missing app-owned Supabase region in scripts/config.py.")
         challenge_response = http_post_json(
             function_url,
-            {"action": "issue_challenge", "id": record_id},
+            {"action": "issue_challenge", "id": user_id},
             args.timeout_seconds,
             publishable_key,
+            region,
         )
 
         challenge = challenge_response["challenge"]
@@ -494,13 +471,14 @@ def main() -> int:
             function_url,
             {
                 "action": "get_data",
-                "id": record_id,
+                "id": user_id,
                 "challengeId": challenge_id,
                 "signature": signature,
                 "public_key": public_key_base64,
             },
             args.timeout_seconds,
             publishable_key,
+            region,
         )
 
         encrypted_rows = data_response.get("data", [])
@@ -511,7 +489,7 @@ def main() -> int:
         sanitized_payload, validation_metrics = sanitize_decrypted_payload(decrypted_payload)
         fetched_at = now_iso()
         envelope = {
-            "record_id": record_id,
+            "user_id": user_id,
             "fetched_at": fetched_at,
             "payload": sanitized_payload,
             "row_count": len(encrypted_rows),
@@ -527,24 +505,23 @@ def main() -> int:
 
         if storage == "sqlite":
             sqlite_path = Path(args.sqlite_path or config.get("sqlite_path", state_dir / "health_data.db"))
-            write_sqlite(sqlite_path.expanduser(), record_id, fetched_at, sanitized_payload)
+            write_sqlite(sqlite_path.expanduser(), user_id, fetched_at, sanitized_payload)
         elif storage == "json":
-            json_path = Path(args.json_path or config.get("json_path", CONFIG_DIR / "health_data.ndjson"))
+            json_path = Path(args.json_path or config.get("json_path", paths["config_dir"] / "health_data.ndjson"))
             write_ndjson(json_path.expanduser(), envelope)
         else:
-            custom_command = args.custom_sink_command or config.get("custom_sink_command", "")
-            run_custom_sink(custom_command, envelope)
+            raise RuntimeError(f"Unsupported storage backend: {storage}")
 
-        config["last_fetch_at"] = fetched_at
-        config["last_fetch_status"] = "ok"
-        config["last_fetch_row_count"] = len(encrypted_rows)
-        config["last_validation_raw_days"] = validation_metrics["raw_days"]
-        config["last_validation_stored_days"] = validation_metrics["stored_days"]
-        config["last_validation_dropped_days"] = validation_metrics["dropped_days"]
-        atomic_write_json(config_path, config)
+        user_config["last_fetch_at"] = fetched_at
+        user_config["last_fetch_status"] = "ok"
+        user_config["last_fetch_row_count"] = len(encrypted_rows)
+        user_config["last_validation_raw_days"] = validation_metrics["raw_days"]
+        user_config["last_validation_stored_days"] = validation_metrics["stored_days"]
+        user_config["last_validation_dropped_days"] = validation_metrics["dropped_days"]
+        write_user_config(user_config, state_dir)
 
         print(
-            f"Fetch successful: record_id={record_id}, storage={storage}, "
+            f"Fetch successful: user_id={user_id}, storage={storage}, "
             f"rows={len(encrypted_rows)}, stored_days={validation_metrics['stored_days']}, "
             f"dropped_days={validation_metrics['dropped_days']}, fetched_at={fetched_at}"
         )
@@ -552,10 +529,11 @@ def main() -> int:
     except Exception as runtime_error:
         print(f"Error: {runtime_error}", file=sys.stderr)
         try:
-            config["last_fetch_at"] = now_iso()
-            config["last_fetch_status"] = "error"
-            config["last_fetch_error"] = str(runtime_error)
-            atomic_write_json(config_path, config)
+            if user_config:
+                user_config["last_fetch_at"] = now_iso()
+                user_config["last_fetch_status"] = "error"
+                user_config["last_fetch_error"] = str(runtime_error)
+                write_user_config(user_config, state_dir)
         except Exception:
             pass
         return 1

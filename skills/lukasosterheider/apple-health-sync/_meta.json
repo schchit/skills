@@ -3,11 +3,16 @@
   "slug": "apple-health-sync",
   "displayName": "Apple Health Sync",
   "latest": {
-    "version": "0.5.3",
-    "publishedAt": 1773335807420,
-    "commit": "https://github.com/openclaw/skills/commit/2c11b08be4762cd28156fa61c6244dd86c5ca50c"
+    "version": "0.7.2",
+    "publishedAt": 1773961115023,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.5.3",
+      "publishedAt": 1773335807420,
+      "commit": "https://github.com/openclaw/skills/commit/2c11b08be4762cd28156fa61c6244dd86c5ca50c"
+    },
     {
       "version": "0.5.2",
       "publishedAt": 1773249198618,
