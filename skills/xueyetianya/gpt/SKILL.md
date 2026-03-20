@@ -1,7 +1,7 @@
 ---
 name: gpt
-description: "Generate GPT API payloads for chat, embeddings, and fine-tuning. Estimate costs and batch requests."
-version: "3.2.0"
+description: "Generate GPT API request payloads. Use when building chat completions, embeddings, fine-tuning data, or estimating API costs."
+version: "3.4.0"
 author: BytesAgain
 homepage: https://bytesagain.com
 source: https://github.com/bytesagain/ai-skills
