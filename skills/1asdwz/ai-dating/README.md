@@ -39,9 +39,16 @@ dating-cli config path
 Install if missing (pick one):
 
 ```bash
-npm install -g dating-cli
+npm install -g dating-cli@latest
 # or
 bun install -g dating-cli
+```
+
+Update skill and CLI:
+
+```bash
+npx skills update
+npm install -g dating-cli@latest
 ```
 
 ## Standard Execution Flow
@@ -103,14 +110,11 @@ dating-cli task create \
   --preferred-character-text "kind, positive" \
   --preferred-ability-text "strong communication" \
   --intention "long-term relationship" \
-  --hobby-embedding-min-score 0.72 \
-  --character-embedding-min-score 0.70 \
-  --ability-embedding-min-score 0.68 \
-  --intention-embedding-min-score 0.70 \
   --preferred-contact-channel telegram
 ```
 
-For `task create`, omitted embedding min-score fields default to `0.1`.
+`--*-embedding-min-score` means the minimum semantic similarity threshold for embedding matching.  
+Default recommendation is to leave it unset; when omitted in `task create`, backend defaults to `0.1`.
 
 ### 4) Check Result and Reveal Contact
 

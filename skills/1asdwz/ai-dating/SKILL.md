@@ -4,7 +4,7 @@ description: "This skill enables dating and matchmaking workflows. Use it when a
 license: MIT
 metadata:
   author: 1asdwz
-  version: "1.1.5"
+  version: "1.2.3"
 ---
 
 # Ai Dating
@@ -27,9 +27,26 @@ When constructing `dating-cli` command arguments, use the same language as the u
 - Do not translate user-provided content unless the user explicitly requests translation.
 - Keep language style consistent across one command (for example, if the user speaks Chinese, prefer Chinese text values in string parameters).
 
+## Update Commands
+
+When users ask to update this skill or the CLI, run:
+
+```bash
+npx skills add 1asdwz/ai-dating
+npm install -g dating-cli@latest
+```
+
 ## Standard Execution Flow (AI Agent)
 
-1. Check CLI availability.
+
+
+1. Check skill and CLI availability.
+
+Update skill and CLI when needed:
+
+
+
+Then verify CLI:
 ```bash
 command -v dating-cli
 dating-cli --help
@@ -37,7 +54,7 @@ dating-cli --help
 
 If missing, install:
 ```bash
-npm install -g dating-cli
+npm install -g dating-cli@latest
 # or
 bun install -g dating-cli
 ```
@@ -93,8 +110,11 @@ dating-cli profile update \
   --other-contact "x=amy_xhs" \
   --other-contact "discord=amy#1234"
 ```
+  > **Note:** The parameters for `profile update`, `task create`, and `task update` are optional. For the sake of user experience, it is recommended not to force users to enter personal information on first use.
 
-5. Parse partner preferences and create a match task (full parameter example), Users do not need to fill in all fields - only provide the information they have available.
+5. To receive matching success notifications promptly, strongly recommend registering your email address. via `dating-cli profile update --email ...` .
+
+6. Parse partner preferences and create a match task (full parameter example), Users do not need to fill in all fields - only provide the information they have available.
 ```bash
 dating-cli task create \
   --task-name "Find partner in Hangzhou" \
@@ -111,15 +131,14 @@ dating-cli task create \
   --preferred-character-text "kind, positive" \
   --preferred-ability-text "strong communication" \
   --intention "long-term relationship" \
-  --hobby-embedding-min-score 0.72 \
-  --character-embedding-min-score 0.70 \
-  --ability-embedding-min-score 0.68 \
-  --intention-embedding-min-score 0.70 \
   --preferred-contact-channel telegram
 ```
-If any `--*-embedding-min-score` is omitted in `task create`, backend defaults it to `0.1`.
+`--*-embedding-min-score` means the minimum semantic similarity threshold for embedding matching.  
+Default recommendation is to leave it unset; when omitted in `task create`,  it is recommended to use `0.0`.
 
-6. If an unfinished `taskId` already exists and the user did not explicitly request a new task, update the existing task (full parameter example).
+> **Write API response note:** `task create` now returns the created task payload, including `taskId` and `taskName`.
+
+7. If an unfinished `taskId` already exists and the user did not explicitly request a new task, update the existing task (full parameter example).
 ```bash
 dating-cli task update 12345 \
   --task-name "Update criteria - Hangzhou/Shanghai" \
@@ -131,19 +150,17 @@ dating-cli task update 12345 \
   --preferred-character-text "independent, optimistic" \
   --preferred-ability-text "communication and collaboration" \
   --intention "serious relationship with marriage plan" \
-  --hobby-embedding-min-score 0.70 \
-  --character-embedding-min-score 0.70 \
-  --ability-embedding-min-score 0.65 \
-  --intention-embedding-min-score 0.68 \
   --preferred-contact-channel wechat
 ```
 
-7. Query task status (full parameter example).
+
+
+8. Query task status (full parameter example).
 ```bash
 dating-cli task get 12345
 ```
 
-8. Execute `check` to inspect match results (full parameter example, paginated).
+9. Execute `check` to inspect match results (full parameter example, paginated).
 ```bash
 dating-cli check 12345 --page 1
 ```
@@ -151,20 +168,20 @@ Each page returns 10 candidates. Use `--page` to fetch subsequent pages when nee
 `check` candidate items include `photoUrls` (user uploaded image URL array), which should be used when explaining and selecting candidates.
 If the result is `NO_RESULT_RETRY_NOW`, call `check` again as needed.  
 If the result is `MATCH_FOUND`, continue to contact reveal.
-Suggest users register email via `dating-cli profile update --email ...` so they can receive periodic match-growth reminders.
 
+  > **Note:** Candidates' Photos should be shown to users first. You should automatically select candidates that better meet the user's requirements, reducing the burden of user information.
 
-9. Select the best candidate from match results and reveal contact details (full parameter example).
+10. Select the best candidate from match results and reveal contact details (full parameter example).
 ```bash
 dating-cli reveal-contact 67890
 ```
 
-10. Submit review when needed (full parameter example).
+11. Submit review when needed (full parameter example).
 ```bash
 dating-cli review 67890 --rating 5 --comment "Good communication and aligned values"
 ```
 
-11. Optional commands (full parameter examples).
+12. Optional commands (full parameter examples).
 ```bash
 dating-cli task stop 12345
 dating-cli logout

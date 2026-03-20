@@ -1,13 +1,18 @@
 {
   "owner": "1asdwz",
   "slug": "ai-dating",
-  "displayName": "AI Dating  - Match New Friends & Find Old Friends",
+  "displayName": "AI Dating  - Making Friends or Finding a Partner",
   "latest": {
-    "version": "1.1.5",
-    "publishedAt": 1773482340441,
-    "commit": "https://github.com/openclaw/skills/commit/d28e213ae241815a095499ef8d66680139a7c779"
+    "version": "1.2.3",
+    "publishedAt": 1774003623824,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.1.5",
+      "publishedAt": 1773482340441,
+      "commit": "https://github.com/openclaw/skills/commit/d28e213ae241815a095499ef8d66680139a7c779"
+    },
     {
       "version": "1.1.4",
       "publishedAt": 1773482319359,
