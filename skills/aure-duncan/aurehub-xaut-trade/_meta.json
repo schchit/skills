@@ -3,11 +3,16 @@
   "slug": "aurehub-xaut-trade",
   "displayName": "xaut-trade",
   "latest": {
-    "version": "2.1.1",
-    "publishedAt": 1773619748279,
-    "commit": "https://github.com/openclaw/skills/commit/2aa9e07e1e5494dd0c656743cf917b89159ef361"
+    "version": "2.1.2",
+    "publishedAt": 1773743937179,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.1.1",
+      "publishedAt": 1773619748279,
+      "commit": "https://github.com/openclaw/skills/commit/2aa9e07e1e5494dd0c656743cf917b89159ef361"
+    },
     {
       "version": "2.0.1",
       "publishedAt": 1772898671116,
