@@ -3,9 +3,15 @@
   "slug": "zhuaxia",
   "displayName": "Zhuaxia",
   "latest": {
-    "version": "0.4.0",
-    "publishedAt": 1772958003104,
-    "commit": "https://github.com/openclaw/skills/commit/d8eec511789ea24e6b8f4659da11538b6fb03b8c"
+    "version": "0.4.1",
+    "publishedAt": 1773758006317,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.4.0",
+      "publishedAt": 1772958003104,
+      "commit": "https://github.com/openclaw/skills/commit/d8eec511789ea24e6b8f4659da11538b6fb03b8c"
+    }
+  ]
 }
