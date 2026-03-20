@@ -1,13 +1,18 @@
 {
   "owner": "jisuapi",
   "slug": "todayhistory",
-  "displayName": "历史上的今天 - Today in History",
+  "displayName": "Today in History - 历史上的今天",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773632250257,
-    "commit": "https://github.com/openclaw/skills/commit/60233a54959da94fa0989359d40d5e9332e1c8e8"
+    "version": "1.0.2",
+    "publishedAt": 1773727588119,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773632250257,
+      "commit": "https://github.com/openclaw/skills/commit/60233a54959da94fa0989359d40d5e9332e1c8e8"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773375006673,
