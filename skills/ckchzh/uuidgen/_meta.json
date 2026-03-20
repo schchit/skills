@@ -3,11 +3,16 @@
   "slug": "uuidgen",
   "displayName": "Uuidgen",
   "latest": {
-    "version": "1.0.6",
-    "publishedAt": 1773664284944,
-    "commit": "https://github.com/openclaw/skills/commit/633185ec0c00443fb5d815b136e8191fcd8269d2"
+    "version": "3.0.0",
+    "publishedAt": 1773916751622,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.6",
+      "publishedAt": 1773664284944,
+      "commit": "https://github.com/openclaw/skills/commit/633185ec0c00443fb5d815b136e8191fcd8269d2"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1773580000206,
