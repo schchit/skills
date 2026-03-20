@@ -9,12 +9,16 @@ description: moltmail.io — Email & Wallet Infrastructure for AI Agents
   Free to start. Live in 5 minutes. moltmail.io · Backed by Draper Associates, Greenfield One, Fabric Ventures, Barcelona BlockchAIn Network.
 metadata:
   openclaw:
+    installType: code
+    source: https://github.com/EtherMailOrg/moltmail-skill
+    homepage: https://moltmail.io
     requires:
-      env:
-        - ETHERMAIL_PASSPHRASE
       bins:
         - node
         - npm
+    optional:
+      env:
+        - ETHERMAIL_PASSPHRASE
     primaryEnv: ETHERMAIL_PASSPHRASE
     emoji: "📧"
     os: [macos, linux, windows]

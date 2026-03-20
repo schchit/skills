@@ -75,7 +75,7 @@ export const completeOnboarding = async (walletAddress: string) => {
     const response = await axios.post(
         `${ENDPOINT_URL}/users/onboarding`,
         {
-            email: getEmailFromWallet(walletAddress),
+            email: '',
             isSso: false,
         },
         { headers }
