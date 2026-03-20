@@ -1,5 +1,11 @@
 ---
 name: moss-voice-generator
+homepage: https://studio.mosi.cn
+metadata:
+  openclaw:
+    requires:
+      env: ["MOSI_TTS_API_KEY"]
+    primaryEnv: "MOSI_TTS_API_KEY"
 description: >
   MOSI Studio 指令式音色生成（moss-voice-generator）：
   用自然语言描述想要的音色风格，无需指定预设 voice_id，
@@ -70,7 +76,6 @@ bash ~/.openclaw/skills/moss-voice-generator/scripts/mosi_voice_generator.sh \
 --temperature       采样温度，控制随机性（默认: 1.5）
 --top-p             核采样阈值（默认: 0.6）
 --top-k             Top-K 采样（默认: 50）
---meta-info         返回性能指标（默认: false）
 --api-key, -k       覆盖 MOSI_TTS_API_KEY 环境变量
 ```
 
@@ -84,7 +89,7 @@ bash ~/.openclaw/skills/moss-voice-generator/scripts/mosi_voice_generator.sh \
 API Key 配置同 `mosi-tts` skill，读取 `MOSI_TTS_API_KEY` 环境变量。
 详见 `mosi-tts` skill 的"环境准备"章节。
 
-依赖：`curl`、`node`（均为基础环境自带）
+依赖：`curl`、`jq`、`base64`（均为标准 Unix 工具，通常已预装）
 
 ---
 
