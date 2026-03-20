@@ -3,9 +3,15 @@
   "slug": "bark-push",
   "displayName": "Bark Push",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1772782243141,
-    "commit": "https://github.com/openclaw/skills/commit/6f2562d368ebb9a73c47f76036470c622229edb4"
+    "version": "1.0.3",
+    "publishedAt": 1773675299704,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1772782243141,
+      "commit": "https://github.com/openclaw/skills/commit/6f2562d368ebb9a73c47f76036470c622229edb4"
+    }
+  ]
 }
