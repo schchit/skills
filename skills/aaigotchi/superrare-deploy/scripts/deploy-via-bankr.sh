@@ -24,7 +24,7 @@ RECEIPT_POLL_INTERVAL_SECONDS="${RECEIPT_POLL_INTERVAL_SECONDS:-5}"
 usage() {
   cat <<USAGE
 Usage:
-  ./scripts/deploy-via-bankr.sh --name <collection-name> --symbol <symbol> [--max-tokens <number>] [--chain mainnet|sepolia] [--factory <address>] [--broadcast] [--note <text>]
+  ./scripts/deploy-via-bankr.sh --name <collection-name> --symbol <symbol> [--max-tokens <number>] [--chain mainnet|sepolia|base|base-sepolia] [--factory <address>] [--broadcast] [--note <text>]
 USAGE
 }
 

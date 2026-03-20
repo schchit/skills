@@ -1,6 +1,6 @@
 ---
 name: superrare-deploy
-description: Deploy a SuperRare Sovereign ERC-721 collection on Ethereum via Bankr. Uses the official RARE factory createSovereignBatchMint path, dry-runs by default, and records auditable deploy receipts.
+description: Deploy a SuperRare Sovereign ERC-721 collection on Ethereum or Base via Bankr. Uses the official RARE factory createSovereignBatchMint path, dry-runs by default, and records auditable deploy receipts.
 homepage: https://github.com/aaigotchi/superrare-deploy
 metadata:
   openclaw:
@@ -15,6 +15,8 @@ metadata:
     optionalEnv:
       - ETH_MAINNET_RPC
       - ETH_SEPOLIA_RPC
+      - BASE_MAINNET_RPC
+      - BASE_SEPOLIA_RPC
       - SUPER_RARE_DEPLOY_CONFIG_FILE
       - DRY_RUN
       - BANKR_SUBMIT_TIMEOUT_SECONDS
@@ -42,7 +44,7 @@ Override with:
 - `SUPER_RARE_DEPLOY_CONFIG_FILE=/path/to/config.json`
 
 Expected keys:
-- `chain`: `mainnet` or `sepolia`
+- `chain`: `mainnet`, `sepolia`, `base`, or `base-sepolia`
 - `factoryAddress` (optional override)
 - `rpcUrl` (optional override)
 - `descriptionPrefix`
@@ -51,7 +53,7 @@ Expected keys:
 ## Defaults and safety
 
 - Dry-run is the default. Deployment only broadcasts with `--broadcast` or `DRY_RUN=0`.
-- Supported chains for RARE factory deployment are `mainnet` and `sepolia`.
+- Supported chains for RARE factory deployment are `mainnet`, `sepolia`, `base`, and `base-sepolia`.
 - If `--max-tokens` is omitted, the 2-argument factory call is used.
 - Successful broadcasts write receipts into `receipts/`.
 
@@ -72,9 +74,9 @@ cp config.example.json config.json
   --symbol "AAI"
 
 ./scripts/deploy-via-bankr.sh \
-  --name "AAi Genesis" \
+  --name "AAi Base Genesis" \
   --symbol "AAI" \
-  --chain sepolia \
+  --chain base \
   --broadcast
 ```
 

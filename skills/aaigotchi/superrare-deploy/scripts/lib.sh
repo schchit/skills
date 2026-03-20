@@ -50,8 +50,24 @@ apply_chain_defaults() {
       EXPLORER_TX_BASE="https://sepolia.etherscan.io/tx/"
       EXPLORER_ADDRESS_BASE="https://sepolia.etherscan.io/address/"
       ;;
+    base)
+      CHAIN="base"
+      CHAIN_ID=8453
+      FACTORY_ADDRESS="${CONFIG_FACTORY_ADDRESS:-0xf776204233bfb52ba0ddff24810cbdbf3dbf94dd}"
+      RPC_URL="${BASE_MAINNET_RPC:-${CONFIG_RPC_URL:-https://base-rpc.publicnode.com}}"
+      EXPLORER_TX_BASE="https://basescan.org/tx/"
+      EXPLORER_ADDRESS_BASE="https://basescan.org/address/"
+      ;;
+    base-sepolia)
+      CHAIN="base-sepolia"
+      CHAIN_ID=84532
+      FACTORY_ADDRESS="${CONFIG_FACTORY_ADDRESS:-0x2b181ae0f1aea6fed75591b04991b1a3f9868d51}"
+      RPC_URL="${BASE_SEPOLIA_RPC:-${CONFIG_RPC_URL:-https://base-sepolia-rpc.publicnode.com}}"
+      EXPLORER_TX_BASE="https://sepolia.basescan.org/tx/"
+      EXPLORER_ADDRESS_BASE="https://sepolia.basescan.org/address/"
+      ;;
     *)
-      err "Unsupported chain: ${1:-$CONFIG_CHAIN}. Use mainnet or sepolia."
+      err "Unsupported chain: ${1:-$CONFIG_CHAIN}. Use mainnet, sepolia, base, or base-sepolia."
       ;;
   esac
 }
