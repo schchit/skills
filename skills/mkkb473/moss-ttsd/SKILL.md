@@ -1,5 +1,11 @@
 ---
 name: moss-ttsd
+homepage: https://studio.mosi.cn
+metadata:
+  openclaw:
+    requires:
+      env: ["MOSI_TTS_API_KEY"]
+    primaryEnv: "MOSI_TTS_API_KEY"
 description: >
   MOSI Studio 双人对话合成（moss-ttsd）：将两个角色的对话文本合成为
   单段连续音频，两人声音自然交替。
@@ -96,7 +102,7 @@ bash ~/.openclaw/skills/moss-ttsd/scripts/mosi_dialogue.sh \
 API Key 配置同 `mosi-tts` skill，读取 `MOSI_TTS_API_KEY` 环境变量。
 详见 `mosi-tts` skill 的"环境准备"章节。
 
-依赖：`curl`、`node`（均为基础环境自带）
+依赖：`curl`、`jq`、`base64`（均为标准 Unix 工具，通常已预装）
 
 ---
 

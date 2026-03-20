@@ -3,9 +3,15 @@
   "slug": "moss-ttsd",
   "displayName": "MOSS TTSD 双人对话合成",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773391638714,
-    "commit": "https://github.com/openclaw/skills/commit/7b311272009d0a8ffb4e977e0af168f286f26bd0"
+    "version": "1.0.3",
+    "publishedAt": 1773717334337,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773391638714,
+      "commit": "https://github.com/openclaw/skills/commit/7b311272009d0a8ffb4e977e0af168f286f26bd0"
+    }
+  ]
 }
