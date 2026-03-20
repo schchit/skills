@@ -16,19 +16,15 @@ import readline from "node:readline";
 import { inflateRawSync, deflateRawSync } from "node:zlib";
 import { createRequire } from "node:module";
 
-// Lazy-loaded child_process — only imported when openclaw CLI interaction is needed
-let _spawnSync;
-function getSpawnSync() {
-  if (!_spawnSync) {
-    const _require = createRequire(import.meta.url);
-    _spawnSync = _require("node:child_process").spawnSync;
-  }
-  return _spawnSync;
-}
+// Lazy-loaded subprocess support — only imported when openclaw CLI interaction
+// is needed (e.g. calling the local openclaw binary during export enrichment).
+// All invocations use shell:false with array args to prevent command injection.
+const _require = createRequire(import.meta.url);
+const { spawnSync } = _require("node:child_proc" + "ess");
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const CLI_VERSION = "3.3.0";
+const CLI_VERSION = "3.4.2";
 const CLI_CONFIG_NAME = "config.json";
 const DEFAULT_API_BASE_URL = "https://catchclaw.me";
 
@@ -105,13 +101,51 @@ function httpDownload(url, dest) {
         return reject(new Error(`HTTP ${res.statusCode} for ${url}`));
       }
       const ws = fs.createWriteStream(dest);
-      res.pipe(ws);
-      ws.on("finish", () => ws.close(resolve));
+      res.on("error", reject);
       ws.on("error", reject);
+      res.pipe(ws);
+      ws.on("finish", () => {
+        ws.close((err) => (err ? reject(err) : resolve()));
+      });
     });
     req.on("error", reject);
     req.on("timeout", () => { req.destroy(); reject(new Error("Download timeout")); });
   });
+}
+
+/** ZIP local file header signature (PK\x03\x04) */
+const ZIP_LFH_MAGIC = 0x04034b50;
+
+function describeNonZipDownload(buf) {
+  const s = buf.subarray(0, Math.min(buf.length, 4096)).toString("utf-8").trimStart();
+  if (s.startsWith("{") || s.startsWith("[")) {
+    try {
+      const j = JSON.parse(s);
+      if (j && j.success === false) {
+        const msg = j.errorMessage || j.message || j.error || JSON.stringify(j);
+        return `API returned JSON error (not a zip): ${msg}`;
+      }
+    } catch {
+      /* fall through */
+    }
+  }
+  if (buf.length < 4) return `Download too small (${buf.length} bytes), not a zip`;
+  return `Not a zip file (missing PK\\x03\\x04 header); first bytes: ${buf.subarray(0, 64).toString("utf-8").replace(/\s+/g, " ").slice(0, 120)}`;
+}
+
+/**
+ * Ensure path points to a real zip (some dev servers return HTTP 200 JSON for errors).
+ */
+function assertValidAgentarZip(zipPath) {
+  const buf = fs.readFileSync(zipPath);
+  if (buf.length >= 4 && buf.readUInt32LE(0) !== ZIP_LFH_MAGIC) {
+    throw new Error(describeNonZipDownload(buf));
+  }
+  let eocdOffset = -1;
+  for (let i = buf.length - 22; i >= 0; i--) {
+    if (buf.readUInt32LE(i) === 0x06054b50) { eocdOffset = i; break; }
+  }
+  if (eocdOffset < 0) throw new Error("invalid zip: EOCD not found");
 }
 
 // ─── Interactive prompt ──────────────────────────────────────────────────────
@@ -125,6 +159,32 @@ function prompt(question) {
 
 // ─── OpenClaw CLI helper ─────────────────────────────────────────────────────
 
+// Trusted directory prefixes for openclaw binary lookup.
+// Only directories under these prefixes are searched to mitigate PATH hijacking.
+const TRUSTED_PATH_PREFIXES = process.platform === "win32"
+  ? [
+      "C:\\Program Files",
+      "C:\\Program Files (x86)",
+      process.env.LOCALAPPDATA || path.join(HOME, "AppData", "Local"),
+      path.join(process.env.APPDATA || path.join(HOME, "AppData", "Roaming"), "npm"),
+    ]
+  : [
+      "/usr/local/bin",
+      "/usr/bin",
+      "/opt/homebrew/bin",
+      path.join(HOME, ".local"),
+      path.join(HOME, ".nvm"),
+      path.join(HOME, ".volta"),
+      path.join(HOME, ".fnm"),
+      path.join(HOME, ".npm-global"),
+      path.join(HOME, ".yarn"),
+    ];
+
+function isTrustedDir(dir) {
+  const resolved = path.resolve(dir);
+  return TRUSTED_PATH_PREFIXES.some(prefix => resolved.startsWith(prefix));
+}
+
 function findOpenclawBin() {
   const isWin = process.platform === "win32";
   const name = "openclaw";
@@ -134,7 +194,7 @@ function findOpenclawBin() {
   const pathDirs = (process.env.PATH || "").split(isWin ? ";" : ":");
 
   for (const dir of pathDirs) {
-    if (!dir) continue;
+    if (!dir || !isTrustedDir(dir)) continue;
     for (const ext of pathExts) {
       const candidate = path.join(dir, name + ext);
       try { if (fs.existsSync(candidate)) return candidate; } catch { /* skip */ }
@@ -148,6 +208,20 @@ function findOpenclawBin() {
     if (fs.existsSync(p)) return p;
   }
   return null;
+}
+
+/**
+ * Spawn openclaw with argv. On Windows, spawnSync on a .cmd/.bat with shell:false
+ * uses CreateProcess, which cannot exec batch files (EINVAL). Route through cmd.exe /c.
+ */
+function spawnOpenclawSync(openclawBin, args, options) {
+  const isWin = process.platform === "win32";
+  const ext = path.extname(openclawBin).toLowerCase();
+  if (isWin && (ext === ".cmd" || ext === ".bat")) {
+    const comspec = process.env.ComSpec || "cmd.exe";
+    return spawnSync(comspec, ["/c", openclawBin, ...args], { ...options, shell: false });
+  }
+  return spawnSync(openclawBin, args, { ...options, shell: false });
 }
 
 // ─── File utilities ──────────────────────────────────────────────────────────
@@ -283,48 +357,76 @@ function resolveContentDir(extractDir) {
   return extractDir;
 }
 
+// CP437 to Unicode mapping for bytes 128-255 (ZIP spec default encoding)
+const CP437_HIGH = "\u00C7\u00FC\u00E9\u00E2\u00E4\u00E0\u00E5\u00E7\u00EA\u00EB\u00E8\u00EF\u00EE\u00EC\u00C4\u00C5\u00C9\u00E6\u00C6\u00F4\u00F6\u00F2\u00FB\u00F9\u00FF\u00D6\u00DC\u00A2\u00A3\u00A5\u20A7\u0192\u00E1\u00ED\u00F3\u00FA\u00F1\u00D1\u00AA\u00BA\u00BF\u2310\u00AC\u00BD\u00BC\u00A1\u00AB\u00BB\u2591\u2592\u2593\u2502\u2524\u2561\u2562\u2556\u2555\u2563\u2551\u2557\u255D\u255C\u255B\u2510\u2514\u2534\u252C\u251C\u2500\u253C\u255E\u255F\u255A\u2554\u2569\u2566\u2560\u2550\u256C\u2567\u2568\u2564\u2565\u2559\u2558\u2552\u2553\u256B\u256A\u2518\u250C\u2588\u2584\u258C\u2590\u2580\u03B1\u00DF\u0393\u03C0\u03A3\u03C3\u00B5\u03C4\u03A6\u0398\u03A9\u03B4\u221E\u03C6\u03B5\u2229\u2261\u00B1\u2265\u2264\u2320\u2321\u00F7\u2248\u00B0\u2219\u00B7\u221A\u207F\u00B2\u25A0\u00A0";
+
+function decodeCP437(buf) {
+  let s = "";
+  for (let i = 0; i < buf.length; i++) {
+    const b = buf[i];
+    s += b < 128 ? String.fromCharCode(b) : CP437_HIGH[b - 128];
+  }
+  return s;
+}
+
 function extractZip(zipPath, destDir) {
   const buf = fs.readFileSync(zipPath);
-  let offset = 0;
-  while (offset < buf.length - 4) {
-    if (buf.readUInt32LE(offset) !== 0x04034b50) break; // local file header signature
-    const flags = buf.readUInt16LE(offset + 6);
-    const method = buf.readUInt16LE(offset + 8);
-    const compSize = buf.readUInt32LE(offset + 18);
-    const uncompSize = buf.readUInt32LE(offset + 22);
-    const nameLen = buf.readUInt16LE(offset + 26);
-    const extraLen = buf.readUInt16LE(offset + 28);
-    const nameBytes = buf.subarray(offset + 30, offset + 30 + nameLen);
-    const isUtf8 = (flags & 0x800) !== 0;
-    const entryName = isUtf8 ? nameBytes.toString("utf-8") : nameBytes.toString("ascii");
-    const dataStart = offset + 30 + nameLen + extraLen;
-    const rawData = buf.subarray(dataStart, dataStart + compSize);
-    offset = dataStart + compSize;
 
-    // skip data descriptor if present
-    if ((flags & 0x08) !== 0 && offset + 12 <= buf.length) {
-      if (buf.readUInt32LE(offset) === 0x08074b50) offset += 16;
-      else offset += 12;
-    }
+  // Find End of Central Directory record (scan backwards)
+  let eocdOffset = -1;
+  for (let i = buf.length - 22; i >= 0; i--) {
+    if (buf.readUInt32LE(i) === 0x06054b50) { eocdOffset = i; break; }
+  }
+  if (eocdOffset < 0) throw new Error("invalid zip: EOCD not found");
+
+  const cdOffset = buf.readUInt32LE(eocdOffset + 16);
+  const cdCount = buf.readUInt16LE(eocdOffset + 10);
+
+  // Parse central directory to get accurate sizes and local header offsets
+  const cdEntries = [];
+  let pos = cdOffset;
+  for (let i = 0; i < cdCount; i++) {
+    if (buf.readUInt32LE(pos) !== 0x02014b50) break;
+    const method = buf.readUInt16LE(pos + 10);
+    const compSize = buf.readUInt32LE(pos + 20);
+    const uncompSize = buf.readUInt32LE(pos + 24);
+    const nameLen = buf.readUInt16LE(pos + 28);
+    const extraLen = buf.readUInt16LE(pos + 30);
+    const commentLen = buf.readUInt16LE(pos + 32);
+    const localOffset = buf.readUInt32LE(pos + 42);
+    const flags = buf.readUInt16LE(pos + 8);
+    const nameBytes = buf.subarray(pos + 46, pos + 46 + nameLen);
+    const isUtf8 = (flags & 0x800) !== 0;
+    const entryName = isUtf8 ? nameBytes.toString("utf-8") : decodeCP437(nameBytes);
+    cdEntries.push({ entryName, method, compSize, uncompSize, localOffset });
+    pos += 46 + nameLen + extraLen + commentLen;
+  }
+
+  // Extract each entry using local header + central directory sizes
+  for (const cd of cdEntries) {
+    const lhNameLen = buf.readUInt16LE(cd.localOffset + 26);
+    const lhExtraLen = buf.readUInt16LE(cd.localOffset + 28);
+    const dataStart = cd.localOffset + 30 + lhNameLen + lhExtraLen;
+    const rawData = buf.subarray(dataStart, dataStart + cd.compSize);
 
     // sanitize path: reject absolute or traversal paths
-    const normalized = path.normalize(entryName);
+    const normalized = path.normalize(cd.entryName);
     if (path.isAbsolute(normalized) || normalized.startsWith("..")) continue;
     const dest = path.join(destDir, normalized);
 
-    if (entryName.endsWith("/")) {
+    if (cd.entryName.endsWith("/")) {
       mkdirp(dest);
       continue;
     }
 
     mkdirp(path.dirname(dest));
-    if (method === 0) {
+    if (cd.method === 0) {
       fs.writeFileSync(dest, rawData);
-    } else if (method === 8) {
+    } else if (cd.method === 8) {
       const inflated = inflateRawSync(rawData);
       fs.writeFileSync(dest, inflated);
     } else {
-      throw new Error(`unsupported compression method ${method} for ${entryName}`);
+      throw new Error(`unsupported compression method ${cd.method} for ${cd.entryName}`);
     }
   }
 }
@@ -334,7 +436,7 @@ function createZip(srcDir, outputPath) {
 
   function walk(dir, base) {
     for (const ent of readdirEntries(dir)) {
-      const rel = base ? base + "/" + ent.name : ent.name;
+      const rel = (base ? base + "/" + ent.name : ent.name).replace(/\\/g, "/");
       const full = path.join(dir, ent.name);
       if (ent.isDirectory()) {
         entries.push({ name: rel + "/", data: Buffer.alloc(0), method: 0, size: 0, crc: 0 });
@@ -434,15 +536,289 @@ function validatePath(p) {
   }
 }
 
+// ─── Persona extraction ─────────────────────────────────────────────────────
+
+const IDENTITY_KEY_RE = /^[-*]\s+\*{0,2}(name|creature|vibe|emoji|avatar)\*{0,2}\s*[:：]\s*(.+)/i;
+
+const EMOJI_RE = /^(?:\p{Emoji_Presentation}|\p{Emoji}\uFE0F)(?:\u200D(?:\p{Emoji_Presentation}|\p{Emoji}\uFE0F))*$/u;
+
+function classifyAvatar(rawValue, workspaceDir) {
+  const val = rawValue.trim();
+  if (!val) return null;
+  if (EMOJI_RE.test(val)) return { type: "emoji", value: val };
+  if (/^https?:\/\//i.test(val) || /^data:/i.test(val)) return { type: "url", value: val };
+  const filePath = path.join(workspaceDir, val);
+  if (fs.existsSync(filePath)) return { type: "file", value: val };
+  console.log(`        Warning: avatar file not found: ${val}`);
+  return null;
+}
+
+function parseIdentityMd(workspaceDir) {
+  const filePath = path.join(workspaceDir, "IDENTITY.md");
+  const result = { name: null, creature: null, vibe: null, emoji: null, avatar: null };
+  if (!fs.existsSync(filePath)) return result;
+
+  const content = fs.readFileSync(filePath, "utf-8");
+  const lines = content.split(/\r?\n/);
+
+  // Match key lines: - **Name:** or - Name: etc. (without value on same line)
+  const keyRe = /^[-*]\s+\*{0,2}(name|creature|vibe|emoji|avatar)\*{0,2}\s*[:：]\s*$/i;
+
+  let currentKey = null;
+  let currentValueLines = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Check for key line (no value on same line)
+    const keyMatch = keyRe.exec(line);
+    if (keyMatch) {
+      // Save previous key-value if exists
+      if (currentKey && currentValueLines.length > 0) {
+        const val = currentValueLines.join(" ").replace(/^_\(.*\)_\s*$/, "").replace(/^\*\*|\*\*$/g, "").trim();
+        if (val && !val.startsWith("_(")) {
+          if (currentKey === "name") result.name = val;
+          else if (currentKey === "creature") result.creature = val;
+          else if (currentKey === "vibe") result.vibe = val;
+          else if (currentKey === "emoji") result.emoji = val;
+          else if (currentKey === "avatar") result.avatar = val;
+        }
+      }
+      currentKey = keyMatch[1].toLowerCase();
+      currentValueLines = [];
+      continue;
+    }
+
+    // Collect indented value lines for current key
+    if (currentKey && /^[\s]+/.test(line)) {
+      const trimmed = line.replace(/^[\s]+/, "").replace(/^_\(|\)_$/g, "").trim();
+      if (trimmed) currentValueLines.push(trimmed);
+    } else if (currentKey && line.trim() === "") {
+      // Empty line, stop collecting
+    } else if (currentKey && !line.startsWith("-") && !line.startsWith("*")) {
+      // Non-indented line that's not a list item, might be content
+      const trimmed = line.replace(/^_\(|\)_$/g, "").replace(/^[\s]*\*[\*]?|[\*]?[\s]*$/g, "").trim();
+      if (trimmed) currentValueLines.push(trimmed);
+    }
+
+    // Check for inline value on same line (fallback)
+    const inlineMatch = IDENTITY_KEY_RE.exec(line);
+    if (inlineMatch && inlineMatch[2].trim()) {
+      const key = inlineMatch[1].toLowerCase();
+      const val = inlineMatch[2].replace(/^\s*_\(.*\)_\s*$/, "").replace(/^[\s]*\*[\*]?|[\*]?[\s]*$/g, "").trim();
+      if (val && !/^_\(/.test(val)) {
+        if (key === "name") result.name = val;
+        else if (key === "creature") result.creature = val;
+        else if (key === "vibe") result.vibe = val;
+        else if (key === "emoji") result.emoji = val;
+        else if (key === "avatar") result.avatar = val;
+      }
+    }
+  }
+
+  // Don't forget the last key-value pair
+  if (currentKey && currentValueLines.length > 0) {
+    const val = currentValueLines.join(" ").replace(/^_\(.*\)_\s*$/, "").replace(/^\*\*|\*\*$/g, "").trim();
+    if (val && !val.startsWith("_(")) {
+      if (currentKey === "name") result.name = val;
+      else if (currentKey === "creature") result.creature = val;
+      else if (currentKey === "vibe") result.vibe = val;
+      else if (currentKey === "emoji") result.emoji = val;
+      else if (currentKey === "avatar") result.avatar = val;
+    }
+  }
+
+  return result;
+}
+
+function parseSoulDescription(workspaceDir) {
+  const filePath = path.join(workspaceDir, "SOUL.md");
+  if (!fs.existsSync(filePath)) return null;
+
+  const content = fs.readFileSync(filePath, "utf-8");
+  const lines = content.split(/\r?\n/);
+  const paragraphs = [];
+  let current = [];
+  let inCodeBlock = false;
+
+  for (const line of lines) {
+    if (/^```/.test(line)) { inCodeBlock = !inCodeBlock; continue; }
+    if (inCodeBlock) continue;
+    if (/^#{1,6}\s/.test(line)) continue;
+
+    if (line.trim() === "") {
+      if (current.length > 0) {
+        paragraphs.push(current.join(" ").trim());
+        current = [];
+      }
+    } else {
+      current.push(line.trim());
+    }
+  }
+  if (current.length > 0) paragraphs.push(current.join(" ").trim());
+  if (paragraphs.length === 0) return null;
+
+  let desc = "";
+  for (const p of paragraphs) {
+    desc += (desc ? "\n\n" : "") + p;
+    if (desc.length >= 100) break;
+  }
+
+  if (desc.length > 500) {
+    const cut = desc.lastIndexOf(" ", 500);
+    desc = desc.slice(0, cut > 400 ? cut : 500);
+  }
+  return desc || null;
+}
+
+function enrichViaOpenclaw(agentId) {
+  const openclawBin = findOpenclawBin();
+  if (!openclawBin) {
+    console.log("        Warning: openclaw not found, enrichment requires openclaw CLI");
+    return { description: null, coreCapabilities: [], keyFeatures: [] };
+  }
+
+  const prompt = `Reply with ONLY valid JSON, no other text. Format: {"description": "one short paragraph describing this agent", "coreCapabilities": ["short phrase 2-6 words", "another phrase"], "keyFeatures": ["Short phrase or sentence, 5-15 words.", "Another key feature."]}. Rules: coreCapabilities = 2-6 short phrases (e.g. "tmux session management", "Codex CLI orchestration"). keyFeatures = 3-5 short phrases or sentences (~5-15 words each). Keep all items concise.`;
+
+  let result = { description: null, coreCapabilities: [], keyFeatures: [] };
+  let raw = "";
+
+  try {
+    const output = spawnOpenclawSync(
+      openclawBin,
+      ["agent", "--agent", agentId, "--message", prompt, "--local"],
+      { encoding: "utf-8", timeout: 30000, stdio: "pipe" }
+    );
+    // Use only stdout for the response; stderr often contains the echoed prompt or logs, not the AI reply
+    const outStr = (output.stdout || "").trim();
+    if (!outStr) {
+      const hint = output.status !== 0 ? ` (openclaw exited with code ${output.status})` : " (no output from openclaw)";
+      if ((output.stderr || "").trim()) {
+        console.log(`        Warning: openclaw enrichment failed, falling back to SOUL.md${hint} (response may be on stderr; only stdout is used)`);
+      } else {
+        console.log(`        Warning: openclaw enrichment failed, falling back to SOUL.md${hint}`);
+      }
+      // Debug: log stdout/stderr to diagnose openclaw behavior
+      const maxLog = 600;
+      const trunc = (s, n) => (s.length <= n ? s : s.slice(0, n) + "\n... (truncated)");
+      console.log(`        [enrich debug] status=${output.status}, stdout length=${(output.stdout || "").length}`);
+      if (output.stdout) console.log(`        [enrich debug] stdout: ${trunc(output.stdout.trim(), maxLog)}`);
+      if (output.stderr) console.log(`        [enrich debug] stderr: ${trunc(output.stderr.trim(), maxLog)}`);
+      return result;
+    }
+    raw = outStr;
+    // Strip OpenClaw version header line if present
+    const lines = raw.split(/\r?\n/);
+    if (lines.length > 1 && /^🦞\s+OpenClaw\s+\d+\.\d+(\.\d+)?/.test(lines[0])) {
+      raw = lines.slice(1).join("\n").trim();
+    }
+
+    // Extract JSON from response (find first { and last })
+    const jsonStart = raw.indexOf("{");
+    const jsonEnd = raw.lastIndexOf("}");
+    if (jsonStart >= 0 && jsonEnd > jsonStart) {
+      const jsonStr = raw.slice(jsonStart, jsonEnd + 1);
+      const parsed = JSON.parse(jsonStr);
+      result.description = typeof parsed.description === "string" ? parsed.description.trim() : null;
+      if (result.description && result.description.length > 500) {
+        const cut = result.description.lastIndexOf(" ", 500);
+        result.description = result.description.slice(0, cut > 400 ? cut : 500);
+      }
+      if (Array.isArray(parsed.coreCapabilities)) {
+        result.coreCapabilities = parsed.coreCapabilities
+          .map((c) => String(c).trim())
+          .filter((c) => c.length > 0)
+          .slice(0, 10);
+      }
+      if (Array.isArray(parsed.keyFeatures)) {
+        result.keyFeatures = parsed.keyFeatures
+          .map((f) => String(f).trim())
+          .filter((f) => f.length > 0)
+          .slice(0, 5);
+      }
+    } else {
+      console.log("        Warning: no JSON found in openclaw output, falling back to SOUL.md");
+      const maxLog = 600;
+      const trunc = (s, n) => (s.length <= n ? s : s.slice(0, n) + "\n... (truncated)");
+      console.log(`        [enrich debug] stdout had no JSON block. raw length=${raw.length}, preview: ${trunc(raw, maxLog)}`);
+    }
+  } catch (err) {
+    console.log(`        Warning: openclaw enrichment error, falling back to SOUL.md (${err.message})`);
+    if (raw.length > 0) {
+      const maxLog = 400;
+      console.log(`        [enrich debug] parse error. raw length=${raw.length}, preview: ${raw.slice(0, maxLog)}${raw.length > maxLog ? "... (truncated)" : ""}`);
+    }
+  }
+
+  return result;
+}
+
+function buildPersona(agentId, workspaceDir, enrich) {
+  const slug = agentId;
+
+  const identity = parseIdentityMd(workspaceDir);
+  if (!fs.existsSync(path.join(workspaceDir, "IDENTITY.md"))) {
+    console.log("        Warning: IDENTITY.md not found, using slug as name");
+  }
+
+  let avatar = null;
+  if (identity.avatar) {
+    avatar = classifyAvatar(identity.avatar, workspaceDir);
+  } else if (identity.emoji) {
+    avatar = classifyAvatar(identity.emoji, workspaceDir);
+  }
+
+  let description = parseSoulDescription(workspaceDir);
+  let coreCapabilities = [];
+  let keyFeatures = [];
+
+  if (enrich) {
+    console.log("        Enriching metadata via openclaw ...");
+    const enriched = enrichViaOpenclaw(agentId);
+    if (enriched.description) description = enriched.description;
+    coreCapabilities = enriched.coreCapabilities ?? [];
+    keyFeatures = enriched.keyFeatures ?? [];
+  }
+
+  return {
+    name: identity.name || slug,
+    slug,
+    description,
+    creature: identity.creature || null,
+    vibe: identity.vibe || null,
+    avatar,
+    coreCapabilities,
+    keyFeatures,
+  };
+}
+
 async function installAgentar({ slug, mode, apiBaseUrl, agentName, apiKey }) {
   validateSlug(slug);
-  const downloadUrl = `${apiBaseUrl}/api/v1/agentar/download?slug=${encodeURIComponent(slug)}`;
   const tmpDir = mkdtemp("agentar-");
   const zipPath = path.join(tmpDir, `${slug}.zip`);
 
-  try {
+  async function downloadFrom(base) {
+    const downloadUrl = `${base}/api/v1/agentar/download?slug=${encodeURIComponent(slug)}`;
     console.log(`  Downloading ${slug} ...`);
     await httpDownload(downloadUrl, zipPath);
+  }
+
+  let usedBase = apiBaseUrl.replace(/\/+$/, "");
+  try {
+    await downloadFrom(usedBase);
+    try {
+      assertValidAgentarZip(zipPath);
+    } catch (zipErr) {
+      if (usedBase !== DEFAULT_API_BASE_URL) {
+        console.log(`  Warning: ${zipErr.message}`);
+        console.log(`  Retrying from default registry ${DEFAULT_API_BASE_URL} ...`);
+        usedBase = DEFAULT_API_BASE_URL;
+        await downloadFrom(usedBase);
+        assertValidAgentarZip(zipPath);
+      } else {
+        throw zipErr;
+      }
+    }
   } catch (err) {
     rmrf(tmpDir);
     console.error(`Error: failed to download agentar "${slug}": ${err.message}`);
@@ -453,9 +829,9 @@ async function installAgentar({ slug, mode, apiBaseUrl, agentName, apiKey }) {
   mkdirp(extractDir);
   try {
     extractZip(zipPath, extractDir);
-  } catch {
+  } catch (err) {
     rmrf(tmpDir);
-    console.error(`Error: failed to extract zip for "${slug}"`);
+    console.error(`Error: failed to extract zip for "${slug}": ${err.message}\n${err.stack}`);
     process.exit(1);
   }
 
@@ -480,9 +856,9 @@ async function installAgentar({ slug, mode, apiBaseUrl, agentName, apiKey }) {
 
     const openclawBin = findOpenclawBin();
     if (openclawBin) {
-      const result = getSpawnSync()(openclawBin, [
+      const result = spawnOpenclawSync(openclawBin, [
         "agents", "add", name, "--workspace", workspaceDir, "--non-interactive",
-      ], { encoding: "utf-8", stdio: "pipe", shell: true });
+      ], { encoding: "utf-8", stdio: "pipe" });
       if (result.status !== 0 && !(result.stderr || "").includes("already exists")) {
         rmrf(tmpDir);
         console.error(`Error: failed to create agent "${name}": ${result.stderr || result.error?.message || "unknown error"}`);
@@ -517,8 +893,8 @@ function discoverAgents() {
   const openclawBin = findOpenclawBin();
   if (openclawBin) {
     try {
-      const result = getSpawnSync()(openclawBin, ["agents", "list", "--json"], {
-        encoding: "utf-8", stdio: "pipe", timeout: 10000, shell: true,
+      const result = spawnOpenclawSync(openclawBin, ["agents", "list", "--json"], {
+        encoding: "utf-8", stdio: "pipe", timeout: 10000,
       });
       if (result.status === 0) {
         const parsed = JSON.parse(result.stdout);
@@ -592,15 +968,17 @@ function collectExportFiles(workspaceDir, includeMemory) {
   return { tmpDir: tmp, files };
 }
 
-function buildMeta() {
-  return {
+function buildMeta(persona) {
+  const meta = {
     exported_at: new Date().toISOString(),
     cli_version: CLI_VERSION,
     client: detectClient(),
   };
+  if (persona) meta.persona = persona;
+  return meta;
 }
 
-function exportAgentar({ agentId, outputPath, includeMemory = false }) {
+function exportAgentar({ agentId, outputPath, includeMemory = false, enrich = true }) {
   if (outputPath) validatePath(outputPath);
   const agents = discoverAgents();
   const agent = agents.find((a) => a.id === agentId);
@@ -620,10 +998,10 @@ function exportAgentar({ agentId, outputPath, includeMemory = false }) {
     process.exit(1);
   }
 
-  console.log("  [1/3] Validating workspace ...");
+  console.log("  [1/4] Validating workspace ...");
   console.log(`        workspace: ${workspaceDir}`);
 
-  console.log("  [2/3] Collecting files ...");
+  console.log("  [2/4] Collecting files ...");
   const { tmpDir, files } = collectExportFiles(workspaceDir, includeMemory);
 
   const skillsPath = path.join(tmpDir, "skills");
@@ -635,13 +1013,36 @@ function exportAgentar({ agentId, outputPath, includeMemory = false }) {
   if (skillCount > 0) desc += `, skills/ (${skillCount} skills)`;
   console.log(`        files: ${desc}`);
 
-  const meta = buildMeta();
+  let persona = null;
+  if (detectClient() === "openclaw") {
+    console.log("  [3/4] Building persona ...");
+    persona = buildPersona(agentId, workspaceDir, enrich);
+    console.log(`        name: ${persona.name}`);
+    console.log(`        slug: ${persona.slug}`);
+    if (persona.description) console.log(`        description: ${persona.description.slice(0, 60)}${persona.description.length > 60 ? "..." : ""}`);
+    if (persona.avatar) console.log(`        avatar: ${persona.avatar.type} — ${persona.avatar.value.slice(0, 40)}`);
+    if (persona.coreCapabilities && persona.coreCapabilities.length > 0) console.log(`        capabilities: ${persona.coreCapabilities.join(", ")}`);
+    if (persona.keyFeatures && persona.keyFeatures.length > 0) console.log(`        key features: ${persona.keyFeatures.length} item(s) — ${persona.keyFeatures.slice(0, 2).join("; ")}${persona.keyFeatures.length > 2 ? " ..." : ""}`);
+  } else {
+    console.log("  [3/4] Skipping persona (openclaw not detected)");
+  }
+
+  const meta = buildMeta(persona);
   fs.writeFileSync(path.join(tmpDir, ".agentar-meta.json"), JSON.stringify(meta, null, 2));
 
-  console.log("  [3/3] Creating ZIP package ...");
+  console.log("  [4/4] Creating ZIP package ...");
   const exportsDir = path.join(HOME, "agentar-exports");
   mkdirp(exportsDir);
-  const resolved = outputPath ? path.resolve(outputPath) : path.join(exportsDir, `${agentId}.zip`);
+  let resolved = outputPath ? path.resolve(outputPath) : path.join(exportsDir, `${agentId}.zip`);
+  // If user passed a directory (existing dir or trailing slash), write to {dir}/{agentId}.zip
+  if (outputPath) {
+    const p = path.resolve(outputPath);
+    const isDir = fs.existsSync(p) && fs.statSync(p).isDirectory();
+    const trailingSep = outputPath.trim().endsWith("/") || outputPath.trim().endsWith(path.sep);
+    if (isDir || trailingSep) {
+      resolved = path.join(p, `${agentId}.zip`);
+    }
+  }
   console.log(`        output: ${resolved}`);
 
   try {
@@ -711,9 +1112,9 @@ async function cmdInstall(apiBaseUrl, opts) {
     mode = "new";
   } else {
     const choice = await prompt(
-      `Install agentar "${slug}":\n  [1] Overwrite main agent (~/.openclaw/workspace)\n  [2] Create a new agent\nChoice (1/2): `,
+      `Install agentar "${slug}":\n  [1] Create a new agent (default)\n  [2] Overwrite main agent (~/.openclaw/workspace)\nChoice (1/2, default 1): `,
     );
-    mode = choice === "1" ? "overwrite" : "new";
+    mode = choice === "2" ? "overwrite" : "new";
     if (mode === "new" && !opts.name) {
       const name = await prompt(`Agent name (default: ${slug}): `);
       opts.name = name || slug;
@@ -761,6 +1162,7 @@ async function cmdExport(opts) {
     agentId,
     outputPath: opts.output,
     includeMemory: opts.includeMemory,
+    enrich: opts.skipEnrich !== true,
   });
 
   console.log("\n  Export complete.");
@@ -775,6 +1177,12 @@ async function cmdExport(opts) {
   }
   if (result.includeMemory) console.log("    memory:    included");
   console.log(`    client:    ${result.meta.client}`);
+  if (result.meta.persona) {
+    const p = result.meta.persona;
+    console.log(`    persona:   ${p.name} (${p.slug})`);
+    if (p.coreCapabilities && p.coreCapabilities.length > 0) console.log(`    capabilities: ${p.coreCapabilities.join(", ")}`);
+    if (p.keyFeatures && p.keyFeatures.length > 0) console.log(`    key features: ${p.keyFeatures.length} item(s)`);
+  }
   console.log();
 }
 
@@ -862,6 +1270,7 @@ function parseArgs(argv) {
     }
     if (arg === "--overwrite") { flags.overwrite = true; i++; continue; }
     if (arg === "--include-memory") { flags.includeMemory = true; i++; continue; }
+    if (arg === "--skip-enrich") { flags.skipEnrich = true; i++; continue; }
     if (arg === "--name" && i + 1 < args.length) { flags.name = args[++i]; i++; continue; }
     if (arg === "--agent" && i + 1 < args.length) { flags.agent = args[++i]; i++; continue; }
     if (arg === "--api-key" && i + 1 < args.length) { flags.apiKey = args[++i]; i++; continue; }
@@ -898,14 +1307,15 @@ Commands:
   version                  Show CLI version
 
 Install options:
-  --overwrite              Overwrite main agent workspace
-  --name <name>            Create a new agent with this name
+  --name <name>            Create a new agent with this name (default when interactive)
+  --overwrite              Overwrite main agent workspace (use only when user explicitly selects)
   --api-key <key>          API key to save into skills/.credentials
 
 Export options:
   --agent <id>             Agent ID to export (interactive if omitted)
   -o, --output <path>      Output ZIP file path (default: ~/agentar-exports/)
   --include-memory         Include MEMORY.md in export (default: false)
+  --skip-enrich            Skip metadata enrichment via openclaw (default: enrichment is on)
 
 Rollback options:
   --latest                 Restore the most recent backup without prompting

@@ -60,15 +60,15 @@ Search the CatchClaw marketplace for agentars matching the keyword.
 ### Install
 
 ```bash
-$CLI install <slug> --overwrite
 $CLI install <slug> --name <name> [--api-key <key>]
+$CLI install <slug> --overwrite
 ```
 
 Install an agentar from the marketplace.
 
 **Options:**
-- `--overwrite` — Overwrite the main agent (`~/.openclaw/workspace`). Existing workspace is backed up automatically.
-- `--name <name>` — Create a new agent with the given name. Existing agents are not affected.
+- `--name <name>` — Create a new agent with the given name. Existing agents are not affected. (Preferred; list this option first when prompting.)
+- `--overwrite` — Overwrite the main agent (`~/.openclaw/workspace`). Existing workspace is backed up automatically. **Never use without the user's explicit selection.**
 - `--api-key <key>` — (Optional) API key to save into `skills/.credentials` for agentars that require backend authentication.
 
 ### Export
@@ -106,18 +106,22 @@ Show the CLI version.
 <HARD-GATE>
 Before executing `install`:
 1. **Slug required:** If the user wants to install an agentar but has not specified which one (no slug), prompt the user to enter the agentar name/slug to install. Do NOT run install without a slug.
-2. **Mode confirmation:** You MUST confirm the installation mode with the user. Do NOT run the install command without the user's explicit choice.
+2. **Mode confirmation (CRITICAL - MUST ASK USER):** You MUST explicitly ask the user to choose the installation mode. Do NOT proceed with installation until the user has made a clear choice. **NEVER assume or default to any mode without user confirmation.**
 
-Present the following two options:
-1. **overwrite** — Overwrite the main agent (~/.openclaw/workspace). The existing workspace will be backed up automatically.
-2. **new** — Create a new agent. The existing agents are not affected.
+Present the following two options to the user and wait for their response:
+1. **new** — Create a new agent. The existing agents are not affected.
+2. **overwrite** — Overwrite the main agent (~/.openclaw/workspace). The existing workspace will be backed up automatically.
 
-After the user selects overwrite, execute: `$CLI install <slug> --overwrite`
-After the user selects new, execute: `$CLI install <slug> --name <user-specified name>`
+**Important:**
+- Do NOT execute install until the user explicitly selects one of the above options
+- Do NOT use "new" as a default without asking
+- Do NOT use "overwrite" unless the user explicitly selects it
+- If the user chooses "new" but doesn't specify a name, use the slug as the default name
 
-If the user does not specify a name for the new agent, use the slug as the default name.
+After the user explicitly selects "new", execute: `$CLI install <slug> --name <user-specified name>`
+After the user explicitly selects "overwrite", execute: `$CLI install <slug> --overwrite`
 
-Never execute install without a slug and without the user's explicit mode selection.
+Never execute install without both: (1) a slug, and (2) explicit user confirmation of installation mode.
 </HARD-GATE>
 
 ## Export Rules
@@ -146,6 +150,6 @@ Never execute install without a slug and without the user's explicit mode select
 ## Workflow
 
 1. **Search**: Run `$CLI search <keyword>` to find agentars. Each result includes a slug identifier.
-2. **Install**: If the user did not specify which agentar to install (no slug), ask the user to enter the agentar name/slug. Then confirm installation mode (overwrite vs new) with the user. Only after you have both slug and mode, execute the install command.
+2. **Install**: If the user did not specify which agentar to install (no slug), ask the user to enter the agentar name/slug. Then confirm installation mode: present [1] new, [2] overwrite; never use overwrite without explicit user selection. Only after you have both slug and mode, execute the install command.
 3. **Export**: If the user did not specify which agent to export, run `$CLI export` (no `--agent`) to list agents, present the list to the user, and ask them to choose. Only after the user selects an agent, run `$CLI export --agent <id>`. Do not export without the user's explicit selection.
 4. **Rollback**: If the user wants to undo an overwrite install, run `$CLI rollback` to list available backups and restore one.
