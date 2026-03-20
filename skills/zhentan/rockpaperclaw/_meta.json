@@ -1,13 +1,18 @@
 {
   "owner": "zhentan",
   "slug": "rockpaperclaw",
-  "displayName": "Skill",
+  "displayName": "Rockpaperclaw",
   "latest": {
-    "version": "1.4.1",
-    "publishedAt": 1773638530855,
-    "commit": "https://github.com/openclaw/skills/commit/711c0debd47bc451ee67a929fb2900c4b21d30a0"
+    "version": "1.10.0",
+    "publishedAt": 1773736413696,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.4.1",
+      "publishedAt": 1773638530855,
+      "commit": "https://github.com/openclaw/skills/commit/711c0debd47bc451ee67a929fb2900c4b21d30a0"
+    },
     {
       "version": "1.3.1",
       "publishedAt": 1772696881930,
