@@ -1,11 +1,17 @@
 {
   "owner": "ramboxie",
   "slug": "claw-rpg",
-  "displayName": "Claw RPG（D&D 3.9d）",
+  "displayName": "CLAW RPG (D&D 3.5)",
   "latest": {
-    "version": "0.1.1",
-    "publishedAt": 1773119291107,
-    "commit": "https://github.com/openclaw/skills/commit/7297db214eb66575ae4ca86f439bb221c185b686"
+    "version": "2.1.0",
+    "publishedAt": 1773907567772,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.1",
+      "publishedAt": 1773119291107,
+      "commit": "https://github.com/openclaw/skills/commit/7297db214eb66575ae4ca86f439bb221c185b686"
+    }
+  ]
 }
