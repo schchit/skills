@@ -3,11 +3,16 @@
   "slug": "shell-script",
   "displayName": "Shell Script",
   "latest": {
-    "version": "2.3.3",
-    "publishedAt": 1773666981052,
-    "commit": "https://github.com/openclaw/skills/commit/3c7e5e2ee9ae418c8dbb9dff0785a6193a212d63"
+    "version": "2.3.4",
+    "publishedAt": 1773773683641,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.3.3",
+      "publishedAt": 1773666981052,
+      "commit": "https://github.com/openclaw/skills/commit/3c7e5e2ee9ae418c8dbb9dff0785a6193a212d63"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773206268582,

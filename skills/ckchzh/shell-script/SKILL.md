@@ -4,6 +4,8 @@ name: Shell Script Helper
 description: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━. Use when you need shell script capabilities. Triggers on: shell script."
   Shell脚本助手。脚本生成、逐行解释、调试排错、常用模板(备份/监控/部署)、一行命令、Bash速查表。Shell script generator, explainer, debugger, templates, one-liners, cheatsheet. Shell、Bash、Linux命令。
 author: BytesAgain
+homepage: https://bytesagain.com
+source: https://github.com/bytesagain/ai-skills
 ---
 # Shell Script Helper
 
