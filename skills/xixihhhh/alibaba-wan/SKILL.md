@@ -3,10 +3,12 @@ name: wan
 description: "Generate AI videos and images using Alibaba's Wan 2.6 and Wan 2.5 — featuring text-to-video, image-to-video, video-to-video, text-to-image, and image editing with up to 1080p resolution, 15-second duration, multi/single camera shot types, audio-guided generation, and prompt expansion. Supports 18 model variants across 2 generations. Available via Atlas Cloud API at up to 30% off standard pricing. Use this skill whenever the user wants to generate AI videos, create video clips, animate images, edit videos, generate images, edit photos, or mentions Wan, Alibaba video, Tongyi video, Wanx, or Wan 2.6/2.5. Also trigger when users ask to create product demos, marketing videos, social media reels, animated scenes, cinematic clips, video-to-video transfers, character-consistent video edits, multi-camera shots, or any visual content using AI."
 source: "https://github.com/AtlasCloudAI/nano-banana-2-skill"
 homepage: "https://github.com/AtlasCloudAI/nano-banana-2-skill"
-env_vars:
-  ATLASCLOUD_API_KEY:
-    description: "Atlas Cloud API key for accessing Wan video and image generation models"
-    required: true
+metadata:
+  openclaw:
+    requires:
+      env:
+        - ATLASCLOUD_API_KEY
+    primaryEnv: ATLASCLOUD_API_KEY
 ---
 
 # Wan 2.6 & 2.5 — AI Video & Image Generation by Alibaba
@@ -42,6 +44,57 @@ Wan 2.6 is the latest flagship model with cinematic motion quality, multi-camera
 3. Set env: `export ATLASCLOUD_API_KEY="your-key"`
 
 The API key is tied to your Atlas Cloud account and its pay-as-you-go balance. All usage is billed to this account. Atlas Cloud does not currently support scoped keys — the key grants access to all models available on your account.
+
+---
+
+## Script Usage
+
+This skill includes Python scripts for both video and image generation. Zero external dependencies required.
+
+### List available models
+
+```bash
+python scripts/generate_video.py list-models
+python scripts/generate_image.py list-models
+```
+
+### Generate a video
+
+```bash
+python scripts/generate_video.py generate \
+  --model "alibaba/wan-2.6/text-to-video" \
+  --prompt "Your prompt here" \
+  --output ./output \
+  duration=5
+```
+
+### Generate an image
+
+```bash
+python scripts/generate_image.py generate \
+  --model "alibaba/wan-2.6/text-to-image" \
+  --prompt "Your prompt here" \
+  --output ./output
+```
+
+### Image-to-video
+
+```bash
+python scripts/generate_video.py generate \
+  --model "alibaba/wan-2.6/image-to-video" \
+  --image "https://example.com/photo.jpg" \
+  --prompt "Animate this scene" \
+  --output ./output \
+  resolution=1080p duration=5
+```
+
+### Upload a local file
+
+```bash
+python scripts/generate_video.py upload ./local-file.jpg
+```
+
+Run `python scripts/generate_video.py generate --help` or `python scripts/generate_image.py generate --help` for all options. Extra model params can be passed as key=value.
 
 ---
 
@@ -228,7 +281,7 @@ curl -s -X POST "https://api.atlascloud.ai/api/v1/model/generateVideo" \
 # Returns: { "code": 200, "data": { "id": "prediction-id" } }
 
 # Step 2: Poll (every 5 seconds until completed)
-curl -s "https://api.atlascloud.ai/api/v1/model/result/{prediction-id}" \
+curl -s "https://api.atlascloud.ai/api/v1/model/prediction/{prediction-id}" \
   -H "Authorization: Bearer $ATLASCLOUD_API_KEY"
 # Returns: { "code": 200, "data": { "status": "completed", "outputs": ["https://...video-url..."] } }
 
