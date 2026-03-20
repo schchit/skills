@@ -24,8 +24,8 @@ uv run local-chrome-server serve
 lsof -i :8765
 kill <PID>
 
-# Or use --force flag
-uv run local-chrome-server serve --force
+# Then restart the server after freeing the port
+uv run local-chrome-server serve
 ```
 
 ## Extension Issues
@@ -45,6 +45,20 @@ uv run local-chrome-server serve --force
    npm run build
    ```
 6. Then refresh the extension in Chrome
+
+### Browser UUID Invalid Or Not Registered
+
+**Symptom**: `Browser UUID: UUID not registered`, `Invalid or expired browser_id`, or tasks fail immediately
+
+**Solution**:
+1. Click the extension icon to reopen the UUID page
+2. Confirm the page status becomes `UUID Ready`
+3. Copy the current UUID again
+4. Re-run:
+   ```bash
+   python3 skill/openclaw/open-browser/scripts/check_status.py --chrome-uuid YOUR_BROWSER_UUID
+   ```
+5. If needed, refresh the extension and retry
 
 ### Extension Not Loading
 
@@ -99,7 +113,7 @@ uv run local-chrome-server serve --force
 
 **Solution**: Use `nohup` background mode:
 ```bash
-nohup python3 skill/open-browser/scripts/send_task.py "task" > /tmp/ob.log 2>&1 &
+OPENBROWSER_CHROME_UUID=YOUR_BROWSER_UUID nohup python3 skill/openclaw/open-browser/scripts/send_task.py "task" > /tmp/ob.log 2>&1 &
 sleep 120 && cat /tmp/ob.log
 ```
 
@@ -139,7 +153,7 @@ sleep 120 && cat /tmp/ob.log
 - Element is hidden
 
 **Solution**:
-- Wait for page load: `agent-browser wait --load networkidle`
+- Wait a few seconds and retry the task
 - Check for iframes
 - Try JavaScript fallback
 

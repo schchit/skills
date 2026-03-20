@@ -1,11 +1,17 @@
 {
   "owner": "softpudding",
   "slug": "open-browser",
-  "displayName": "OpenBrowser",
+  "displayName": "Open Browser",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773760699702,
-    "commit": "https://github.com/openclaw/skills/commit/a4fa83e0ef6432f72fa99af497507829fb37b50f"
+    "version": "1.0.1",
+    "publishedAt": 1774019280053,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773760699702,
+      "commit": "https://github.com/openclaw/skills/commit/a4fa83e0ef6432f72fa99af497507829fb37b50f"
+    }
+  ]
 }
