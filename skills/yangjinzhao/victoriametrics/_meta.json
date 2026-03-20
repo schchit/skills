@@ -1,0 +1,11 @@
+{
+  "owner": "yangjinzhao",
+  "slug": "victoriametrics",
+  "displayName": "VictoriaMetrics",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1773985590409,
+    "commit": null
+  },
+  "history": []
+}
