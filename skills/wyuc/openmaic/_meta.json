@@ -1,11 +1,17 @@
 {
   "owner": "wyuc",
   "slug": "openmaic",
-  "displayName": "OpenMAIC",
+  "displayName": "Openmaic",
   "latest": {
-    "version": "0.2.1",
-    "publishedAt": 1773632768690,
-    "commit": "https://github.com/openclaw/skills/commit/82937d1e59fa0a9a65972c1d30ab409f6344809c"
+    "version": "0.3.0",
+    "publishedAt": 1774017278361,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.2.1",
+      "publishedAt": 1773632768690,
+      "commit": "https://github.com/openclaw/skills/commit/82937d1e59fa0a9a65972c1d30ab409f6344809c"
+    }
+  ]
 }
