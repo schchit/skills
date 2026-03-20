@@ -81,7 +81,14 @@ def _read_gateway_token():
 
 
 def _check_auth(request):
-    """Validate Bearer token against gateway auth token. Returns error response or None."""
+    """Allow same-origin browser requests; optionally accept gateway Bearer token."""
+    origin = request.headers.get("Origin", "")
+    referer = request.headers.get("Referer", "")
+    if origin == ALLOWED_ORIGIN:
+        return None
+    if referer.startswith(ALLOWED_ORIGIN + "/") or referer == ALLOWED_ORIGIN:
+        return None
+
     gateway_token = _read_gateway_token()
     if not gateway_token:
         # No gateway token configured — allow (localhost-only safe default)

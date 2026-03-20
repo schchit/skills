@@ -16,6 +16,16 @@ if ! [[ "$VOICE_HTTPS_PORT" =~ ^[0-9]+$ ]] || (( VOICE_HTTPS_PORT < 1 || VOICE_H
 fi
 
 if [[ -z "$VOICE_HOST" ]]; then
+  EXISTING_UNIT="$HOME/.config/systemd/user/openclaw-voice-https.service"
+  if [[ -f "$EXISTING_UNIT" ]]; then
+    EXISTING_HOST="$(grep -E '^Environment=VOICE_BIND_HOST=' "$EXISTING_UNIT" | tail -n1 | sed 's/^Environment=VOICE_BIND_HOST=//')"
+    if [[ -n "$EXISTING_HOST" ]]; then
+      VOICE_HOST="$EXISTING_HOST"
+    fi
+  fi
+fi
+
+if [[ -z "$VOICE_HOST" ]]; then
   VOICE_HOST="127.0.0.1"
 fi
 

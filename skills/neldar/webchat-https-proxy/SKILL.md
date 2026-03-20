@@ -31,7 +31,7 @@ requires:
 Standalone HTTPS/WSS reverse proxy for OpenClaw WebChat Control UI:
 - Serves the Control UI over HTTPS (default port 8443)
 - WebSocket passthrough to gateway (`ws://127.0.0.1:18789`)
-- `/transcribe` proxy endpoint to local faster-whisper service (with Bearer token auth)
+- `/transcribe` proxy endpoint to local faster-whisper service (same-origin browser auth; optional Bearer fallback)
 - Self-signed TLS certificate management
 - SPA fallback for Control UI routing
 - Path traversal protection for static file serving
@@ -59,7 +59,7 @@ bash scripts/status.sh
 
 ### Network isolation
 - **Localhost by default**: Binds to `127.0.0.1` only. Not reachable from other devices unless `VOICE_HOST` is explicitly set.
-- **LAN access opt-in**: Setting `VOICE_HOST=<LAN-IP>` enables trusted LAN access. Requires explicit configuration — never enabled automatically.
+- **LAN access opt-in**: Setting `VOICE_HOST=<LAN-IP>` enables trusted LAN access. Re-deploys preserve the existing configured bind host unless you explicitly override `VOICE_HOST`.
 - **CORS**: Single allowed origin only (`VOICE_ALLOWED_ORIGIN`). Validated at startup — wildcards (`*`) and malformed origins are rejected.
 
 ### TLS
@@ -112,4 +112,6 @@ bash scripts/uninstall.sh
 - `origin not allowed` → ensure deploy used correct `VOICE_HOST` and added matching HTTPS origin to `gateway.controlUi.allowedOrigins`.
 - `token missing` → open URL with `?token=...` once.
 - `pairing required` → approve pending device via `openclaw devices approve <requestId> --token <gateway-token>`.
+
+ces approve <requestId> --token <gateway-token>`.
 
