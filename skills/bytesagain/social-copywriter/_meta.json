@@ -3,11 +3,16 @@
   "slug": "social-copywriter",
   "displayName": "Social Copywriter",
   "latest": {
-    "version": "2.3.3",
-    "publishedAt": 1773673881418,
-    "commit": "https://github.com/openclaw/skills/commit/bf86af5e90f571f81a5f282766cfd97fa200f82d"
+    "version": "2.0.0",
+    "publishedAt": 1773773189262,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.3.3",
+      "publishedAt": 1773673881418,
+      "commit": "https://github.com/openclaw/skills/commit/bf86af5e90f571f81a5f282766cfd97fa200f82d"
+    },
     {
       "version": "2.2.0",
       "publishedAt": 1773421817291,
