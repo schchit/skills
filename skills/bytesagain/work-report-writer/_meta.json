@@ -3,9 +3,15 @@
   "slug": "work-report-writer",
   "displayName": "Work Report Writer",
   "latest": {
-    "version": "2.3.5",
-    "publishedAt": 1773667294957,
-    "commit": "https://github.com/openclaw/skills/commit/ae46036770733a1f90c16b3df545b3882a2e5aa7"
+    "version": "2.0.0",
+    "publishedAt": 1773773193938,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "2.3.5",
+      "publishedAt": 1773667294957,
+      "commit": "https://github.com/openclaw/skills/commit/ae46036770733a1f90c16b3df545b3882a2e5aa7"
+    }
+  ]
 }
