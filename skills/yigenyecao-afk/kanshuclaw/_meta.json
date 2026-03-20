@@ -3,11 +3,16 @@
   "slug": "kanshuclaw",
   "displayName": "kanshuclaw",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1773581271933,
-    "commit": "https://github.com/openclaw/skills/commit/7267a7b33be8d1d3e81268c6b3ee805de187cf75"
+    "version": "1.0.4",
+    "publishedAt": 1773746664883,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1773581271933,
+      "commit": "https://github.com/openclaw/skills/commit/7267a7b33be8d1d3e81268c6b3ee805de187cf75"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1773495567713,
