@@ -1,6 +1,8 @@
 # Learnings
 
-> Format: `[YYYY-MM-DD] CATEGORY | what was learned | action to take | count:N`
+> Format: `[YYYY-MM-DD] id:LRN-YYYYMMDD-NNN | CATEGORY | what | action | count:N | prevented:N | severity:medium | source:agent`
 > Categories: correction, knowledge, pattern, gotcha, optimization
-> Dedup: grep before adding. Increment count if exists. Promote at count:3+.
+> All fields after action are optional. Existing one-line entries still valid.
+> Dedup: check ID first, then keyword grep. Increment count if exists.
+> Review queue: count:3+ OR severity:critical → promotion-queue.md
 

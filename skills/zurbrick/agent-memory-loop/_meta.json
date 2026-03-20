@@ -3,9 +3,15 @@
   "slug": "agent-memory-loop",
   "displayName": "Agent Memory Loop",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1772737010899,
-    "commit": "https://github.com/openclaw/skills/commit/1d4172b86fb8825e3af03b7e350e0c25d34187ae"
+    "version": "2.1.1",
+    "publishedAt": 1773966912815,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1772737010899,
+      "commit": "https://github.com/openclaw/skills/commit/1d4172b86fb8825e3af03b7e350e0c25d34187ae"
+    }
+  ]
 }
