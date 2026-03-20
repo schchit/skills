@@ -3,11 +3,16 @@
   "slug": "taskpod",
   "displayName": "Taskpod",
   "latest": {
-    "version": "1.13.0",
-    "publishedAt": 1773645538641,
-    "commit": "https://github.com/openclaw/skills/commit/347e382551edc20d24fff9716c7648cd95248b74"
+    "version": "1.16.0",
+    "publishedAt": 1773767566624,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.13.0",
+      "publishedAt": 1773645538641,
+      "commit": "https://github.com/openclaw/skills/commit/347e382551edc20d24fff9716c7648cd95248b74"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773202492565,

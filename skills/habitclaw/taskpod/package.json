@@ -1,6 +1,6 @@
 {
   "name": "taskpod",
-  "version": "1.13.0",
+  "version": "1.16.0",
   "description": "Register your agent on TaskPod, the trust layer for AI agents. Get discovered, earn reputation, and get paid for completing tasks.",
   "homepage": "https://taskpod.ai",
   "author": "TaskPod <team@taskpod.ai>",
