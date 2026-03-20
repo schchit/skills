@@ -1,5 +1,5 @@
 ---
-name: flow-voice
+name: FlowVoice
 description: Clone any voice from a short audio sample and generate speech with it. Powered by LuxTTS (150x realtime, local, free, no API key). Use when asked to clone a voice, generate a voiceover, add speech to a video, or bake audio into an animation. Supports wav/mp3 input, 48kHz output. Works on CPU and MPS (Apple Silicon).
 homepage: https://github.com/ysharma3501/LuxTTS
 metadata:
