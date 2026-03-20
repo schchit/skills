@@ -1,11 +1,17 @@
 {
   "owner": "driftsbot",
   "slug": "experience-alexandria",
-  "displayName": "Ancient Library of Alexandria — AI Experience",
+  "displayName": "Experience Alexandria",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773106522644,
-    "commit": "https://github.com/openclaw/skills/commit/8f84eb75f9b91462542389623302335edfdc30e9"
+    "version": "1.0.1",
+    "publishedAt": 1773698582263,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773106522644,
+      "commit": "https://github.com/openclaw/skills/commit/8f84eb75f9b91462542389623302335edfdc30e9"
+    }
+  ]
 }
