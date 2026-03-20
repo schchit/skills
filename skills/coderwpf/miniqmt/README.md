@@ -1,6 +1,6 @@
 # miniQMT 量化终端 Skill
 
-[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](http://dict.thinktrader.net/nativeApi/start_now.html)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](http://dict.thinktrader.net/nativeApi/start_now.html)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](LICENSE)
 [![ClawHub](https://img.shields.io/badge/ClawHub-BossQuant-purple.svg)](https://clawhub.com)
 
@@ -75,7 +75,7 @@ Apache License 2.0
 
 ## 📊 更新日志
 
-### v1.1.0 (2026-03-01)
+### v1.2.0 (2026-03-15)
 - 🎉 初始版本发布
 - 📊 支持行情获取与程序化交易
 

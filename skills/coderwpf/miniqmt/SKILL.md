@@ -1,92 +1,92 @@
 ---
 name: miniqmt
-description: miniQMT Minimalist Quantitative Trading Terminal — Supports external Python for market data retrieval and programmatic trading via the xtquant SDK.
-version: 1.1.0
+description: miniQMT 极简量化交易终端 - 支持外接Python获取行情数据和程序化交易，基于xtquant SDK。
+version: 1.2.0
 homepage: http://dict.thinktrader.net/nativeApi/start_now.html
 metadata: {"clawdbot":{"emoji":"🚀","requires":{"bins":["python3"]}}}
 ---
 
-# miniQMT (XunTou Minimalist Quantitative Terminal)
+# miniQMT（迅投极简量化交易终端）
 
-miniQMT is a lightweight quantitative trading terminal developed by XunTou Technology, designed specifically for external Python integration. It runs as a local Windows service and provides market data and trading capabilities through the [XtQuant](http://dict.thinktrader.net/nativeApi/start_now.html) Python SDK (`xtdata` + `xttrade`).
+miniQMT 是迅投科技开发的轻量级量化交易终端，专为外接Python设计。它作为本地Windows服务运行，通过 [XtQuant](http://dict.thinktrader.net/nativeApi/start_now.html) Python SDK（`xtdata` + `xttrade`）提供行情数据和交易功能。
 
-> ⚠️ **Requires miniQMT permission from your broker**. Contact your securities firm to enable it. Multiple domestic brokers support it (Guojin, Huaxin, Zhongtai, East Money, Guosen, Founder, etc.).
+> ⚠️ **需要券商开通miniQMT权限**。联系您的证券公司开通。多家国内券商支持（国金、华鑫、中泰、东方财富、国信、方正等）。
 
-## miniQMT Overview
+## miniQMT 概述
 
-- **Lightweight QMT client** that runs as a background service on Windows
-- Provides a **market data server** + **trading server** for external Python programs
-- Python scripts connect via local TCP through the `xtquant` SDK (xtdata for market data, xttrade for trade execution)
-- Supports: A-shares, ETFs, convertible bonds, futures, options, margin trading
-- Some brokers offer free **Level 2 data** with miniQMT
+- **轻量级QMT客户端**，在Windows上作为后台服务运行
+- 为外部Python程序提供**行情数据服务** + **交易服务**
+- Python脚本通过 `xtquant` SDK经本地TCP连接（xtdata获取行情，xttrade执行交易）
+- 支持品种：A股、ETF、可转债、期货、期权、融资融券
+- 部分券商提供免费的 **Level 2数据**
 
-## Architecture
+## 架构
 
 ```
-Python script (any IDE: VS Code, PyCharm, Jupyter, etc.)
-    ↓ xtquant SDK (pip install xtquant)
-    ├── xtdata  ──TCP──→ miniQMT (market data service)
-    └── xttrade ──TCP──→ miniQMT (trading service)
+Python脚本（任意IDE: VS Code, PyCharm, Jupyter等）
+    ↓ xtquant SDK（pip install xtquant）
+    ├── xtdata  ──TCP──→ miniQMT（行情数据服务）
+    └── xttrade ──TCP──→ miniQMT（交易服务）
                               ↓
-                    Broker trading system
+                    券商交易系统
 ```
 
-## How to Get miniQMT
+## 如何获取 miniQMT
 
-1. Open a securities account with a broker that supports QMT
-2. Apply for miniQMT permission (some brokers require minimum assets, e.g., 50k–100k CNY)
-3. Download and install the QMT client from your broker
-4. Launch in miniQMT mode (minimalist mode) and log in
+1. 在支持QMT的券商开立证券账户
+2. 申请miniQMT权限（部分券商要求最低资产，如5万-10万元）
+3. 从券商处下载安装QMT客户端
+4. 以miniQMT模式（极简模式）启动并登录
 
-## Usage Workflow
+## 使用流程
 
-### 1. Start miniQMT
+### 1. 启动 miniQMT
 
-Launch the QMT client in minimalist mode and log in. The miniQMT interface is very simple — just a login window.
+以极简模式启动QMT客户端并登录。miniQMT界面非常简洁——只有一个登录窗口。
 
-### 2. Install xtquant
+### 2. 安装 xtquant
 
 ```bash
 pip install xtquant
 ```
 
-### 3. Connect to Market Data with Python
+### 3. 使用Python连接行情数据
 
 ```python
 from xtquant import xtdata
 
-# Connect to the local miniQMT market data service
+# 连接本地miniQMT行情数据服务
 xtdata.connect()
 
-# Download historical data (must download before first access)
+# 下载历史数据（首次访问前必须下载）
 xtdata.download_history_data('000001.SZ', '1d', start_time='20240101', end_time='20240630')
 
-# Get K-line data (returns a dict of DataFrames keyed by stock code)
+# 获取K线数据（返回以股票代码为键的DataFrame字典）
 data = xtdata.get_market_data_ex(
     [], ['000001.SZ'], period='1d',
     start_time='20240101', end_time='20240630',
-    dividend_type='front'  # Forward-adjusted
+    dividend_type='front'  # 前复权
 )
 print(data['000001.SZ'].tail())
 ```
 
-### 4. Connect to Trading Service with Python
+### 4. 使用Python连接交易服务
 
 ```python
 from xtquant import xtconstant
 from xtquant.xttrader import XtQuantTrader, XtQuantTraderCallback
 from xtquant.xttype import StockAccount
 
-# path must point to the userdata_mini folder under the QMT installation directory
+# path必须指向QMT安装目录下的userdata_mini文件夹
 path = r'D:\券商QMT\userdata_mini'
-# session_id must be unique for each strategy/script
+# session_id对每个策略/脚本必须唯一
 session_id = 123456
 xt_trader = XtQuantTrader(path, session_id)
 
-# Register callback to receive real-time push notifications
+# 注册回调接收实时推送通知
 class MyCallback(XtQuantTraderCallback):
     def on_disconnected(self):
-        print('Disconnected — reconnection required')
+        print('已断开连接 — 需要重新连接')
     def on_stock_order(self, order):
         print(f'Order update: {order.stock_code} status={order.order_status} msg={order.status_msg}')
     def on_stock_trade(self, trade):
@@ -96,41 +96,41 @@ class MyCallback(XtQuantTraderCallback):
 
 xt_trader.register_callback(MyCallback())
 xt_trader.start()
-connect_result = xt_trader.connect()  # Returns 0 on success, non-zero on failure
+connect_result = xt_trader.connect()  # 收益率 0 on success, non-zero on failure
 
 account = StockAccount('your_account')
-xt_trader.subscribe(account)  # Subscribe to account for push notifications
+xt_trader.subscribe(account)  # 订阅账户推送通知
 
-# Place a buy order
+# 下买入单
 order_id = xt_trader.order_stock(
     account, '000001.SZ', xtconstant.STOCK_BUY, 100,
     xtconstant.FIX_PRICE, 11.50, 'my_strategy', 'test_order'
 )
-# order_id > 0 means success, -1 means failure
+# order_id > 0 表示成功，-1 表示失败
 ```
 
 ---
 
-## miniQMT vs Full QMT Comparison
+## miniQMT 与完整版 QMT 对比
 
-| Feature | miniQMT | QMT (Full Version) |
+| 特性 | miniQMT | QMT（完整版） |
 |---|---|---|
-| **Python** | External Python (any version) | Built-in Python (version restricted) |
-| **IDE** | Any (VS Code, PyCharm, Jupyter, etc.) | Built-in editor only |
-| **Third-party libraries** | All pip packages (pandas, numpy, etc.) | Built-in libraries only |
-| **Interface** | Minimalist (login window only) | Full trading UI + charts |
-| **Market data** | Via xtdata API | Built-in + xtdata API |
-| **Trading** | Via xttrade API | Built-in + xttrade API |
-| **Resource usage** | Lightweight (~50 MB RAM) | Heavy (full GUI, ~500 MB+) |
-| **Debugging** | Full IDE debugging support | Limited |
-| **Use case** | Automated strategies, external integration | Visual analysis + manual trading |
-| **Connection** | One-time connection, no auto-reconnect | Persistent connection |
+| **Python** | 外接Python（任意版本） | 内置Python（版本受限） |
+| **IDE** | 任意（VS Code, PyCharm, Jupyter等） | 仅内置编辑器 |
+| **第三方库** | 所有pip包（pandas, numpy等） | 仅内置库 |
+| **界面** | 极简（仅登录窗口） | 完整交易UI + 图表 |
+| **行情数据** | 通过xtdata API | 内置 + xtdata API |
+| **交易** | 通过xttrade API | 内置 + xttrade API |
+| **资源占用** | 轻量（~50 MB内存） | 较重（完整GUI，~500 MB+） |
+| **调试** | 完整IDE调试支持 | 有限 |
+| **使用场景** | 自动化策略、外部集成 | 可视化分析 + 手动交易 |
+| **连接方式** | 一次性连接，无自动重连 | 持久连接 |
 
 ---
 
-## Data Capabilities (via xtdata)
+## 数据能力（通过xtdata）
 
-| Category | Details |
+| 类别 | 详情 |
 |---|---|
 | **K-line** | tick, 1m, 5m, 15m, 30m, 1h, 1d, 1w, 1mon — supports adjustment (forward / backward / proportional) |
 | **Tick** | Real-time tick data with 5-level bid/ask, volume, turnover, trade count |
@@ -140,7 +140,7 @@ order_id = xt_trader.order_stock(
 | **Real-time** | Single-stock subscription (`subscribe_quote`), market-wide push (`subscribe_whole_quote`) |
 | **Special** | Convertible bond info, IPO subscription data, ETF creation/redemption lists, announcements & news, consecutive limit-up tracking, snapshot indicators (volume ratio / price velocity), high-frequency IOPV |
 
-### Data Access Patterns
+### 数据访问模式
 
 ```
 download_history_data() → get_market_data_ex()  # Historical data: download to local cache first, then read from cache
@@ -148,9 +148,9 @@ subscribe_quote()       → callback               # Real-time data: subscribe a
 get_full_tick()                                   # Snapshot data: get latest tick for the entire market
 ```
 
-## Trading Capabilities (via xttrade)
+## 交易能力（通过xttrade）
 
-| Category | Operations |
+| 类别 | 操作 |
 |---|---|
 | **Stocks** | Buy/sell (sync and async), limit/market/best price orders |
 | **ETF** | Buy/sell, creation/redemption |
@@ -166,17 +166,17 @@ get_full_tick()                                   # Snapshot data: get latest ti
 | **Smart algorithms** | VWAP and other algorithmic execution |
 | **Securities lending** | Query available securities, apply for lending, manage contracts |
 
-### Account Types
+### 账户类型
 
 ```python
-StockAccount('id')            # Regular stock account
-StockAccount('id', 'CREDIT')  # Credit account (margin trading)
-StockAccount('id', 'FUTURE')  # Futures account
+StockAccount('id')            # 普通股票账户
+StockAccount('id', 'CREDIT')  # 信用账户（融资融券）
+StockAccount('id', 'FUTURE')  # 期货账户
 ```
 
-### Key Trading Callbacks
+### 关键交易回调
 
-| Callback | Triggered When |
+| 回调函数 | 触发时机 |
 |---|---|
 | `on_stock_order(order)` | Order status change (submitted, partially filled, fully filled, cancelled, rejected) |
 | `on_stock_trade(trade)` | Trade execution report |
@@ -186,112 +186,112 @@ StockAccount('id', 'FUTURE')  # Futures account
 | `on_cancel_error(error)` | Order cancellation failure |
 | `on_disconnected()` | Disconnected from miniQMT |
 
-### Order Status Codes
+### 订单状态码
 
-| Value | Status |
+| 值 | 状态 |
 |---|---|
-| 48 | Not submitted |
-| 50 | Submitted |
-| 54 | Cancelled |
-| 55 | Partially filled |
-| 56 | Fully filled |
-| 57 | Rejected |
+| 48 | 未报 |
+| 50 | 已报 |
+| 54 | 已撤 |
+| 55 | 部分成交 |
+| 56 | 已成 |
+| 57 | 废单 |
 
 ---
 
-## Common Broker Paths
+## 常见券商路径
 
 ```python
-# Guojin Securities
+# 国金证券
 path = r'D:\国金证券QMT交易端\userdata_mini'
-# Huaxin Securities
+# 华鑫证券
 path = r'D:\华鑫证券\userdata_mini'
-# Zhongtai Securities
+# 中泰证券
 path = r'D:\中泰证券\userdata_mini'
-# East Money
+# 东方财富
 path = r'D:\东方财富证券QMT交易端\userdata_mini'
 ```
 
-## Stock Code Format
+## 股票代码格式
 
-| Market | Example |
+| 市场 | 示例 |
 |---|---|
-| Shanghai A-shares | `600000.SH` |
-| Shenzhen A-shares | `000001.SZ` |
-| Beijing Stock Exchange | `430047.BJ` |
-| Indices | `000001.SH` (SSE Composite), `399001.SZ` (SZSE Component) |
-| CFFEX Futures | `IF2401.IF` |
-| SHFE Futures | `ag2407.SF` |
-| Options | `10004358.SHO` |
+| 上海A股 | `600000.SH` |
+| 深圳A股 | `000001.SZ` |
+| 北交所 | `430047.BJ` |
+| 指数 | `000001.SH`（上证综指）, `399001.SZ`（深证成指） |
+| 中金所期货 | `IF2401.IF` |
+| 上期所期货 | `ag2407.SF` |
+| 期权 | `10004358.SHO` |
 | ETF | `510300.SH` |
-| Convertible bonds | `113050.SH` |
+| 可转债 | `113050.SH` |
 
 ---
 
-## Full Example: Market Data + Trading Strategy
+## 完整示例：行情数据 + 交易策略
 
 ```python
 from xtquant import xtdata, xtconstant
 from xtquant.xttrader import XtQuantTrader, XtQuantTraderCallback
 from xtquant.xttype import StockAccount
 
-# === Callback class definition ===
+# === 回调类定义 ===
 class MyCallback(XtQuantTraderCallback):
     def on_disconnected(self):
-        print('Disconnected')
+        print('已断开连接')
     def on_stock_trade(self, trade):
         print(f'Trade filled: {trade.stock_code} {trade.traded_volume}@{trade.traded_price}')
     def on_order_error(self, order_error):
         print(f'Error: {order_error.error_msg}')
 
-# === 1. Connect to market data service ===
+# === 1. 连接行情数据服务 ===
 xtdata.connect()
 
-# === 2. Download and retrieve historical data ===
+# === 2. 下载并获取历史数据 ===
 stock = '000001.SZ'
 xtdata.download_history_data(stock, '1d', start_time='20240101', end_time='20240630')
 data = xtdata.get_market_data_ex(
     [], [stock], period='1d',
     start_time='20240101', end_time='20240630',
-    dividend_type='front'  # Forward-adjusted
+    dividend_type='front'  # 前复权
 )
 df = data[stock]
 
-# === 3. Calculate simple moving average crossover signal ===
-df['ma5'] = df['close'].rolling(5).mean()    # 5-day MA
-df['ma20'] = df['close'].rolling(20).mean()  # 20-day MA
-latest = df.iloc[-1]   # Latest bar
-prev = df.iloc[-2]     # Previous bar
+# === 3. 计算简单均线交叉信号 ===
+df['ma5'] = df['close'].rolling(5).mean()    # 5日均线
+df['ma20'] = df['close'].rolling(20).mean()  # 20日均线
+latest = df.iloc[-1]   # 最新K线
+prev = df.iloc[-2]     # 前一根K线
 
-# === 4. Connect to trading service ===
+# === 4. 连接交易服务 ===
 path = r'D:\券商QMT\userdata_mini'
 xt_trader = XtQuantTrader(path, 123456)
 xt_trader.register_callback(MyCallback())
 xt_trader.start()
 if xt_trader.connect() != 0:
-    print('Connection failed!')
+    print('连接失败！')
     exit()
 
 account = StockAccount('your_account')
-xt_trader.subscribe(account)  # Subscribe to account push notifications
+xt_trader.subscribe(account)  # 订阅账户推送通知
 
-# === 5. Execute trading signal ===
+# === 5. 执行交易信号 ===
 if prev['ma5'] <= prev['ma20'] and latest['ma5'] > latest['ma20']:
-    # Golden cross signal: 5-day MA crosses above 20-day MA, buy
+    # 金叉信号：5日均线上穿20日均线，买入
     order_id = xt_trader.order_stock(
         account, stock, xtconstant.STOCK_BUY, 100,
         xtconstant.LATEST_PRICE, 0, 'ma_cross', 'golden_cross'
     )
     print(f'Golden cross buy — {stock}, order_id={order_id}')
 elif prev['ma5'] >= prev['ma20'] and latest['ma5'] < latest['ma20']:
-    # Death cross signal: 5-day MA crosses below 20-day MA, sell
+    # 死叉信号：5日均线下穿20日均线，卖出
     order_id = xt_trader.order_stock(
         account, stock, xtconstant.STOCK_SELL, 100,
         xtconstant.LATEST_PRICE, 0, 'ma_cross', 'death_cross'
     )
     print(f'Death cross sell — {stock}, order_id={order_id}')
 
-# === 6. Query results ===
+# === 6. 查询结果 ===
 asset = xt_trader.query_stock_asset(account)
 print(f'Available cash: {asset.cash}, Total assets: {asset.total_asset}')
 
@@ -300,50 +300,50 @@ for pos in positions:
     print(f'{pos.stock_code}: {pos.volume} shares, available={pos.can_use_volume}, cost={pos.open_price}')
 ```
 
-## Full Example: Real-Time Market Monitoring
+## 完整示例：实时行情监控
 
 ```python
 from xtquant import xtdata
 import threading
 
 def on_tick(datas):
-    """Tick data callback function"""
+    """Tick数据回调函数"""
     for code, tick in datas.items():
         print(f'{code}: latest={tick["lastPrice"]}, volume={tick["volume"]}')
 
-# Connect to market data service
+# 连接行情数据服务
 xtdata.connect()
 
-# Run subscription in a separate thread (xtdata.run() blocks the current thread)
+# 在单独线程中运行订阅（xtdata.run()会阻塞当前线程）
 def run_data():
     xtdata.subscribe_quote('000001.SZ', period='tick', callback=on_tick)
     xtdata.subscribe_quote('600000.SH', period='tick', callback=on_tick)
-    xtdata.run()  # Blocks the thread, continuously receiving data
+    xtdata.run()  # 阻塞线程，持续接收数据
 
 t = threading.Thread(target=run_data, daemon=True)
 t.start()
 
-# Main thread can perform trading or other operations
+# 主线程可以执行交易或其他操作
 # ...
 ```
 
-## Usage Tips
+## 使用技巧
 
-- miniQMT runs on **Windows only** — Python scripts can run on the same or a different machine if TCP is reachable.
-- miniQMT must remain **logged in** while your Python script is running.
-- `connect()` is a **one-time connection** — it does not auto-reconnect after disconnection; you need to implement reconnection logic yourself.
-- `session_id` must be **unique per strategy** — different Python scripts must use different session_ids.
-- For real-time subscriptions, `xtdata.run()` blocks the thread — run it in a **separate thread** and use the main thread for trading.
-- Downloaded data is **cached locally** — subsequent reads are extremely fast.
-- In push callbacks (`on_stock_order`, etc.), use **async query methods** (e.g., `query_stock_orders_async`) to avoid deadlocks. Or enable `set_relaxed_response_order_enabled(True)`.
-- Some brokers offer **free Level 2 data** with miniQMT — check with your broker.
-- Documentation: http://dict.thinktrader.net/nativeApi/start_now.html
+- miniQMT **仅支持Windows** — 如果TCP可达，Python脚本可以在同一台或不同机器上运行。
+- Python脚本运行期间，miniQMT必须保持**登录状态**。
+- `connect()` 是**一次性连接** — 断开后不会自动重连，需要自行实现重连逻辑。
+- `session_id` 对**每个策略必须唯一** — 不同Python脚本必须使用不同的session_id。
+- 实时订阅时，`xtdata.run()` 会阻塞线程 — 请在**单独线程**中运行，主线程用于交易。
+- 下载的数据会**本地缓存** — 后续读取速度极快。
+- 在推送回调（`on_stock_order`等）中，使用**异步查询方法**（如 `query_stock_orders_async`）避免死锁。或启用 `set_relaxed_response_order_enabled(True)`。
+- 部分券商提供miniQMT免费**Level 2数据** — 请咨询您的券商。
+- 文档：http://dict.thinktrader.net/nativeApi/start_now.html
 
 ---
 
-## Advanced Examples
+## 进阶示例
 
-### Grid Trading Strategy
+### 网格交易策略
 
 ```python
 from xtquant import xtdata, xtconstant
@@ -357,7 +357,7 @@ class GridCallback(XtQuantTraderCallback):
     def on_order_error(self, error):
         print(f'Error: {error.error_msg}')
 
-# Initialize trading
+# 初始化交易
 path = r'D:\券商QMT\userdata_mini'
 xt_trader = XtQuantTrader(path, 100001)
 xt_trader.register_callback(GridCallback())
@@ -366,13 +366,13 @@ xt_trader.connect()
 account = StockAccount('your_account')
 xt_trader.subscribe(account)
 
-# Grid parameters
+# 网格参数
 stock = '000001.SZ'
-grid_base = 11.0       # Base price
-grid_step = 0.2        # Grid spacing
-grid_shares = 100      # Shares per grid level
-grid_levels = 5        # 5 levels above and below
-last_grid = 0          # Current grid level
+grid_base = 11.0       # 基准价格
+grid_step = 0.2        # 网格间距
+grid_shares = 100      # 每格交易股数
+grid_levels = 5        # 上下各5档
+last_grid = 0          # 当前网格层级
 
 xtdata.connect()
 
@@ -380,11 +380,11 @@ def on_tick(datas):
     global last_grid
     for code, tick in datas.items():
         price = tick['lastPrice']
-        # Calculate the current grid level for the price
+        # 计算价格对应的当前网格层级
         current_grid = int((price - grid_base) / grid_step)
 
         if current_grid < last_grid:
-            # Price dropped through grid line, buy
+            # 价格下穿网格线，买入
             for _ in range(last_grid - current_grid):
                 xt_trader.order_stock(
                     account, code, xtconstant.STOCK_BUY, grid_shares,
@@ -393,7 +393,7 @@ def on_tick(datas):
             last_grid = current_grid
 
         elif current_grid > last_grid:
-            # Price rose through grid line, sell
+            # 价格上穿网格线，卖出
             for _ in range(current_grid - last_grid):
                 xt_trader.order_stock(
                     account, code, xtconstant.STOCK_SELL, grid_shares,
@@ -401,7 +401,7 @@ def on_tick(datas):
                 )
             last_grid = current_grid
 
-# Start market data subscription
+# 启动行情数据订阅
 def run_data():
     xtdata.subscribe_quote(stock, period='tick', callback=on_tick)
     xtdata.run()
@@ -411,7 +411,7 @@ t.start()
 xt_trader.run_forever()
 ```
 
-### Convertible Bond T+0 Intraday Trading
+### 可转债T+0日内交易
 
 ```python
 from xtquant import xtdata, xtconstant
@@ -431,10 +431,10 @@ xt_trader.connect()
 account = StockAccount('your_account')
 xt_trader.subscribe(account)
 
-# Convertible bond code (convertible bonds support T+0 trading)
+# 可转债代码（可转债支持T+0交易）
 cb_code = '113050.SH'
-buy_threshold = -0.5   # Buy when drop exceeds 0.5%
-sell_threshold = 0.5   # Sell when gain exceeds 0.5%
+buy_threshold = -0.5   # 跌幅超过0.5%买入
+sell_threshold = 0.5   # 涨幅超过0.5%卖出
 position = 0
 
 xtdata.connect()
@@ -448,7 +448,7 @@ def on_tick(datas):
             continue
         pct_change = (price - pre_close) / pre_close * 100
 
-        # Drop reaches threshold, buy 10 lots
+        # 跌幅达到阈值，买入10手
         if pct_change <= buy_threshold and position == 0:
             xt_trader.order_stock(
                 account, code, xtconstant.STOCK_BUY, 10,
@@ -456,7 +456,7 @@ def on_tick(datas):
             )
             position = 10
 
-        # Gain reaches threshold, sell
+        # 涨幅达到阈值，卖出
         elif pct_change >= sell_threshold and position > 0:
             xt_trader.order_stock(
                 account, code, xtconstant.STOCK_SELL, position,
@@ -473,7 +473,7 @@ t.start()
 xt_trader.run_forever()
 ```
 
-### Scheduled IPO Subscription
+### 定时打新申购
 
 ```python
 from xtquant import xtdata, xtconstant
@@ -494,16 +494,16 @@ xt_trader.connect()
 account = StockAccount('your_account')
 xt_trader.subscribe(account)
 
-# Query IPO subscription quota
+# 查询新股申购额度
 limits = xt_trader.query_new_purchase_limit(account)
 print(f"Subscription quota: {limits}")
 
-# Query today's IPO data
+# 查询今日新股数据
 ipo_data = xt_trader.query_ipo_data()
 if ipo_data:
     for code, info in ipo_data.items():
         print(f"New stock: {code} {info['name']} issue price={info['issuePrice']} max subscription={info['maxPurchaseNum']}")
-        # Subscribe at maximum allowed volume
+        # 以最大允许量申购
         max_vol = info['maxPurchaseNum']
         if max_vol > 0:
             order_id = xt_trader.order_stock(
@@ -512,13 +512,13 @@ if ipo_data:
             )
             print(f"  Subscription submitted: order_id={order_id}")
 else:
-    print("No IPOs available today")
+    print("今日无新股可申购")
 ```
 
 ---
 
 ## 社区与支持
 
-由 **大佬量化 (Boss Quant)** 维护 — 量化交易教学与策略研发团队。
+由 **大佬量化 (BossQuant)** 维护 — 量化交易教学与策略研发团队。
 
-微信客服: **bossquant1** · [Bilibili](https://space.bilibili.com/48693330) · 搜索 **大佬量化** on 微信公众号 / Bilibili / 抖音
+微信客服: **bossquant1** · [Bilibili](https://space.bilibili.com/48693330) · 搜索 **大佬量化** — 微信公众号 / Bilibili / 抖音
