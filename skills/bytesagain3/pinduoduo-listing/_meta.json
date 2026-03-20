@@ -3,11 +3,16 @@
   "slug": "pinduoduo-listing",
   "displayName": "Pinduoduo Listing",
   "latest": {
-    "version": "2.3.0",
-    "publishedAt": 1773447775173,
-    "commit": "https://github.com/openclaw/skills/commit/029c6c99a99b9348d7ab096f2e17f4f8a2d233ef"
+    "version": "2.0.0",
+    "publishedAt": 1773773897452,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.3.0",
+      "publishedAt": 1773447775173,
+      "commit": "https://github.com/openclaw/skills/commit/029c6c99a99b9348d7ab096f2e17f4f8a2d233ef"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773253106819,
