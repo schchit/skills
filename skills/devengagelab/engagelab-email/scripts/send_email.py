@@ -10,7 +10,7 @@ def send_engagelab_email(api_user, api_key, from_address, to_addresses, subject,
                          data_center_url="https://email.api.engagelab.cc"): # Default to Singapore data center
     
     auth_string = f"{api_user}:{api_key}"
-    encoded_auth = base64.b64encode(auth_string.encode('utf-8')).decode('utf-8')
+    encoded_auth = base64.b64encode(auth_string.encode(\'utf-8\')).decode(\'utf-8\')
 
     url = f"{data_center_url}/v1/mail/send"
     headers = {
@@ -74,7 +74,7 @@ def send_engagelab_email(api_user, api_key, from_address, to_addresses, subject,
             print(f"Response body: {response.text}")
         return None
 
-if __name__ == '__main__':
+if __name__ == \'__main__\':
     # Example Usage (replace with actual credentials and data)
     API_USER = "your_api_user"
     API_KEY = "your_api_key"
@@ -100,7 +100,7 @@ if __name__ == '__main__':
     #     with open("dummy.txt", "w") as f:
     #         f.write("This is a dummy attachment.")
     #     with open("dummy.txt", "rb") as f:
-    #         attachment_content = base64.b64encode(f.read()).decode('utf-8')
+    #         attachment_content = base64.b64encode(f.read()).decode(\'utf-8\')
     #     attachments_example = [
     #         {
     #             "content": attachment_content,

@@ -1,57 +1,57 @@
 ---
 name: engagelab-email
-description: 用于通过 EngageLab REST API 发送电子邮件。支持普通发送、模板发送、变量替换、附件处理及发送设置（如沙箱模式、追踪等）。当需要发送邮件、处理邮件模板、管理邮件附件或配置邮件发送行为时使用此 Skill。
+description: This skill is used to send emails via the EngageLab REST API. It supports regular sending, template sending, variable replacement, attachment handling, and sending settings (e.g., sandbox mode, tracking). Use this skill when you need to send emails, manage email templates, handle email attachments, or configure email sending behavior.
 ---
 
 # EngageLab Email
 
-## 概述
+## Overview
 
-此 Skill 允许 Manus 通过 EngageLab 的 REST API 发送电子邮件。它封装了复杂的 API 调用细节，使得发送邮件、管理收件人、处理邮件内容（HTML/纯文本）、进行变量替换以及添加附件变得简单高效。此外，还支持配置高级发送设置，如沙箱模式、邮件追踪等。
+This skill allows an agent to send emails via EngageLab's REST API. It encapsulates complex API call details, making it simple and efficient to send emails, manage recipients, handle email content (HTML/plain text), perform variable replacement, and add attachments. Additionally, it supports configuring advanced sending settings such as sandbox mode and email tracking.
 
-## 核心功能
+## Core Features
 
-### 1. 发送普通邮件
+### 1. Sending Regular Emails
 
-通过指定发件人、收件人、主题和邮件内容（HTML 或纯文本）来发送基本的电子邮件。支持抄送 (CC) 和密送 (BCC)。
+Send basic emails by specifying the sender, recipients, subject, and email content (HTML or plain text). Supports Carbon Copy (CC) and Blind Carbon Copy (BCC).
 
-**使用场景**：发送通知、确认邮件、简单消息等。
+**Use Case**: Sending notifications, confirmation emails, simple messages, etc.
 
-### 2. 邮件内容与变量替换
+### 2. Email Content and Variable Replacement
 
-支持在邮件主题和内容中使用变量，并通过 `vars` 或 `dynamic_vars` 参数进行替换，实现邮件内容的个性化。
+Supports using variables in email subjects and content, and replacing them via `vars` or `dynamic_vars` parameters to personalize email content.
 
-- **`vars`**: 适用于简单的文本替换，如 `Dear %name%`。
-- **`dynamic_vars`**: 适用于动态模板引擎的变量替换，如 `Dear {{name}}`。
+- **`vars`**: Suitable for simple text replacement, such as `Dear %name%`.
+- **`dynamic_vars`**: Suitable for variable replacement in dynamic template engines, such as `Dear {{name}}`.
 
-**使用场景**：发送营销邮件、批量个性化通知等。
+**Use Case**: Sending marketing emails, bulk personalized notifications, etc.
 
-### 3. 附件处理
+### 3. Attachment Handling
 
-支持在邮件中添加附件。附件内容需要进行 Base64 编码。可以设置附件的文件名、类型以及处置方式（`inline` 或 `attachment`）。`inline` 模式常用于在邮件正文中嵌入图片。
+Supports adding attachments to emails. Attachment content needs to be Base64 encoded. You can set the attachment's filename, type, and disposition (`inline` or `attachment`). `inline` mode is often used to embed images within the email body.
 
-**使用场景**：发送报告、图片、文档等。
+**Use Case**: Sending reports, images, documents, etc.
 
-### 4. 高级发送设置
+### 4. Advanced Sending Settings
 
-通过 `settings` 参数可以配置多种发送行为，包括：
+Various sending behaviors can be configured via the `settings` parameter, including:
 
-- **`send_mode`**: 发送模式（0: 普通, 1: 模板, 2: 地址列表）。
-- **`sandbox`**: 是否开启沙箱模式进行测试，邮件不会实际发送。
-- **`open_tracking`**, **`click_tracking`**, **`unsubscribe_tracking`**: 邮件打开、点击和取消订阅的追踪。
+- **`send_mode`**: Sending mode (0: regular, 1: template, 2: address list).
+- **`sandbox`**: Whether to enable sandbox mode for testing; emails will not be actually sent.
+- **`open_tracking`**, **`click_tracking`**, **`unsubscribe_tracking`**: Tracking for email opens, clicks, and unsubscribes.
 
-**使用场景**：测试邮件发送功能、进行邮件营销效果分析。
+**Use Case**: Testing email sending functionality, analyzing email marketing effectiveness.
 
-## 资源
+## Resources
 
 ### scripts/
 
-- **`send_email.py`**: 这是一个 Python 脚本，封装了 EngageLab 邮件发送 API 的调用逻辑。它处理了身份验证、请求体构建、API 调用和错误处理。你可以直接调用此脚本来发送邮件。
+- **`send_email.py`**: This is a Python script that encapsulates the EngageLab email sending API call logic. It handles authentication, request body construction, API calls, and error handling. You can directly call this script to send emails.
 
 ### references/
 
-- **`api_spec.md`**: 包含了 EngageLab 邮件发送 REST API 的详细参数说明、请求示例和响应格式。当需要深入了解 API 的具体细节时，可以查阅此文件。
+- **`api_spec.md`**: Contains detailed parameter descriptions, request examples, and response formats for the EngageLab email sending REST API. Refer to this file when you need to understand the specific details of the API.
 
 ### templates/
 
-当前 Skill 没有特定的模板文件，因为邮件内容通常是动态生成的。如有需要，可以根据具体场景添加邮件内容模板。
+This skill currently does not have specific template files, as email content is usually generated dynamically. If needed, email content templates can be added based on specific scenarios.
