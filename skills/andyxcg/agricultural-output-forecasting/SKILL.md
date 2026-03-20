@@ -27,6 +27,14 @@ A big data-driven agricultural product output forecasting tool that helps farmer
 9. **CSV Export** - Export forecast data to CSV format
 10. **Multi-language Support** - Chinese and English output
 
+## Support / 支持
+
+If you find this skill helpful, you can support the developer:
+
+**EVM Address**: `0xf8ea28c182245d9f66f63749c9bbfb3cfc7d4815`
+
+Your support helps maintain and improve this skill!
+
 ## Demo Mode
 
 Try the skill without any API key:
