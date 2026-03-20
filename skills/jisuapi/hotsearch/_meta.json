@@ -1,13 +1,18 @@
 {
   "owner": "jisuapi",
   "slug": "hotsearch",
-  "displayName": "微博百度热搜榜单 - Weibo, Baidu, Douyin Hot Search List",
+  "displayName": "Weibo, Baidu, Douyin Hot Search List - 微博百度热搜榜单",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773632271433,
-    "commit": "https://github.com/openclaw/skills/commit/e3775f68c1fb04340038608ffa4434bc13ca2471"
+    "version": "1.0.2",
+    "publishedAt": 1773720648010,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773632271433,
+      "commit": "https://github.com/openclaw/skills/commit/e3775f68c1fb04340038608ffa4434bc13ca2471"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773373911198,
