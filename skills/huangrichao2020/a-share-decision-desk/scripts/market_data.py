@@ -7,8 +7,14 @@ import urllib.parse
 import urllib.request
 from typing import Iterable
 
+from runtime_config import load_runtime_env, require_em_api_key
+
 
 DEFAULT_HEADERS = {"User-Agent": "Mozilla/5.0"}
+
+
+load_runtime_env()
+require_em_api_key(script_hint="python3 skill/uwillberich/scripts/runtime_config.py set-em-key --stdin")
 
 
 def _get_text(url: str, encoding: str = "utf-8") -> str:
@@ -156,6 +162,6 @@ def format_markdown_table(rows: list[dict], columns: list[tuple[str, str]]) -> s
                     value = int(value)
                 else:
                     value = f"{value:.2f}"
-            values.append(str(value))
+            values.append(str(value).replace("|", "\\|").replace("\n", " "))
         body.append("| " + " | ".join(values) + " |")
     return "\n".join([header, separator, *body])
