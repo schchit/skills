@@ -3,9 +3,15 @@
   "slug": "ifind-mcp",
   "displayName": "Ifind Mcp",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773802865455,
-    "commit": "https://github.com/openclaw/skills/commit/89cc7b4e7c7a34cac1cef28e61ffddf0dcec0a61"
+    "version": "1.1.0",
+    "publishedAt": 1773999574010,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773802865455,
+      "commit": "https://github.com/openclaw/skills/commit/89cc7b4e7c7a34cac1cef28e61ffddf0dcec0a61"
+    }
+  ]
 }
