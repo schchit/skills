@@ -157,7 +157,7 @@ string
 diningTime
 string
 是
-就餐时间（格式：YYYY-MM-DDTHH:MM:SS）
+就餐时间（格式：YYYY-MM-DDTHH:MM:SS，格式必须是 ISO 8601 格式 2026-03-21T18:00:00（带 T 分隔符和秒），而不是空格分隔的格式。）
 restaurantSeat
 string
 是
