@@ -3,9 +3,15 @@
   "slug": "fill-docx-template",
   "displayName": "Fill docx template",
   "latest": {
-    "version": "1.1.0",
-    "publishedAt": 1773740589392,
-    "commit": "https://github.com/openclaw/skills/commit/6b2945f268399a7b2dd55c8beab4db965623fa41"
+    "version": "1.1.2",
+    "publishedAt": 1773990169957,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1773740589392,
+      "commit": "https://github.com/openclaw/skills/commit/6b2945f268399a7b2dd55c8beab4db965623fa41"
+    }
+  ]
 }
