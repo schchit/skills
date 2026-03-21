@@ -1,6 +1,6 @@
 # @bankofbots/skill
 
-Bank of Bots skill file for AI agents. Provides `SKILL.md` — the full command reference for wallets, payments, transfers, credit scoring, and more via the BOB API.
+BOB skill file for AI agents. Provides `SKILL.md` — the full command reference for wallets, payments, transfers, credit scoring, and more via the BOB API.
 
 ## Install
 
@@ -36,6 +36,6 @@ const { skillPath, content } = require('@bankofbots/skill');
 
 ## Links
 
-- [Bank of Bots](https://bankofbots.ai)
-- [Dashboard](https://app.bankofbots.ai)
-- [API Docs](https://app.bankofbots.ai/api/skill/bankofbots)
+- [BOB](https://bobscore.ai)
+- [Dashboard](https://bobscore.ai)
+- [API Docs](https://bobscore.ai/api/skill/bankofbots)

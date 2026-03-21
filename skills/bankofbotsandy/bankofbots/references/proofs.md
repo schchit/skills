@@ -1,61 +1,119 @@
 # BOB Score — Proof Submission
 
-Submitting payment proofs verifies settlement and awards BOB Score credit. Stronger proof types earn more credit.
+Agents submit historical on-chain transaction proofs. BOB verifies each tx on the public ledger and awards credit. Both the sender and recipient of a transaction can submit the same proof for dual-sided credit.
+
+<!-- Payment intents and Lightning proofs (btc_lightning_preimage, btc_lightning_payment_hash) are not yet available. Currently only historical on-chain proof imports are supported. -->
 
 ## Proof types
 
 | Type | Flag(s) | Confidence | What it proves |
 |---|---|---|---|
-| `btc_lightning_preimage` | `--preimage <hex> --proof-ref <hash>` | **strong** | SHA256(preimage) == payment hash — cryptographically irrefutable |
-| `btc_lightning_payment_hash` | `--payment-hash <hash>` | **medium** | Payment hash observed on node |
-| `btc_onchain_tx` | `--txid <txid>` | **provisional→strong** | On-chain tx confirmed (upgrades as confirmations accumulate) |
-| `eth_onchain_tx` | `--proof-type eth_onchain_tx --proof-ref <txhash> [--chain-id 0x1]` | **medium→strong** | EVM on-chain tx (Ethereum mainnet or Base) |
-| `base_onchain_tx` | `--proof-type base_onchain_tx --proof-ref <txhash>` | **medium→strong** | Base L2 on-chain tx |
-| `sol_onchain_tx` | `--proof-type sol_onchain_tx --proof-ref <txsig>` | **medium→strong** | Solana on-chain tx |
+| `btc_onchain_tx` | `--proof-type btc_onchain_tx --proof-ref <txid>` | **provisional→strong** | BTC on-chain tx confirmed (upgrades as confirmations accumulate) |
+| `eth_onchain_tx` | `--proof-type eth_onchain_tx --proof-ref <txhash>` | **provisional→strong** | Ethereum mainnet on-chain tx |
+| `base_onchain_tx` | `--proof-type base_onchain_tx --proof-ref <txhash>` | **provisional→strong** | Base L2 on-chain tx |
+| `sol_onchain_tx` | `--proof-type sol_onchain_tx --proof-ref <txsig>` | **provisional→strong** | Solana on-chain tx |
 
-## Submit proof against a payment intent
+**Confidence tiers:**
+- `strong` — on-chain tx confirmed with sufficient confirmations, OR both counterparties submitted the same proof
+- `medium` — single-sided proof with on-chain verification
+- `provisional` — on-chain tx detected, awaiting confirmations
 
-```bash
-# BTC on-chain
-bob intent submit-proof <agent-id> <intent-id> --txid <txid>
+## Dual-sided proof submission
 
-# Lightning payment hash
-bob intent submit-proof <agent-id> <intent-id> --payment-hash <hash>
+Both the sender and recipient of a transaction can independently submit a proof for the same on-chain tx. Each side earns credit:
 
-# Lightning preimage (highest confidence)
-bob intent submit-proof <agent-id> <intent-id> \
-  --preimage <hex> --proof-ref <payment-hash>
+- **Outbound** (`--direction outbound`, default): You sent the payment. Requires `--sender-address` for EVM proofs. The address is verified against the on-chain sender — a mismatch fails with `sender_address_mismatch`. Recommended for all chains.
+- **Inbound** (`--direction inbound`): You received the payment. Requires `--recipient-address` for EVM proofs (must match a bound wallet).
 
-# EVM on-chain (Ethereum mainnet)
-bob intent submit-proof <agent-id> <intent-id> \
-  --proof-type eth_onchain_tx --proof-ref <0x...txhash> --chain-id 0x1
+When both counterparties submit the same transaction, confidence is automatically boosted from `medium` to `strong`.
 
-# Solana on-chain
-bob intent submit-proof <agent-id> <intent-id> \
-  --proof-type sol_onchain_tx --proof-ref <txsig>
-```
+Use `--counterparty-ref` to identify the other party in the transaction.
 
-## Import historical proofs (credit building)
+<!-- Intent-based proof submission (bob intent submit-proof) is not yet available. -->
 
-For payments that happened before BOB tracking was set up:
+## Import historical on-chain proofs (primary flow)
+
+Submit on-chain transactions you sent or received. BOB verifies them on the public ledger and awards credit.
 
 ```bash
+# Outbound BTC — you sent the payment
 bob agent credit-import <agent-id> \
-  --proof-type btc_lightning_preimage \
-  --proof-ref <payment-hash> \
-  --rail lightning \
+  --proof-type btc_onchain_tx \
+  --proof-ref <txid> \
+  --rail onchain \
   --currency BTC \
   --amount <sats> \
   --direction outbound
+
+# Inbound ETH — you received the payment
+bob agent credit-import <agent-id> \
+  --proof-type eth_onchain_tx \
+  --proof-ref <0x...txhash> \
+  --rail onchain \
+  --currency ETH \
+  --amount <wei> \
+  --direction inbound \
+  --recipient-address <your-bound-wallet>
+
+# Outbound Base L2 with sender address
+bob agent credit-import <agent-id> \
+  --proof-type base_onchain_tx \
+  --proof-ref <0x...txhash> \
+  --rail onchain \
+  --currency ETH \
+  --amount <wei> \
+  --direction outbound \
+  --sender-address <your-bound-wallet>
+
+# Solana on-chain
+bob agent credit-import <agent-id> \
+  --proof-type sol_onchain_tx \
+  --proof-ref <txsig> \
+  --rail onchain \
+  --currency SOL \
+  --amount <lamports> \
+  --direction outbound
 ```
 
-Supported `--proof-type` values: `btc_onchain_tx`, `btc_lightning_payment_hash`, `btc_lightning_preimage`, `eth_onchain_tx`, `base_onchain_tx`, `sol_onchain_tx`
+Supported `--proof-type` values: `btc_onchain_tx`, `eth_onchain_tx`, `base_onchain_tx`, `sol_onchain_tx`
 
 Historical imports are capped — they count toward score but cannot substitute for ongoing payment history.
+
+## Import x402 receipts
+
+Both the payer and payee can submit the same x402 receipt for dual-sided credit.
+
+```bash
+# Outbound — you paid for a service
+bob agent x402-import <agent-id> \
+  --tx <tx-hash> \
+  --network eip155:8453 \
+  --payer <your-wallet> \
+  --payee <service-address> \
+  --amount <atomic-units> \
+  --resource-url <service-url> \
+  --direction outbound
+
+# Inbound — you received payment for a service
+bob agent x402-import <agent-id> \
+  --tx <tx-hash> \
+  --network eip155:8453 \
+  --payer <client-address> \
+  --payee <your-wallet> \
+  --amount <atomic-units> \
+  --resource-url <service-url> \
+  --direction inbound
+```
 
 ## How proofs affect BOB Score
 
 - Each verified proof emits a credit event with `awarded`, `delta`, and `reason`
-- Amount thresholds: floor is 1,000 sats / 1,000,000 gwei / 1,000,000 lamports
-- Preimage proofs earn the highest confidence tier
-- Duplicate proof refs are deduplicated — same txid/hash twice doesn't double-count
+- Both sides of a transaction earn credit independently — dual-sided proofs boost confidence
+- Amount thresholds: floor is 1,000 sats / chain-specific ETH minimums / 1,000,000 lamports
+- Duplicate proof refs are deduplicated per direction — same txid twice from the same direction doesn't double-count, but sender + recipient submissions are distinct
+
+## Failure reasons
+
+| Reason | Description |
+|---|---|
+| `sender_address_mismatch` | The `--sender-address` provided for an outbound proof does not match the on-chain sender. Verify the address and ensure it is bound to your agent. |

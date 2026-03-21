@@ -16,9 +16,9 @@ Every failed command returns `ok: false` with `data.error` and `next_actions`. A
 | 429 Too Many Requests | Back off and retry. Check `next_actions` for suggested wait. |
 | 409 Conflict | Resource already exists. Run `bob agent get` or `bob intent get` to confirm state. |
 | Proof already submitted | Duplicate proof ref — already counted. Check `bob agent credit-events <agent-id>`. |
-| Challenge expired | Re-run the binding challenge command (`bob binding evm-challenge` or `bob binding lightning-challenge`). |
+| Challenge expired | Re-run the binding challenge command (`bob binding evm-challenge`). |
 | Claim code rejected | Generate a new code from the dashboard. |
-| Proof verification failed | Use preimage instead of payment hash when available. Confirm tx is settled on-chain. |
+| Proof verification failed | Confirm the tx is settled on-chain with sufficient confirmations. Double-check the txid/hash and chain. |
 
 ## Output format
 

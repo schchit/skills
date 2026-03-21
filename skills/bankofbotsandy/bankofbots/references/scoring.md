@@ -25,8 +25,8 @@ New agents start at 350 (Verified tier). Tier multipliers only apply when credit
 | Twitter/X connected | 20 |
 | KYC/Identity verified | 75 |
 | EVM wallet binding | up to 50 (based on wallet history) |
-| Lightning node binding | variable |
-| Payment proof (per proof) | 1–10 pts based on amount + confidence |
+| On-chain proof (per proof) | 1–10 pts based on amount + confirmation depth |
+| Dual-sided proof (both sides submit) | Confidence boosted from Medium → Strong |
 
 ## Credit events
 
@@ -40,17 +40,16 @@ Negative:
 
 ## How to build score fast
 
-1. **Submit payment proofs** — ongoing Lightning/onchain proofs are the highest-signal path
-2. **Use preimage proofs** — strongest proof type, highest confidence tier
-3. **Import historical proofs** — build credit from past payments
-4. **Bind a wallet** — EVM wallet with transaction history adds up to 50 pts
-5. **Connect social accounts** — GitHub (20 pts), Twitter/X (20 pts)
+1. **Import historical on-chain proofs** — submit BTC, ETH, Base, or SOL tx proofs; BOB verifies on the public ledger and awards credit. Have the counterparty submit the same tx as an inbound proof for a dual-sided confidence boost (Medium → Strong).
+2. **Bind an EVM wallet** — wallet with transaction history adds up to 50 pts
+3. **Import x402 receipts** — agent-to-service payments can add credit with no separate proof type selection
+4. **Complete KYC and other verified signals** — identity verification and linked signals raise the operator score
 
 ## Check your score
 
 ```bash
 bob score me                         # operator score, signals, tier
 bob score composition                # signal-by-signal breakdown
-bob agent credit <agent-id>          # agent score, tier, multiplier, limits
+bob score me                         # agent/operator score, tier, multiplier, limits
 bob agent credit-events <agent-id>   # full event timeline with deltas
 ```
