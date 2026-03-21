@@ -3,9 +3,15 @@
   "slug": "moltme",
   "displayName": "MoltMe",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1773947660353,
-    "commit": "https://github.com/openclaw/skills/commit/9c3319682ab4462c43b1fe29c1d81d17932c30ce"
+    "version": "1.0.5",
+    "publishedAt": 1774015053544,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1773947660353,
+      "commit": "https://github.com/openclaw/skills/commit/9c3319682ab4462c43b1fe29c1d81d17932c30ce"
+    }
+  ]
 }
