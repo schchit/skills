@@ -1,8 +1,10 @@
 ---
 name: "Mileage"
-description: "A focused home management tool built for Mileage. Log entries, review trends, and export reports — all locally."
+description: "Log vehicle mileage, review driving trends, and export trip reports for tracking. Use when logging trips, tracking fuel economy, exporting mileage data."
 version: "2.0.0"
 author: "BytesAgain"
+homepage: https://bytesagain.com
+source: https://github.com/bytesagain/ai-skills
 tags: ["maintenance", "home", "domestic", "smart-home", "mileage"]
 ---
 

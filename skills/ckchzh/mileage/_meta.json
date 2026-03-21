@@ -3,9 +3,15 @@
   "slug": "mileage",
   "displayName": "Mileage",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773673833149,
-    "commit": "https://github.com/openclaw/skills/commit/cc102c467a33d121fd98c8c05e552767d1251f8d"
+    "version": "2.0.1",
+    "publishedAt": 1773798411601,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773673833149,
+      "commit": "https://github.com/openclaw/skills/commit/cc102c467a33d121fd98c8c05e552767d1251f8d"
+    }
+  ]
 }
