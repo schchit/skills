@@ -1,6 +1,6 @@
 ---
 name: dingtalk-message-style
-description: "提升钉钉消息展示样式，支持 Markdown、Link 卡片、ActionCard 按钮、FeedCard 图文列表、纯图片等多种格式。使用场景：(1) 发送商品信息带图片 (2) 发送任务报告表格 (3) 发送可点击的操作卡片 (4) 发送多图文列表。"
+description: "提升钉钉消息展示样式，支持 Markdown、Link 卡片、ActionCard 按钮、FeedCard 图文列表等多种格式。支持智能格式选择、模板库、@提醒功能。"
 metadata:
   copaw:
     emoji: "🎨"
@@ -8,120 +8,143 @@ metadata:
 
 # 钉钉消息样式 Skill
 
-提升钉钉消息的视觉效果和交互体验，支持智能格式选择和模板库。
+提升钉钉消息的视觉效果和交互体验，支持智能格式选择、模板库、@提醒。
 
-## 快速开始
-
-### 1. 使用模板（推荐）
-
-```bash
-# 查看所有模板
-python3 ~/.copaw/skills/dingtalk-message-style/scripts/smart_send.py --list
-
-# 商品推荐
-python3 ~/.copaw/skills/dingtalk-message-style/scripts/smart_send.py --template goods_recommend --vars '{"商品名":"iPhone","价格":"5999","亮点":"最新款","描述":"性能强劲","图片URL":"...","商品链接":"..."}'
-
-# 任务报告
-python3 ~/.copaw/skills/dingtalk-message-style/scripts/smart_send.py --template task_report --vars '{"时间":"2026-03-18","任务表格":"|任务|状态|\n|A|✅|","完成数":"1","总数":"1","总结":"完成"}'
-
-# 降价提醒
-python3 ~/.copaw/skills/dingtalk-message-style/scripts/smart_send.py --template price_alert --vars '{"商品名":"iPhone","原价":"6999","现价":"5999","降幅":"1000","图片URL":"...","商品链接":"..."}'
-```
-
-### 2. 智能发送（自动选择格式）
-
-```python
-from smart_send import SmartSender
-
-# 多商品 → 自动选择 FeedCard
-sender = SmartSender()
-sender.add_product("商品1", "图片1", "链接1", "¥99")
-sender.add_product("商品2", "图片2", "链接2", "¥199")
-sender.analyze_and_send()  # 自动选择 FeedCard
-
-# 单商品+图片+链接 → 自动选择 Link
-sender = SmartSender()
-sender.add_product("商品名", "图片", "链接", "¥99", "描述")
-sender.analyze_and_send()  # 自动选择 Link
-
-# 表格/列表 → 自动选择 Markdown
-sender = SmartSender()
-sender.set_title("报告")
-sender.set_content("| 任务 | 状态 |\n|------|------|\n| A | ✅ |")
-sender.analyze_and_send()  # 自动选择 Markdown
-```
+**官方文档**: https://open.dingtalk.com/document/development/robot-message-type
 
 ---
 
-## 支持的消息格式
+## 支持的消息类型
 
-| 格式 | 图片 | 按钮 | 最佳场景 |
-|------|------|------|----------|
-| **markdown** | ❌ | ❌ | 报告、表格、列表 |
-| **text** | ❌ | ❌ | 简单通知 |
-| **link** | ✅ | ❌ | 商品推荐、文章分享 |
-| **image** | ✅ | ❌ | 纯图片展示 |
-| **actionCard** | ✅ | ✅ | 操作确认、选择菜单 |
-| **feedCard** | ✅ | ❌ | 多图文列表 |
+| 类型 | 图片 | 按钮 | @提醒 | 最佳场景 |
+|------|:----:|:----:|:-----:|----------|
+| **text** | ❌ | ❌ | ✅ | 简单通知 |
+| **markdown** | ❌ | ❌ | ✅ | 报告、表格、列表 |
+| **link** | ✅ | ❌ | ❌ | 商品推荐、文章分享 |
+| **actionCard** | ✅ | ✅ | ❌ | 操作确认、选择菜单 |
+| **feedCard** | ✅ | ❌ | ❌ | 多图文列表 |
+
+⚠️ **注意**: Webhook 方式不支持纯图片(image)类型，需要图片请使用 Link 或 FeedCard
+
+---
+
+## 快速开始
+
+### 1. 基础发送
+
+```bash
+# 文本消息
+python3 ~/.copaw/skills/dingtalk-message-style/scripts/send_dingtalk.py text "内容"
+
+# Markdown（支持表格）
+python3 .../send_dingtalk.py markdown "标题" "### 内容\n| 列1 | 列2 |\n|-----|-----|\n| A | B |"
+
+# Link 卡片（带图片）
+python3 .../send_dingtalk.py link "标题" "描述" "图片URL" "跳转URL"
+
+# 单按钮 ActionCard
+python3 .../send_dingtalk.py action "标题" "描述" "按钮标题" "按钮URL"
+
+# 多按钮 ActionCard（横向排列）
+python3 .../send_dingtalk.py action_multi "标题" "描述" '[{"title":"按钮1","actionURL":"url1"},{"title":"按钮2","actionURL":"url2"}]' --btn-orientation 1
+
+# 多图文 FeedCard
+python3 .../send_dingtalk.py feed '[{"title":"标题1","picURL":"图片1","messageURL":"链接1"}]'
+```
+
+### 2. @提醒功能
+
+```bash
+# @所有人
+python3 .../send_dingtalk.py markdown "标题" "内容 @所有人" --at-all
+
+# @指定手机号
+python3 .../send_dingtalk.py markdown "标题" "内容 @138xxxx" --at-mobiles "138xxxx,139xxxx"
+
+# @指定用户ID
+python3 .../send_dingtalk.py text "内容" --at-user-ids "user1,user2"
+```
+
+### 3. 使用模板
+
+```bash
+# 查看模板列表
+python3 ~/.copaw/skills/dingtalk-message-style/scripts/smart_send.py --list
+
+# 商品推荐
+python3 .../smart_send.py --template goods_recommend --vars '{"商品名":"iPhone","价格":"5999","亮点":"最新款","描述":"性能强劲","图片URL":"...","商品链接":"..."}'
+
+# 任务报告
+python3 .../smart_send.py --template task_report --vars '{"时间":"2026-03-18","任务表格":"|任务|状态|\\n|A|✅|","完成数":"1","总数":"1","总结":"完成"}'
+
+# 降价提醒
+python3 .../smart_send.py --template price_alert --vars '{"商品名":"iPhone","原价":"6999","现价":"5999","降幅":"1000","图片URL":"...","商品链接":"..."}'
+```
 
 ---
 
 ## 模板库
 
-| 模板 | 说明 | 格式 |
+| 模板 | 类型 | 说明 |
 |------|------|------|
-| `goods_recommend` | 商品推荐 | Link |
-| `goods_list` | 商品列表 | FeedCard |
-| `task_report` | 任务报告 | Markdown |
-| `price_alert` | 降价提醒 | Link |
-| `order_status` | 订单状态 | Markdown |
-| `daily_summary` | 每日总结 | Markdown |
-| `meeting_reminder` | 会议提醒 | ActionCard |
-| `shopping_cart` | 购物车提醒 | Markdown |
+| `goods_recommend` | Link | 单商品推荐 |
+| `goods_list` | FeedCard | 多商品列表 |
+| `price_alert` | Link | 降价提醒 |
+| `task_report` | Markdown | 任务报告 |
+| `order_status` | Markdown | 订单状态 |
+| `daily_summary` | Markdown | 每日总结 |
+| `meeting_notice` | ActionCard | 会议通知 |
+| `confirm_action` | ActionCard | 操作确认 |
+| `alert_notify` | Markdown | 告警通知 |
+| `shopping_cart` | Markdown | 购物车提醒 |
 
 ---
 
-## 智能格式选择规则
+## 智能格式选择
 
-| 内容特征 | 自动选择 | 说明 |
-|----------|----------|------|
-| 多个商品+图片 | **FeedCard** | 多图文列表 |
-| 单商品+图片+链接 | **Link** | 卡片形式 |
-| 只有图片 | **Image** | 纯图片 |
-| 有表格/列表 | **Markdown** | 富文本展示 |
-| 纯文本 | **Text** | 简单通知 |
+自动根据内容选择最佳格式：
 
----
+```python
+from smart_send import SmartSender
 
-## 命令行工具
+# 多商品 → FeedCard
+sender = SmartSender()
+sender.add_product("商品1", "图片1", "链接1", "¥99")
+sender.add_product("商品2", "图片2", "链接2", "¥199")
+sender.analyze_and_send()  # 自动选 FeedCard
 
-### 基础发送
+# 单商品+图片+链接 → Link
+sender = SmartSender()
+sender.add_product("商品", "图片", "链接", "¥99", "描述")
+sender.analyze_and_send()  # 自动选 Link
 
-```bash
-# Markdown
-python3 ~/.copaw/skills/dingtalk-message-style/scripts/send_dingtalk.py markdown "标题" "内容"
-
-# Link 卡片
-python3 ~/.copaw/skills/dingtalk-message-style/scripts/send_dingtalk.py link "标题" "描述" "图片URL" "跳转URL"
-
-# 纯图片
-python3 ~/.copaw/skills/dingtalk-message-style/scripts/send_dingtalk.py image "图片URL"
-
-# 多图文
-python3 ~/.copaw/skills/dingtalk-message-style/scripts/send_dingtalk.py feed '[{"title":"标题","picURL":"图片","messageURL":"链接"}]'
+# 内容+@提醒 → Markdown
+sender = SmartSender()
+sender.set_title("告警")
+sender.set_content("CPU超过90%")
+sender.at(mobiles=["138xxxx"], at_all=False)
+sender.analyze_and_send()  # 自动选 Markdown
 ```
 
-### 模板发送
+---
+
+## 按钮排列方向
+
+ActionCard 多按钮支持两种排列：
 
 ```bash
-python3 ~/.copaw/skills/dingtalk-message-style/scripts/smart_send.py --template <模板名> --vars '<JSON变量>'
+# 竖直排列（默认）
+--btn-orientation 0
+
+# 横向排列
+--btn-orientation 1
 ```
 
 ---
 
 ## 图片链接处理
 
-⚠️ **重要**：淘宝图片 URL 需去掉 `_.webp` 后缀
+淘宝图片 URL 需去掉 `_.webp` 后缀：
 
 ```python
 # 自动处理
@@ -130,28 +153,17 @@ fix_taobao_image_url(url)  # xxx.jpg_.webp → xxx.jpg
 
 ---
 
-## 样式美化技巧
+## Markdown 支持的语法
 
-### Markdown 表格
-
-```markdown
-| 任务 | 状态 | 备注 |
-|------|------|------|
-| 任务A | ✅ 完成 | 正常 |
-| 任务B | ⏳ 进行中 | 等待中 |
-```
-
-### 表情符号推荐
-
-| 场景 | 推荐表情 |
-|------|----------|
-| 完成/成功 | ✅ 🎉 ✔️ |
-| 进行中 | ⏳ 🔄 |
-| 警告 | ⚠️ ❗ |
-| 提示 | 💡 📌 |
-| 购物 | 🛒 🔥 💰 |
-| 降价 | 📉 💸 |
-| 任务 | 📋 📝 |
+| 语法 | 支持 | 说明 |
+|------|:----:|------|
+| 标题 `#` | ✅ | 支持 h1-h6 |
+| 粗体 `**` | ✅ | |
+| 引用 `>` | ✅ | |
+| 链接 `[]()` | ✅ | |
+| 代码 `` ` `` | ✅ | |
+| 列表 `-` | ✅ | |
+| 图片 `![]()` | ❌ | 请用 Link/FeedCard |
 
 ---
 
@@ -159,19 +171,30 @@ fix_taobao_image_url(url)  # xxx.jpg_.webp → xxx.jpg
 
 ```
 ~/.copaw/skills/dingtalk-message-style/
-├── SKILL.md                    # 本文档
+├── SKILL.md
+├── _meta.json
 ├── scripts/
-│   ├── send_dingtalk.py       # 基础发送工具
-│   └── smart_send.py          # 智能发送+模板库
+│   ├── send_dingtalk.py    # 基础发送
+│   └── smart_send.py       # 智能发送+模板
 └── templates/
-    └── templates.json         # 模板定义
+    └── templates.json      # 模板定义
 ```
 
 ---
 
-## 使用建议
+## 常见问题
 
-1. **有图片优先用 Link/FeedCard** - 视觉效果好
-2. **报告用模板** - 格式统一美观
-3. **多商品用 FeedCard** - 一次展示多个
-4. **复杂内容先智能分析** - 自动选择最佳格式
+### Q: 为什么图片不显示？
+A: 
+1. Markdown 不支持图片，请用 Link 或 FeedCard
+2. 淘宝图片需去掉 `_.webp` 后缀
+
+### Q: 如何@所有人？
+A: 使用 `--at-all` 参数
+
+### Q: 如何让按钮横向排列？
+A: 使用 `--btn-orientation 1`
+
+---
+
+*版本: 1.1.0 | 更新: 2026-03-18*
