@@ -1,0 +1,11 @@
+{
+  "owner": "roojenkins",
+  "slug": "uplo-healthcare",
+  "displayName": "Uplo Healthcare",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774001340620,
+    "commit": null
+  },
+  "history": []
+}
