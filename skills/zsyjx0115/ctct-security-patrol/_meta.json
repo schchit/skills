@@ -3,9 +3,15 @@
   "slug": "ctct-security-patrol",
   "displayName": "ctct-security-patrol",
   "latest": {
-    "version": "1.0.5",
-    "publishedAt": 1773737664835,
-    "commit": "https://github.com/openclaw/skills/commit/cccc2d9a86608f227000af46d71cd9c1ade5c3b1"
+    "version": "1.0.9",
+    "publishedAt": 1773976567731,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.5",
+      "publishedAt": 1773737664835,
+      "commit": "https://github.com/openclaw/skills/commit/cccc2d9a86608f227000af46d71cd9c1ade5c3b1"
+    }
+  ]
 }
