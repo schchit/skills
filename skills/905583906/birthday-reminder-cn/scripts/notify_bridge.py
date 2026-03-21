@@ -138,7 +138,7 @@ def main() -> int:
     parser.add_argument("--birthday-config", required=True, help="生日配置 JSON 路径")
     parser.add_argument("--notify-config", required=True, help="通知配置 JSON 路径")
     parser.add_argument("--window-minutes", type=int, default=70, help="检查窗口（分钟）")
-    parser.add_argument("--now", default=None, help="测试时间（ISO8601）")
+    parser.add_argument("--now", default=None, help="测试时间，例如 2026-03-25 09:00:00")
     parser.add_argument("--dry-run", action="store_true", help="只打印，不实际发送")
     args = parser.parse_args()
 

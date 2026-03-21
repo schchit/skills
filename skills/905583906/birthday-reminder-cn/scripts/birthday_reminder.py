@@ -282,10 +282,20 @@ def load_config(path: str) -> dict:
 def parse_now(raw_now: str | None, timezone: str) -> dt.datetime:
     tz = ZoneInfo(timezone)
     if raw_now:
-        now = dt.datetime.fromisoformat(raw_now)
-        if now.tzinfo is None:
-            now = now.replace(tzinfo=tz)
-        return now.astimezone(dt.timezone.utc)
+        raw = raw_now.strip()
+        parsed = None
+        # 优先支持更易读的格式：yyyy-MM-DD HH:mm:ss
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
+            try:
+                parsed = dt.datetime.strptime(raw, fmt)
+                break
+            except ValueError:
+                continue
+        if parsed is None:
+            parsed = dt.datetime.fromisoformat(raw)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=tz)
+        return parsed.astimezone(dt.timezone.utc)
     return dt.datetime.now(tz).astimezone(dt.timezone.utc)
 
 
@@ -334,13 +344,13 @@ def build_parser() -> argparse.ArgumentParser:
     check = sub.add_parser("check", help="检查当前窗口内到期提醒")
     check.add_argument("--config", required=True, help="生日配置 JSON 路径")
     check.add_argument("--window-minutes", type=int, default=DEFAULT_WINDOW_MINUTES, help="检查窗口（分钟），默认 70")
-    check.add_argument("--now", default=None, help="测试时间（ISO8601），例如 2026-03-25T09:00:00+08:00")
+    check.add_argument("--now", default=None, help="测试时间，例如 2026-03-25 09:00:00")
     check.add_argument("--output", choices=["text", "json"], default="text")
     check.set_defaults(func=cmd_check)
 
     list_cmd = sub.add_parser("list", help="列出所有已配置提醒（按下一次生日计算）")
     list_cmd.add_argument("--config", required=True, help="生日配置 JSON 路径")
-    list_cmd.add_argument("--now", default=None, help="基准时间（ISO8601），例如 2026-03-25T09:00:00+08:00")
+    list_cmd.add_argument("--now", default=None, help="基准时间，例如 2026-03-25 09:00:00")
     list_cmd.add_argument("--output", choices=["text", "json"], default="text")
     list_cmd.set_defaults(func=cmd_list)
 

@@ -41,6 +41,10 @@
 - 通知分发（多通道）：
   - `python3 scripts/notify_bridge.py --birthday-config <birthday-json> --notify-config <notify-json>`
 
+## 定时触发建议
+
+- 推荐：用官方定时任务 skill（Automation）每 10 分钟执行一次 `notify_bridge.py`
+
 ## 用户示例请求
 
 - “添加一条农历八月初八的生日，并提前 15 天和当天上午 9 点提醒。”
@@ -107,21 +111,12 @@
 }
 ```
 
-## 升级后验证
+## 校验建议
 
-- 升级技能后先跑：
-  - `python3 scripts/birthday_reminder.py list --config <path-to-json>`
-- 再跑：
-  - `python3 scripts/birthday_reminder.py check --config <path-to-json> --output json`
+- 先跑：`python3 scripts/birthday_reminder.py list --config <path-to-json>`
+- 再跑：`python3 scripts/birthday_reminder.py check --config <path-to-json> --output json`
 
-## 快速升级步骤
+## 问题反馈
 
-1. 打开：`https://clawhub.ai/905583906/birthday-reminder-cn`
-2. 重新安装该技能的 `latest` 版本（或执行更新）
-3. 保留原有 `birthdays.json` / `notify.json`
-4. 执行“升级后验证”里的两条命令
-
-说明：
-
-- 升级技能代码不会自动修改你的 `birthdays.json`。
-- 若新版本增加了可选字段（如新提醒策略），未填写时会继续使用默认值。
+- 代码仓库：`https://github.com/905583906/jeff-skills`
+- 提交问题（Issues）：`https://github.com/905583906/jeff-skills/issues`
