@@ -1,0 +1,11 @@
+{
+  "owner": "nansen-devops",
+  "slug": "nansen-wallet-keychain-migration",
+  "displayName": "Nansen Wallet Keychain Migration",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1773937007820,
+    "commit": null
+  },
+  "history": []
+}
