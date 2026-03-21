@@ -1,0 +1,4 @@
+interface:
+  display_name: "Z视介频道直播"
+  short_description: "按频道名称快速打开Z视介频道直播页并自动匹配cid参数观看"
+  default_prompt: "Use $zshijie-liver to open the correct Z视介 live page by channel name."
