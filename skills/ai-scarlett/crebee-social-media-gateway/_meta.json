@@ -1,11 +1,17 @@
 {
   "owner": "ai-scarlett",
   "slug": "crebee-social-media-gateway",
-  "displayName": "新媒体多平台分发工具",
+  "displayName": "CreBee-新媒体多平台分发工具",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773725541949,
-    "commit": "https://github.com/openclaw/skills/commit/4686d393d8177588a4b8e203f743b07cf4305fa3"
+    "version": "1.0.1",
+    "publishedAt": 1773914497414,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773725541949,
+      "commit": "https://github.com/openclaw/skills/commit/4686d393d8177588a4b8e203f743b07cf4305fa3"
+    }
+  ]
 }
