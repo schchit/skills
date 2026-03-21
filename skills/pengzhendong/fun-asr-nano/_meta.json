@@ -1,0 +1,11 @@
+{
+  "owner": "pengzhendong",
+  "slug": "fun-asr-nano",
+  "displayName": "Local fun-asr-nano powered by sherpa-onnx",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774010526231,
+    "commit": null
+  },
+  "history": []
+}
