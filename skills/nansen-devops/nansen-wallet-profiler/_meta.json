@@ -1,0 +1,11 @@
+{
+  "owner": "nansen-devops",
+  "slug": "nansen-wallet-profiler",
+  "displayName": "Nansen Wallet Profiler",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1773937029750,
+    "commit": null
+  },
+  "history": []
+}
