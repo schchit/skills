@@ -1,0 +1,11 @@
+{
+  "owner": "samledger67-dotcom",
+  "slug": "payroll-reconciliation",
+  "displayName": "Payroll GL Reconciliation",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773850409390,
+    "commit": null
+  },
+  "history": []
+}
