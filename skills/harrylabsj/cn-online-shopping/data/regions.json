@@ -1,24 +1,24 @@
 {
   "regions": {
-    "中国大陆": {
-      "name": "中国大陆",
+    "mainland_china": {
+      "name": "Mainland China",
       "platforms": ["taobao", "tmall", "jd", "pdd", "douyin", "xiaohongshu", "suning", "vip"],
-      "notes": "所有主流平台均可使用"
+      "notes": "All major platforms are available"
     },
-    "一线城市": {
-      "name": "一线城市（北上广深）",
+    "tier1_cities": {
+      "name": "Tier 1 Cities (Beijing, Shanghai, Guangzhou, Shenzhen)",
       "platforms": ["jd", "tmall", "taobao", "pdd"],
-      "notes": "京东当日达/次日达覆盖最好"
+      "notes": "JD same-day/next-day delivery coverage is best"
     },
-    "二三线城市": {
-      "name": "二三线城市",
+    "tier23_cities": {
+      "name": "Tier 2-3 Cities",
       "platforms": ["taobao", "pdd", "jd", "tmall"],
-      "notes": "淘宝和拼多多覆盖最全"
+      "notes": "Taobao and Pinduoduo have the most comprehensive coverage"
     },
-    "农村地区": {
-      "name": "农村/偏远地区",
+    "rural_areas": {
+      "name": "Rural/Remote Areas",
       "platforms": ["pdd", "taobao", "jd"],
-      "notes": "拼多多下沉市场覆盖最好"
+      "notes": "Pinduoduo has the best coverage in lower-tier markets"
     }
   }
 }

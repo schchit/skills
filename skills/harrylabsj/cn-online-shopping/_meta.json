@@ -1,11 +1,17 @@
 {
   "owner": "harrylabsj",
   "slug": "cn-online-shopping",
-  "displayName": "中国电商平台购物指南",
+  "displayName": "Cn Online Shopping",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773753514346,
-    "commit": "https://github.com/openclaw/skills/commit/73da787f063dde29ad8176695926a11bbeab5e96"
+    "version": "1.1.0",
+    "publishedAt": 1774013465577,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773753514346,
+      "commit": "https://github.com/openclaw/skills/commit/73da787f063dde29ad8176695926a11bbeab5e96"
+    }
+  ]
 }

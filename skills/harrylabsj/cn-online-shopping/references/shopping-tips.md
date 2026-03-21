@@ -1,113 +1,113 @@
-# 中国电商购物技巧和避坑指南
+# China E-Commerce Shopping Tips and Pitfalls Guide
 
-## 通用购物技巧
+## General Shopping Tips
 
-### 1. 比价策略
-- **同一商品多平台对比**：淘宝、京东、天猫价格可能差异很大
-- **使用比价工具**：慢慢买、什么值得买等
-- **关注历史价格**：避免假促销
+### 1. Price Comparison Strategy
+- **Compare the same product across multiple platforms**: Prices on Taobao, JD.com, and Tmall can vary significantly
+- **Use price comparison tools**: Like Manmanbuy, WhattoBuy, etc.
+- **Check historical prices**: Avoid fake promotions
 
-### 2. 时机选择
-- **618（6月18日）**：年中大促，家电数码优惠大
-- **双11（11月11日）**：全年最大促销
-- **双12（12月12日）**：年终清仓
-- **年货节（1月）**：年货采购
-- **品牌日**：各品牌自己的促销日
+### 2. Timing Selection
+- **618 (June 18)**: Mid-year promotion, big discounts on appliances and electronics
+- **Double 11 (November 11)**: Largest promotion of the year
+- **Double 12 (December 12)**: Year-end clearance
+- **New Year Goods Festival (January)**: New year shopping
+- **Brand Days**: Each brand's own promotion days
 
-### 3. 优惠券策略
-- 店铺券 + 平台券 + 品类券 可以叠加
-- 关注直播间专属优惠券
-- 开通会员享受专属折扣
-
----
-
-## 各平台避坑指南
-
-### 淘宝避坑
-1. **警惕低价陷阱**：价格过低可能是假货或劣质品
-2. **看店铺评分**：低于4.7分的店铺谨慎购买
-3. **看追评**：最新评价比默认评价更真实
-4. **运费险**：贵重物品购买运费险
-5. **七天无理由**：确认支持七天无理由退货
-
-### 天猫避坑
-1. **区分旗舰店和专卖店**：旗舰店更可靠
-2. **注意预售规则**：定金不退，尾款时间有限制
-3. **凑单陷阱**：不要为了凑满减买不需要的东西
-4. **保价服务**：大促期间关注保价政策
-
-### 京东避坑
-1. **区分自营和第三方**：自营更有保障
-2. **注意京东物流和商家物流**：配送速度不同
-3. **价保规则**：了解价格保护政策
-4. **PLUS会员**：经常购物开通更划算
-
-### 拼多多避坑
-1. **百亿补贴最靠谱**：其他频道质量参差
-2. **不要期望太高**：一分钱一分货
-3. **注意发货时间**：部分商品预售时间长
-4. **谨慎购买食品**：选择有资质的店铺
-
-### 抖音避坑
-1. **理性消费**：不要被直播氛围带动
-2. **查看店铺资质**：确认是正规商家
-3. **注意发货时间**：部分网红商品发货慢
-4. **保存直播截图**：作为维权证据
+### 3. Coupon Strategy
+- Store coupons + platform coupons + category coupons can be combined
+- Pay attention to live stream exclusive coupons
+- Get membership for exclusive discounts
 
 ---
 
-## 商品类别购物建议
+## Platform Pitfalls Guide
 
-### 电子产品
-- **首选京东自营**：正品保障，售后好
-- **次选天猫旗舰店**：品牌官方店
-- **避免拼多多**：除非百亿补贴且有正品险
+### Taobao Pitfalls
+1. **Beware of low price traps**: Too low prices may be counterfeits or inferior products
+2. **Check store ratings**: Be cautious with stores below 4.7 rating
+3. **Check follow-up reviews**: Latest reviews are more authentic than default reviews
+4. **Shipping insurance**: Get shipping insurance for valuable items
+5. **7-day no-reason return**: Confirm it supports 7-day no-reason return
 
-### 服装鞋包
-- **淘宝**：款式多，价格灵活
-- **天猫**：品牌正品
-- **唯品会**：品牌折扣
-- **注意**：查看尺码表，不同店铺尺码可能不同
+### Tmall Pitfalls
+1. **Distinguish flagship stores from specialty stores**: Flagship stores are more reliable
+2. **Pay attention to pre-sale rules**: Deposit is non-refundable, remaining payment has time limit
+3. **Trap of combining orders**: Don't buy things you don't need just to reach discount thresholds
+4. **Price protection service**: Pay attention to price protection policies during major promotions
 
-### 美妆护肤
-- **天猫旗舰店**：最可靠
-- **小红书**：参考真实评价
-- **避免**：价格过低的代购店
-- **注意**：查看生产日期和保质期
+### JD.com Pitfalls
+1. **Distinguish self-operated from third-party**: Self-operated has more guarantee
+2. **Pay attention to JD logistics vs merchant logistics**: Delivery speeds differ
+3. **Price protection rules**: Understand price protection policies
+4. **PLUS membership**: Worth getting for frequent shoppers
 
-### 家居用品
-- **淘宝**：选择最多
-- **拼多多**：价格最低
-- **京东**：品质有保障
-- **注意**：大件商品看运费和安装服务
+### Pinduoduo Pitfalls
+1. **Billions in Subsidies is most reliable**: Other channels have inconsistent quality
+2. **Don't have too high expectations**: You get what you pay for
+3. **Pay attention to shipping time**: Some products have long pre-sale periods
+4. **Be cautious when buying food**: Choose qualified stores
 
-### 食品生鲜
-- **天猫超市**：品质有保障
-- **京东生鲜**：物流快
-- **注意**：查看生产日期、保质期、储存条件
-
----
-
-## 维权指南
-
-### 遇到问题怎么办
-1. **先联系卖家协商**：大部分问题可以协商解决
-2. **申请平台介入**：协商不成申请客服介入
-3. **保留证据**：聊天记录、订单截图、商品照片
-4. **投诉渠道**：12315、黑猫投诉等
-
-### 常见维权场景
-- **假货**：要求假一赔三
-- **质量问题**：七天无理由退货
-- **描述不符**：申请退货退款
-- **不发货**：申请退款并投诉
+### Douyin Pitfalls
+1. **Shop rationally**: Don't be carried away by live streaming atmosphere
+2. **Check store qualifications**: Confirm it's a legitimate business
+3. **Pay attention to shipping time**: Some internet-famous products ship slowly
+4. **Save live stream screenshots**: As evidence for rights protection
 
 ---
 
-## 安全提醒
+## Shopping Advice by Product Category
 
-1. **不要脱离平台交易**：任何要求微信/支付宝转账的都是骗子
-2. **保护个人信息**：不要随意提供身份证、银行卡信息
-3. **警惕钓鱼链接**：只点击官方链接
-4. **设置支付密码**：开启指纹/面容支付
-5. **定期查看账单**：及时发现异常交易
+### Electronics
+- **Best choice: JD.com self-operated**: Authentic guarantee, good after-sales
+- **Second choice: Tmall flagship stores**: Brand official stores
+- **Avoid Pinduoduo**: Unless Billions in Subsidies with authenticity insurance
+
+### Clothing, Shoes and Bags
+- **Taobao**: More styles, flexible prices
+- **Tmall**: Authentic brand products
+- **Vipshop**: Brand discounts
+- **Note**: Check size charts, sizes may differ between stores
+
+### Beauty and Skincare
+- **Tmall flagship stores**: Most reliable
+- **Xiaohongshu**: Reference authentic reviews
+- **Avoid**: Low-price proxy stores
+- **Note**: Check production date and expiration date
+
+### Household Items
+- **Taobao**: Most options
+- **Pinduoduo**: Lowest prices
+- **JD.com**: Guaranteed quality
+- **Note**: For large items, check shipping and installation services
+
+### Food and Fresh Produce
+- **Tmall Supermarket**: Guaranteed quality
+- **JD Fresh**: Fast logistics
+- **Note**: Check production date, expiration date, storage conditions
+
+---
+
+## Rights Protection Guide
+
+### What to Do When Problems Occur
+1. **Contact seller first for negotiation**: Most problems can be resolved through negotiation
+2. **Request platform intervention**: If negotiation fails, request customer service intervention
+3. **Keep evidence**: Chat records, order screenshots, product photos
+4. **Complaint channels**: 12315, Heimao Complaint, etc.
+
+### Common Rights Protection Scenarios
+- **Counterfeit goods**: Request triple compensation
+- **Quality problems**: 7-day no-reason return
+- **Item not as described**: Request return and refund
+- **Non-delivery**: Request refund and complain
+
+---
+
+## Safety Reminders
+
+1. **Don't transact outside the platform**: Anyone asking for WeChat/Alipay transfers is a scammer
+2. **Protect personal information**: Don't casually provide ID, bank card information
+3. **Be wary of phishing links**: Only click official links
+4. **Set payment password**: Enable fingerprint/Face ID payment
+5. **Regularly check statements**: Detect abnormal transactions promptly

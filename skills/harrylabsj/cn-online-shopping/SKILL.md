@@ -1,72 +1,72 @@
 ---
 name: cn-online-shopping
-description: 中国电商平台购物指南 - 专注于淘宝、天猫、京东、拼多多等中国主流电商平台推荐。根据商品类别、价格预算和物流需求，为用户推荐最适合的国内购物平台。提供平台特性对比、购物时机建议和避坑指南。
+description: China E-Commerce Shopping Guide - Focused on recommending mainstream Chinese e-commerce platforms such as Taobao, Tmall, JD.com, and Pinduoduo. Based on product category, price budget, and logistics needs, recommend the most suitable domestic shopping platform for users. Provide platform feature comparisons, shopping timing advice, and pitfalls to avoid.
 ---
 
-⚠️ **免责声明**：本Skill提供的平台推荐仅供参考，不构成购买建议。实际购物时请自行核实平台信息、卖家信誉和商品详情。我们不对任何购物决策承担责任。
+⚠️ **Disclaimer**: This skill's platform recommendations are for reference only and do not constitute purchase advice. When shopping, please verify platform information, seller credibility, and product details yourself. We are not responsible for any purchasing decisions.
 
-# 中国电商平台购物指南
+# China E-Commerce Shopping Guide
 
 ## Overview
 
-本Skill帮助用户根据商品类别、预算和物流需求，智能推荐最适合的中国电商平台。
+This skill helps users intelligently recommend the most suitable Chinese e-commerce platforms based on product category, budget, and logistics needs.
 
-## 支持平台
+## Supported Platforms
 
-- **淘宝** - C2C平台，品类最全，价格灵活
-- **天猫** - B2C平台，品牌正品，旗舰店多
-- **京东** - 自营物流快，正品保障，售后好
-- **拼多多** - 价格极低，百亿补贴，农产品直发
-- **抖音商城** - 直播带货，短视频种草
-- **小红书** - 种草社区，真实评价，品质精选
-- **苏宁易购** - 家电专业，门店自提
-- **唯品会** - 品牌特卖，折扣力度大
+- **Taobao** - C2C platform, widest product range, flexible pricing
+- **Tmall** - B2C platform, authentic brands, many flagship stores
+- **JD.com** - Fast self-logistics, authentic guarantee, good after-sales
+- **Pinduoduo** - Extremely low prices, billions in subsidies, direct agricultural shipping
+- **Douyin Mall** - Live streaming sales, short video product recommendations
+- **Xiaohongshu** - Product review community, authentic reviews, quality精选
+- **Suning** - Home appliances specialty, in-store pickup
+- **Vipshop** - Brand flash sales, strong discounts
 
 ## Triggers
 
-- "我想在淘宝买东西"
-- "京东和淘宝哪个好"
-- "拼多多靠谱吗"
-- "买家电去哪个平台"
-- "哪个平台买...比较好"
-- "推荐一个买...的网站"
-- "对比...平台"
-- "中国电商平台推荐"
+- "I want to buy something on Taobao"
+- "JD.com vs Taobao, which is better"
+- "Is Pinduoduo reliable"
+- "Which platform for home appliances"
+- "Which platform is better for buying..."
+- "Recommend a website for buying..."
+- "Compare...platforms"
+- "China e-commerce platform recommendations"
 
 ## Workflow
 
-1. **识别用户购物需求**（商品类别、预算、时效要求等）
-2. **调用 cn-online-shopping.py** 获取平台推荐或对比
-3. **呈现推荐结果**，包含推荐理由、最佳选择、注意事项
-4. **如需详细指导**，引用 references/ 下的文档
+1. **Identify user's shopping needs** (product category, budget, time requirements, etc.)
+2. **Call cn-online-shopping.py** to get platform recommendations or comparisons
+3. **Present recommendation results**, including recommendation reasons, best choices, and precautions
+4. **For detailed guidance**, reference documents under references/
 
 ## Usage
 
 ```bash
-# 根据商品推荐平台
-python3 cn-online-shopping.py recommend <商品名称/类别>
+# Recommend platform based on product
+python3 cn-online-shopping.py recommend <product name/category>
 
-# 列出支持的类别
+# List supported categories
 python3 cn-online-shopping.py categories
 
-# 对比两个平台
-python3 cn-online-shopping.py compare <平台1> <平台2>
+# Compare two platforms
+python3 cn-online-shopping.py compare <platform1> <platform2>
 ```
 
 ## Data Files
 
-- `data/platforms.json` - 平台信息（特点、适用地区、优势类别）
-- `data/categories.json` - 商品类别映射
-- `data/regions.json` - 地区推荐配置
+- `data/platforms.json` - Platform information (features, applicable regions, advantage categories)
+- `data/categories.json` - Product category mapping
+- `data/regions.json` - Regional recommendation configuration
 
 ## References
 
-- `references/platform-guide.md` - 平台详细指南
-- `references/shopping-tips.md` - 购物技巧和注意事项
+- `references/platform-guide.md` - Detailed platform guide
+- `references/shopping-tips.md` - Shopping tips and precautions
 
 ## Limitations
 
-- 仅提供平台推荐信息，不进行实时价格查询
-- 不访问任何购物平台的实时数据
-- 推荐基于预设规则和静态数据
-- 平台政策和费用可能随时变化，请以官方信息为准
+- Only provides platform recommendation information, no real-time price queries
+- Does not access real-time data from any shopping platform
+- Recommendations based on preset rules and static data
+- Platform policies and fees may change at any time; please refer to official information
