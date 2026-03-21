@@ -54,10 +54,12 @@ description: >
 - 检查并安装 `@baiducloud/sdk`（Node.js SDK）
 - 检查并安装 `bce-python-sdk`（Python SDK）
 - 检查 bcecmd 是否已安装
-- 将凭证写入 shell 配置文件（`~/.zshrc` 或 `~/.bashrc`），重启后仍可用
+- 将凭证持久化到 `~/.config/openclaw/baidu-cloud-bos/credentials.json`（权限 600）
+- 将凭证导出到当前 session 环境变量
+- 配置 bcecmd（如已安装）
 - 验证 BOS 连接
 
-设置完成后即可开始使用。
+凭证读取优先级：**环境变量 > credentials.json 配置文件**。后续新 session 无需重新配置。
 
 ## 执行策略
 
@@ -87,11 +89,11 @@ Node.js + @baiducloud/sdk 可用？
 
 > 官方文档: https://cloud.baidu.com/doc/BOS/s/Djwvyrhiw
 
-当使用方式一时，通过 `scripts/bos_node.mjs` 执行存储操作。凭证从环境变量读取。
+当使用方式一时，通过 `scripts/bos_node.mjs` 执行存储操作。凭证读取优先级：环境变量 > `~/.config/openclaw/baidu-cloud-bos/credentials.json`。
 
-支持的环境变量：
-- `BCE_ACCESS_KEY_ID` / `BCE_SECRET_ACCESS_KEY` / `BCE_BOS_ENDPOINT` / `BCE_BOS_BUCKET`（必需）
-- `BCE_STS_TOKEN`（可选，临时凭证）
+支持的凭证来源：
+- **环境变量**（优先）：`BCE_ACCESS_KEY_ID` / `BCE_SECRET_ACCESS_KEY` / `BCE_BOS_ENDPOINT` / `BCE_BOS_BUCKET`（必需），`BCE_STS_TOKEN`（可选，临时凭证）
+- **配置文件**（回退）：`~/.config/openclaw/baidu-cloud-bos/credentials.json`
 
 ### 常用命令
 
@@ -138,11 +140,11 @@ list-buckets
 
 > 官方文档: https://cloud.baidu.com/doc/BOS/s/Vjwvyrfs3
 
-当方式一不可用时，通过 `scripts/bos_python.py` 执行存储操作。凭证从环境变量读取。
+当方式一不可用时，通过 `scripts/bos_python.py` 执行存储操作。凭证读取优先级：环境变量 > `~/.config/openclaw/baidu-cloud-bos/credentials.json`。
 
-支持的环境变量（同方式一）：
-- `BCE_ACCESS_KEY_ID` / `BCE_SECRET_ACCESS_KEY` / `BCE_BOS_ENDPOINT` / `BCE_BOS_BUCKET`（必需）
-- `BCE_STS_TOKEN`（可选）
+支持的凭证来源（同方式一）：
+- **环境变量**（优先）：`BCE_ACCESS_KEY_ID` / `BCE_SECRET_ACCESS_KEY` / `BCE_BOS_ENDPOINT` / `BCE_BOS_BUCKET`（必需），`BCE_STS_TOKEN`（可选）
+- **配置文件**（回退）：`~/.config/openclaw/baidu-cloud-bos/credentials.json`
 
 ### 常用命令
 

@@ -3,8 +3,9 @@
 百度智能云 BOS Python SDK 操作脚本
 
 依赖：pip install bce-python-sdk
-凭证通过环境变量读取：
-  BCE_ACCESS_KEY_ID / BCE_SECRET_ACCESS_KEY / BCE_BOS_ENDPOINT / BCE_BOS_BUCKET
+凭证读取优先级：
+  1. 环境变量：BCE_ACCESS_KEY_ID / BCE_SECRET_ACCESS_KEY / BCE_BOS_ENDPOINT / BCE_BOS_BUCKET
+  2. 配置文件：~/.config/openclaw/baidu-cloud-bos/credentials.json
   BCE_STS_TOKEN（可选，临时凭证）
 
 用法：python3 bos_python.py <action> [--option value ...]
@@ -14,21 +15,36 @@ import json
 import os
 import sys
 import argparse
+from pathlib import Path
 
 from baidubce.bce_client_configuration import BceClientConfiguration
 from baidubce.auth.bce_credentials import BceCredentials
 from baidubce.services.bos.bos_client import BosClient
 
+CRED_PATH = Path.home() / ".config" / "openclaw" / "baidu-cloud-bos" / "credentials.json"
+
+
+def _load_file_credentials():
+    """从 credentials.json 加载凭证，返回 dict 或空 dict"""
+    if not CRED_PATH.exists():
+        return {}
+    try:
+        return json.loads(CRED_PATH.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+
 
 def get_client():
-    ak = os.environ.get("BCE_ACCESS_KEY_ID")
-    sk = os.environ.get("BCE_SECRET_ACCESS_KEY")
-    endpoint = os.environ.get("BCE_BOS_ENDPOINT")
+    file_cred = _load_file_credentials()
+
+    ak = os.environ.get("BCE_ACCESS_KEY_ID") or file_cred.get("accessKeyId")
+    sk = os.environ.get("BCE_SECRET_ACCESS_KEY") or file_cred.get("secretAccessKey")
+    endpoint = os.environ.get("BCE_BOS_ENDPOINT") or file_cred.get("endpoint")
 
     if not ak or not sk or not endpoint:
         print(json.dumps({
             "success": False,
-            "error": "缺少环境变量，需要：BCE_ACCESS_KEY_ID, BCE_SECRET_ACCESS_KEY, BCE_BOS_ENDPOINT, BCE_BOS_BUCKET"
+            "error": "缺少凭证。请通过环境变量设置，或运行 setup.sh 将凭证保存到 ~/.config/openclaw/baidu-cloud-bos/credentials.json"
         }))
         sys.exit(1)
 
@@ -40,7 +56,7 @@ def get_client():
         endpoint=endpoint,
     )
 
-    sts_token = os.environ.get("BCE_STS_TOKEN")
+    sts_token = os.environ.get("BCE_STS_TOKEN") or file_cred.get("stsToken")
     if sts_token:
         config.security_token = sts_token
 
@@ -48,11 +64,12 @@ def get_client():
 
 
 def get_bucket():
-    bucket = os.environ.get("BCE_BOS_BUCKET")
+    file_cred = _load_file_credentials()
+    bucket = os.environ.get("BCE_BOS_BUCKET") or file_cred.get("bucket")
     if not bucket:
         print(json.dumps({
             "success": False,
-            "error": "缺少环境变量 BCE_BOS_BUCKET"
+            "error": "缺少 Bucket。请通过环境变量 BCE_BOS_BUCKET 设置，或运行 setup.sh 保存到 credentials.json"
         }))
         sys.exit(1)
     return bucket

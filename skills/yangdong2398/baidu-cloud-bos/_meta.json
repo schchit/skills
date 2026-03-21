@@ -3,9 +3,15 @@
   "slug": "baidu-cloud-bos",
   "displayName": "Baidu Cloud BOS",
   "latest": {
-    "version": "1.0.5",
-    "publishedAt": 1773804317554,
-    "commit": "https://github.com/openclaw/skills/commit/28d679787165fb1fb2fd9ee1ba2788f5822fe3a0"
+    "version": "1.0.6",
+    "publishedAt": 1773836446707,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.5",
+      "publishedAt": 1773804317554,
+      "commit": "https://github.com/openclaw/skills/commit/28d679787165fb1fb2fd9ee1ba2788f5822fe3a0"
+    }
+  ]
 }

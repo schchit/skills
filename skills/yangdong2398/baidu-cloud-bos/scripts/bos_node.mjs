@@ -3,8 +3,9 @@
  * 百度智能云 BOS Node.js SDK 操作脚本
  *
  * 依赖：npm install @baiducloud/sdk
- * 凭证通过环境变量读取：
- *   BCE_ACCESS_KEY_ID / BCE_SECRET_ACCESS_KEY / BCE_BOS_ENDPOINT / BCE_BOS_BUCKET
+ * 凭证读取优先级：
+ *   1. 环境变量：BCE_ACCESS_KEY_ID / BCE_SECRET_ACCESS_KEY / BCE_BOS_ENDPOINT / BCE_BOS_BUCKET
+ *   2. 配置文件：~/.config/openclaw/baidu-cloud-bos/credentials.json
  *   BCE_STS_TOKEN（可选，临时凭证）
  *
  * 用法：node bos_node.mjs <action> [--option value ...]
@@ -12,26 +13,49 @@
 
 import { createRequire } from 'module';
 import { createReadStream, readFileSync, writeFileSync, existsSync } from 'fs';
-import { basename, resolve } from 'path';
+import { basename, resolve, join } from 'path';
+import { homedir } from 'os';
 import { stat } from 'fs/promises';
 
 const require = createRequire(import.meta.url);
 const { BosClient } = require('@baiducloud/sdk');
 
-// 读取环境变量
-const AK = process.env.BCE_ACCESS_KEY_ID;
-const SK = process.env.BCE_SECRET_ACCESS_KEY;
-const ENDPOINT = process.env.BCE_BOS_ENDPOINT;
-const BUCKET = process.env.BCE_BOS_BUCKET;
-const STS_TOKEN = process.env.BCE_STS_TOKEN;
+// 凭证加载：环境变量优先，回退到 ~/.config/openclaw/baidu-cloud-bos/credentials.json
+function loadCredentials() {
+  let ak = process.env.BCE_ACCESS_KEY_ID;
+  let sk = process.env.BCE_SECRET_ACCESS_KEY;
+  let endpoint = process.env.BCE_BOS_ENDPOINT;
+  let bucket = process.env.BCE_BOS_BUCKET;
+  let stsToken = process.env.BCE_STS_TOKEN;
 
-if (!AK || !SK || !ENDPOINT || !BUCKET) {
-  console.error(JSON.stringify({
-    success: false,
-    error: '缺少环境变量，需要：BCE_ACCESS_KEY_ID, BCE_SECRET_ACCESS_KEY, BCE_BOS_ENDPOINT, BCE_BOS_BUCKET',
-  }));
-  process.exit(1);
+  if (!ak || !sk || !endpoint || !bucket) {
+    const credPath = join(homedir(), '.config', 'openclaw', 'baidu-cloud-bos', 'credentials.json');
+    if (existsSync(credPath)) {
+      try {
+        const cred = JSON.parse(readFileSync(credPath, 'utf-8'));
+        ak = ak || cred.accessKeyId;
+        sk = sk || cred.secretAccessKey;
+        endpoint = endpoint || cred.endpoint;
+        bucket = bucket || cred.bucket;
+        stsToken = stsToken || cred.stsToken;
+      } catch (e) {
+        // credentials.json 解析失败，忽略
+      }
+    }
+  }
+
+  if (!ak || !sk || !endpoint || !bucket) {
+    console.error(JSON.stringify({
+      success: false,
+      error: '缺少凭证。请通过环境变量设置，或运行 setup.sh 将凭证保存到 ~/.config/openclaw/baidu-cloud-bos/credentials.json',
+    }));
+    process.exit(1);
+  }
+
+  return { ak, sk, endpoint, bucket, stsToken };
 }
+
+const { ak: AK, sk: SK, endpoint: ENDPOINT, bucket: BUCKET, stsToken: STS_TOKEN } = loadCredentials();
 
 const config = {
   credentials: {

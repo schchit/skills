@@ -164,6 +164,27 @@ do_setup() {
     exit 1
   fi
 
+  # 输入校验：AK/SK 仅允许字母数字，Endpoint 仅允许域名字符，Bucket 仅允许 DNS 字符
+  local SAFE_PATTERN_AKSK='^[A-Za-z0-9/+=]+$'
+  local SAFE_PATTERN_ENDPOINT='^[a-zA-Z0-9._-]+$'
+  local SAFE_PATTERN_BUCKET='^[a-z0-9][a-z0-9.-]*[a-z0-9]$'
+
+  if [[ ! "$AK" =~ $SAFE_PATTERN_AKSK ]]; then
+    echo "错误: AccessKeyId 包含非法字符"; exit 1
+  fi
+  if [[ ! "$SK" =~ $SAFE_PATTERN_AKSK ]]; then
+    echo "错误: SecretAccessKey 包含非法字符"; exit 1
+  fi
+  if [[ ! "$ENDPOINT" =~ $SAFE_PATTERN_ENDPOINT ]]; then
+    echo "错误: Endpoint 包含非法字符"; exit 1
+  fi
+  if [[ ! "$BUCKET" =~ $SAFE_PATTERN_BUCKET ]]; then
+    echo "错误: Bucket 名称包含非法字符"; exit 1
+  fi
+  if [ -n "$STS_TOKEN" ] && [[ ! "$STS_TOKEN" =~ $SAFE_PATTERN_AKSK ]]; then
+    echo "错误: StsToken 包含非法字符"; exit 1
+  fi
+
   echo "=== 百度智能云 BOS Skill 自动设置 ==="
   echo ""
 
@@ -207,43 +228,26 @@ do_setup() {
     echo "  https://cloud.baidu.com/doc/BOS/s/Ck1rymwdi"
   fi
 
-  # 4. 写入环境变量到 shell 配置
+  # 4. 持久化凭证到 Skill 数据目录 + 导出环境变量
   echo ""
   echo "--- 步骤 4: 持久化凭证 ---"
 
-  local SHELL_RC=""
-  if [ -n "$ZSH_VERSION" ] || [ "$SHELL" = "/bin/zsh" ]; then
-    SHELL_RC="$HOME/.zshrc"
-  else
-    SHELL_RC="$HOME/.bashrc"
-  fi
+  local CRED_DIR="$HOME/.config/openclaw/baidu-cloud-bos"
+  local CRED_FILE="$CRED_DIR/credentials.json"
+  mkdir -p "$CRED_DIR"
 
-  # 清理旧的 BOS 配置
-  if [ -f "$SHELL_RC" ]; then
-    sed -i.bak '/^# --- Baidu BOS Skill ---$/,/^# --- End Baidu BOS Skill ---$/d' "$SHELL_RC"
-    rm -f "${SHELL_RC}.bak"
-  fi
-
-  # 写入新配置
-  cat >> "$SHELL_RC" << EOF
-# --- Baidu BOS Skill ---
-export BCE_ACCESS_KEY_ID="$AK"
-export BCE_SECRET_ACCESS_KEY="$SK"
-export BCE_BOS_ENDPOINT="$ENDPOINT"
-export BCE_BOS_BUCKET="$BUCKET"
-EOF
-
-  if [ -n "$STS_TOKEN" ]; then
-    sed -i.bak '/^# --- End Baidu BOS Skill ---$/d' "$SHELL_RC"
-    rm -f "${SHELL_RC}.bak"
-    cat >> "$SHELL_RC" << EOF
-export BCE_STS_TOKEN="$STS_TOKEN"
-EOF
-  fi
-
-  echo "# --- End Baidu BOS Skill ---" >> "$SHELL_RC"
-
-  ok "凭证已写入 $SHELL_RC"
+  # 写入 credentials.json
+  cat > "$CRED_FILE" <<CREDEOF
+{
+  "accessKeyId": "$AK",
+  "secretAccessKey": "$SK",
+  "endpoint": "$ENDPOINT",
+  "bucket": "$BUCKET"$([ -n "$STS_TOKEN" ] && echo ",
+  \"stsToken\": \"$STS_TOKEN\"")
+}
+CREDEOF
+  chmod 600 "$CRED_FILE"
+  ok "凭证已保存到 $CRED_FILE"
 
   # 同时导出到当前 session
   export BCE_ACCESS_KEY_ID="$AK"
@@ -251,6 +255,7 @@ EOF
   export BCE_BOS_ENDPOINT="$ENDPOINT"
   export BCE_BOS_BUCKET="$BUCKET"
   [ -n "$STS_TOKEN" ] && export BCE_STS_TOKEN="$STS_TOKEN"
+  ok "凭证已导出到当前 session"
 
   # 5. 配置 bcecmd（如果已安装）
   echo ""
