@@ -1,0 +1,11 @@
+{
+  "owner": "bendaye",
+  "slug": "ttpos-agent",
+  "displayName": "TTPOS Agent",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1773899679909,
+    "commit": null
+  },
+  "history": []
+}
