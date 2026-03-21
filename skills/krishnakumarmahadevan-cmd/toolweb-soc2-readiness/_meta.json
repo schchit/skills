@@ -1,0 +1,11 @@
+{
+  "owner": "krishnakumarmahadevan-cmd",
+  "slug": "toolweb-soc2-readiness",
+  "displayName": "SOC 2 Readiness Checker",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773911870427,
+    "commit": null
+  },
+  "history": []
+}
