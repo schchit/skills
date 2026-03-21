@@ -22,7 +22,7 @@ class ContextSwitchTokenOptimizer:
     def __init__(self, config_file: Optional[str] = None):
         self.config_file = config_file
         self.context_manager = ContextManager(config_file)
-        self.token_optimizer = TokenOptimizer(config_file)
+        self.token_optimizer = TokenOptimizer(context_manager=self.context_manager)
         
     def process_conversation(self, conversation_content: str) -> Dict:
         """处理对话内容"""

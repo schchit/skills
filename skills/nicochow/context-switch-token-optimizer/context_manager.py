@@ -4,12 +4,113 @@
 """
 
 import json
+import os
 import re
 import time
+import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+
+logger = logging.getLogger(__name__)
+
+
+def _default_skill_config() -> Dict:
+    """与 config.json 及代码默认值一致（单层嵌套合并用）"""
+    return {
+        "context_switch": {
+            "similarity_threshold": 0.7,
+            "continuity_threshold": 0.35,
+            "compress_relevance_threshold": 0.3,
+            "continuity_bonus_for_partial": 0.3,
+            "drift_similarity_cap": 0.65,
+            "time_decay_factor": 0.95,
+            "max_topic_history": 10,
+            "memory_relevance_threshold": 0.5,
+        },
+        "token_optimization": {
+            "enabled": True,
+            "token_limit": 80000,
+            "compression_threshold": 56000,
+            "context_cleanup_threshold": 0.8,
+            "memory_load_limit": 2000,
+            "optimization_interval": 300,
+            "max_history_size": 100,
+        },
+        "memory_search": {
+            "max_search_results": 5,
+            "keyword_limit": 5,
+            "search_depth": 2,
+            "file_types": ["*.md"],
+        },
+        "optimization_settings": {
+            "auto_optimization": True,
+            "health_score_threshold": 70,
+            "suggestions_check_interval": 600,
+        },
+    }
+
+
+def _merge_user_config(base: Dict, user: Dict) -> Dict:
+    """按顶层键合并嵌套 dict，避免用户 JSON 只写部分键时丢失默认子键"""
+    for key, val in user.items():
+        if (
+            key in base
+            and isinstance(base[key], dict)
+            and isinstance(val, dict)
+        ):
+            merged = {**base[key], **val}
+            base[key] = merged
+        else:
+            base[key] = val
+    return base
+
+
+def apply_environment_overrides(config: Dict) -> None:
+    """
+    环境变量覆盖配置（名称与 SKILL.md 一致）：
+    - CONTEXT_HISTORY_SIZE -> context_switch.max_topic_history (1–100)
+    - MEMORY_SEARCH_DEPTH -> memory_search.search_depth (1–3)
+    - TOKEN_OPTIMIZER_ENABLED -> token_optimization.enabled (true/false/1/0)
+    - CONTEXT_SWITCH_LOG_LEVEL -> context_switch.log_level (DEBUG/INFO/WARNING/ERROR)
+    """
+    cs = config.setdefault("context_switch", {})
+    ms = config.setdefault("memory_search", {})
+    to = config.setdefault("token_optimization", {})
+
+    ch = os.environ.get("CONTEXT_HISTORY_SIZE", "").strip()
+    if ch.isdigit():
+        cs["max_topic_history"] = max(1, min(100, int(ch)))
+
+    d = os.environ.get("MEMORY_SEARCH_DEPTH", "").strip()
+    if d.isdigit():
+        ms["search_depth"] = max(1, min(3, int(d)))
+
+    te = os.environ.get("TOKEN_OPTIMIZER_ENABLED", "").strip().lower()
+    if te in ("0", "false", "no", "off"):
+        to["enabled"] = False
+    elif te in ("1", "true", "yes", "on"):
+        to["enabled"] = True
+
+    ll = os.environ.get("CONTEXT_SWITCH_LOG_LEVEL", "").strip().upper()
+    if ll in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
+        cs["log_level"] = ll
+
+
+def load_skill_config(config_file: Optional[str] = None) -> Dict:
+    """加载配置文件并应用环境变量覆盖。"""
+    cfg = _default_skill_config()
+    if config_file and Path(config_file).exists():
+        with open(config_file, "r", encoding="utf-8") as f:
+            _merge_user_config(cfg, json.load(f))
+    apply_environment_overrides(cfg)
+    lvl = cfg.get("context_switch", {}).get("log_level")
+    if lvl:
+        logging.getLogger().setLevel(getattr(logging, lvl, logging.INFO))
+        if not logging.getLogger().handlers:
+            logging.basicConfig(level=getattr(logging, lvl, logging.INFO))
+    return cfg
 
 @dataclass
 class TopicSummary:
@@ -40,37 +141,7 @@ class ContextManager:
         self.state = self._load_context_state()
         
     def _load_config(self, config_file: Optional[str]) -> Dict:
-        """加载配置"""
-        default_config = {
-            "context_switch": {
-                "similarity_threshold": 0.7,
-                "continuity_threshold": 0.35,  # 低于此值判为硬切换；[此值, similarity_threshold) 为渐变漂移
-                "compress_relevance_threshold": 0.3,  # 历史轮与当前相似度低于此值则压缩该轮
-                "time_decay_factor": 0.95,
-                "max_topic_history": 10,
-                "memory_relevance_threshold": 0.5
-            },
-            "token_optimization": {
-                "token_limit": 80000,
-                "compression_threshold": 56000,
-                "context_cleanup_threshold": 0.8,
-                "memory_load_limit": 2000
-            },
-            "memory_search": {
-                "max_search_results": 5,
-                "keyword_limit": 5,
-                "search_depth": 2,
-                "file_types": ["*.md"]
-            }
-        }
-        
-        if config_file and Path(config_file).exists():
-            with open(config_file, 'r', encoding='utf-8') as f:
-                user_config = json.load(f)
-                # 合并用户配置
-                default_config.update(user_config)
-        
-        return default_config
+        return load_skill_config(config_file)
     
     def _load_context_state(self) -> ContextState:
         """加载上下文状态"""

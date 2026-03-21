@@ -51,6 +51,15 @@ python3 context-switch-token-optimizer.py --config custom-config.json --status
 python3 context_manager.py --show-state
 ```
 
+### 环境变量（与 SKILL.md / 代码一致）
+
+| 变量 | 作用 |
+|------|------|
+| `CONTEXT_HISTORY_SIZE` | 覆盖 `context_switch.max_topic_history`（1–100） |
+| `MEMORY_SEARCH_DEPTH` | 覆盖 `memory_search.search_depth`（1–3） |
+| `TOKEN_OPTIMIZER_ENABLED` | `false`/`0` 关闭自动 Token 优化触发 |
+| `CONTEXT_SWITCH_LOG_LEVEL` | `DEBUG`/`INFO`/`WARNING`/`ERROR` |
+
 ## 🔧 工具详解
 
 ### 1. 上下文管理器 (`context_manager.py`)

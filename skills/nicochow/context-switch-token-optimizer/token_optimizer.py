@@ -6,7 +6,6 @@ Token优化器 - 负责Token使用监控和优化
 import json
 import re
 import time
-from pathlib import Path
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -22,38 +21,21 @@ class TokenUsage:
     memory_loaded: bool
 
 class TokenOptimizer:
-    """Token优化器"""
+    """Token优化器（与 ContextManager 共用同一份 load_skill_config 结果）"""
     
-    def __init__(self, config_file: Optional[str] = None):
-        self.config = self._load_config(config_file)
-        self.context_manager = ContextManager(config_file)
+    def __init__(
+        self,
+        config_file: Optional[str] = None,
+        context_manager: Optional[ContextManager] = None,
+    ):
+        if context_manager is not None:
+            self.context_manager = context_manager
+            self.config = context_manager.config
+        else:
+            self.context_manager = ContextManager(config_file)
+            self.config = self.context_manager.config
         self.usage_log = []
         self.optimization_log = []
-        
-    def _load_config(self, config_file: Optional[str]) -> Dict:
-        """加载配置"""
-        default_config = {
-            "token_optimization": {
-                "token_limit": 80000,
-                "compression_threshold": 56000,
-                "context_cleanup_threshold": 0.8,
-                "memory_load_limit": 2000,
-                "optimization_interval": 300,  # 5分钟
-                "max_history_size": 100
-            },
-            "context_switch": {
-                "similarity_threshold": 0.7,
-                "time_decay_factor": 0.95,
-                "max_topic_history": 10
-            }
-        }
-        
-        if config_file and Path(config_file).exists():
-            with open(config_file, 'r', encoding='utf-8') as f:
-                user_config = json.load(f)
-                default_config.update(user_config)
-        
-        return default_config
     
     def monitor_token_usage(self, current_tokens: int) -> Dict:
         """监控Token使用情况"""
@@ -77,10 +59,11 @@ class TokenOptimizer:
         # 记录使用情况
         self._record_token_usage(current_tokens, monitoring_result['status'])
         
-        # 检查是否需要优化
-        if usage_percentage > 70:
+        # 检查是否需要优化（TOKEN_OPTIMIZER_ENABLED=false 时跳过）
+        enabled = self.config.get("token_optimization", {}).get("enabled", True)
+        if enabled and usage_percentage > 70:
             optimization_action = self.trigger_optimization(monitoring_result)
-            monitoring_result['optimization_triggered'] = optimization_action
+            monitoring_result["optimization_triggered"] = optimization_action
         
         return monitoring_result
     
