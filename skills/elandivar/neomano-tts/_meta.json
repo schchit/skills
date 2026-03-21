@@ -1,0 +1,11 @@
+{
+  "owner": "elandivar",
+  "slug": "neomano-tts",
+  "displayName": "Neomano TTS (ElevenLabs)",
+  "latest": {
+    "version": "0.1.1",
+    "publishedAt": 1773850290284,
+    "commit": null
+  },
+  "history": []
+}
