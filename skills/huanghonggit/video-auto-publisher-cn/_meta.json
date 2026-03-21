@@ -1,0 +1,11 @@
+{
+  "owner": "huanghonggit",
+  "slug": "video-auto-publisher-cn",
+  "displayName": "自动将视频发布到中国三大主流平台：**B站（Bilibili）**、**抖音（Douyin）**、**小红书（Xiaohongshu）**。",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773918432801,
+    "commit": null
+  },
+  "history": []
+}
