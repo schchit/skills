@@ -1,27 +1,20 @@
 ---
 name: corespeed-art
-description: Generate video, images, audio, and music using 40+ AI models via fal.ai. Use for video generation (Kling v3/O3, Sora 2, Veo 3.1, LTX 2.3, Pixverse v5), image generation (Nano Banana 2, FLUX 2 Pro/Schnell/Kontext, GPT Image 1.5, Qwen Image 2 Pro, Recraft V4, Seedream 5), text-to-speech (xAI TTS, Chatterbox voice clone, PlayAI multi-speaker dialog), music/sound effects (Beatoven), and utilities (Topaz upscale, background removal, lipsync). Use when a user asks to create videos, generate images, produce voiceovers, create music/sound effects, upscale media, remove backgrounds, or combine multiple AI media models in a single workflow.
+description: Generate video, images, audio, and music using 40+ AI models via fal.ai. Use for video generation (Kling v3, Sora 2, Veo 3.1, LTX 2.3, Pixverse v5), image generation (Nano Banana 2, FLUX 2 Pro/Schnell, GPT Image 1.5, Qwen Image 2 Pro, Recraft V4, Seedream 5), text-to-speech (MiniMax Speech-02 HD), music/sound effects (Beatoven), and utilities (Topaz upscale, background removal, lipsync). Use when a user asks to create videos, generate images, produce voiceovers, create music/sound effects, upscale media, remove backgrounds, or combine multiple AI media models in a single workflow.
 metadata:
   {
     "openclaw":
       {
         "emoji": "🎬",
-        "requires": { "bins": ["uv"] },
+        "requires": { "bins": ["uv"], "env": ["FAL_KEY"] },
         "install":
           [
             {
-              "id": "uv-brew",
-              "kind": "brew",
-              "formula": "uv",
-              "bins": ["uv"],
-              "label": "Install uv (brew)",
-            },
-            {
-              "id": "uv-shell",
+              "id": "uv-pip",
               "kind": "shell",
-              "command": "curl -LsSf https://astral.sh/uv/install.sh | sh",
+              "command": "pip install uv || pip3 install uv",
               "bins": ["uv"],
-              "label": "Install uv (curl, Linux/macOS)",
+              "label": "Install uv via pip (https://github.com/astral-sh/uv)",
             },
           ],
       },
@@ -30,7 +23,7 @@ metadata:
 
 # Corespeed Art — Multi-Model AI Media via fal.ai
 
-Auth: `CS_FAL_GATEWAY_API_TOKEN` + `CS_FAL_GATEWAY_BASE_URL` (xclaw instances), or `FAL_KEY` for direct fal.ai access.
+Auth: Set `FAL_KEY` with your fal.ai API key (get one at https://fal.ai/dashboard/keys).
 
 ## Workflow
 
@@ -57,7 +50,8 @@ uv run {baseDir}/scripts/fal.py ENDPOINT --json '{"param":"value"}' -f output.ex
 | Nano Banana 2 | Pro quality, web search, thinking | Read [nanobanana.md](references/nanobanana.md) |
 | FLUX 2 Pro | Photorealistic, zero-config | Read [flux.md](references/flux.md) |
 | FLUX Schnell | ⚡ Fastest iteration | Read [flux.md](references/flux.md) |
-| FLUX Kontext | Image-to-image transform | Read [flux.md](references/flux.md) |
+| FLUX Pro v1.1 | Accelerated, commercial use | Read [flux.md](references/flux.md) |
+| FLUX.1 Dev | 12B params, fine-tuning friendly | Read [flux.md](references/flux.md) |
 | GPT Image 1.5 | Transparent bg, instruction following | Read [gpt.md](references/gpt.md) |
 | Qwen Image 2 Pro | Chinese+English, typography, native 2K | Read [qwen.md](references/qwen.md) |
 | Recraft V4 Pro | Design/marketing, color control | Read [recraft.md](references/recraft.md) |
@@ -68,7 +62,6 @@ uv run {baseDir}/scripts/fal.py ENDPOINT --json '{"param":"value"}' -f output.ex
 | Model | Best For | Reference |
 |-------|----------|-----------|
 | Kling v3 Pro I2V | Best I2V, multi-shot, audio, 3–15s | Read [kling.md](references/kling.md) |
-| Kling O3 I2V | Reasoning-based I2V | Read [kling.md](references/kling.md) |
 | Sora 2 T2V | Long video up to 20s, characters | Read [sora.md](references/sora.md) |
 | Sora 2 I2V | Image→video with Sora | Read [sora.md](references/sora.md) |
 | Veo 3.1 T2V | Cinematic + native audio/dialogue | Read [veo.md](references/veo.md) |
@@ -99,6 +92,7 @@ uv run {baseDir}/scripts/fal.py ENDPOINT --json '{"param":"value"}' -f output.ex
 
 ## Notes
 
+- **No manual Python setup required.** The script uses [PEP 723 inline metadata](https://peps.python.org/pep-0723/). `uv run` automatically creates an isolated virtual environment and installs the `fal-client` dependency on first run.
 - fal.ai uses a **queue** system — the script polls until generation completes.
 - Video generation can take 30s–3min.
 - Use timestamps in filenames: `yyyy-mm-dd-hh-mm-ss-name.ext`.

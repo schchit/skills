@@ -3,9 +3,15 @@
   "slug": "corespeed-art",
   "displayName": "Core Speed Art",
   "latest": {
-    "version": "0.0.2",
-    "publishedAt": 1773934261361,
-    "commit": "https://github.com/openclaw/skills/commit/2fcb72402986f35e1cdd5502e7ba4bc2998d6fd9"
+    "version": "1.0.1",
+    "publishedAt": 1773935465529,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.0.2",
+      "publishedAt": 1773934261361,
+      "commit": "https://github.com/openclaw/skills/commit/2fcb72402986f35e1cdd5502e7ba4bc2998d6fd9"
+    }
+  ]
 }

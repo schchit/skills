@@ -8,25 +8,13 @@
 """
 Unified fal.ai client for image, video, audio generation and utilities.
 
-Supports two modes:
-  1. Direct fal.ai access: set FAL_KEY
-  2. Via CS gateway:      set CS_FAL_GATEWAY_BASE_URL + CS_FAL_GATEWAY_API_TOKEN
-
-When CS_FAL_GATEWAY_BASE_URL is set (e.g. https://gateway.corespeed.io/fal),
-the script rewrites FAL_RUN_HOST and FAL_QUEUE_RUN_HOST so the fal SDK
-routes all traffic through the gateway. The gateway proxies to fal.run and
-injects the real FAL_KEY, so instances only need a user token.
+Requires FAL_KEY environment variable (get one at https://fal.ai/dashboard/keys).
 
 Usage:
     uv run fal.py ENDPOINT [--json '{"prompt":"..."}'] -f out.png [-i input.png]
 
-Examples:
-    # Direct
+Example:
     FAL_KEY=xxx uv run fal.py fal-ai/flux/schnell --json '{"prompt":"a fox"}' -f fox.png
-
-    # Via gateway (instances use this)
-    CS_FAL_GATEWAY_BASE_URL=https://gw.corespeed.io/fal CS_FAL_GATEWAY_API_TOKEN=user-tok \
-      uv run fal.py fal-ai/flux/schnell --json '{"prompt":"a fox"}' -f fox.png
 """
 
 import argparse
@@ -35,47 +23,6 @@ import os
 import sys
 import urllib.request
 from pathlib import Path
-from urllib.parse import urlparse
-
-# ---------------------------------------------------------------------------
-# Gateway setup — must run BEFORE importing fal_client because the SDK reads
-# FAL_RUN_HOST / FAL_QUEUE_RUN_HOST at import time.
-# ---------------------------------------------------------------------------
-def _configure_gateway():
-    """If CS_FAL_GATEWAY_BASE_URL is set, rewrite fal SDK env vars to route
-    through the gateway instead of hitting fal.run directly.
-
-    Gateway contract (mirrors the LLM gateway pattern):
-      - CS_FAL_GATEWAY_BASE_URL  e.g. https://fal.gateway.corespeed.io
-        The gateway proxies all fal.run + queue.fal.run traffic.
-        The fal SDK auto-derives the queue host as queue.{FAL_RUN_HOST},
-        so the gateway must handle both:
-          fal.gateway.corespeed.io/*       → fal.run/*
-          queue.fal.gateway.corespeed.io/* → queue.fal.run/*
-      - CS_FAL_GATEWAY_API_TOKEN  user-scoped token sent as FAL_KEY
-        (the gateway validates this and swaps it for the real key).
-    """
-    base_url = os.environ.get("CS_FAL_GATEWAY_BASE_URL", "")
-    api_token = os.environ.get("CS_FAL_GATEWAY_API_TOKEN", "")
-    if not base_url:
-        return
-
-    parsed = urlparse(base_url.rstrip("/"))
-    host = parsed.hostname or ""
-    port = f":{parsed.port}" if parsed.port and parsed.port not in (80, 443) else ""
-
-    # Set FAL_RUN_HOST only — the SDK auto-derives:
-    #   FAL_QUEUE_RUN_HOST = queue.{FAL_RUN_HOST}
-    # So gateway needs:
-    #   {host}       → proxies to fal.run
-    #   queue.{host} → proxies to queue.fal.run
-    os.environ["FAL_RUN_HOST"] = f"{host}{port}"
-
-    # Use the user token as FAL_KEY — the gateway swaps it for the real key
-    if api_token:
-        os.environ["FAL_KEY"] = api_token
-
-_configure_gateway()
 
 
 # ---------------------------------------------------------------------------
@@ -121,15 +68,11 @@ def main():
     parser.add_argument("--input", "-i", action="append", dest="inputs", metavar="FILE",
                         help="Input file(s) to upload. Repeat for multiple.")
     parser.add_argument("--audio", default="", help="Audio input file (for lipsync)")
-    parser.add_argument("--api-key", "-k", help="fal.ai API key (overrides FAL_KEY)")
 
     args = parser.parse_args()
 
-    # API key: gateway token (primary) or direct FAL_KEY (fallback)
-    if args.api_key:
-        os.environ["FAL_KEY"] = args.api_key
     if not os.environ.get("FAL_KEY"):
-        print("Error: No credentials. Set CS_FAL_GATEWAY_API_TOKEN + CS_FAL_GATEWAY_BASE_URL, or FAL_KEY for direct access.", file=sys.stderr)
+        print("Error: FAL_KEY environment variable is required. Get one at https://fal.ai/dashboard/keys", file=sys.stderr)
         sys.exit(1)
 
     import fal_client
