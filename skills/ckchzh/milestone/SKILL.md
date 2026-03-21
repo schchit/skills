@@ -1,8 +1,10 @@
 ---
 name: "Milestone"
-description: "A focused utility tools tool built for Milestone. Log entries, review trends, and export reports — all locally."
+description: "A focused utility tools tool built for Milestone. Use when you need milestone."
 version: "2.0.0"
 author: "BytesAgain"
+homepage: https://bytesagain.com
+source: https://github.com/bytesagain/ai-skills
 tags: ["milestone", "tool", "terminal", "cli", "utility"]
 ---
 

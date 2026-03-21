@@ -3,9 +3,15 @@
   "slug": "milestone",
   "displayName": "Milestone",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773673837303,
-    "commit": "https://github.com/openclaw/skills/commit/8217373c80c0bafa14ff653934ac888b27933528"
+    "version": "2.0.1",
+    "publishedAt": 1773775236949,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773673837303,
+      "commit": "https://github.com/openclaw/skills/commit/8217373c80c0bafa14ff653934ac888b27933528"
+    }
+  ]
 }
