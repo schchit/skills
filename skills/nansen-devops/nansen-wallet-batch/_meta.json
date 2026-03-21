@@ -1,0 +1,11 @@
+{
+  "owner": "nansen-devops",
+  "slug": "nansen-wallet-batch",
+  "displayName": "Nansen Wallet Batch",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1773912871033,
+    "commit": null
+  },
+  "history": []
+}
