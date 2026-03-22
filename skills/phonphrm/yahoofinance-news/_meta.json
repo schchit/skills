@@ -1,0 +1,11 @@
+{
+  "owner": "phonphrm",
+  "slug": "yahoofinance-news",
+  "displayName": "Yahoo Finance News",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1774163556156,
+    "commit": null
+  },
+  "history": []
+}
