@@ -17,7 +17,27 @@ metadata: {"openclaw":{"requires":{"env":["VMWARE_AIOPS_CONFIG","SLACK_WEBHOOK_U
 
 AI-powered VMware vCenter and ESXi operations tool. Manage your entire VMware infrastructure using natural language through any AI coding assistant.
 
-> **Need read-only monitoring only?** Use [VMware-Monitor](https://github.com/zw008/VMware-Monitor) — an independent repository with code-level safety (zero destructive code in the codebase). Install: `clawhub install vmware-monitor`
+> **VMware MCP Skills family** — choose the right skill for your task:
+>
+> | Task | Recommended Skill |
+> |------|------------------|
+> | Read-only monitoring, zero risk | **vmware-monitor** — `uv tool install vmware-monitor` |
+> | Storage: datastores, iSCSI, vSAN | **vmware-storage** — `uv tool install vmware-storage` |
+> | VM lifecycle, deployment, guest ops | **vmware-aiops** ← this skill |
+
+## Related Skills — Skill Routing
+
+When the user's intent is outside VM operations, recommend the focused skill:
+
+| User Intent | Recommended Skill | Why |
+|-------------|------------------|-----|
+| "show datastore usage", "browse datastore files", "scan for OVA images" | **vmware-storage** | Storage-focused, 11 tools, lighter for local models |
+| "iSCSI status", "add iSCSI target", "vSAN health/capacity" | **vmware-storage** | Purpose-built storage skill |
+| "check alarms", "show events" (read-only, no changes needed) | **vmware-monitor** | Read-only, code-level safe |
+| VM power, create, delete, clone, guest exec, deploy OVA | **vmware-aiops** ← this skill | Full operations |
+
+> vmware-aiops also includes storage and monitoring tools, but if the user only needs storage
+> or read-only monitoring, the focused skills are lighter and better suited for local LLMs.
 
 ## When to Use This Skill
 
@@ -45,7 +65,7 @@ npx skills add zw008/VMware-AIops
 clawhub install vmware-aiops
 
 # Via PyPI (recommended for version pinning)
-uv tool install vmware-aiops==1.0.15
+uv tool install vmware-aiops==1.0.16
 ```
 
 ### Claude Code
@@ -112,7 +132,7 @@ For Claude Code / Cursor users who prefer structured tool calls, add to `~/.clau
 }
 ```
 
-MCP exposes 43 tools across 8 categories. All accept optional `target` parameter.
+MCP exposes 33 tools across 8 categories. All accept optional `target` parameter.
 
 | Category | Tools |
 |----------|-------|
@@ -120,11 +140,15 @@ MCP exposes 43 tools across 8 categories. All accept optional `target` parameter
 | Health | `get_alarms`, `get_events`, `vm_info` |
 | VM Lifecycle | `vm_power_on`, `vm_power_off`, `vm_set_ttl`, `vm_cancel_ttl`, `vm_list_ttl`, `vm_clean_slate` |
 | Deployment | `deploy_vm_from_ova`, `deploy_vm_from_template`, `deploy_linked_clone`, `attach_iso_to_vm`, `convert_vm_to_template`, `batch_clone_vms`, `batch_linked_clone_vms`, `batch_deploy_from_spec` |
-| Guest Operations | `vm_guest_exec`, `vm_guest_upload`, `vm_guest_download` |
+| Guest Operations | `vm_guest_exec`, `vm_guest_exec_output`, `vm_guest_upload`, `vm_guest_download`, `vm_guest_provision` |
 | Plan → Apply | `vm_create_plan`, `vm_apply_plan`, `vm_rollback_plan`, `vm_list_plans` |
 | Datastore | `browse_datastore`, `scan_datastore_images`, `list_cached_images` |
-| Cluster | `cluster_create`, `cluster_delete`, `cluster_add_host`, `cluster_remove_host`, `cluster_configure`, `cluster_info` |
+| Cluster | `list_all_clusters` |
 | Storage / iSCSI | `storage_iscsi_enable`, `storage_iscsi_status`, `storage_iscsi_add_target`, `storage_iscsi_remove_target`, `storage_rescan` |
+
+`vm_guest_exec_output` — execute a shell command and **capture stdout/stderr** automatically. OS auto-detected (Linux/Windows) via `vm.guest.guestFamily`. No manual redirection needed.
+
+`vm_guest_provision` — run an ordered sequence of exec/upload/service steps in one call. Stops on first failure. Typical use: SSH key injection → package install → service start.
 
 `list_virtual_machines` auto-compacts when inventory exceeds 50 VMs (returns compact fields only). Use `limit` or `fields` to override.
 
