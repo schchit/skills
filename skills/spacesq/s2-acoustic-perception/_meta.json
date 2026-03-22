@@ -1,0 +1,11 @@
+{
+  "owner": "spacesq",
+  "slug": "s2-acoustic-perception",
+  "displayName": "S2-SP-OS Acoustic Radar",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774171999552,
+    "commit": null
+  },
+  "history": []
+}
