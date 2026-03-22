@@ -3,9 +3,15 @@
   "slug": "management-brain",
   "displayName": "AI Management Brain",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774061745269,
-    "commit": "https://github.com/openclaw/skills/commit/cc64d079051c2f82bcf59857f3155500b0353c27"
+    "version": "2.2.0",
+    "publishedAt": 1774065627770,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774061745269,
+      "commit": "https://github.com/openclaw/skills/commit/cc64d079051c2f82bcf59857f3155500b0353c27"
+    }
+  ]
 }
