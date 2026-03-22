@@ -1,0 +1,11 @@
+{
+  "owner": "jimpang8",
+  "slug": "hk-transit-eta",
+  "displayName": "HK Transit ETA",
+  "latest": {
+    "version": "2.0.0",
+    "publishedAt": 1774164722245,
+    "commit": null
+  },
+  "history": []
+}
