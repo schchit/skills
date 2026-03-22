@@ -1,14 +1,49 @@
 #!/bin/bash
 # Feishu Voice Message Sender
 # Usage: ./send.sh "text content" [receiver_id] [speaker]
+# 
+# ⚠️ 使用前必须配置以下环境变量或修改本文件：
+# - TTS_APP_ID: 豆包语音 APP ID
+# - TTS_ACCESS_KEY: 豆包语音 Access Key
+# - FEISHU_APP_ID: 飞书 App ID
+# - FEISHU_APP_SECRET: 飞书 App Secret
 
 TEXT="$1"
-RECEIVER_ID="${2:-ou_7240e6444af6902522b1af28b058973a}"
+RECEIVER_ID="${2:-}"
 SPEAKER="${3:-zh_male_m191_uranus_bigtts}"
+
+# 配置（请修改为你的实际配置）
+TTS_APP_ID="${TTS_APP_ID:-your-tts-app-id}"
+TTS_ACCESS_KEY="${TTS_ACCESS_KEY:-your-tts-access-key}"
+FEISHU_APP_ID="${FEISHU_APP_ID:-your-feishu-app-id}"
+FEISHU_APP_SECRET="${FEISHU_APP_SECRET:-your-feishu-app-secret}"
 
 if [ -z "$TEXT" ]; then
     echo "Usage: $0 \"text content\" [receiver_id] [speaker]"
-    echo "Example: $0 \"Hello, this is Tyrion.\""
+    echo "Example: $0 \"Hello, this is Tyrion.\" ou_xxx"
+    echo ""
+    echo "⚠️  使用前请配置 API 密钥："
+    echo "   方式1：设置环境变量 TTS_APP_ID, TTS_ACCESS_KEY, FEISHU_APP_ID, FEISHU_APP_SECRET"
+    echo "   方式2：直接修改本文件中的默认值"
+    exit 1
+fi
+
+if [ -z "$RECEIVER_ID" ]; then
+    echo "❌ 错误：必须提供接收者 ID (receiver_id)"
+    echo "Usage: $0 \"text content\" receiver_id [speaker]"
+    exit 1
+fi
+
+# 检查是否为占位符
+if [ "$TTS_APP_ID" = "your-tts-app-id" ] || [ "$TTS_ACCESS_KEY" = "your-tts-access-key" ]; then
+    echo "❌ 错误：请先配置豆包语音 API 密钥"
+    echo "请修改本文件或使用环境变量设置 TTS_APP_ID 和 TTS_ACCESS_KEY"
+    exit 1
+fi
+
+if [ "$FEISHU_APP_ID" = "your-feishu-app-id" ] || [ "$FEISHU_APP_SECRET" = "your-feishu-app-secret" ]; then
+    echo "❌ 错误：请先配置飞书 API 密钥"
+    echo "请修改本文件或使用环境变量设置 FEISHU_APP_ID 和 FEISHU_APP_SECRET"
     exit 1
 fi
 
@@ -16,8 +51,8 @@ echo "🎙️ 正在生成语音: $TEXT"
 
 # 1. TTS 生成语音
 curl -s -X POST "https://openspeech.bytedance.com/api/v3/tts/unidirectional" \
-  -H "X-Api-App-Key: 4391887839" \
-  -H "X-Api-Access-Key: VkISZ6VSkhzUk3C6LkY6bIWc2RVEL3TX" \
+  -H "X-Api-App-Key: $TTS_APP_ID" \
+  -H "X-Api-Access-Key: $TTS_ACCESS_KEY" \
   -H "X-Api-Resource-Id: seed-tts-2.0" \
   -H "Content-Type: application/json" \
   -d "{
@@ -79,7 +114,7 @@ fi
 echo "🔑 获取飞书 access token..."
 TOKEN=$(curl -s -X POST "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal" \
   -H "Content-Type: application/json" \
-  -d '{"app_id":"cli_a93b0c0772b85bdb","app_secret":"xBXgWGU6RvYItHwOHLDmud4poaJ7pUT5"}' | \
+  -d "{\"app_id\":\"$FEISHU_APP_ID\",\"app_secret\":\"$FEISHU_APP_SECRET\"}" | \
   python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tenant_access_token',''))")
 
 if [ -z "$TOKEN" ]; then

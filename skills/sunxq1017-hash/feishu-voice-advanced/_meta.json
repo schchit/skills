@@ -3,9 +3,15 @@
   "slug": "feishu-voice-advanced",
   "displayName": "Feishu Voice Advanced",
   "latest": {
-    "version": "1.1.0",
-    "publishedAt": 1774166911052,
-    "commit": "https://github.com/openclaw/skills/commit/0cd965b2c8370836bd0102f9d5bd16bd500ac80e"
+    "version": "1.2.1",
+    "publishedAt": 1774169596892,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1774166911052,
+      "commit": "https://github.com/openclaw/skills/commit/0cd965b2c8370836bd0102f9d5bd16bd500ac80e"
+    }
+  ]
 }

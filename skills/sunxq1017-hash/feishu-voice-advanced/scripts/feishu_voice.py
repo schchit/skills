@@ -12,19 +12,21 @@ import subprocess
 import urllib.request
 import urllib.error
 
-# 配置
-ASR_APP_ID = "4391887839"
-ASR_ACCESS_KEY = "VkISZ6VSkhzUk3C6LkY6bIWc2RVEL3TX"
+# 配置 - 请修改为你的实际配置
+# 从火山引擎控制台获取: https://console.volcengine.com/
+ASR_APP_ID = "your-asr-app-id"
+ASR_ACCESS_KEY = "your-asr-access-key"
 ASR_RESOURCE_ID = "volc.bigasr.auc_turbo"
 ASR_URL = "https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash"
 
-TTS_APP_ID = "4391887839"
-TTS_ACCESS_KEY = "VkISZ6VSkhzUk3C6LkY6bIWc2RVEL3TX"
+TTS_APP_ID = "your-tts-app-id"
+TTS_ACCESS_KEY = "your-tts-access-key"
 TTS_RESOURCE_ID = "seed-tts-2.0"
 TTS_URL = "https://openspeech.bytedance.com/api/v3/tts/unidirectional"
 
-FEISHU_APP_ID = "cli_a93b0c0772b85bdb"
-FEISHU_APP_SECRET = "xBXgWGU6RvYItHwOHLDmud4poaJ7pUT5"
+# 从飞书开放平台获取: https://open.feishu.cn/
+FEISHU_APP_ID = "your-feishu-app-id"
+FEISHU_APP_SECRET = "your-feishu-app-secret"
 
 # 情绪音色映射
 EMOTION_VOICES = {
