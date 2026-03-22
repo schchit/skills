@@ -1,0 +1,11 @@
+{
+  "owner": "mibayy",
+  "slug": "polymarket-mispricing-events",
+  "displayName": "Polymarket Mispricing Events",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774063367641,
+    "commit": null
+  },
+  "history": []
+}
