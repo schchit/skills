@@ -1,0 +1,11 @@
+{
+  "owner": "heardlyapp",
+  "slug": "agent-setup-kit",
+  "displayName": "Agent Setup Kit",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774116565082,
+    "commit": null
+  },
+  "history": []
+}
