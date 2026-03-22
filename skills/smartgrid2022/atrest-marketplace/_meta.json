@@ -1,0 +1,11 @@
+{
+  "owner": "smartgrid2022",
+  "slug": "atrest-marketplace",
+  "displayName": "Atrest Marketplace",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774166499196,
+    "commit": null
+  },
+  "history": []
+}
