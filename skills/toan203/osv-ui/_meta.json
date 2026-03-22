@@ -1,0 +1,11 @@
+{
+  "owner": "toan203",
+  "slug": "osv-ui",
+  "displayName": "CVE Audit Skill",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1774082165677,
+    "commit": null
+  },
+  "history": []
+}
