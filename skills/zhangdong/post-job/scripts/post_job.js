@@ -7,27 +7,27 @@
  *   node post_job.js --title "Senior Frontend Engineer" --city "Singapore" --level "senior"
  */
 
-import Fuse from "fuse.js";
 import axios from "axios";
-import fs from "fs";
 import dayjs from "dayjs";
-import path from "path";
-import { fileURLToPath } from "url";
+import { getLocationsFuse } from "./loadLocations.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// ============================================================================
+// ⚠️ INTERNAL API PROTECTION
+// These functions are for internal use ONLY. Always use post_job() as entry.
+// ============================================================================
+const INTERNAL_CALL_TOKEN = Symbol("internal-call-token");
 
-// Load locations database
-const locationsPath = path.join(__dirname, "..", "assets", "locations.json");
-let locations = [];
-if (fs.existsSync(locationsPath)) {
-  locations = JSON.parse(fs.readFileSync(locationsPath, "utf-8"));
+function validateInternalCall(caller, fnName) {
+  if (caller !== INTERNAL_CALL_TOKEN) {
+    throw new Error(
+      `❌ ${fnName}() is an internal function. Use post_job() to post jobs.`,
+    );
+  }
 }
+// ============================================================================
 
-// Initialize Fuse.js for fuzzy search
-const fuse = new Fuse(locations, {
-  keys: ["label", "parentLabel"],
-  threshold: 0.3,
-});
+// Get Fuse instance for location fuzzy search (loaded from separate module)
+const fuse = getLocationsFuse();
 /**
  * Parse command line arguments
  */
@@ -38,6 +38,8 @@ function parseArgs(args) {
     description: "",
     company: "",
     email: "",
+    linkedinCompanyUrl:
+      "https://www.linkedin.com/company/110195078/admin/dashboard",
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -63,6 +65,10 @@ function parseArgs(args) {
         break;
       case "--email":
         result.email = next;
+        i++;
+        break;
+      case "--linkedinCompanyUrl":
+        result.linkedinCompanyUrl = next;
         i++;
         break;
     }
@@ -131,65 +137,12 @@ export async function check_linkedin_status(args) {
  * @param {number} [args.maxAttempts=20] - Maximum number of attempts (default: 20)
  * @returns {Promise<string>} Status message or LinkedIn URL
  */
-export async function check_linkedin_status_auto(args) {
-  const { jobId, intervalMs = 60000, maxAttempts = 20 } = args;
-  validateCredentials();
-
-  console.log(`🔄 Starting auto-check for Job ID: ${jobId}`);
-  console.log(
-    `   Interval: ${intervalMs / 1000}s | Max attempts: ${maxAttempts}`,
-  );
-  console.log();
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      const response = await axios.post(
-        API_URL_LK_CHECK,
-        { jobId: jobId },
-        {
-          params: {
-            uid: "1873977344885133312",
-          },
-          headers: {
-            "X-NUMBER": NUMBER,
-          },
-        },
-      );
-
-      const jobData = response.data;
-
-      if (jobData.code !== 0) {
-        console.log(`Attempt ${attempt}/${maxAttempts}: ❌ ${jobData.desc}`);
-      } else if (jobData.data && jobData.data.linkedinUrl) {
-        console.log();
-        return `✅ **LinkedIn Job is Live!**\n\nURL: ${jobData.data.linkedinUrl}\n\n**Attempts:** ${attempt}/${maxAttempts}\n**Total time:** ${(((attempt - 1) * intervalMs) / 1000 / 60).toFixed(1)} minutes`;
-      } else {
-        console.log(
-          `Attempt ${attempt}/${maxAttempts}: ⏳ Status: ${jobData.data?.status || "Pending"}`,
-        );
-      }
-    } catch (error) {
-      console.log(
-        `Attempt ${attempt}/${maxAttempts}: ❌ Error: ${error.message}`,
-      );
-    }
-
-    if (attempt < maxAttempts) {
-      console.log(
-        `   Waiting ${intervalMs / 1000} seconds before next check...\n`,
-      );
-      await new Promise((resolve) => setTimeout(resolve, intervalMs));
-    }
-  }
-
-  return `⏰ **LinkedIn sync timeout after ${maxAttempts} attempts.**\n\nThe job may still be syncing. You can manually check again later using \`check_linkedin_status\` with Job ID \`${jobId}\`.`;
-}
-
 async function getLinkedinState(jobId) {
   return check_linkedin_status({ jobId });
 }
 
-async function postToLinkd(data) {
+async function postToLinkd(data, linkedinCompanyUrl, token) {
+  validateInternalCall(token, "postToLinkd");
   validateCredentials();
   let extra = null;
   try {
@@ -201,6 +154,7 @@ async function postToLinkd(data) {
     description: data.description,
     jobId: data.id,
     linkedinCompanyUrl:
+      linkedinCompanyUrl ||
       "https://www.linkedin.com/company/110195078/admin/dashboard/",
     location: extra.location,
     sublocation: extra.sublocation,
@@ -233,28 +187,35 @@ async function postToLinkd(data) {
  */
 function sanitizeDescription(desc) {
   if (!desc || typeof desc !== "string") return "";
-  
+
   // Remove patterns commonly used for prompt injection
   let sanitized = desc
     .replace(/```[\s\S]*?```/g, "") // Remove code blocks
     .replace(/<\|.*?\|>/g, "") // Remove special markers like <|endoftext|>
-    .replace(/(?:^|\n)\s*(ignore|forget|override|system|instruction|new instruction)[\s\S]{0,200}/gi, "") // Remove injection attempts
-    .replace(/(?:^|\n)\s*[-*]\s*(ignore|forget|override|system|instruction)[\s\S]{0,200}/gi, "") // Remove bullet-point injections
+    .replace(
+      /(?:^|\n)\s*(ignore|forget|override|system|instruction|new instruction)[\s\S]{0,200}/gi,
+      "",
+    ) // Remove injection attempts
+    .replace(
+      /(?:^|\n)\s*[-*]\s*(ignore|forget|override|system|instruction)[\s\S]{0,200}/gi,
+      "",
+    ) // Remove bullet-point injections
     .trim();
-  
+
   // Limit length to prevent buffer-based attacks
   return sanitized.slice(0, 10000);
 }
 
-async function genJD(description) {
+async function genJD(description, token) {
+  validateInternalCall(token, "genJD");
   validateCredentials();
-  
+
   // Sanitize description before sending to external AI service
   const sanitizedDescription = sanitizeDescription(description);
   if (!sanitizedDescription) {
     return "❌ **Invalid job description:** Description is empty or contains invalid content.";
   }
-  
+
   const body = {
     content: sanitizedDescription,
   };
@@ -297,7 +258,8 @@ export async function post_job(args) {
   } catch (error) {
     return `❌ ${error.message}`;
   }
-  const { title, city_query, description, company, email } = args;
+  const { title, city_query, description, company, email, linkedinCompanyUrl } =
+    args;
 
   // Validate required fields
   if (!email) {
@@ -319,7 +281,7 @@ export async function post_job(args) {
     cityname: matched.label,
   });
 
-  const fullDescription = await genJD(description);
+  const fullDescription = await genJD(description, INTERNAL_CALL_TOKEN);
   // console.log("Generated Description:", fullDescription);
   if (fullDescription.startsWith("❌")) {
     return fullDescription;
@@ -359,11 +321,11 @@ export async function post_job(args) {
     if (jobData.code !== 0) {
       return `❌ **Failed to post job:** ${jobData.desc}`;
     }
-    await postToLinkd(jobData.data);
+    await postToLinkd(jobData.data, linkedinCompanyUrl, INTERNAL_CALL_TOKEN);
     const jobId = jobData.data.id;
 
     // Note: LinkedIn sync runs in background, returns immediately
-    // User can check status later with check_linkedin_status or check_linkedin_status_auto
+    // User can check status later with check_linkedin_status
 
     return (
       `✅ **Job Posted Successfully!**\n\n` +
@@ -407,6 +369,7 @@ async function main() {
       description: args.description,
       company: args.company,
       email: args.email,
+      linkedinCompanyUrl: args.linkedinCompanyUrl,
     });
 
     console.log(result);
