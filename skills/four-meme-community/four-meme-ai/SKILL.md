@@ -10,7 +10,7 @@ allowed-tools:
   - Bash(npx fourmeme *)
 license: MIT
 metadata:
-  {"author":"Four.meme AI Skill","version":"1.0.4","openclaw":{"requires":{"env":["PRIVATE_KEY"]},"primaryEnv":"PRIVATE_KEY","optionalEnv":["BSC_RPC_URL"]}}
+  {"author":"Four.meme AI Skill","version":"1.0.5","openclaw":{"requires":{"env":["PRIVATE_KEY"]},"primaryEnv":"PRIVATE_KEY","optionalEnv":["BSC_RPC_URL","CREATION_FEE_WEI","8004_NFT_ADDRESS","EIP8004_NFT_ADDRESS","TAX_TOKEN","WEB_URL","TWITTER_URL","TELEGRAM_URL","PRE_SALE","FEE_PLAN","TAX_FEE_RATE","TAX_BURN_RATE","TAX_DIVIDE_RATE","TAX_LIQUIDITY_RATE","TAX_RECIPIENT_RATE","TAX_RECIPIENT_ADDRESS","TAX_MIN_SHARING"],"install":{"node":true}}}
 ---
 
 ## [Agent must follow] User agreement and security notice on first use
@@ -109,8 +109,8 @@ Set **PRIVATE_KEY** and optionally **BSC_RPC_URL** via the process environment s
 
 ### Declared and optional environment variables
 
-- **Declared in registry metadata** (injected by OpenClaw when skill is enabled): **PRIVATE_KEY** (required for write operations). Optional in metadata: **BSC_RPC_URL** (scripts fall back to default BSC RPC if unset).
-- **Not in metadata; optional, may be set in env or project `.env`**: **BSC_RPC_URL**, **CREATION_FEE_WEI** (extra BNB on create), **WEB_URL**, **TWITTER_URL**, **TELEGRAM_URL**, **PRE_SALE**, **FEE_PLAN**, **8004_NFT_ADDRESS** / **EIP8004_NFT_ADDRESS**. Only **PRIVATE_KEY** is required for signing; others have defaults or are used only for specific commands (see Create token flow, EIP-8004, etc.). Tax token params use CLI only (`--tax-options=` or `--tax-token --tax-fee-rate=...`).
+- **Declared in registry metadata** (injected by OpenClaw when skill is enabled): **PRIVATE_KEY** (required for write operations). Optional in metadata: **BSC_RPC_URL**, **CREATION_FEE_WEI**, **8004_NFT_ADDRESS** / **EIP8004_NFT_ADDRESS**, **TAX_TOKEN**, **WEB_URL**, **TWITTER_URL**, **TELEGRAM_URL**, **PRE_SALE**, **FEE_PLAN**, **TAX_FEE_RATE**, **TAX_BURN_RATE**, **TAX_DIVIDE_RATE**, **TAX_LIQUIDITY_RATE**, **TAX_RECIPIENT_RATE**, **TAX_RECIPIENT_ADDRESS**, **TAX_MIN_SHARING**. Only **PRIVATE_KEY** is required for signing; others have defaults or are used only for specific commands (see Create token flow, EIP-8004, etc.). Tax token params use CLI only (`--tax-options=` or `--tax-token --tax-fee-rate=...`).
+- **Child process security**: The CLI and create-token-instant spawn child processes with a **minimal env** (whitelist in `lib/env-whitelist.cjs`). Only the above vars plus `PATH`, `HOME`, `USER`, `LANG`, `NODE_ENV` are passed to children; other host env vars are not inherited to reduce credential leakage.
 
 ### Execution and install
 
@@ -120,9 +120,9 @@ Set **PRIVATE_KEY** and optionally **BSC_RPC_URL** via the process environment s
 |------|---------|------|
 | Public config | `fourmeme config` | Get raisedToken / config (no auth) |
 | Token info (on-chain) | `fourmeme token-info <tokenAddress>` | Version, tokenManager, price, offers (BSC Helper3) |
-| Token list (REST) | `fourmeme token-list [--orderBy=] [--pageIndex=] [--pageSize=] [--tokenName=] [--symbol=] [--labels=] [--listedPancake=]` | Filtered, paginated token list |
+| Token list (REST) | `fourmeme token-list [--type=] [--listType=] [--keyword=] [--symbol=] [--tag=] [--status=] [--sort=] [--pageIndex=] [--pageSize=]` | Token search. Legacy: --orderBy=, --tokenName=, --labels=, --listedPancake=. See token-query-api.md. |
 | Token detail (REST) | `fourmeme token-get <tokenAddress>` | Token detail and trading info (get/v2) |
-| Token rankings (REST) | `fourmeme token-rankings <orderBy> [--barType=HOUR24]` | Time / ProgressDesc / TradingDesc / Hot / Graduated; barType for TradingDesc |
+| Token rankings (REST) | `fourmeme token-rankings <type> [options]` | type: NEW\|PROGRESS\|VOL_DAY_1\|HOT\|CAP\|DEX etc.; options: --symbol= --minCap= --maxCap= --minVol= --maxVol= --minHold= --maxHold= --pageSize=20 |
 | Buy quote | `fourmeme quote-buy <token> <amountWei> [fundsWei]` | Estimate only; no transaction |
 | Sell quote | `fourmeme quote-sell <token> <amountWei>` | Estimate only; no transaction |
 | **Execute buy** | `fourmeme buy <token> amount <amountWei> <maxFundsWei>` | Buy fixed amount (needs PRIVATE_KEY) |
@@ -208,12 +208,13 @@ On-chain query (Helper3); returns version, tokenManager, price, offers, etc.
 
 ### token-list / token-get / token-rankings (REST)
 
-Four.meme REST API; use `Accept: application/json`; no login or cookie.
+Four.meme REST API; use `Accept: application/json`; no login or cookie. Full parameter tables: [references/token-query-api.md](references/token-query-api.md).
 
-**Token list (filter / paginate)**  
+**Token list (search)**  
 ```bash
-fourmeme token-list [--orderBy=Hot] [--pageIndex=1] [--pageSize=30] [--tokenName=] [--symbol=] [--labels=] [--listedPancake=false]
+fourmeme token-list [--type=] [--listType=] [--keyword=] [--symbol=] [--tag=] [--status=] [--sort=] [--version=] [--pageIndex=1] [--pageSize=20]
 ```
+Params: type, listType, keyword, symbol, tag, status, sort, version, pageIndex, pageSize. API: POST `/public/token/search`. Legacy: --orderBy=, --tokenName=, --labels=, --listedPancake=.
 
 **Token detail and trading info**  
 ```bash
@@ -223,9 +224,9 @@ API: GET `/private/token/get/v2?address=...`
 
 **Rankings**  
 ```bash
-fourmeme token-rankings <orderBy> [--barType=HOUR24]
+fourmeme token-rankings <type> [--rankingKind=] [--version=] [--symbol=] [--minCap=] [--maxCap=] [--minVol=] [--maxVol=] [--minHold=] [--maxHold=] [--pageSize=20]
 ```
-orderBy: `Time` (newest) | `ProgressDesc` | `TradingDesc` (24h volume; barType HOUR24) | `Hot` | `Graduated`. Output JSON.
+type: `NEW` | `PROGRESS` | `VOL_MIN_5` | `VOL_MIN_30` | `VOL_HOUR_1` | `VOL_HOUR_4` | `VOL_DAY_1` | `VOL` | `LAST` | `HOT` | `CAP` | `DEX`. Optional: rankingKind, version, symbol, minCap, maxCap, minVol, maxVol, minHold, maxHold, pageSize. Legacy: Time, ProgressDesc, TradingDesc, Hot, Graduated. API: POST `/public/token/ranking`. Output JSON.
 
 ### quote-buy / quote-sell (estimate only; no transaction)
 
@@ -328,8 +329,8 @@ See [references/tax-token-query.md](references/tax-token-query.md).
 This skill supports a flow to discover tokens, get details, quote, and execute. The following is an example workflow, not a trading recommendation: discover → detail → quote → execute.
 
 1. **Discover** (one or more of):  
-   - **Rankings**: `fourmeme token-rankings <orderBy>` (orderBy = Hot, TradingDesc, Time, ProgressDesc, Graduated); use token addresses from the response.  
-   - **List**: `fourmeme token-list [--orderBy=] [--labels=] ...` to filter and get addresses.  
+   - **Rankings**: `fourmeme token-rankings <type>` (type = HOT, VOL_DAY_1, NEW, PROGRESS, DEX, etc.); use token addresses from the response.  
+   - **List**: `fourmeme token-list [--type=] [--keyword=] [--tag=] ...` to filter and get addresses.  
    - **On-chain events**: `fourmeme events <fromBlock> [toBlock]`; parse token addresses from TokenCreate/TokenPurchase, etc., for "newly created" or "recent trades" strategies.
 2. **Get details**: For each candidate, call `fourmeme token-get <address>` (REST detail and trading info) or `fourmeme token-info <address>` (on-chain version, tokenManager, price, offers) to filter or display.
 3. **Quote**: `fourmeme quote-buy <token> <amountWei> [fundsWei]` / `fourmeme quote-sell <token> <amountWei>` for estimated cost or proceeds.

@@ -22,9 +22,13 @@ const EVENTS = [
   parseAbiItem('event LiquidityAdded(address base, uint256 offers, address quote, uint256 funds)'),
 ];
 
+function getBscRpcUrl(): string {
+  return process.env.BSC_RPC_URL || 'https://bsc-dataseed.binance.org';
+}
+
 async function main() {
   const blockCount = parseInt(process.argv[2] ?? '50', 10) || 50;
-  const rpcUrl = process.env.BSC_RPC_URL || 'https://bsc-dataseed.binance.org';
+  const rpcUrl = getBscRpcUrl();
   const client = createPublicClient({
     chain: bsc,
     transport: http(rpcUrl),
