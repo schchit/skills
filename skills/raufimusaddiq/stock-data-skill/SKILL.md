@@ -4,138 +4,57 @@ description: "Fetch comprehensive stock data from Simplywall.st. Use when user a
 metadata:
   openclaw:
     emoji: "📈"
-    version: "1.3.0"
+    version: "2.0.0"
     author: "OpenClaw Community"
     requires: {}
   changelog:
-    - "v1.3.0 - Switch to direct HTTP fetch (no API key required), reliable data extraction from SimplyWall.st"
+    - "v2.0.0 - Enhanced: price targets, all returns (1d-5yr), insider activity, margins, health/balance sheet, growth rates, forecasts, 52W range, volatility"
+    - "v1.3.0 - Switch to direct HTTP fetch (no API key required)"
 ---
 
-# Stock Data - Simplywall.st
+# Stock Data - Simplywall.st v2.0
 
 Fetch comprehensive stock data from Simplywall.st for any global stock.
 
 ## When to Use
 
-- User asks about stock prices ("Berapa harga saham ADRO?")
-- User wants valuation analysis ("ADRO undervalued atau overvalued?")
-- User needs financial data ("Berapa revenue BBCA?")
-- User wants dividend info ("Berapa dividend yield TLKM?")
-- User asks for investment analysis ("Bagaimana analisa NVDA?")
+- User asks about stock prices, valuation, financials
+- Investment analysis or stock thesis generation
+- Dividend info, growth rates, insider activity
+- Analyst price targets and forecasts
 
-## Input Parameters
+## Usage
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| ticker | string | Yes | Stock ticker symbol (e.g., ADRO, AAPL, BBRI) |
-| exchange | string | No | Exchange hint (e.g., IDX, NASDAQ, NYSE) |
-
-## Output Structure
-
-```json
-{
-  "success": true,
-  "ticker": "ADRO",
-  "exchange": "IDX",
-  "data": {
-    "company": {
-      "name": "PT Alamtri Resources Indonesia Tbk",
-      "description": "Company description...",
-      "country": "Indonesia",
-      "founded": 2004,
-      "website": "www.alamtri.com"
-    },
-    "price": {
-      "lastSharePrice": 2300,
-      "currency": "IDR",
-      "return7D": 0.036,
-      "return1Yr": 0.055
-    },
-    "valuation": {
-      "marketCap": 3908.23,
-      "peRatio": 13.07,
-      "pbRatio": 0.85,
-      "pegRatio": 0.41,
-      "intrinsicDiscount": -39.06,
-      "status": "overvalued"
-    },
-    "financials": {
-      "eps": 0.0104,
-      "roe": 8.77,
-      "roa": 3.09,
-      "debtEquity": 0.12
-    },
-    "dividend": {
-      "yield": 13.48,
-      "futureYield": 5.64,
-      "payingYears": 10,
-      "payoutRatio": 1.88
-    },
-    "forecast": {
-      "earningsGrowth1Y": 0.51,
-      "roe1Y": 9.74,
-      "analystCount": 10
-    },
-    "snowflake": {
-      "value": 3,
-      "future": 6,
-      "past": 2,
-      "health": 6,
-      "dividend": 4
-    },
-    "recentEvents": [
-      {
-        "title": "Investor sentiment improves...",
-        "description": "..."
-      }
-    ],
-    "fetchedAt": "2026-02-22T08:30:00Z"
-  }
-}
+```bash
+cd ~/.openclaw/workspace/skills/stock-data-skill && python3 skill.py {TICKER} {EXCHANGE}
 ```
 
-## Example Usage
+## Output Structure (v2.0)
 
-```
-User: "Cek saham ADRO gimana?"
-→ Call stock_data(ticker="ADRO")
-
-User: "What's Apple's P/E ratio?"
-→ Call stock_data(ticker="AAPL", exchange="NASDAQ")
-
-User: "Berapa dividend yield TLKM?"
-→ Call stock_data(ticker="TLKM")
-```
+| Section | Key Fields |
+|---------|------------|
+| `company` | name, description, country, founded, website |
+| `price` | last, currency, beta5Y, min52W, max52W, isVolatile, dailyStdDev |
+| `returns` | 1d, 7d, 30d, 90d, ytd, 1yr, 3yr, 5yr, sinceIPO |
+| `valuation` | peRatio, pbRatio, pegRatio, priceToSales, evToEbitda, npvPerShare, intrinsicDiscount, status |
+| `financials` | eps, roe, roa, debtEquity, revenue, netIncome, yearsProfitable, latestFiscalYear |
+| `margins` | grossProfit, netIncome, ebit, ebitda |
+| `growth` | revenueGrowth 1Y/3Y/5Y, netIncomeGrowth 1Y/3Y/5Y, epsGrowth 1Y/3Y/5Y |
+| `dividend` | yield, futureYield, payingYears, payoutRatio, buybackYield, totalShareholderYield |
+| `forecast` | epsGrowth 1Y/3Y, revenueGrowth 1Y/2Y/3Y, netIncomeGrowth 1Y/2Y/3Y, forwardPE1Y, roe1Y/3Y |
+| `priceTarget` | consensus, low, high, analystCount |
+| `health` | totalDebt, totalEquity, totalAssets, debtToEquity, currentRatio, interestCover, leveredFCF, bookValuePerShare |
+| `insiders` | buyingRatio, totalSharesBought, totalSharesSold, totalEmployees, boardMembers |
+| `snowflake` | value, future, past, health, dividend (each 0-6) |
+| `recentEvents` | title, description (up to 5) |
 
 ## Supported Exchanges
 
-| Exchange | Code | Example Tickers |
-|----------|------|-----------------|
-| Indonesia | IDX | ADRO, BBRI, BBCA, TLKM |
-| US NASDAQ | NASDAQ | AAPL, NVDA, GOOGL |
-| US NYSE | NYSE | JPM, BAC, WMT |
-| Australia | ASX | BHP, CBA, RIO |
-| UK | LSE | HSBA, BP, SHEL |
-| Canada | TSX | RY, TD, CNR |
-| Singapore | SGX | DBS, OCBC |
+IDX, NASDAQ, NYSE, ASX, LSE, TSX, SGX, TSE, HKSE, KRX
 
 ## Data Source
 
-- Direct HTTP fetch from SimplyWall.st
-- Parses `__REACT_QUERY_STATE__` data embedded in HTML
-- No API key required
-- Price data updated daily
-- Fair value estimates based on proprietary model
-- Use as guide only, not investment advice
-
-## Technical Details
-
-This skill uses direct HTTP requests to fetch SimplyWall.st pages, then parses the `__REACT_QUERY_STATE__` data embedded in the HTML to extract structured stock information including:
-- Company基本信息
-- Current price and returns
-- Valuation metrics (PE, PB, PEG, market cap)
-- Financial ratios (ROE, ROA, EPS, debt/equity)
-- Dividend information (yield, payout ratio)
-- Forecast data (growth estimates, analyst count)
-- Snowflake ratings (5-point scoring system)
-- Recent company events
+- Direct HTTP fetch from SimplyWall.st (no API key required)
+- Parses `__REACT_QUERY_STATE__` embedded in HTML
+- Extracts both basic and extended analysis data
+- Price data updated daily, financials quarterly
