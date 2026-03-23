@@ -1,324 +1,256 @@
-# Drip SDK API Reference
+# Drip OpenClaw API Reference
 
-## Security & Key Scoping
+## Contents
 
-Drip issues two key types. **Always use the least-privileged key that meets your needs.**
+- Quick links
+- Path 1: OpenClaw identity endpoints
+- Path 2: Core Drip API
+- SDK examples
 
-| Key Type | Prefix | Access | Recommended For |
-|----------|--------|--------|-----------------|
-| **Public Key** | `pk_live_` / `pk_test_` | Provider-defined least-privilege integration access (validate exact actions per account/workspace) | **Default for skill and agent integrations** |
-| **Secret Key** | `sk_live_` / `sk_test_` | Full API access including webhooks, API key management, feature flags | Server-side admin only |
+## Quick Links
 
-> **Use `pk_` keys by default.** Use least-privilege keys for agent integrations and reserve `sk_` keys for trusted server-side admin operations.
-> Never provide `sk_` keys to untrusted agents, browser/mobile clients, or third-party runtimes.
-> Validate `pk_` vs `sk_` action semantics with the provider for your workspace before enabling production writes.
+- Website: `https://drippay.dev`
+- API host: `https://api.drippay.dev`
+- Core API base: `https://api.drippay.dev/v1`
 
-**Metadata safety:** Send only sanitized, non-sensitive metadata. Never include PII, secrets, raw prompts, model outputs, or environment variables. Use metadata only for operational context (model family, tool name, status code, latency, hashed IDs).
+## Path 1: OpenClaw Identity Endpoints
 
----
+These endpoints use your OpenClaw identity token for authentication. Drip auto-creates a customer record for the agent, so no separate signup is required for this path.
 
-## Provenance & Execution Policy
+### Authentication
 
-- Package: https://www.npmjs.com/package/@drip-sdk/node
-- Source: https://github.com/DripYCx26/drip
-- This skill is instruction-only and does not bundle `@drip-sdk/node` source code.
-- Use pinned dependency versions in `package.json` + lockfile.
-- Treat SDK installation as an external npm supply-chain dependency and verify provenance before installation.
-- This skill does not recommend running remote package executors (for example `npx <package>`) before credentials are configured.
-- Prefer direct SDK integration in your codebase rather than ad-hoc runtime package execution.
-
----
-
-## SDK Quick Setup
-
-```bash
-# Recommended: public key (pk_) — default least-privilege key for agent integrations
-export DRIP_API_KEY=pk_live_...
-
-# Optional: trusted API base URL override
-# export DRIP_BASE_URL=https://api.drippay.dev/v1
-
-# Optional: workflow grouping default for run telemetry
-# export DRIP_WORKFLOW_ID=research-agent
-
-# Only for admin operations (webhooks, key management, feature flags):
-# export DRIP_API_KEY=sk_live_...
+```http
+X-OpenClaw-Identity: <your-openclaw-identity-token>
 ```
 
-> **Key scoping:** Treat `pk_` keys as default least-privilege integration credentials and `sk_` keys as broad admin credentials. Confirm exact permissions with vendor documentation/support for your account before assuming which write operations are allowed.
+### Endpoints
 
-**Node.js:**
-```typescript
-import { drip } from '@drip-sdk/node';
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/openclaw/estimate_cost` | POST | Estimate cost before execution |
+| `/openclaw/track_usage` | POST | Record usage event |
+| `/openclaw/record_run` | POST | Record complete agent run |
+| `/openclaw/set_budget` | POST | Configure spending budget |
+| `/openclaw/ledger` | GET | View usage ledger and recent runs |
+| `/openclaw/charge` | POST | Settle on-chain (gated) |
+| `/openclaw/skill.md` | GET | Public skill documentation |
 
-// Reads DRIP_API_KEY from environment automatically (pk_live_... recommended)
-await drip.trackUsage({ customerId: 'cust_123', meter: 'api_calls', quantity: 1 });
+### Estimate Cost
+
+```http
+POST /openclaw/estimate_cost
+
+{
+  "unit_type": "tokens",
+  "quantity": 5000
+}
 ```
 
-**Python:**
-```python
-from drip import drip
+### Track Usage
 
-# Reads DRIP_API_KEY from environment automatically (pk_live_... recommended)
-drip.track_usage(customer_id="cust_123", meter="api_calls", quantity=1)
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `agent_id` | string | Yes | Your agent identifier |
+| `unit_type` | string | Yes | Usage type like `tokens` or `api_calls` |
+| `quantity` | number | Yes | Must be positive |
+| `idempotency_key` | string | Yes | Prevents duplicate recording |
+| `metadata` | object | No | Sanitized diagnostics only |
+
+```http
+POST /openclaw/track_usage
+X-OpenClaw-Identity: <token>
+
+{
+  "agent_id": "my-agent",
+  "unit_type": "tokens",
+  "quantity": 5000,
+  "idempotency_key": "req_unique_123",
+  "metadata": { "model": "gpt-4" }
+}
 ```
 
-The `drip` singleton reads from `DRIP_API_KEY` automatically.
-Only `DRIP_API_KEY` is required. `DRIP_BASE_URL` and `DRIP_WORKFLOW_ID` are optional.
+### Record Run
 
-## Metadata Policy Controls
+```http
+POST /openclaw/record_run
+X-OpenClaw-Identity: <token>
 
-Use these controls to enforce least-privilege telemetry at runtime:
-
-```typescript
-import { DripCallbackHandler } from '@drip-sdk/node/langchain';
-
-const handler = new DripCallbackHandler({
-  customerId: 'cus_123',
-  metadata: { integration: 'langchain', tenant: 'acme' },
-  metadataAllowlist: ['integration', 'tenant', 'model', 'latencyMs', 'promptCount', 'queryHash'],
-  redactMetadataKeys: ['tenantEmail', 'userEmail', 'apiKey', 'token'],
-});
+{
+  "agent_id": "my-agent",
+  "run_id": "run_456",
+  "status": "completed",
+  "duration_ms": 4500,
+  "usage": [
+    { "unit_type": "tokens", "quantity": 2500 },
+    { "unit_type": "tool_calls", "quantity": 3 }
+  ]
+}
 ```
 
-Before enabling auto-tracking in production, verify the installed SDK version still sanitizes metadata in callback/middleware paths (allowlist filtering, explicit redact keys, non-primitive drop, and string truncation).
-This reference file documents expected controls, but runtime enforcement depends on the installed SDK package and version.
-If package provenance or key semantics cannot be validated, run integrations only in isolated/staging environments and do not provide any `sk_` keys.
+### Unit Pricing
 
-For framework middleware wrappers (`withDrip`, `dripMiddleware`), pass the same keys:
+| Unit Type | Price per Unit |
+|-----------|----------------|
+| `tokens` | $0.000002 |
+| `api_calls` | $0.001 |
+| `tool_calls` | $0.001 |
+| `compute_seconds` | $0.005 |
+| Custom types | $0.001 (default) |
 
-```typescript
-withDrip({
-  meter: 'api_calls',
-  quantity: 1,
-  metadata: { integration: 'api', route: '/v1/search' },
-  metadataAllowlist: ['integration', 'route', 'latencyMs', 'statusCode'],
-  redactMetadataKeys: ['authorization', 'cookie', 'prompt', 'responseBody'],
-}, handler);
+### Rate Limits
+
+- 100 requests per minute per agent
+- Headers: `X-RateLimit-Remaining`, `X-RateLimit-Reset`
+
+## Path 2: Core Drip API
+
+Use the core Drip API when you need full billing features like runs, events, usage writes, charges, entitlements, and settlement.
+
+### Authentication
+
+```http
+Authorization: Bearer <DRIP_API_KEY>
 ```
 
----
+Use a `pk_live_...` key for runtime integrations. Only use `sk_live_...` when you need trusted admin operations like webhook or key management.
 
-## Core Methods
+### Recommended Flow
 
-### `ping()`
+1. Start a run with `POST /runs`
+2. Emit an event for each tool or API call with `POST /events`
+3. Emit billable usage with `POST /usage` or `POST /usage/async`
+4. End the run with `PATCH /runs/:id`
 
-Verify API connection.
+### Run Start
 
-```typescript
-await drip.ping();
-// Returns: { status: 'ok' }
+```http
+POST /runs
+
+{
+  "customerId": "cus_123",
+  "workflowId": "wf_openclaw",
+  "externalRunId": "openclaw_req_456",
+  "metadata": { "integration": "openclaw" }
+}
 ```
 
-### `trackUsage(params)`
+### Event Payload
 
-Record metered usage.
-
-```typescript
-await drip.trackUsage({
-  customerId: string;      // Required: Customer identifier
-  meter: string;           // Required: Meter name (e.g., 'llm_tokens')
-  quantity: number;        // Required: Usage quantity
-  metadata?: object;       // Optional: operational context only (model name, tool name) — never PII or secrets
-});
-```
-
-### `recordRun(params)`
-
-Log a complete agent run (simplified, single call).
-
-```typescript
-await drip.recordRun({
-  customerId: string;      // Required: Customer identifier
-  workflow: string;        // Required: Workflow/agent name
-  events: Event[];         // Required: Array of events
-  status: 'COMPLETED' | 'FAILED';
-});
-```
-
-### `startRun(params)`
-
-Start an execution trace for streaming events.
-
-```typescript
-const run = await drip.startRun({
-  customerId: string;      // Required: Customer identifier
-  workflowId: string;      // Required: Workflow ID or slug
-  correlationId?: string;  // Optional: Trace ID for distributed tracing
-  externalRunId?: string;   // Optional: Your external run ID
-  metadata?: object;        // Optional: Run metadata (operational context only — never PII or secrets)
-});
-// Returns: { id: string, ... }
-```
-
-### `emitEvent(params)`
-
-Log an event within an active run.
-
-```typescript
-await drip.emitEvent({
-  runId: string;           // Required: Run ID from startRun
-  eventType: string;       // Required: Event type
-  // Event-specific fields:
-  model?: string;          // For LLM events
-  inputTokens?: number;    // For LLM events
-  outputTokens?: number;   // For LLM events
-  name?: string;           // For tool events
-  duration?: number;       // Duration in ms
-  status?: string;         // 'success' | 'error'
-  description?: string;    // Human-readable description
-  metadata?: object;       // Optional: operational context only — never include PII, secrets, or raw user content
-});
-```
-
-### `emitEventsBatch(params)`
-
-Batch log multiple events.
-
-```typescript
-await drip.emitEventsBatch({
-  runId: string;
-  events: Event[];
-});
-```
-
-### `endRun(runId, params)`
-
-Complete an execution trace.
-
-```typescript
-await drip.endRun(runId, {
-  status: 'COMPLETED' | 'FAILED';
-  errorMessage?: string;   // If status is 'FAILED' — use a short message, never include stack traces with env vars
-  metadata?: object;       // Optional: operational context only
-});
-```
-
-### `getRunTimeline(runId)`
-
-Get execution timeline for a run.
-
-```typescript
-const timeline = await drip.getRunTimeline(runId);
-// Returns: { events: Event[], summary: string }
-```
-
-## Customer Management
-
-### `createCustomer(params)`
-
-At least one of `externalCustomerId` or `onchainAddress` is required.
-
-```typescript
-await drip.createCustomer({
-  externalCustomerId?: string;  // Your internal user/account ID
-  onchainAddress?: string;      // Customer's Ethereum address (for on-chain billing)
-  isInternal?: boolean;         // Mark as internal (non-billing). Default: false
-  metadata?: object;            // Optional: operational context only — never include PII or secrets
-});
-```
-
-### `getCustomer(customerId)`
-
-```typescript
-const customer = await drip.getCustomer('customer_123');
-```
-
-### `listCustomers(options)`
-
-```typescript
-const customers = await drip.listCustomers({
-  limit?: number;
-  offset?: number;
-});
-```
-
-## Error Handling
-
-```typescript
-import { Drip, DripError } from '@drip-sdk/node';
-
-try {
-  await drip.trackUsage({ ... });
-} catch (error) {
-  if (error instanceof DripError) {
-    console.error(`Error: ${error.message} (${error.code})`);
-    // error.code: 'INVALID_API_KEY' | 'RATE_LIMITED' | 'VALIDATION_ERROR' | ...
+```json
+{
+  "customerId": "cus_123",
+  "runId": "run_abc",
+  "actionName": "brave_search",
+  "eventType": "TOOL_CALL",
+  "outcome": "SUCCEEDED",
+  "quantity": 1,
+  "idempotencyKey": "openclaw_run_abc_brave_search_001",
+  "metadata": {
+    "provider": "brave",
+    "endpoint": "/res/v1/web/search",
+    "statusCode": 200,
+    "latencyMs": 412,
+    "queryHash": "9f9e2d..."
   }
 }
 ```
 
-## Status Values
+### Usage Payload
 
-| Status | Description |
-|--------|-------------|
-| `PENDING` | Run created but not started |
-| `RUNNING` | Run in progress |
-| `COMPLETED` | Run finished successfully |
-| `FAILED` | Run failed with error |
+```json
+{
+  "customerId": "cus_123",
+  "usageType": "brave_api_calls",
+  "quantity": 1,
+  "idempotencyKey": "openclaw_run_abc_brave_search_001_usage",
+  "metadata": {
+    "runId": "run_abc",
+    "provider": "brave",
+    "statusCode": 200,
+    "latencyMs": 412
+  }
+}
+```
 
----
+### Run End
 
-## Auto-Tracking Integrations
+```http
+PATCH /runs/:id
 
-### LangChain (Auto-Track LLM Usage)
+{
+  "status": "COMPLETED"
+}
+```
 
-**Node.js:**
+On failure:
+
+```json
+{
+  "status": "FAILED",
+  "errorMessage": "Provider timeout",
+  "errorCode": "TOOL_TIMEOUT"
+}
+```
+
+## SDK Examples
+
+### Node.js (`@drip-sdk/node`)
+
 ```typescript
-import { DripCallbackHandler } from '@drip-sdk/node/langchain';
-const handler = new DripCallbackHandler({
+import { OpenClawBilling } from '@drip-sdk/node/openclaw';
+
+const billing = new OpenClawBilling({
+  apiKey: process.env.DRIP_API_KEY,
   customerId: 'cus_123',
-  workflow: process.env.DRIP_WORKFLOW_ID ?? 'langchain',
-  metadata: { integration: 'langchain' },
-  metadataAllowlist: ['integration', 'model', 'latencyMs', 'promptCount', 'queryHash', 'statusCode'],
-  redactMetadataKeys: ['prompt', 'input', 'output', 'response', 'apiKey', 'token', 'authorization'],
+  workflowId: process.env.DRIP_WORKFLOW_ID ?? 'wf_openclaw',
 });
-const llm = new ChatOpenAI({ callbacks: [handler] });
-// LLM calls are auto-tracked with explicit metadata policy controls.
+
+await billing.withRun(
+  { externalRunId: 'openclaw_req_456' },
+  async ({ runId }) => {
+    await billing.withToolCall(
+      { runId, provider: 'brave', endpoint: '/res/v1/web/search' },
+      async () => fetch('https://api.search.brave.com/res/v1/web/search?q=...'),
+    );
+  },
+);
 ```
 
-**Python:**
+Install: `npm install @drip-sdk/node`
+
+### Python (`drip-sdk`)
+
 ```python
-from drip.integrations import DripCallbackHandler
-handler = DripCallbackHandler(customer_id="cus_123")
-llm = ChatOpenAI(callbacks=[handler])
+import os
+from drip import Drip
+
+client = Drip(api_key=os.environ["DRIP_API_KEY"])
+
+run = client.start_run(
+    customer_id="cus_123",
+    workflow_id=os.environ["DRIP_WORKFLOW_ID"],
+    external_run_id="openclaw_req_456",
+)
+
+client.emit_event(
+    run_id=run.id,
+    event_type="tool.call",
+    quantity=1,
+    metadata={"provider": "brave", "endpoint": "/res/v1/web/search"},
+)
+
+client.track_usage(
+    customer_id="cus_123",
+    meter="brave_api_calls",
+    quantity=1,
+    metadata={"runId": run.id},
+)
+
+client.end_run(run.id, status="COMPLETED")
 ```
 
-### Framework Middleware
+Install: `pip install drip-sdk`
 
-**Next.js:**
-```typescript
-import { withDrip } from '@drip-sdk/node/middleware';
-export const POST = withDrip({
-  meter: 'api_calls',
-  quantity: 1,
-  metadataAllowlist: ['integration', 'route', 'statusCode', 'latencyMs'],
-  redactMetadataKeys: ['authorization', 'cookie', 'prompt', 'responseBody'],
-}, handler);
-```
+## Outcome
 
-**Express:**
-```typescript
-import { dripMiddleware } from '@drip-sdk/node/middleware';
-app.use('/api', dripMiddleware({
-  meter: 'api_calls',
-  quantity: 1,
-  metadataAllowlist: ['integration', 'route', 'statusCode', 'latencyMs'],
-  redactMetadataKeys: ['authorization', 'cookie', 'prompt', 'responseBody'],
-}));
-```
-
-**FastAPI:**
-```python
-from drip.middleware.fastapi import DripMiddleware
-app.add_middleware(DripMiddleware, meter="api_calls", quantity=1)
-```
-
-**Flask:**
-```python
-from drip.middleware.flask import drip_middleware
-@app.route("/api/generate", methods=["POST"])
-@drip_middleware(meter="api_calls", quantity=1)
-def generate():
-    return {"success": True}
-```
+Both paths give you run timelines, spend attribution, charge ledger visibility, and anomaly detection in Drip analytics.
