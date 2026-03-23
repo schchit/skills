@@ -6,6 +6,11 @@ metadata: { "openclaw": { "homepage": "https://pokulabs.com", "requires": { "env
 
 # Poku — Outbound Calls, SMS & Number Reservation
 
+## Environment Variables
+
+- `POKU_API_KEY` *(required)* — Poku API key. If not set, inform the user to configure it before proceeding.
+- `POKU_TRANSFER_NUMBER` *(optional)* — A phone number in E.164 format to transfer calls to if the agent cannot answer a question. If set, use it automatically during calls. If not set, skip transfer — do not ask the user for one.
+
 ## Identify Which Flow to Use
 
 | The user wants to... | Read this file |

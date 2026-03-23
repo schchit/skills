@@ -54,10 +54,12 @@ Before reserving, confirm with the user:
 Do not reserve until the user says yes.
 
 ```bash
+jq -n --arg phoneNumber "<selected number>" \
+  '{"phoneNumber": $phoneNumber}' | \
 curl -s -X POST \
   -H "Authorization: Bearer $POKU_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"phoneNumber": "<selected number>"}' \
+  -d @- \
   https://api.pokulabs.com/reserved-numbers/reserve
 ```
 

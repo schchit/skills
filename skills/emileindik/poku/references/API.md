@@ -35,17 +35,21 @@ If `POKU_API_KEY` is not set, inform the user to configure it before proceeding.
 
 ```bash
 # Without transfer number
+jq -n --arg msg "<goal and context summary for voice agent>" --arg to "+15551234567" \
+  '{"message": $msg, "to": $to}' | \
 curl -s -X POST \
   -H "Authorization: Bearer $POKU_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"message": "<goal and context summary for voice agent>", "to": "+15551234567"}' \
+  -d @- \
   https://api.pokulabs.com/phone/call
 
 # With transfer number
+jq -n --arg msg "<goal and context summary for voice agent>" --arg to "+15551234567" --arg transfer "$POKU_TRANSFER_NUMBER" \
+  '{"message": $msg, "to": $to, "transferNumber": $transfer}' | \
 curl -s -X POST \
   -H "Authorization: Bearer $POKU_API_KEY" \
   -H "Content-Type: application/json" \
-  -d "{\"message\": \"<goal and context summary for voice agent>\", \"to\": \"+15551234567\", \"transferNumber\": \"$POKU_TRANSFER_NUMBER\"}" \
+  -d @- \
   https://api.pokulabs.com/phone/call
 ```
 
@@ -71,10 +75,12 @@ curl -s -X POST \
 ### Example Request
 
 ```bash
+jq -n --arg msg "<message body>" --arg to "+15551234567" \
+  '{"message": $msg, "to": $to}' | \
 curl -s -X POST \
   -H "Authorization: Bearer $POKU_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"message": "<message body>", "to": "+15551234567"}' \
+  -d @- \
   https://api.pokulabs.com/phone/sms
 ```
 
@@ -153,9 +159,11 @@ Reserves a specific phone number for the user's account. This is a one-time, non
 ### Example Request
 
 ```bash
+jq -n --arg phoneNumber "+15551234567" \
+  '{"phoneNumber": $phoneNumber}' | \
 curl -s -X POST \
   -H "Authorization: Bearer $POKU_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"phoneNumber": "+15551234567"}' \
+  -d @- \
   https://api.pokulabs.com/reserved-numbers/reserve
 ```

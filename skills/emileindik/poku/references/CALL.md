@@ -2,9 +2,30 @@
 
 ## Step 1: Resolve the Phone Number
 
-- **Raw number** (e.g. `917-257-7580`) — strip formatting, prepend country code (+1 for US & Canada). Result: `+19172577580`
+- **Raw number** (e.g. `917-257-7580`) — if no country code is included, do not assume one. Ask the user: "What country is this number in?" Then prepend the correct dial code. Result: `+19172577580`
 - **Contact name** — ask the user for the number directly; do not guess
 - **Business name only** — use the search tool to find the number, then confirm with the user
+
+Once the country is known, verify it is supported for voice calling:
+
+| Country | Dial code |
+|---|---|
+| United States & Canada | +1 |
+| Australia | +61 |
+| Brazil | +55 |
+| France | +33 |
+| Germany | +49 |
+| Israel | +972 |
+| Italy | +39 |
+| Luxembourg | +352 |
+| Norway | +47 |
+| Portugal | +351 |
+| Spain | +34 |
+| United Kingdom | +44 |
+
+If the country is not in this list, stop and tell the user:
+> "Voice calling isn't supported for that country yet. See supported countries here: https://docs.pokulabs.com/reference/supported-countries."
+Do not proceed to Step 2 if the country is unsupported.
 
 → Output: `<normalized number>` in E.164 format, used in Step 4.
 
@@ -60,20 +81,25 @@ If a transfer number is available, include it. Otherwise omit `transferNumber`.
 
 ```bash
 # Without transfer number
+jq -n --arg msg "<drafted message from Step 3>" --arg to "<normalized number>" \
+  '{"message": $msg, "to": $to}' | \
 curl -s -X POST \
   -H "Authorization: Bearer $POKU_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"message": "<drafted message from Step 3>", "to": "<normalized number>"}' \
+  -d @- \
   https://api.pokulabs.com/phone/call
 
 # With transfer number
+jq -n --arg msg "<drafted message from Step 3>" --arg to "<normalized number>" --arg transfer "$POKU_TRANSFER_NUMBER" \
+  '{"message": $msg, "to": $to, "transferNumber": $transfer}' | \
 curl -s -X POST \
   -H "Authorization: Bearer $POKU_API_KEY" \
   -H "Content-Type: application/json" \
-  -d "{\"message\": \"<drafted message from Step 3>\", \"to\": \"<normalized number>\", \"transferNumber\": \"$POKU_TRANSFER_NUMBER\"}" \
+  -d @- \
   https://api.pokulabs.com/phone/call
 ```
 
+Never display the full curl command with the resolved API key in user-facing output. If you need to show the command for debugging, mask the key: `Bearer ***`.
 Never retry while a request is pending — calls can stay open up to 5 minutes. For error codes, see `references/API.md`.
 
 ---
