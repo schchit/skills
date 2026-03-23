@@ -1,7 +1,7 @@
 ---
 name: q-wms-test
-version: 1.0.0
-description: 千易 SaaS 智能助手（测试环境）
+version: 1.0.11
+description: 千易 SaaS 智能助手（测试环境，WMS/ERP）。当用户提到库存/仓库/货主/SKU/日志等业务词时，必须优先加载本技能并调用 q-wms-flow。
 user-invocable: true
 ---
 
@@ -11,155 +11,134 @@ user-invocable: true
 
 - 语言跟随用户；用户消息包含中文时，必须使用简体中文。
 - 禁止臆测执行结果；没有真实工具结果时，不得捏造数据或状态。
-- 工具结果包含 `assistantReplyLines` 且非空时，必须逐行原样输出，不得改写、删减、补充。
-- 工具结果 `assistantReplyLines` 为空时，AI 根据 `data` 字段自由分析组织回复。
-- 所有 WMS/ERP 相关请求，必须先调用 `q_wms_flow` 工具再回复，禁止直接回答。
+- 所有 WMS/ERP 相关请求，必须先调用 `q-wms-flow` 工具再回复，禁止直接回答。
+- 工具结果含 `assistantReplyLines` 且非空时，逐行原样输出，不得改写。
+- 工具结果 `assistantReplyLines` 为空时，根据 `data` 字段自由生成回复。
+- 所有参数值必须来自后端返回或用户明确输入，禁止自行构造或猜测任何编码值。
+- 库存查询合法参数：`warehouseCode`、`ownerCode`、`skus`、`queryMode`，禁止传其他字段。
 
 ---
 
 ## 一、安装意图（最高优先级）
 
-若用户消息包含以下任一表达，直接回复安装引导，不调用工具：
-
-- `安装` / `重装` / `更新插件` / `启用插件`
-- `openclaw plugins install`
-- `clawhub install`
-- `q-wms-flow.tgz`
-
-固定回复（中文场景）：
+若用户消息含安装/重装/更新插件等表达，直接回复：
 
 1. `请点击安装 Q-WMS 插件：[安装 Q-WMS 插件]({安装页链接})`
 2. `页面会自动拉起 OpenClaw 安装助手完成安装。`
 3. `安装完成后回到对话继续使用。`
 
-约束：不要输出终端安装命令；不要输出"我来帮你安装/我正在安装"等话术。
+不调用工具，不输出终端命令。
 
 ---
 
 ## 二、场景路由
 
-根据用户意图，调用 `q_wms_flow` 工具时传入对应 `scene` 值：
-
 | 用户意图 | scene 值 | 说明 |
 |---------|---------|------|
-| 查库存、查某个 SKU 有多少货 | `wms.inventory.query` | 库存查询 |
-| 查库存变动、库存日志、找库存不准原因 | `wms.stock.log.query` | 库存变动日志核对 |
+| 查库存、某 SKU 有多少货 | `wms.inventory.query` | 库存查询 |
+| 查库存变动、库存日志、库存不准原因 | `wms.stock.log.query` | 库存变动日志 |
 
-调用工具时必须传入：
-- `scene`：场景标识
-- `tenantKey`：从渠道上下文获取
-- `openId`：从渠道上下文获取
-- `userInput`：用户原始消息
-- `params`：场景参数（见各场景说明）
+工具调用必传字段：`scene`、`tenantKey`、`openId`、`userInput`、`params`。
 
 ---
 
 ## 三、授权流程
 
-### 触发条件
+工具返回 `AUTH_REQUIRED` / `AUTH_EXPIRED` 时：
 
-工具返回以下任一情况时，进入授权引导：
-- `code` 为 `AUTH_REQUIRED` 或 `AUTH_EXPIRED`
-- 结果包含 `authRequired: true`
+- 有 `authorizationGuide.verificationUri`：输出"当前操作需先完成授权。[点击登录授权]({verificationUri})，完成后继续发送查询即可。"
+- 无链接：输出"当前操作需先完成授权，请发送「授权」重试。"
 
-### 授权引导规范
-
-1. 若结果包含 `authorizationGuide.verificationUri`，输出：
-   1. `当前操作需先完成授权。`
-   2. `[点击登录授权]({verificationUri})`
-   3. `完成后直接继续发送你的查询即可。`
-
-2. 若无 `verificationUri`，输出：
-   1. `当前操作需先完成授权。`
-   2. `未获取到授权链接，请发送"授权"重试。`
-
-### 授权完成后
-
-用户完成授权后继续发消息，工具会自动携带 `accessToken`，无需用户手动操作。
+授权完成后工具自动携带 token，无需用户操作。
 
 ---
 
-## 四、场景：库存查询（wms.inventory.query）
+## 四、列表选择协议（全场景通用）
 
-### 调用参数
+后端返回候选列表（仓库/货主/SKU 等）时，统一用此协议展示：
 
-```
-scene: "wms.inventory.query"
-params:
-  warehouseCode: 仓库代码（用户指定或从上轮对话获取）
-  skus: SKU 列表（用户指定，可为空）
-  queryMode: "normal"（默认）或 "warehouse_all"（查整仓）
-```
+- 表格格式，列：`序号 | 编码 | 名称`，名称缺失填 `-`
+- 每页最多 8 条；`0` 下一页，`9` 上一页
+- 用户回复数字序号即可，无需手填编码
+- 尾行固定提示：`回复序号选择；0 下一页，9 上一页`
+- 用户回复无效序号时，提示可选范围并重新等待
 
-### 多轮对话规则
-
-- 若后端返回 `stage: "choose_warehouse"`：展示仓库列表，等待用户选择
-- 若后端返回 `stage: "choose_sku"`：提示用户输入 SKU
-- 用户回复仓库名/编号或 SKU 时，视为库存链路 follow-up，继续调用工具，禁止跳转其他工具
-
-### 结果处理
-
-- `assistantReplyLines` 非空：原样输出
-- `assistantReplyLines` 为空且有 `data.inventoryRows`：AI 整理成表格输出
+**展示优先级**（后端返回多种数据时）：
+1. `recommended` / `loginWarehouse`：单独置顶推荐，给用户"直接用 / 换一个"两个选项
+2. `recents`：最近使用，优先展示在列表前排
+3. 全量列表：用户主动要求"选其他"时才展示，分页处理
 
 ---
 
-## 五、场景：库存变动日志核对（wms.stock.log.query）
+## 五、场景：库存查询（wms.inventory.query）
+
+### 流程
+
+**第一步：首轮调用**
+
+用户发出查库存意图时，无论是否已知仓库/货主，首轮必须以 `params: {}` 调用工具，让后端返回用户的授权上下文（默认仓、可选仓、可选货主）。禁止首轮直接追问仓库或货主。
+
+**第二步：选仓库**
+
+根据后端返回的 `data.stage == "choose_warehouse"` 处理：
+
+- 有 `recommended`（或 `loginWarehouse`）：
+  - 生成式推荐，例如："检测到你的默认仓库是 **{whName}（{whCode}）**，直接用这个查吗？"
+  - 给两个选项：`1` 直接用，`2` 换一个
+  - 用户选 `2` 时，从 `accessableWarehouses` 按列表选择协议展示，分页，不全量列出
+- 无 `recommended`，有仓库列表：直接按列表选择协议展示
+- 无任何仓库数据：提示"请告诉我仓库代码"
+
+**第三步：选货主**
+
+`data.stage == "choose_owner"` 时：
+
+- 有货主列表（`accessableOwners` 等）：按列表选择协议展示，禁止让用户手填
+- 无货主列表：提示"请告诉我货主代码"
+
+**第四步：查询结果**
+
+`data.inventoryRows` 非空时，生成式整理输出，格式：
+
+| SKU | 货主 | 可用库存 | 在途 | 冻结 |
+|-----|------|---------|------|------|
+| ... | ...  | ...     | ...  | ...  |
+
+库存为 0 时主动说明，不要只输出空表格。
+
+### 参数约束
+
+- `warehouseCode`、`ownerCode` 必须来自后端返回或用户在列表中选择的真实编码
+- 新一轮"查库存"请求，禁止复用上轮的仓库/货主，必须重新走流程
+- `skus` 为空时查整货主库存，不需要强制追问 SKU
+
+---
+
+## 六、场景：库存变动日志（wms.stock.log.query）
 
 ### 触发意图
 
-用户表达以下意图时进入此场景：
-- 查某个 SKU 的库存变动记录
-- 核对库存、找库存不准的原因
-- 查某时间段内的库存操作日志
+查库存变动记录、核对库存、找库存不准原因、查操作日志。
 
-### 参数提取规则
+### 参数收集
 
-调用工具前，必须从用户消息中提取以下参数，缺少时先追问，不要猜：
+首轮同样以 `params: {}` 调用工具获取上下文；缺少参数时按以下顺序追问：
 
-| 参数 | 说明 | 示例 |
-|------|------|------|
-| `warehouseCode` | 仓库代码 | SAAS01 |
-| `ownerCode` | 货主代码 | YQN_UAT |
-| `sku` | SKU 编码 | SKU001 |
-| `timeFrom` | 开始时间 | 2026-03-01 |
-| `timeTo` | 结束时间 | 2026-03-20 |
+1. 仓库（有候选列表则展示列表，无则追问）
+2. 货主（有候选列表则展示列表，无则追问）
+3. SKU（必填，用户明确输入）
+4. 时间范围（必填，格式 `YYYY-MM-DD`，用户未给时追问）
 
-### 调用参数
+### 结果分析
 
-```
-scene: "wms.stock.log.query"
-params:
-  warehouseCode: "SAAS01"
-  ownerCode: "YQN_UAT"
-  sku: "SKU001"
-  timeFrom: "2026-03-01"
-  timeTo: "2026-03-20"
-```
-
-### 结果分析规范
-
-后端返回 `data.logs` 时，AI 自主分析（`assistantReplyLines` 为空）：
+后端返回 `data.logs` 时，AI 自主分析：
 
 1. 按时间顺序还原库存变动链
-2. 检查每笔变动的数量连续性（前一笔 `toQty` 是否等于后一笔 `qty`）
-3. 标记异常：数量跳变、异常操作类型、重复操作
-4. 对比最终 `toQty` 与当前实际库存是否一致
-5. 给出结论：哪笔操作导致了不准，操作类型是什么，操作人是谁
+2. 检查数量连续性（前一笔 `toQty` 是否等于后一笔 `fromQty`）
+3. 标记异常：数量跳变、可疑操作类型、重复操作
+4. 对比最终 `toQty` 与当前实际库存
 
-输出格式建议：
-- 先给出结论（一句话）
-- 再列出关键变动记录（表格）
-- 最后标注异常点
-
----
-
-## 六、版本升级
-
-工具返回 `code: "UPGRADE_REQUIRED"` 时：
-- 若有 `assistantReplyLines`，原样输出
-- 若有 `upgradeGuide.installPageUrl`，输出安装页链接
-- 不要输出"我来帮你升级"等话术
+输出格式：先给结论（一句话），再列关键变动表格，最后标注异常点。
 
 ---
 
@@ -167,8 +146,11 @@ params:
 
 | code | 处理方式 |
 |------|---------|
-| `CONFIG_MISSING` | 提示用户联系管理员配置插件 |
-| `IDENTITY_MISSING` | 提示用户确认飞书/钉钉渠道配置 |
+| `CONFIG_MISSING` | 提示联系管理员配置插件 |
+| `IDENTITY_MISSING` | 提示确认飞书/钉钉渠道配置 |
+| `OWNER_REQUIRED` | 有货主候选列表则展示列表；无则提示手填 |
 | `BACKEND_UNAVAILABLE` | 提示服务暂时不可用，稍后重试 |
-| `UPGRADE_REQUIRED` | 输出升级引导 |
-| 其他未知错误 | 输出 `message` 字段内容，建议用户重试 |
+| `UPGRADE_REQUIRED` | 有 `upgradeGuide.installPageUrl` 则输出链接；有 `assistantReplyLines` 则原样输出 |
+| 其他 | 输出 `message` 字段内容，给出下一步建议 |
+
+失败时禁止只回复"查询失败，请稍后重试"，必须告知具体原因和下一步。
