@@ -19,7 +19,7 @@ MOVIE_THEATER_URL = "https://api.jisuapi.com/movie/theater"
 MOVIE_CITY_URL = "https://api.jisuapi.com/movie/city"
 
 
-def _call_movie_api(url: str, appkey: str, params: dict | None = None):
+def _call_movie_api(url: str, appkey: str, params: dict = None):
     query = {"appkey": appkey}
     if params:
         for k, v in params.items():
