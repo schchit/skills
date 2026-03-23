@@ -168,3 +168,11 @@ ORDER BY hours
 - Confirm before adding, updating, or removing entries
 - Show the command before executing modifications
 - When stopping a timer, show what was running first
+
+## Author
+
+[TimeCamp Time Tracking Software](https://www.timecamp.com)
+
+## License
+
+MIT
