@@ -1,54 +1,52 @@
 # Changelog
 
-All notable changes to the polymarket-api skill will be documented in this file.
+All notable changes to the polymarket-api skill.
 
-## [2.0.0] - 2026-03-03
-
-### Changed
-- ✅ **Major Refactor**: Converted from trading-specific to general API guide
-- ✅ Removed arbitrage-specific scripts and strategies
-- ✅ Updated all documentation to be educational/reference focused
-- ✅ Changed focus from "trading bot" to "API data access guide"
+## [2.0.0] - 2026-03-23
 
 ### Added
-- ✅ `examples/realtime_data.py` - WebSocket and Socket.IO examples
-- ✅ `examples/polling.py` - Polling methods and fallbacks
-- ✅ `examples/orderbook.py` - Order book access and analysis
-- ✅ `references/API_REFERENCE.md` - Complete API endpoint documentation
-- ✅ `references/WEBSOCKET_GUIDE.md` - WebSocket implementation guide
+- **CLOB SDK Trading Section** — limit orders, market orders, decimal precision rules
+- **5-Minute Market Mechanics** — timing lifecycle, winner determination, resolution timing
+- **Data Reliability Guide** — what to trust, what not to trust, with explanations
+- **Known Pitfalls** — 7 critical lessons learned from real bot development
+- **Winner Verification Timing** — poll Gamma API until outcomePrices resolves to 1.0/0.0
+- **Market Rotation** — interval-based vs time-based, with correct implementation
+- **WebSocket event reliability matrix** — with clear DO USE / DO NOT USE labels
+- **CLOB Auth API** — authentication flow for trading
 
-### Updated
-- ✅ `README.md` - Now reflects general API guide (not trading strategy)
-- ✅ `SKILL.md` - General API documentation (already done)
-- ✅ `skill.json` - Updated author, description, and tags
-- ✅ `requirements.txt` - Updated dependencies
+### Changed
+- **SKILL.md** — restructured from tutorial format to reference format
+- **API_REFERENCE.md** — added CLOB API, CLOB Auth API, outcomePrices timing
+- **WEBSOCKET_GUIDE.md** — rewrote with correct CLOB endpoint, event reliability data
+- Removed arbitrage scanner examples (not applicable to 5-min markets)
+- Updated version from v1.2.0 to v2.0.0
 
-### Removed
-- ✅ `scripts/` directory - Removed strategy-specific scripts
-- ✅ `examples/basic_arbitrage.py` - Removed arbitrage example
-- ✅ `references/ARBITRAGE_STRATEGY.md` - Removed strategy doc
+### Knowledge Sources
+All new content derived from 3 weeks of bot development (V6 → V7.20) and 3 years of data analysis.
 
-### Documentation
-- 📝 All examples now educational and generic
-- 📝 No trading strategies mentioned
-- 📝 Focus on HOW to use APIs, not WHAT to build
+## [1.2.0] - 2026-03-05
 
----
+### Fixed
+- **CRITICAL**: WebSocket book event structure (bids/asks at top level, not under 'book' key)
 
-## [1.0.0] - 2026-03-03 (Legacy)
+### Added
+- Real-time liquidity tracking with sizes
+- Multi-cryptocurrency monitoring (BTC, ETH, SOL, XRP)
+- Clean output display patterns
 
-### Note
-Version 1.0.0 was a trading-focused release. It has been superseded by version 2.0.0 which is a general API guide.
+## [1.1.0] - 2026-03-05
 
----
+### Added
+- Time-based market discovery (5-minute pattern)
+- WebSocket real-time data guide
+- Order book and liquidity tracking
+- clobTokenIds field documentation
+- Market rotation examples
 
-## Version History
+## [1.0.0] - 2026-03-03
 
-| Version | Date | Status | Key Features |
-|---------|------|--------|-------------|
-| 2.0.0 | 2026-03-03 | ✅ Current | General API guide, educational examples |
-| 1.0.0 | 2026-03-03 | ❌ Deprecated | Trading-focused (replaced by 2.0.0) |
-
----
-
-[2.0.0]: https://clawhub.ai/skills/polymarket-api/v/2.0.0
+### Added
+- Initial release
+- Basic API connectivity
+- Market search and discovery
+- WebSocket basics

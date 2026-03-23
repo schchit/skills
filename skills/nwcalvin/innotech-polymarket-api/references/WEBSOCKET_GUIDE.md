@@ -1,667 +1,281 @@
 # Polymarket WebSocket Guide
 
-Complete guide for connecting to Polymarket's real-time data streams.
+Complete guide for connecting to Polymarket's real-time CLOB data streams.
 
 **Author**: Calvin Lam  
-**Last Updated**: 2026-03-03
+**Last Updated**: 2026-03-23
 
 ---
 
-## Table of Contents
+## ⚠️ Critical: Use the CLOB WebSocket Endpoint
 
-1. [Overview](#overview)
-2. [Connection Methods](#connection-methods)
-3. [Native WebSocket](#native-websocket)
-4. [Socket.IO](#socketio)
-5. [Async WebSocket](#async-websocket)
-6. [Events and Messages](#events-and-messages)
-7. [Reconnection Handling](#reconnection-handling)
-8. [Best Practices](#best-practices)
+**✅ Correct Endpoint**: `wss://ws-subscriptions-clob.polymarket.com/ws/market`
+
+❌ Old/legacy endpoint: `wss://ws-subscriptions.polymarket.com` (different protocol, different events)
 
 ---
 
-## Overview
+## Connection & Subscription
 
-Polymarket provides real-time market data via WebSocket connections.
-
-**WebSocket Endpoint**: `wss://ws-subscriptions.polymarket.com`
-
-### Use Cases
-
-- Real-time price updates
-- Live order book changes
-- Trade notifications
-- Market status updates
-
-### When to Use WebSocket vs Polling
-
-| Scenario | Recommended |
-|----------|-------------|
-| Real-time updates | WebSocket |
-| Multiple markets | WebSocket |
-| Infrequent checks | Polling |
-| Simple scripts | Polling |
-| High-frequency data | WebSocket |
-
----
-
-## Connection Methods
-
-Three methods available (in order of preference):
-
-1. **Native WebSocket** - Fastest, most reliable
-2. **Socket.IO** - Good fallback
-3. **Polling** - Slowest, use when others fail
-
----
-
-## Native WebSocket
-
-### Installation
-
-```bash
-pip install websocket-client
-```
-
-### Basic Connection
+### aiohttp (Recommended for async bots)
 
 ```python
-import websocket
-import json
+import aiohttp, asyncio, json, time
+
+async def monitor_market(asset_ids):
+    async with aiohttp.ClientSession() as session:
+        ws = await session.ws_connect(
+            "wss://ws-subscriptions-clob.polymarket.com/ws/market",
+            heartbeat=None,
+            timeout=aiohttp.ClientWSTimeout(ws_close=30.0)
+        )
+        
+        # Subscribe to assets
+        await ws.send_json({
+            "assets_ids": asset_ids,
+            "type": "market",
+            "custom_feature_enabled": True
+        })
+        
+        # Heartbeat
+        last_ping = time.time()
+        
+        async for msg in ws:
+            if msg.data == "PONG":
+                continue
+            
+            # Send PING every 10 seconds
+            if time.time() - last_ping >= 10:
+                await ws.send_str("PING")
+                last_ping = time.time()
+            
+            if msg.type == aiohttp.WSMsgType.TEXT:
+                data = json.loads(msg.data)
+                handle_event(data)
+
+asyncio.run(monitor_market(["up_asset_id", "down_asset_id"]))
+```
+
+### websocket-client (Sync)
+
+```python
+import websocket, json, time
+
+last_ping = time.time()
 
 def on_message(ws, message):
-    """Handle incoming messages"""
+    global last_ping
+    if message == "PONG": return
     data = json.loads(message)
-    print(f"Received: {data}")
-
-def on_error(ws, error):
-    """Handle errors"""
-    print(f"Error: {error}")
-
-def on_close(ws, close_status_code, close_msg):
-    """Handle connection close"""
-    print("Connection closed")
-
-def on_open(ws):
-    """Handle connection open"""
-    print("Connected!")
+    handle_event(data)
     
-    # Subscribe to market
-    subscribe_msg = {
-        "type": "subscribe",
-        "market": "your_market_id_here"
-    }
-    ws.send(json.dumps(subscribe_msg))
+    if time.time() - last_ping >= 10:
+        ws.send("PING")
+        last_ping = time.time()
 
-# Create connection
 ws = websocket.WebSocketApp(
-    "wss://ws-subscriptions.polymarket.com",
-    on_message=on_message,
-    on_error=on_error,
-    on_close=on_close,
-    on_open=on_open
+    "wss://ws-subscriptions-clob.polymarket.com/ws/market",
+    on_open=lambda ws: ws.send(json.dumps({
+        "assets_ids": ["asset_1", "asset_2"],
+        "type": "market",
+        "custom_feature_enabled": True
+    })),
+    on_message=on_message
 )
-
-# Run
 ws.run_forever()
 ```
 
-### Subscribe to Multiple Markets
-
-```python
-def on_open(ws):
-    """Subscribe to multiple markets"""
-    market_ids = ["market_1", "market_2", "market_3"]
-    
-    for market_id in market_ids:
-        ws.send(json.dumps({
-            "type": "subscribe",
-            "market": market_id
-        }))
-        print(f"Subscribed to {market_id}")
-```
-
-### Unsubscribe
-
-```python
-def unsubscribe(ws, market_id):
-    """Unsubscribe from a market"""
-    ws.send(json.dumps({
-        "type": "unsubscribe",
-        "market": market_id
-    }))
-```
-
 ---
 
-## Socket.IO
+## Event Types — Complete Reference
 
-### Installation
+### 1. `book` — Full Orderbook Snapshot ⭐⭐⭐
 
-```bash
-pip install python-socketio
-```
-
-### Basic Connection
-
-```python
-import socketio
-
-sio = socketio.Client()
-
-@sio.event
-def connect():
-    """Handle connection"""
-    print("Connected via Socket.IO")
-    
-    # Subscribe to markets
-    sio.emit('subscribe', {
-        'markets': ['market_1', 'market_2']
-    })
-
-@sio.event
-def price_change(data):
-    """Handle price updates"""
-    print(f"Price update: {data}")
-
-@sio.event
-def order_book_update(data):
-    """Handle order book updates"""
-    print(f"Order book update: {data}")
-
-@sio.event
-def disconnect():
-    """Handle disconnection"""
-    print("Disconnected")
-
-# Connect
-sio.connect('wss://ws-subscriptions.polymarket.com')
-
-# Keep running
-sio.wait()
-```
-
-### Custom Event Handlers
-
-```python
-@sio.on('custom_event')
-def handle_custom_event(data):
-    """Handle custom events"""
-    print(f"Custom event: {data}")
-```
-
-### Emit Custom Events
-
-```python
-# Send custom event
-sio.emit('custom_event', {'data': 'value'})
-```
-
----
-
-## Async WebSocket
-
-### Installation
-
-```bash
-pip install websockets
-```
-
-### Async Connection
-
-```python
-import asyncio
-import websockets
-import json
-
-async def connect_websocket():
-    """Connect using async WebSocket"""
-    uri = "wss://ws-subscriptions.polymarket.com"
-    market_id = "your_market_id_here"
-    
-    async with websockets.connect(uri) as ws:
-        print("Connected!")
-        
-        # Subscribe
-        await ws.send(json.dumps({
-            "type": "subscribe",
-            "market": market_id
-        }))
-        
-        # Listen for messages
-        while True:
-            try:
-                message = await asyncio.wait_for(
-                    ws.recv(),
-                    timeout=30.0
-                )
-                data = json.loads(message)
-                print(f"Received: {data}")
-                
-            except asyncio.TimeoutError:
-                # Send keepalive
-                await ws.ping()
-                
-            except websockets.exceptions.ConnectionClosed:
-                print("Connection closed")
-                break
-
-# Run
-asyncio.run(connect_websocket())
-```
-
-### Async with Multiple Markets
-
-```python
-async def monitor_markets(market_ids):
-    """Monitor multiple markets"""
-    uri = "wss://ws-subscriptions.polymarket.com"
-    
-    async with websockets.connect(uri) as ws:
-        # Subscribe to all markets
-        for market_id in market_ids:
-            await ws.send(json.dumps({
-                "type": "subscribe",
-                "market": market_id
-            }))
-        
-        # Process messages
-        async for message in ws:
-            data = json.loads(message)
-            await process_message(data)
-
-async def process_message(data):
-    """Process incoming message"""
-    print(f"Processing: {data}")
-```
-
----
-
-## Events and Messages
-
-### Message Types
-
-#### Price Change Event
+**Most reliable source for bid/ask data**
 
 ```json
 {
-  "type": "price_change",
-  "market": "abc123",
-  "outcomes": ["Yes", "No"],
-  "outcomePrices": ["0.67", "0.33"],
-  "timestamp": "2024-03-15T12:34:56Z"
-}
-```
-
-#### Order Book Update Event
-
-```json
-{
-  "type": "order_book_update",
-  "market": "abc123",
+  "event_type": "book",
+  "asset_id": "0x123...",
   "bids": [
-    {"price": "0.66", "size": "1000"}
+    {"price": "0.45", "size": "1000"},
+    {"price": "0.44", "size": "500"}
   ],
   "asks": [
-    {"price": "0.68", "size": "800"}
-  ],
-  "timestamp": "2024-03-15T12:34:56Z"
+    {"price": "0.47", "size": "800"},
+    {"price": "0.48", "size": "300"}
+  ]
 }
 ```
 
-#### Trade Event
-
-```json
-{
-  "type": "trade",
-  "market": "abc123",
-  "outcome": "Yes",
-  "price": "0.67",
-  "size": "100",
-  "timestamp": "2024-03-15T12:34:56Z"
-}
-```
-
-#### Market Status Event
-
-```json
-{
-  "type": "market_update",
-  "market": "abc123",
-  "status": "active",
-  "timestamp": "2024-03-15T12:34:56Z"
-}
-```
-
-### Handling Different Message Types
+**⚠️ CRITICAL: `bids` and `asks` at TOP LEVEL, not under `book` key**
 
 ```python
-def on_message(ws, message):
-    """Route messages to appropriate handlers"""
-    data = json.loads(message)
-    msg_type = data.get('type')
-    
-    if msg_type == 'price_change':
-        handle_price_change(data)
-    elif msg_type == 'order_book_update':
-        handle_order_book(data)
-    elif msg_type == 'trade':
-        handle_trade(data)
-    elif msg_type == 'market_update':
-        handle_market_update(data)
-    else:
-        print(f"Unknown message type: {msg_type}")
+# ✅ CORRECT
+bids = data.get('bids', [])
+asks = data.get('asks', [])
 
-def handle_price_change(data):
-    """Handle price changes"""
-    market = data['market']
-    prices = data['outcomePrices']
-    print(f"Market {market}: {prices}")
+# ❌ WRONG — returns empty
+bids = data.get('book', {}).get('bids', [])
+```
 
-def handle_order_book(data):
-    """Handle order book updates"""
-    market = data['market']
-    bids = data['bids']
-    asks = data['asks']
-    print(f"Order book update for {market}")
+### 2. `best_bid_ask` — Best Bid/Ask Update ⭐⭐⭐
 
-def handle_trade(data):
-    """Handle trade events"""
-    market = data['market']
-    outcome = data['outcome']
-    price = data['price']
-    size = data['size']
-    print(f"Trade on {market}: {size}@{price}")
+**Quick price check, no sizes included**
 
-def handle_market_update(data):
-    """Handle market status updates"""
-    market = data['market']
-    status = data['status']
-    print(f"Market {market}: {status}")
+```json
+{
+  "event_type": "best_bid_ask",
+  "asset_id": "0x123...",
+  "best_bid": "0.45",
+  "best_ask": "0.47"
+}
+```
+
+### 3. `price_change` — Trade Record ❌ NOT ORDERBOOK
+
+**Records PAST trades, NOT current orderbook state**
+
+```json
+{
+  "event_type": "price_change",
+  "asset_id": "0x123...",
+  "price": "0.46",
+  "side": "BUY",
+  "size": "50"
+}
+```
+
+**⚠️ MISCONCEPTION**: 
+- `side: "BUY"` = someone BOUGHT at this price in the past
+- This is NOT the current best ask
+- Using `price_change` as bid/ask causes impossible states (ask < bid)
+- **DO NOT USE for orderbook data**
+
+### 4. `last_trade_price` — Last Trade ❌ NOT ORDERBOOK
+
+```json
+{
+  "event_type": "last_trade_price",
+  "asset_id": "0x123...",
+  "price": "0.46"
+}
+```
+
+**DO NOT USE for orderbook data**
+
+---
+
+## Reliability Matrix
+
+| Event | Data Available | Is Orderbook? | Use For |
+|-------|---------------|---------------|---------|
+| `book` | Full bids[] + asks[] | ✅ YES | Bid/ask with sizes, liquidity |
+| `best_bid_ask` | Best bid + ask price | ✅ YES | Quick price check |
+| `price_change` | Last trade price + side | ❌ NO | Historical trades only |
+| `last_trade_price` | Last trade price | ❌ NO | Historical trades only |
+
+---
+
+## Unsubscribe
+
+```python
+await ws.send_json({
+    "assets_ids": ["old_asset_1", "old_asset_2"],
+    "type": "unsubscribe"
+})
 ```
 
 ---
 
-## Reconnection Handling
-
-### Basic Reconnection
+## Reconnection with Exponential Backoff
 
 ```python
-import websocket
-import json
-import time
+import aiohttp, asyncio, json
 
-class WebSocketClient:
-    """WebSocket client with auto-reconnect"""
-    
-    def __init__(self, url, market_ids):
-        self.url = url
-        self.market_ids = market_ids
-        self.reconnect_delay = 1
-        self.max_reconnect_delay = 60
-    
-    def connect(self):
-        """Connect with auto-reconnect"""
-        ws = websocket.WebSocketApp(
-            self.url,
-            on_open=self.on_open,
-            on_message=self.on_message,
-            on_error=self.on_error,
-            on_close=self.on_close
-        )
-        ws.run_forever()
-    
-    def on_open(self, ws):
-        """Handle connection open"""
-        print("✅ Connected")
-        self.reconnect_delay = 1  # Reset on success
-        
-        # Subscribe to markets
-        for market_id in self.market_ids:
-            ws.send(json.dumps({
-                "type": "subscribe",
-                "market": market_id
-            }))
-    
-    def on_message(self, ws, message):
-        """Handle messages"""
-        data = json.loads(message)
-        print(f"📥 {data}")
-    
-    def on_error(self, ws, error):
-        """Handle errors"""
-        print(f"❌ Error: {error}")
-    
-    def on_close(self, ws, *args):
-        """Handle connection close"""
-        print(f"🔌 Disconnected. Reconnecting in {self.reconnect_delay}s...")
-        time.sleep(self.reconnect_delay)
-        
-        # Exponential backoff
-        self.reconnect_delay = min(
-            self.reconnect_delay * 2,
-            self.max_reconnect_delay
-        )
-        
-        # Reconnect
-        self.connect()
-
-# Use
-client = WebSocketClient(
-    "wss://ws-subscriptions.polymarket.com",
-    ["market_1", "market_2"]
-)
-client.connect()
+async def connect_with_retry(asset_ids, max_retries=10):
+    for attempt in range(max_retries):
+        try:
+            async with aiohttp.ClientSession() as session:
+                ws = await session.ws_connect(
+                    "wss://ws-subscriptions-clob.polymarket.com/ws/market",
+                    heartbeat=None,
+                    timeout=aiohttp.ClientWSTimeout(ws_close=30.0)
+                )
+                await ws.send_json({
+                    "assets_ids": asset_ids,
+                    "type": "market",
+                    "custom_feature_enabled": True
+                })
+                print(f"✅ Connected (attempt {attempt + 1})")
+                
+                async for msg in ws:
+                    if msg.type == aiohttp.WSMsgType.TEXT and msg.data != "PONG":
+                        yield json.loads(msg.data)
+                    
+                    if msg.type in (aiohttp.WSMsgType.ERROR, aiohttp.WSMsgType.CLOSED):
+                        break
+                        
+        except Exception as e:
+            wait = min(2 ** attempt, 60)
+            print(f"❌ Disconnected, retrying in {wait}s... ({e})")
+            await asyncio.sleep(wait)
 ```
 
-### Async Reconnection
+---
+
+## Market Rotation Pattern
+
+For 5-minute markets that rotate every 5 minutes:
 
 ```python
-import asyncio
-import websockets
+import time
 
-class AsyncWebSocketClient:
-    """Async WebSocket with reconnection"""
+async def rotation_loop():
+    last_interval = None
     
-    def __init__(self, url, market_ids):
-        self.url = url
-        self.market_ids = market_ids
-        self.reconnect_delay = 1
-        self.max_delay = 60
-    
-    async def connect(self):
-        """Connect with reconnection"""
-        while True:
-            try:
-                async with websockets.connect(self.url) as ws:
-                    print("✅ Connected")
-                    self.reconnect_delay = 1
-                    
-                    # Subscribe
-                    for market_id in self.market_ids:
-                        await ws.send(json.dumps({
-                            "type": "subscribe",
-                            "market": market_id
-                        }))
-                    
-                    # Process messages
-                    async for message in ws:
-                        await self.handle_message(message)
-                        
-            except Exception as e:
-                print(f"❌ Error: {e}")
-                print(f"Reconnecting in {self.reconnect_delay}s...")
-                
-                await asyncio.sleep(self.reconnect_delay)
-                self.reconnect_delay = min(
-                    self.reconnect_delay * 2,
-                    self.max_delay
-                )
-    
-    async def handle_message(self, message):
-        """Handle incoming message"""
-        data = json.loads(message)
-        print(f"📥 {data}")
+    while True:
+        current = (int(time.time()) // 300) * 300
+        
+        if current != last_interval:
+            # New interval — rotate subscriptions
+            last_interval = current
+            
+            # Unsubscribe old
+            if old_assets:
+                await ws.send_json({"assets_ids": old_assets, "type": "unsubscribe"})
+            
+            # Fetch new market, get new asset IDs
+            new_assets = await fetch_new_assets(current)
+            
+            # Subscribe new
+            await ws.send_json({"assets_ids": new_assets, "type": "market", "custom_feature_enabled": True})
+        
+        await asyncio.sleep(1)  # Check every second
+```
 
-# Run
-client = AsyncWebSocketClient(
-    "wss://ws-subscriptions.polymarket.com",
-    ["market_1"]
-)
-asyncio.run(client.connect())
+**⚠️ Use interval-based detection, NOT time-based**:
+```python
+# ❌ WRONG: Off by up to 15 seconds
+if time.time() - last_rotation >= 300: rotate()
+
+# ✅ CORRECT: Instant detection
+if (int(time.time()) // 300) * 300 != current_base: rotate()
 ```
 
 ---
 
 ## Best Practices
 
-### 1. Use Heartbeats
-
-```python
-import threading
-import time
-
-def heartbeat(ws, interval=30):
-    """Send periodic heartbeats"""
-    while True:
-        time.sleep(interval)
-        try:
-            ws.ping()
-        except:
-            break
-
-# Start heartbeat thread
-threading.Thread(
-    target=heartbeat,
-    args=(ws,),
-    daemon=True
-).start()
-```
-
-### 2. Implement Timeouts
-
-```python
-import asyncio
-
-async def connect_with_timeout(timeout=10):
-    """Connect with timeout"""
-    try:
-        ws = await asyncio.wait_for(
-            websockets.connect(uri),
-            timeout=timeout
-        )
-        return ws
-    except asyncio.TimeoutError:
-        print("Connection timeout")
-        return None
-```
-
-### 3. Handle Message Queues
-
-```python
-import queue
-
-message_queue = queue.Queue()
-
-def on_message(ws, message):
-    """Queue messages for processing"""
-    message_queue.put(message)
-
-def process_messages():
-    """Process queued messages"""
-    while True:
-        try:
-            message = message_queue.get(timeout=1)
-            data = json.loads(message)
-            # Process data
-        except queue.Empty:
-            continue
-```
-
-### 4. Use Connection Pooling
-
-```python
-class ConnectionPool:
-    """Pool of WebSocket connections"""
-    
-    def __init__(self, max_connections=5):
-        self.connections = []
-        self.max_connections = max_connections
-    
-    def get_connection(self):
-        """Get available connection"""
-        # Implementation
-        pass
-    
-    def return_connection(self, conn):
-        """Return connection to pool"""
-        # Implementation
-        pass
-```
-
-### 5. Monitor Connection Health
-
-```python
-import time
-
-class ConnectionMonitor:
-    """Monitor connection health"""
-    
-    def __init__(self):
-        self.last_message_time = time.time()
-        self.timeout = 60  # seconds
-    
-    def record_message(self):
-        """Record received message"""
-        self.last_message_time = time.time()
-    
-    def is_healthy(self):
-        """Check if connection is healthy"""
-        return time.time() - self.last_message_time < self.timeout
-    
-    def check(self):
-        """Check and log health"""
-        if self.is_healthy():
-            print("✅ Connection healthy")
-        else:
-            print("⚠️ No messages received recently")
-```
-
----
-
-## Troubleshooting
-
-### Common Issues
-
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| Connection drops | Network issues | Implement reconnection |
-| No messages | Not subscribed | Check subscription |
-| Slow updates | Network latency | Check connection |
-| Rate limited | Too many requests | Reduce subscription rate |
-
-### Debug Mode
-
-```python
-import logging
-
-# Enable debug logging
-logging.basicConfig(level=logging.DEBUG)
-
-# For websocket-client
-websocket.enableTrace(True)
-```
-
----
-
-## Summary
-
-1. **Use Native WebSocket** for best performance
-2. **Implement reconnection** with exponential backoff
-3. **Handle all message types** appropriately
-4. **Use heartbeats** to detect dead connections
-5. **Monitor connection health** and log issues
+1. ✅ **PING every 10 seconds** to keep connection alive
+2. ✅ **Only use `book` + `best_bid_ask`** for orderbook data
+3. ✅ **Ignore `price_change` + `last_trade_price`** for orderbook
+4. ✅ **Interval-based rotation** for time-based markets
+5. ✅ **Auto-reconnect** with exponential backoff
+6. ✅ **Batch subscribe/unsubscribe** when rotating markets
+7. ✅ **Check `bids` and `asks` at top level** (not under `book`)
 
 ---
 
 **Need REST API details?** See `API_REFERENCE.md`
+**Need trading details?** See main `SKILL.md`
