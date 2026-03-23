@@ -1,0 +1,11 @@
+{
+  "owner": "twinsgeeks",
+  "slug": "local-llm-router",
+  "displayName": "Local LLM Router — Smart Inference Routing Across Devices",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774296992060,
+    "commit": null
+  },
+  "history": []
+}
