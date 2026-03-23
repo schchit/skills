@@ -1,13 +1,18 @@
 {
   "owner": "jisuapi",
   "slug": "bankcard",
-  "displayName": "银行卡归属地查询 - Bank Card Origin Query",
+  "displayName": "Bank Card Origin Query - 银行卡归属地查询",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1772533839800,
-    "commit": "https://github.com/openclaw/skills/commit/bd161c814ed109d140746731687197dd6117bac3"
+    "version": "1.0.3",
+    "publishedAt": 1773727851226,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1772533839800,
+      "commit": "https://github.com/openclaw/skills/commit/bd161c814ed109d140746731687197dd6117bac3"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1772521566228,
