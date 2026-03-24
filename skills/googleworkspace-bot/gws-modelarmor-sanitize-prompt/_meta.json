@@ -3,11 +3,16 @@
   "slug": "gws-modelarmor-sanitize-prompt",
   "displayName": "Gws Modelarmor Sanitize Prompt",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1774300490455,
-    "commit": "https://github.com/openclaw/skills/commit/eed4e2c3333464d31e1805ab33298a39e0b12b54"
+    "version": "1.0.3",
+    "publishedAt": 1774380421265,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1774300490455,
+      "commit": "https://github.com/openclaw/skills/commit/eed4e2c3333464d31e1805ab33298a39e0b12b54"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1772753159161,
