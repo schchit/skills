@@ -3,11 +3,16 @@
   "slug": "backtrader",
   "displayName": "backtrader",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773643359534,
-    "commit": "https://github.com/openclaw/skills/commit/454fa01dbe1dbb5c2e96ec16ec471d202e6b6dc3"
+    "version": "1.0.2",
+    "publishedAt": 1774260144199,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773643359534,
+      "commit": "https://github.com/openclaw/skills/commit/454fa01dbe1dbb5c2e96ec16ec471d202e6b6dc3"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773365317665,

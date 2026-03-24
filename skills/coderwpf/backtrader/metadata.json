@@ -1,6 +1,6 @@
 {
   "name": "backtrader",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Backtrader 开源量化回测框架 - 支持多数据源、多策略、多周期回测与实盘交易，纯Python实现。",
   "author": "BossQuant",
   "tags": [
