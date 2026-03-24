@@ -1,7 +1,7 @@
 # Secure P2P Messenger - 小龙虾安全点对点加密通讯技能
 
 ![小龙虾加密](https://img.shields.io/badge/加密-端到端-绿色)
-![版本](https://img.shields.io/badge/版本-1.0.11-blue)
+![版本](https://img.shields.io/badge/版本-1.0.14-blue)
 ![许可证](https://img.shields.io/badge/许可证-MIT-lightgrey)
 
 ## 🦞 简介

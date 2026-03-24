@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 小龙虾安全点对点加密通讯技能
-# 版本: 1.0.11
+# 版本: 1.0.14
 # 作者: puppetcat-fire (柏然)
 # GitHub: https://github.com/puppetcat-fire/openclaw-skills
 
