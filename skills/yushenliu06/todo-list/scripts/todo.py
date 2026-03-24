@@ -720,6 +720,124 @@ def show_project(tag: str):
     project = projects[tag]
     list_tasks(status="all", show_all=True, tag=tag)
 
+def remove_task_from_time_bucket(task_id: str, due_at: float):
+    """从时间桶中移除任务，并更新或删除对应的 cron 提醒
+    
+    Args:
+        task_id: 要移除的任务ID
+        due_at: 任务的截止时间戳
+    """
+    if not due_at:
+        return  # 没有截止时间，不需要处理时间桶
+    
+    # 计算时间桶名称
+    time_bucket = get_time_bucket(due_at, minutes=15)
+    reminder_name = f"todo-merged-{time_bucket.replace(' ', '-').replace(':', '')}"
+    
+    reminders_data = load_reminders()
+    reminders = reminders_data.get("reminders", {})
+    
+    if reminder_name not in reminders:
+        return  # 时间桶不存在
+    
+    reminder = reminders[reminder_name]
+    task_ids = reminder.get("task_ids", [])
+    
+    # 从时间桶中移除该任务
+    if task_id not in task_ids:
+        return  # 任务不在这个时间桶中
+    
+    task_ids.remove(task_id)
+    
+    if len(task_ids) == 0:
+        # 时间桶变空，删除整个时间桶的所有 cron 任务
+        for job_id in reminder.get("job_ids", []):
+            try:
+                subprocess.run(["openclaw", "cron", "rm", job_id], capture_output=True)
+            except:
+                pass
+        del reminders[reminder_name]
+        save_reminders({"reminders": reminders})
+        print(f"   🗑️  已删除空的时间桶提醒：{time_bucket}")
+    else:
+        # 时间桶还有其他任务，需要重建提醒（不包含当前任务）
+        # 先删除旧的 cron 任务
+        for job_id in reminder.get("job_ids", []):
+            try:
+                subprocess.run(["openclaw", "cron", "rm", job_id], capture_output=True)
+            except:
+                pass
+        
+        # 获取剩余任务
+        tasks = load_tasks()
+        remaining_tasks = []
+        for tid in task_ids:
+            for t in tasks:
+                if t["id"] == tid and t["status"] == "pending":
+                    remaining_tasks.append(t)
+                    break
+        
+        if remaining_tasks:
+            # 重建提醒消息
+            message_lines = ["⏰ 待办提醒 - 以下任务即将到期：\n"]
+            priority_order = {"high": 0, "medium": 1, "low": 2}
+            remaining_tasks.sort(key=lambda t: (priority_order.get(t.get("priority", "medium"), 1), t.get("dueAt", 0)))
+            
+            for task in remaining_tasks:
+                task_due_str = datetime.fromtimestamp(task["dueAt"]).strftime("%Y-%m-%d %H:%M")
+                priority_emoji = {"high": "🔴", "medium": "🟡", "low": "🟢"}.get(task.get("priority", "medium"), "⚪")
+                message_lines.append(f"{priority_emoji} [{task['id']}] {task['title']}")
+                message_lines.append(f"   到期：{task_due_str}\n")
+            
+            reminder_message = "\n".join(message_lines)
+            
+            # 计算提醒时间
+            bucket_dt = datetime.strptime(time_bucket, "%Y-%m-%d %H:%M")
+            now = datetime.now()
+            reminder_times = []
+            
+            reminder_30 = bucket_dt - timedelta(minutes=30)
+            if reminder_30 > now:
+                reminder_times.append(("30min", reminder_30))
+            
+            reminder_15 = bucket_dt - timedelta(minutes=15)
+            if reminder_15 > now:
+                reminder_times.append(("15min", reminder_15))
+            
+            if bucket_dt > now:
+                reminder_times.append(("ontime", bucket_dt))
+            
+            # 创建新的 cron 任务
+            new_job_ids = []
+            session = load_session_context()
+            channel = session.get("channel") if session else None
+            target = session.get("target") if session else None
+            
+            for label, reminder_time in reminder_times:
+                cron_time = reminder_time.strftime("%H:%M %Y-%m-%d")
+                
+                if label == "30min":
+                    msg = f"⏰ 待办提醒（30分钟后）：\n\n" + "\n".join(message_lines[1:])
+                elif label == "15min":
+                    msg = f"⏰ 待办提醒（15分钟后）：\n\n" + "\n".join(message_lines[1:])
+                else:
+                    msg = reminder_message
+                
+                full_name = f"{reminder_name}-{label}"
+                job_id = create_cron_job(full_name, cron_time, msg, channel, target)
+                if job_id:
+                    new_job_ids.append(job_id)
+            
+            # 更新提醒数据
+            reminders_data = load_reminders()
+            reminders = reminders_data.get("reminders", {})
+            if reminder_name in reminders:
+                reminders[reminder_name]["job_ids"] = new_job_ids
+                reminders[reminder_name]["task_ids"] = task_ids
+                save_reminders({"reminders": reminders})
+            
+            print(f"   🔄 已更新时间桶提醒（剩余 {len(remaining_tasks)} 个任务）")
+
 def mark_done(task_id: str):
     """标记任务为完成"""
     data = load_data()
@@ -727,6 +845,12 @@ def mark_done(task_id: str):
     
     for task in tasks:
         if task["id"] == task_id:
+            # 先处理时间桶（在修改状态之前）
+            due_at = task.get("dueAt")
+            if due_at:
+                remove_task_from_time_bucket(task_id, due_at)
+            
+            # 再更新任务状态
             task["status"] = "completed"
             task["completedAt"] = datetime.now().timestamp()
             save_data(data)
@@ -736,18 +860,6 @@ def mark_done(task_id: str):
             if task.get("attachments"):
                 print(f"📎 该任务有 {len(task['attachments'])} 个附件")
                 print(f"   附件路径：{ATTACHMENTS_DIR}/{task_id}/")
-            
-            # 删除对应的cron提醒
-            try:
-                result = subprocess.run("openclaw cron list", shell=True, capture_output=True, text=True)
-                if result.returncode == 0:
-                    for line in result.stdout.split('\n'):
-                        if task_id in line:
-                            cron_id = line.split()[0]
-                            subprocess.run(f"openclaw cron delete {cron_id}", shell=True, capture_output=True)
-                            print(f"   🕒 已取消对应的到期提醒")
-            except Exception as e:
-                pass
             return
     
     print(f"❌ 未找到任务 ID：{task_id}")
@@ -756,13 +868,25 @@ def delete_task(task_id: str):
     """删除任务"""
     data = load_data()
     tasks = data.get("tasks", [])
-    original_len = len(tasks)
-    tasks = [t for t in tasks if t["id"] != task_id]
     
-    if len(tasks) == original_len:
+    # 查找要删除的任务
+    target_task = None
+    for task in tasks:
+        if task["id"] == task_id:
+            target_task = task
+            break
+    
+    if not target_task:
         print(f"❌ 未找到任务 ID：{task_id}")
         return
     
+    # 先处理时间桶（在删除任务之前）
+    due_at = target_task.get("dueAt")
+    if due_at:
+        remove_task_from_time_bucket(task_id, due_at)
+    
+    # 删除任务
+    tasks = [t for t in tasks if t["id"] != task_id]
     data["tasks"] = tasks
     save_data(data)
     
@@ -772,19 +896,7 @@ def delete_task(task_id: str):
         shutil.rmtree(task_attach_dir)
         print(f"   📎 已删除附件文件夹")
     
-    print(f"🗑️  已删除任务：{task_id}")
-    
-    # 删除对应的cron提醒
-    try:
-        result = subprocess.run("openclaw cron list", shell=True, capture_output=True, text=True)
-        if result.returncode == 0:
-            for line in result.stdout.split('\n'):
-                if task_id in line:
-                    cron_id = line.split()[0]
-                    subprocess.run(f"openclaw cron delete {cron_id}", shell=True, capture_output=True)
-                    print(f"   🕒 已取消对应的到期提醒")
-    except Exception as e:
-        pass
+    print(f"🗑️  已删除任务：[{task_id}] {target_task['title']}")
 
 def show_task(task_id: str):
     """显示任务详情"""

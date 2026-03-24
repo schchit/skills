@@ -3,11 +3,16 @@
   "slug": "todo-list",
   "displayName": "Todo List 待办事项管理",
   "latest": {
-    "version": "1.2.0",
-    "publishedAt": 1773470536023,
-    "commit": "https://github.com/openclaw/skills/commit/18e41b356da4bf164228cad4eaa78c2c52963801"
+    "version": "1.3.0",
+    "publishedAt": 1774158406534,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.2.0",
+      "publishedAt": 1773470536023,
+      "commit": "https://github.com/openclaw/skills/commit/18e41b356da4bf164228cad4eaa78c2c52963801"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773469463721,

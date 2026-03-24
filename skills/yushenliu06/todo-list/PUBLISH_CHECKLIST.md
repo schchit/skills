@@ -36,7 +36,13 @@
 - **Changelog**: `首次发布：支持待办事项管理、标签系统、项目管理、附件功能、自动提醒`
 - **状态**: ⚠️ 被标记为可疑
 
-### v1.1.0 (准备发布)
+### v1.2.0 (已发布)
+- **Changelog**: `移除feishu依赖，简化metadata格式，明确声明依赖`
+- **修复内容**:
+  1. 移除 reminder.py 中的 feishu 可选导入
+  2. 简化 SKILL.md 的 metadata 格式（使用 `requires` 字段）
+  3. 在 SKILL.md 开头添加明确的依赖说明
+- **状态**: ✅ 已发布
 - **Changelog**: `安全修复：移除shell=True，添加依赖声明，增强文件访问安全`
 - **修复内容**:
   1. 移除 `subprocess.run(shell=True)` 使用，改用安全的 args 列表形式
