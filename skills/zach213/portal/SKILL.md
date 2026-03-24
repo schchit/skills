@@ -91,8 +91,24 @@ Offer the user 4 options if they don't specify:
 **Watch — AI script** (most common):
 
 ```json
-{"url": "https://stripe.com", "goals": ["Show pricing page", "Highlight key features"]}
+{
+  "url": "https://stripe.com",
+  "goals": [
+    "Show the main value proposition",
+    "Navigate to pricing page and highlight plans",
+    "End with social proof or customer logos"
+  ],
+  "max_pages": 3
+}
 ```
+
+Use `max_pages: 3` to get multi-page demos (homepage + pricing + features). Without it, demos stay on the homepage only.
+
+**Writing great goals:**
+- Be specific: "Navigate to pricing page" > "Show pricing"
+- Ask for navigation: "Click to the features page" produces click actions, not just scrolls
+- Ask for social proof: "End with customer logos or metrics" pulls real stats
+- Ask for variety: "Include interactive elements like tabs or accordions"
 
 Call `create_script`. It auto-polls internally and returns the complete draft directly — no need to call `get_script`.
 
@@ -171,7 +187,11 @@ The `ptl` parameter to `make_portal` MUST be a JSON **object** (not a string). D
         "scenes": [
           {
             "script": "Narration text here",
-            "actions": [{ "action": "scroll_down", "selector": "body", "inner_text": "" }]
+            "actions": [
+              { "type": "scroll_to_element", "selector": "h2", "inner_text": "Key Features" },
+              { "type": "wait", "ms": 2000 },
+              { "type": "click", "selector": "a[href='/pricing']", "inner_text": "Pricing" }
+            ]
           }
         ]
       }
@@ -184,7 +204,43 @@ The `ptl` parameter to `make_portal` MUST be a JSON **object** (not a string). D
 }
 ```
 
+**Supported action types:**
+
+| Action | Use for | Required fields |
+|--------|---------|-----------------|
+| `scroll_to_element` | Navigate to a section by heading | `selector`, `inner_text` |
+| `scroll_down` | Generic scroll | `selector: "body"` |
+| `click` | Navigate pages, open tabs/accordions | `selector`, `inner_text` |
+| `wait` | Pause for emphasis (1500-3000ms) | `ms` |
+| `type` | Type into form inputs | `selector`, `text` |
+| `keypress` | Keyboard shortcuts | `selector`, `key` |
+
+Scenes can have **multiple actions** (up to 20 per scene). A good scene flows: scroll → wait → click.
+
 Server auto-fills `version`, `region`, `entry.type`. No need to call `normalize_ptl` or `validate_ptl` before `make_portal` — validation is built in.
+
+## Improving Script Quality
+
+When reviewing drafts from `create_script`, improve them before deploying:
+
+1. **Add click actions for navigation**: If the draft only has `scroll_to_element` actions, add `click` actions to navigate between pages (pricing, features, docs).
+2. **Add wait actions for pacing**: Insert `{ "type": "wait", "ms": 2000 }` between actions for natural pacing and emphasis.
+3. **Use multiple actions per scene**: Don't limit scenes to 1 action — scroll to a section, wait, then click or highlight another element.
+4. **Include social proof**: End with a scene that scrolls to customer logos, testimonials, or metrics.
+5. **Keep narrations concise**: Under 2 sentences per scene — the viewer is watching, not reading.
+6. **Always include `inner_text`**: On every `click` and `scroll_to_element` action — it's the fallback when CSS selectors break on dynamic pages.
+
+## Cursor Movement
+
+Portal demos show a real cursor moving on screen. The cursor automatically:
+- Moves to the target element before each action
+- Follows scrolls smoothly
+- Clicks precisely on elements with visual feedback
+
+For best results:
+- Use `scroll_to_element` with specific `inner_text` (not just `body`) so the cursor targets a visible heading
+- Place `click` actions on prominent buttons/links with clear `inner_text`
+- Use `wait` between actions so viewers can see the cursor position before the next move
 
 ## Rules
 
@@ -193,6 +249,7 @@ Server auto-fills `version`, `region`, `entry.type`. No need to call `normalize_
 - **Never navigate authenticated sites autonomously** — auth sites get single-page CDP grab only
 - **Always show draft and get user confirmation** before `make_portal`
 - **Keep polling `get_session`** — it blocks 30s server-side. Do NOT ask user if they're done
-- **Pass `inner_text` on all click actions** — it's the fallback when selectors fail on dynamic pages
+- **Pass `inner_text` on all click and scroll_to_element actions** — it's the fallback when selectors fail on dynamic pages
 - **Never create a second portal while one is provisioning** — poll `get_portal` instead
 - **Send URLs to the user in the chat** — do NOT run shell commands to open URLs. The user is on a messaging channel and will tap the link themselves
+- **Request multi-page demos** — always pass `max_pages: 3` (or higher) in `create_script` to get richer navigation beyond the homepage
