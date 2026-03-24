@@ -3,11 +3,16 @@
   "slug": "voice-ai-integration",
   "displayName": "Voice Ai Integration",
   "latest": {
-    "version": "0.1.1",
-    "publishedAt": 1773659610296,
-    "commit": "https://github.com/openclaw/skills/commit/a86412f84854356e060cf839cf8853b583aa2f06"
+    "version": "0.1.2",
+    "publishedAt": 1774318440532,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.1.1",
+      "publishedAt": 1773659610296,
+      "commit": "https://github.com/openclaw/skills/commit/a86412f84854356e060cf839cf8853b583aa2f06"
+    },
     {
       "version": "0.1.0",
       "publishedAt": 1773366982856,
