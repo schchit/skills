@@ -1,5 +1,32 @@
 # Changelog
 
+## [2.0.13] — 2026-03-22
+
+### Fixed
+- **Auto-capture feedback loop**: `stripPalaiaInjectedContext()` strips the Palaia recall block from user messages before capture extraction, preventing re-captured memories from accumulating. Applied in `agent_end`, `extractWithLLM()`, and `buildRecallQuery()`.
+- **Doctor: feedback-loop artifact detection**: `palaia doctor` now detects entries that are re-captured recall context (feedback-loop artifacts). `palaia doctor --fix` marks them as done.
+
+## [2.0.12] — 2026-03-22
+
+### Version alignment
+
+- Version alignment across all distribution channels (PyPI, npm, ClawHub, GitHub Release).
+- Nightly maintenance fix: removed embed-server kill step that caused index staleness.
+
+## [2.0.11] — 2026-03-22
+
+### Plugin-bundled SKILL.md
+
+- **SKILL.md included in npm package**: Agents installing Palaia via `npm install -g @byte5ai/palaia` now automatically get the SKILL.md in their `<available_skills>`. No ClawHub install required.
+- Plugin manifest (`openclaw.plugin.json`) updated with `"skills": ["./skill"]` for automatic skill discovery.
+- The bundled SKILL.md is a usage-focused subset — installation steps are omitted since the plugin is already installed.
+
+## 2.0.10 (2026-03-22)
+### Fixed
+- **Embed-Server startup timeout**: Server sends ready signal immediately; warmup runs in background thread. Queries during warmup use BM25 fallback automatically.
+- **Stale embedding index**: `write()` and `edit()` now compute embeddings for new entries immediately (fire-and-forget). The index no longer goes stale between warmup cycles.
+- **Doctor index check**: `palaia doctor` now detects stale embedding indexes (>10% entries missing) and repairs them with `--fix`.
+
 ## [2.0.8] — 2026-03-19
 
 ### Embedding Server — 16s to 0.5s Query Performance
