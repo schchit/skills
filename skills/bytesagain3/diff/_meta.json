@@ -3,11 +3,16 @@
   "slug": "diff",
   "displayName": "Diff",
   "latest": {
-    "version": "2.0.1",
-    "publishedAt": 1773830471475,
-    "commit": "https://github.com/openclaw/skills/commit/509e64862868042b8c09c4a23881d2b1b9b93332"
+    "version": "2.0.4",
+    "publishedAt": 1774231063866,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.0.1",
+      "publishedAt": 1773830471475,
+      "commit": "https://github.com/openclaw/skills/commit/509e64862868042b8c09c4a23881d2b1b9b93332"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1773663597956,
