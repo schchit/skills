@@ -3,11 +3,16 @@
   "slug": "medical-record-structurer",
   "displayName": "Medical Record Structurer",
   "latest": {
-    "version": "1.3.0",
-    "publishedAt": 1773882767756,
-    "commit": "https://github.com/openclaw/skills/commit/c5b3769a26d2b342a9fc371b0dfd5749b41027af"
+    "version": "1.4.0",
+    "publishedAt": 1774144427117,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.3.0",
+      "publishedAt": 1773882767756,
+      "commit": "https://github.com/openclaw/skills/commit/c5b3769a26d2b342a9fc371b0dfd5749b41027af"
+    },
     {
       "version": "1.2.0",
       "publishedAt": 1773650517184,
