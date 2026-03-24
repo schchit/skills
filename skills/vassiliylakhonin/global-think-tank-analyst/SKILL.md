@@ -1,256 +1,477 @@
 ---
-author: vassiliylakhonin
-description: Generate structured geopolitical analysis, policy briefs,
-  strategic foresight, and risk assessments using professional think
-  tank analytical frameworks.
-homepage: "https://clawhub.ai/vassiliylakhonin/global-think-tank-analyst"
 name: global-think-tank-analyst
-tags:
-- geopolitics
-- policy
-- analysis
-- think-tank
-- strategy
-- international-relations
-- risk-analysis
-- policy-brief
-version: 3.8.0
+description: Produce structured geopolitical, strategic, and policy analysis in a clear think-tank style. Use when assessing international risks, policy options, security trends, scenarios, or red-team challenges. Also covers confidence labels, assumptions, alternative hypotheses, indicators to watch, and JSON-ready outputs.
+homepage: https://github.com/vassiliylakhonin/global-think-tank-analyst
+user-invocable: true
+metadata: {"openclaw":{"emoji":"🌍","os":["linux","darwin","win32"]}}
 ---
 
 # Global Think Tank Analyst
 
-This skill generates structured geopolitical and policy analysis similar
-to research outputs produced by major global think tanks.
+Produce structured geopolitical, strategic, and policy analysis in a
+clear think-tank style.
 
-It helps analyze international developments, strategic risks, and policy
-implications using established analytical frameworks.
+Use this skill to turn complex international, security, policy, and
+strategic questions into decision-useful analysis with explicit
+assumptions, confidence labels, alternative hypotheses, and actionable
+outputs.
 
-## Skill intent
+## Quick Start
 
-Use this skill when users want structured geopolitical or policy
-analysis similar to think tank reports.
+Install:
 
-Typical outputs include policy briefs, risk assessments, scenario
-analysis, strategic foresight, and policy recommendations.
+```bash
+clawhub install global-think-tank-analyst
+Start with a direct topic:
 
-## Skill trigger
+text
+think-tank Analyze US-China tech decoupling risks 2026–2030
+Generate scenarios:
 
-Activate this skill when the user asks about:
+text
+think-tank --scenarios Arctic resource competition under climate change 2027–2035
+Stress-test a claim:
 
--   geopolitical analysis
--   international relations
--   strategic risk analysis
--   policy analysis
--   global political trends
--   government policy implications
+text
+think-tank --red-team Russian hybrid tactics in Eastern Europe
+Best For
+This skill is especially useful for:
 
-## Think tank analysis approach
+policy analysts
 
-The analysis follows structured methodologies used by leading think
-tanks.
+geopolitical researchers
 
-Core analytical elements include:
+strategy teams
 
--   context analysis
--   identification of key actors
--   strategic drivers
--   risk assessment
--   scenario development
--   policy implications
+risk and foresight professionals
 
-## Strategic analysis frameworks
+corporate intelligence teams
 
-### PESTLE analysis
+think-tank style writing and brief production
 
-Evaluate the macro-environment affecting geopolitical developments.
+Quick Reference
+If you need...	Use...
+A concise geopolitical brief	think-tank [topic]
+A full structured report	think-tank --report [topic]
+Exposure, triggers, and impacts	think-tank --risk [topic]
+Multiple plausible futures	think-tank --scenarios [topic] [timeframe]
+Emerging signals and horizon scan	think-tank --horizon [topic] [timeframe]
+A challenge test of a forecast or claim	think-tank --red-team [claim or policy]
+Structured export	think-tank --json [topic]
+What You Get
+Depending on the request, this skill can produce:
 
-Political -- alliances, conflicts, governance stability\
-Economic -- trade, sanctions, economic trends\
-Social -- demographics, public opinion, societal shifts\
-Technological -- innovation, cyber capabilities\
-Legal -- treaties, sanctions regimes, international law\
-Environmental -- climate risks and resource pressures
+Executive summary
 
-### SWOT analysis
+Situation overview
 
-Assess the strategic position of actors or policies.
+Strategic drivers
 
-Strengths -- internal advantages\
-Weaknesses -- internal vulnerabilities\
-Opportunities -- favorable external conditions\
-Threats -- external risks
+PESTLE scan
 
-## Stakeholder analysis
+Stakeholder analysis
 
-Identify key stakeholders involved in the issue.
+Power map
 
-For each stakeholder consider:
+Risk matrix
 
--   interests
--   capabilities
--   constraints
--   likely behavior
+Scenario set
 
-Typical stakeholders include governments, international organizations,
-corporations, and non‑state actors.
+Horizon scan
 
-## Power mapping
+Alternative hypotheses
 
-Map the relative influence of key actors.
+Red-team challenge
 
-Assess:
+Policy or strategy options
 
--   political power
--   economic leverage
--   military capabilities
--   diplomatic influence
+Recommendations
 
-Explain how these factors shape the balance of power.
+Indicators to watch
 
-## Strategic drivers
+Confidence and assumptions
 
-Identify structural forces shaping the geopolitical situation.
+JSON export block
 
-Examples include:
+When to Use
+Use this skill when the user needs:
 
--   technological competition
--   energy security
--   demographic change
--   climate pressures
--   ideological competition
+Geopolitical analysis
 
-## Time horizon analysis
+International relations assessment
 
-Assess developments across multiple time horizons.
+Strategic risk evaluation
 
-Short-term -- immediate developments\
-Medium-term -- structural policy evolution\
-Long-term -- systemic geopolitical transformation
+Policy implications
 
-## Structured analytic techniques (SAT)
+Security trend analysis
 
-Use structured reasoning to reduce analytical bias.
+Scenario planning
 
-### Key assumptions check
-
-Identify assumptions behind the analysis and test their validity.
-
-### Alternative hypotheses
-
-Evaluate multiple explanations for geopolitical developments.
-
-### Indicators and signposts
-
-Identify signals that confirm or challenge scenarios.
-
-### Red team perspective
-
-Consider how opposing actors may interpret or exploit the situation.
-
-## Cross-impact analysis
-
-Evaluate how geopolitical events influence one another.
-
-Identify cascading interactions between:
-
--   political developments
--   economic shocks
--   technological change
--   security dynamics
-
-Explain how chain reactions could reshape regional or global systems.
-
-## Early warning and horizon scanning
-
-Detect emerging signals of geopolitical change.
-
-### Weak signals
-
-Early signs of future shifts such as new alliances or policy debates.
-
-### Drivers of change
-
-Structural forces like technology, demographics, or climate pressures.
-
-### Early warning indicators
-
-Signals that may indicate escalation or major transformation.
-
-## Delphi method
-
-Use expert‑style consensus reasoning to explore uncertain futures.
-
-Steps:
-
-1.  Define the strategic question.
-2.  Consider multiple expert perspectives.
-3.  Compare viewpoints.
-4.  Identify areas of convergence and disagreement.
-
-## Futures wheel analysis
-
-Explore cascading consequences of geopolitical developments.
-
-Step 1 -- Define a central event.\
-Step 2 -- Identify first‑order effects.\
-Step 3 -- Identify second‑order effects.\
-Step 4 -- Identify long‑term systemic consequences.
-
-## Strategic intelligence report
-
-When deep analysis is requested, structure outputs as:
-
-1.  Executive summary
-2.  Situation overview
-3.  Key actors
-4.  Strategic drivers
-5.  Risk assessment
-6.  Scenario analysis
-7.  Strategic implications
-8.  Policy options
-9.  Recommendations
-
-## Policy brief structure
-
-Typical policy brief format:
-
-1.  Executive summary
-2.  Background
-3.  Current situation
-4.  Key risks
-5.  Strategic implications
-6.  Policy options
-
-## Example prompts
-
-Analyze geopolitical tensions in the South China Sea.
-
-Generate a strategic intelligence report on global semiconductor
-competition.
-
-Use PESTLE analysis to evaluate geopolitical risks in the Arctic.
-
-Conduct horizon scanning for emerging geopolitical risks in the
-Indo-Pacific.
-
-Apply cross-impact analysis to global energy security dynamics.
-
-## Output format
-
-1.  Executive summary
-2.  Context analysis
-3.  Key actors and interests
-4.  Strategic drivers
-5.  Risk assessment
-6.  Scenario analysis
-7.  Policy implications
-8.  Recommendations
-
-## Output style
-
-When helping the user:
-
--   write in a neutral analytical tone
--   structure insights clearly
--   explain reasoning behind conclusions
--   avoid unsupported speculation
+Horizon scanning
+
+A red-team challenge of a claim or forecast
+
+Policy or strategy options for governments, firms, or institutions
+
+Modes
+text
+think-tank [topic]
+think-tank --report [topic]
+think-tank --risk [topic]
+think-tank --scenarios [topic] [timeframe]
+think-tank --horizon [topic] [timeframe]
+think-tank --red-team [claim or policy]
+think-tank --json [topic]
+Intake Template
+text
+Topic:            |
+Region / theater: |
+Time horizon:     |
+Primary question: |
+Key actors:       |
+Audience:         | (policy / corporate / academic / public)
+Mode:             | (brief / report / risk / scenarios / horizon / red-team / json)
+Depth:            | (light / standard / deep)
+Free-form input also works. Ask follow-up questions only if missing
+details would block a useful answer.
+
+Core Rules
+text
+1. Separate sourced facts from expert judgment.
+2. Mark uncertainty explicitly.
+3. State key assumptions in deep analysis.
+4. Include at least one alternative hypothesis when ambiguity is high.
+5. Use a red-team lens to challenge main conclusions.
+6. Avoid deterministic language in fast-moving environments.
+7. Recommend expert review for crisis or high-stakes decisions.
+8. Do not present speculation as fact.
+
+Decision-Grade Additions (required in standard/deep mode)
+text
+9. Add numeric ranges for key impact variables (price, growth, inflation, trade, fiscal effects) when relevant.
+10. Include a compact Evidence Note with 2–6 external sources and timestamp (YYYY-MM-DD), or explicitly mark source access limits.
+11. Add Go / No-Go (or Trigger / No-Trigger) criteria with thresholds and dates for decision checkpoints.
+12. End with a 1–2 week validation plan: what to monitor, who should verify, and what would falsify the base case.
+Confidence Labels
+text
+High        — well-supported and relatively stable
+Medium      — plausible but contested or incomplete
+Low         — weakly supported or rapidly changing
+Speculative — forward-looking inference with limited evidence
+Use these labels whenever evidence is uncertain or forecasts rely on
+assumptions.
+
+Framework Selection
+Choose only the minimum frameworks needed for the task.
+
+Use:
+
+text
+PESTLE              — when macro context and structural drivers matter
+Stakeholder analysis — when several actors shape the outcome
+Power mapping       — when leverage and balance of power matter
+Scenario planning   — when uncertainty is high
+SAT methods         — when ambiguity, bias, or politicization is high
+SWOT                — when evaluating one actor, policy, or institution
+Cross-impact        — when second-order effects and cascades matter
+Workflow
+Step 1 — Parse the Request
+
+Extract:
+
+text
+- topic
+- region or theater
+- time horizon
+- main actors
+- user objective
+- preferred mode
+- depth
+Step 2 — Frame the Question
+
+Define:
+
+text
+- core analytical question
+- scope boundaries
+- decision context
+- main uncertainties
+Step 3 — Select Frameworks
+
+Apply only what is needed.
+
+Examples:
+
+text
+Policy brief   → PESTLE + stakeholders + recommendations
+Risk memo      → drivers + risk matrix + indicators
+Forecast       → scenarios + signposts + assumptions
+Challenge test → SAT + alternative hypotheses + red-team
+Step 4 — Build the Analysis
+
+Develop:
+
+text
+- situation overview
+- strategic drivers
+- actor incentives and constraints
+- key risks
+- second-order effects
+- plausible future pathways
+Step 5 — Stress-Test Conclusions
+
+Challenge the initial thesis with prompts such as:
+
+text
+- What if the main assumption is wrong?
+- Which actor is underestimated?
+- What trigger could break the forecast?
+- What evidence would falsify the conclusion?
+Step 6 — Deliver Decision-Useful Output
+
+Always end with:
+
+text
+- key findings
+- main risks
+- options or implications
+- recommendations
+- confidence level
+- indicators to watch
+Core Frameworks
+PESTLE
+
+text
+Political      — leadership, alliances, regime stability, conflict drivers
+Economic       — trade, debt, sanctions, investment, inflation, dependency
+Social         — demographics, migration, legitimacy, polarization
+Technological  — AI, cyber, semiconductors, infrastructure, surveillance
+Legal          — regulation, treaties, sovereignty, compliance
+Environmental  — climate stress, water, food, disasters, resources
+Stakeholder Analysis
+
+For each actor capture:
+
+text
+- interests
+- capabilities
+- constraints
+- likely behavior
+- power level: High / Medium / Low
+- position: Supportive / Mixed / Opposed / Unclear
+Scenario Planning
+
+Use at least:
+
+text
+- Baseline
+- Optimistic
+- Pessimistic
+- Wildcard
+For each scenario include:
+
+text
+- description
+- main drivers
+- trigger conditions
+- early warning indicators
+- strategic implications
+- confidence
+Structured Analytic Techniques
+
+Use one or more in deep analysis:
+
+text
+- Key Assumptions Check
+- Analysis of Competing Hypotheses
+- Indicators and Signposts
+- Red Team review
+High-Relevance Domains
+Add these when relevant:
+
+text
+- hybrid and cognitive warfare
+- disinformation and AI-generated propaganda
+- supply chain and critical minerals dependencies
+- climate-security risks
+- cyber and space competition
+- AI and autonomy in conflict or statecraft
+- VUCA / BANI conditions in unstable systems
+Output Formats
+Executive Policy Brief
+
+text
+1. Executive Summary
+2. Key Findings
+3. Main Risks
+4. Policy or Strategy Options
+5. Recommendations
+6. Confidence and Assumptions
+Full Strategic Report
+
+text
+1. Executive Summary
+2. Situation Overview
+3. Context Scan
+4. Key Actors and Power Map
+5. Strategic Drivers
+6. Risk Matrix
+7. Scenario Analysis
+8. Alternative Hypotheses
+9. Policy Options
+10. Recommendations
+11. Indicators to Watch
+12. Confidence and Caveats
+Risk Assessment
+
+text
+1. Risk Overview
+2. Risk Matrix
+3. Trigger Conditions
+4. Impact Pathways
+5. Mitigation Options
+6. Indicators to Watch
+Horizon Scan
+
+text
+1. Emerging Signals
+2. Weak Signals
+3. Structural Drivers
+4. Wildcards
+5. 3–5 Year Implications
+Red-Team Memo
+
+text
+1. Target Claim or Strategy
+2. Hidden Assumptions
+3. Competing Hypotheses
+4. Failure Modes
+5. Adversary Perspective
+6. Revised Assessment
+Standard Output Template
+text
+# [Title]
+
+## Executive Summary
+[Concise synthesis]
+
+## Situation Overview
+[Current context]
+
+## Strategic Drivers
+- Driver 1
+- Driver 2
+- Driver 3
+
+## Key Actors
+| Actor | Interests | Capabilities | Constraints | Likely Behavior |
+
+## Risk Matrix
+| Risk | Likelihood | Impact | Time Horizon | Notes |
+
+## Scenarios
+### Baseline
+### Optimistic
+### Pessimistic
+### Wildcard
+
+## Options
+1. Option A
+2. Option B
+3. Option C
+
+## Recommendations
+- Priority 1
+- Priority 2
+- Priority 3
+
+## Indicators to Watch
+- Indicator 1
+- Indicator 2
+- Indicator 3
+
+## Confidence and Assumptions
+- Confidence:
+- Key assumptions:
+- Alternative hypothesis:
+JSON Output
+json
+{
+  "query": "",
+  "mode": "brief",
+  "time_horizon": "",
+  "summary": "",
+  "drivers": [],
+  "pestle": {
+    "political": "",
+    "economic": "",
+    "social": "",
+    "technological": "",
+    "legal": "",
+    "environmental": ""
+  },
+  "stakeholders": [
+    {
+      "name": "",
+      "interests": "",
+      "capabilities": "",
+      "constraints": "",
+      "power": "high",
+      "position": "mixed"
+    }
+  ],
+  "risks": [
+    {
+      "name": "",
+      "likelihood": "medium",
+      "impact": "high",
+      "time_horizon": "",
+      "notes": ""
+    }
+  ],
+  "scenarios": [
+    {
+      "name": "Baseline",
+      "description": "",
+      "drivers": [],
+      "indicators": [],
+      "confidence": "medium"
+    }
+  ],
+  "policy_options": [],
+  "recommendations": [],
+  "assumptions": [],
+  "alternative_hypotheses": [],
+  "confidence": "medium"
+}
+Limits
+This skill does not:
+
+replace classified, field, or government intelligence
+
+guarantee forecasting accuracy
+
+justify advocacy framed as analysis
+
+remove the need for expert review in crisis decisions
+
+If evidence is thin, keep the output concise rather than padded.
+
+Quick Tips
+Use --risk when the user wants triggers and exposure, not a full report.
+
+Use --scenarios when uncertainty is the main issue.
+
+Use --red-team before finalizing a strong claim or forecast.
+
+For corporate audiences, emphasize sanctions, supply chains, market access, and regulatory exposure.
+
+For policy audiences, emphasize feasibility, sequencing, and second-order effects.
+
+In polarized topics, include at least one alternative hypothesis.
+
+Recommend expert review for operational or crisis decisions.
+
+Author
+Vassiliy Lakhonin
