@@ -8,8 +8,8 @@
 # Usage: install_hooks.sh <project-dir> <channel> <target>
 #
 # Examples:
-#   install_hooks.sh /home/jaden/discord-code discord bot-lab
-#   install_hooks.sh /home/jaden/discord-code telegram @mygroup
+#   install_hooks.sh /path/to/project discord my-channel
+#   install_hooks.sh /path/to/project telegram @mygroup
 
 WORKDIR="${1:?Usage: install_hooks.sh <project-dir> <channel> <target>}"
 CHANNEL="${2:?Missing channel (discord, telegram, slack, etc.)}"

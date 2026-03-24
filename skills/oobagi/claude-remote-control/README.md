@@ -16,6 +16,12 @@
 ## Install
 
 ```bash
+clawhub install claude-remote-control
+```
+
+Or clone manually:
+
+```bash
 git clone https://github.com/oobagi/awesome-remote-control.git ~/.openclaw/skills/claude-remote-control
 ```
 

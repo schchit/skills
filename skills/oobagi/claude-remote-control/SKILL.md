@@ -17,20 +17,18 @@ bash skills/claude-remote-control/scripts/start_session.sh <dir>
 **With notifications (pings when idle or session ends):**
 ```bash
 bash skills/claude-remote-control/scripts/start_session.sh <dir> --notify <channel> <target>
-# e.g. start_session.sh /home/jaden/discord-code --notify discord bot-lab
-#      start_session.sh /home/jaden/discord-code --notify telegram @mygroup
-#      start_session.sh /home/jaden/discord-code --notify slack "#alerts"
+# e.g. start_session.sh /path/to/project --notify discord bot-lab
+#      start_session.sh /path/to/project --notify telegram @mygroup
+#      start_session.sh /path/to/project --notify slack "#alerts"
 ```
 
 **Multiple sessions in parallel (faster):**
 ```bash
 bash skills/claude-remote-control/scripts/start_sessions.sh <dir> <count> [--notify <channel> <target>]
-# e.g. start_sessions.sh /home/jaden/discord-code 3 --notify discord bot-lab
+# e.g. start_sessions.sh /path/to/project 3 --notify discord bot-lab
 ```
 
-Default directory: `/home/jaden/discord-code`
-
-Each session gets a friendly name like `🦊 Fox | discord-code` — used in tmux and the registry.
+Each session gets a friendly name like `🦊 Fox | my-project` — used in tmux and the registry.
 
 ## Listing Sessions
 
@@ -43,7 +41,7 @@ Registry stored at `~/.local/share/claude-rc/sessions.json`.
 ## Attaching to a Session
 
 ```bash
-tmux attach -t cc-fox-discord-code   # use tmux name shown on start
+tmux attach -t cc-fox-my-project   # use tmux name shown on start
 ```
 
 ## Killing a Session
@@ -63,12 +61,12 @@ Look up the UUID:
 cat ~/.local/share/claude-rc/sessions.json
 ```
 
-Resume in a new tmux session (`<dirbase>` is the basename, e.g. `discord-code`, not the full path):
+Resume in a new tmux session (`<dirbase>` is the basename, e.g. `my-project`, not the full path):
 ```bash
 tmux new-session -d -s "cc-<animal>-<dirbase>" -c "/full/path/to/project"
 tmux send-keys -t "cc-<animal>-<dirbase>" 'claude -r "<uuid>" --dangerously-skip-permissions --remote-control --name "<animal> | <dirbase>"' Enter
-# e.g.: tmux new-session -d -s "cc-fox-discord-code" -c "/home/jaden/discord-code"
-#        tmux send-keys -t "cc-fox-discord-code" 'claude -r "abc123..." --dangerously-skip-permissions --remote-control --name "Fox | discord-code"' Enter
+# e.g.: tmux new-session -d -s "cc-fox-my-project" -c "/path/to/project"
+#        tmux send-keys -t "cc-fox-my-project" 'claude -r "abc123..." --dangerously-skip-permissions --remote-control --name "Fox | my-project"' Enter
 ```
 
 This restores full conversation history. A new remote control URL is issued on reconnect.
@@ -84,13 +82,13 @@ Two hooks are installed into `<project-dir>/.claude/settings.json`:
 **Install hooks manually (without starting a session):**
 ```bash
 bash skills/claude-remote-control/scripts/install_hooks.sh <project-dir> <channel> <target>
-# e.g. install_hooks.sh /home/jaden/discord-code discord bot-lab
+# e.g. install_hooks.sh /path/to/project discord bot-lab
 ```
 
 **Send a notification manually:**
 ```bash
-bash skills/claude-remote-control/scripts/notify.sh discord "bot-lab" "🦊 Fox | discord-code" idle
-bash skills/claude-remote-control/scripts/notify.sh telegram "@mygroup" "🦊 Fox | discord-code" stopped "idle timeout"
+bash skills/claude-remote-control/scripts/notify.sh discord "bot-lab" "🦊 Fox | my-project" idle
+bash skills/claude-remote-control/scripts/notify.sh telegram "@mygroup" "🦊 Fox | my-project" stopped "idle timeout"
 ```
 
 ## How Idle Timeout Works
@@ -114,3 +112,20 @@ The `Notification` (idle_prompt) hook fires earlier — the moment Claude goes i
 - The project dir formula: `~/.claude/projects/$(echo $WORKDIR | sed 's|/|-|g')` (leading `-` is kept)
 - No background watcher — idle timeout and registry cleanup are handled entirely by Claude Code hooks
 - Workspace trust is pre-seeded in `~/.claude.json` (under `projects[<path>].hasTrustDialogAccepted`) so headless sessions skip the "do you trust this folder?" dialog
+
+## Releasing
+
+CI auto-publishes to ClawHub on every push to `main`. Version is derived from git tags:
+
+- **Patch** (auto): commits since last tag → `1.0.1`, `1.0.2`, ...
+- **Minor/major** (manual): tag to bump → `git tag v1.1.0 && git push --tags`
+
+After making changes to this skill, tag a new minor version if adding a feature, or a new major version if making a breaking change:
+
+```bash
+# New feature
+git tag v1.1.0 && git push --tags
+
+# Breaking change
+git tag v2.0.0 && git push --tags
+```

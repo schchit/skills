@@ -2,9 +2,9 @@
 # Start N Claude Code remote control sessions in parallel.
 # Usage: start_sessions.sh [dir] [count] [--notify <channel> <target>]
 #
-# Example: start_sessions.sh /home/jaden/discord-code 3 --notify discord bot-lab
+# Example: start_sessions.sh /path/to/project 3 --notify discord my-channel
 
-WORKDIR="${1:-/home/jaden/discord-code}"
+WORKDIR="${1:?Usage: start_sessions.sh <working-dir> <count> [--notify <channel> <target>]}"
 COUNT="${2:-3}"
 shift 2 2>/dev/null || true
 EXTRA_ARGS=("$@")  # pass through --notify, --resume, etc.

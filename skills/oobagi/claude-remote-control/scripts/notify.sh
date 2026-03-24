@@ -7,9 +7,9 @@
 # Events: idle, stopped, error
 #
 # Examples:
-#   notify.sh discord "bot-lab" "🦊 Fox | discord-code" idle
-#   notify.sh telegram "@mygroup" "🦊 Fox | discord-code" stopped "idle timeout (30m)"
-#   notify.sh slack "#alerts" "🦊 Fox | discord-code" error "hook failure"
+#   notify.sh discord "bot-lab" "🦊 Fox | my-project" idle
+#   notify.sh telegram "@mygroup" "🦊 Fox | my-project" stopped "idle timeout (30m)"
+#   notify.sh slack "#alerts" "🦊 Fox | my-project" error "hook failure"
 
 CHANNEL="${1:?Usage: notify.sh <channel> <target> <session-label> <event> [detail]}"
 TARGET="${2:?Missing target}"

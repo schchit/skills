@@ -4,7 +4,7 @@
 #
 # Usage: start_session.sh <working-dir> [--resume] [--notify <channel> <target>]
 
-WORKDIR="${1:-/home/jaden/discord-code}"
+WORKDIR="${1:?Usage: start_session.sh <working-dir> [--resume] [--notify <channel> <target>]}"
 RESUME=""
 NOTIFY_CHANNEL=""
 NOTIFY_TARGET=""
