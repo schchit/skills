@@ -3,11 +3,16 @@
   "slug": "docuseal",
   "displayName": "Docuseal",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1773251540305,
-    "commit": "https://github.com/openclaw/skills/commit/f7d25b99c852f0f1b0208d175baf289f9f8be807"
+    "version": "1.0.3",
+    "publishedAt": 1773928683698,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1773251540305,
+      "commit": "https://github.com/openclaw/skills/commit/f7d25b99c852f0f1b0208d175baf289f9f8be807"
+    },
     {
       "version": "0.1.0",
       "publishedAt": 1773049037681,
