@@ -89,12 +89,7 @@ def _player_status(player):
 
 def _player_team(player):
     """Extract the real MLB team abbreviation."""
-    team = _safe(player, "editorial_team_abbr", "")
-    if team:
-        return team
-    # yahoo-fantasy-api roster() doesn't include editorial_team_abbr directly
-    # but player_details() may include it
-    return ""
+    return _safe(player, "editorial_team_abbr", "")
 
 
 def _player_id(player):
@@ -755,8 +750,9 @@ def format_injuries(players, team_name="", fmt="text"):
 # Today (daily roster status with MLB schedule)
 # ---------------------------------------------------------------------------
 
-def format_today(groups, probable_starters, team_name="", fmt="text"):
-    """Format the today command output.
+def format_today(groups, probable_starters, team_name="", fmt="text",
+                  date_str=None, matchups=None):
+    """Format the today/day command output.
 
     Args:
         groups: dict with keys 'active', 'not_playing', 'injured', 'bench',
@@ -764,23 +760,45 @@ def format_today(groups, probable_starters, team_name="", fmt="text"):
         probable_starters: set of player names who are probable starters.
         team_name: Team display name.
         fmt: Output format.
+        date_str: Date string (YYYY-MM-DD). If today or None, header says "Today".
+        matchups: dict mapping MLB team abbr -> matchup string (e.g. "at SF", "vs NYY").
     """
+    if matchups is None:
+        matchups = {}
+    from datetime import date as _date
+
+    # Determine header label
+    today_str = _date.today().strftime("%Y-%m-%d")
+    if not date_str or date_str == today_str:
+        date_label = "Today"
+    else:
+        d = _date.fromisoformat(date_str)
+        try:
+            date_label = d.strftime("%a %b %-d")
+        except ValueError:
+            # Windows doesn't support %-d
+            date_label = f"{d.strftime('%a %b')} {d.day}"
+
     if fmt == "json":
         def _player_entry(p, is_probable=False):
+            import mlb_client
+            team_abbr = _player_team(p)
+            mlb_abbr = mlb_client.normalize_team_abbr(team_abbr)
             entry = {
                 "name": _player_name(p),
                 "player_id": _player_id(p),
                 "positions": _player_position(p),
                 "selected_position": _player_selected_position(p),
-                "team": _player_team(p),
+                "team": team_abbr,
+                "opponent": matchups.get(mlb_abbr, ""),
                 "status": _player_status(p),
             }
             if is_probable:
                 entry["probable_starter"] = True
             return entry
 
-        result = {"team": team_name, "groups": {}}
-        for group_name in ("active", "not_playing", "injured", "bench"):
+        result = {"team": team_name, "date": date_str or today_str, "groups": {}}
+        for group_name in ("active", "not_playing", "bench", "injured"):
             result["groups"][group_name] = [
                 _player_entry(p, _player_name(p) in probable_starters)
                 for p in groups.get(group_name, [])
@@ -789,31 +807,34 @@ def format_today(groups, probable_starters, team_name="", fmt="text"):
 
     lines = []
     if team_name:
-        lines.append(f"Today — {team_name}")
+        lines.append(f"{date_label} — {team_name}")
     lines.append("")
 
     section_labels = [
         ("active", "ACTIVE (team playing today)"),
         ("not_playing", "NOT PLAYING (team off today)"),
-        ("injured", "INJURED LIST"),
         ("bench", "BENCH"),
+        ("injured", "INJURED LIST"),
     ]
 
     for group_key, label in section_labels:
         players = groups.get(group_key, [])
         lines.append(f"  {label} ({len(players)})")
         if players:
+            import mlb_client
             for p in players:
                 name = _player_name(p)
-                pos = _player_selected_position(p) or _player_position(p)
+                pos = _player_position(p) or _player_selected_position(p)
                 team = _player_team(p)
+                mlb_abbr = mlb_client.normalize_team_abbr(team)
+                opp = matchups.get(mlb_abbr, "")
                 status = _player_status(p)
                 extra = ""
                 if name in probable_starters:
                     extra = " [PROBABLE STARTER]"
                 if status:
                     extra += f" ({status})"
-                lines.append(f"    {name:<22} {pos:<5} {team:<5}{extra}")
+                lines.append(f"    {name:<22} {pos:<14} {team:<5}{opp:<8}{extra}")
         else:
             lines.append("    (none)")
         lines.append("")

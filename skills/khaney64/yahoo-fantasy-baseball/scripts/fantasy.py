@@ -46,6 +46,20 @@ import formatters
 # Helpers
 # ---------------------------------------------------------------------------
 
+def _parse_date(date_str):
+    """Parse a date string in various formats, return a date object.
+
+    Tries US formats first (MM/DD/YYYY), then ISO (YYYY-MM-DD).
+    """
+    for fmt in ("%m/%d/%Y", "%m-%d-%Y", "%m/%d/%y", "%m-%d-%y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(date_str, fmt).date()
+        except ValueError:
+            continue
+    print(f"Invalid date: {date_str} (use MM/DD/YYYY or YYYY-MM-DD)", file=sys.stderr)
+    sys.exit(1)
+
+
 def _get_league_and_team(args, config, need_team=True):
     """Common setup: resolve league, optionally resolve team.
 
@@ -237,10 +251,10 @@ def cmd_roster(args):
 
     try:
         if args.date:
-            roster_date = datetime.strptime(args.date, "%Y-%m-%d").date()
-            players = tm.roster(day=roster_date)
+            roster_date = _parse_date(args.date)
+            players = yahoo_api.get_roster(tm, day=roster_date)
         else:
-            players = tm.roster()
+            players = yahoo_api.get_roster(tm)
     except Exception as e:
         print(f"Error fetching roster: {e}", file=sys.stderr)
         sys.exit(1)
@@ -268,7 +282,7 @@ def cmd_lineup(args):
 
     # Get roster
     try:
-        players = tm.roster()
+        players = yahoo_api.get_roster(tm)
     except Exception as e:
         print(f"Error fetching lineup: {e}", file=sys.stderr)
         sys.exit(1)
@@ -382,7 +396,7 @@ def cmd_players(args):
     league, _, _ = _get_league_and_team(args, config, need_team=False)
 
     position = args.position  # None means all players
-    sort = getattr(args, "sort", None)
+    sort = getattr(args, "sort", None) or "OR"
     sort_type = getattr(args, "sort_type", None)
     status = getattr(args, "status", None) or "FA"
 
@@ -550,7 +564,7 @@ def cmd_injuries(args):
     tm = yahoo_api.get_team(league, team_key)
 
     try:
-        players = tm.roster(day=date.today())
+        players = yahoo_api.get_roster(tm, day=date.today())
     except Exception as e:
         print(f"Error fetching roster: {e}", file=sys.stderr)
         sys.exit(1)
@@ -563,17 +577,29 @@ def cmd_injuries(args):
 # ---------------------------------------------------------------------------
 
 def cmd_today(args):
-    """Show daily roster status with MLB schedule awareness."""
+    """Show daily roster status — shortcut for 'day' with today's date."""
+    args.date = None
+    cmd_day(args)
+
+
+def cmd_day(args):
+    """Show roster status for a given date with MLB schedule awareness."""
     import mlb_client
 
     config = yahoo_api.load_config()
     league, team_key, team_name = _get_league_and_team(args, config)
     tm = yahoo_api.get_team(league, team_key)
 
-    today_str = date.today().strftime("%Y-%m-%d")
+    # Resolve date
+    target_date_str = getattr(args, "date", None)
+    if target_date_str:
+        target_date = _parse_date(target_date_str)
+    else:
+        target_date = date.today()
+    target_date_str = target_date.strftime("%Y-%m-%d")
 
     try:
-        roster = tm.roster(day=date.today())
+        roster = yahoo_api.get_roster(tm, day=target_date)
     except Exception as e:
         print(f"Error fetching roster: {e}", file=sys.stderr)
         sys.exit(1)
@@ -583,8 +609,9 @@ def cmd_today(args):
         return
 
     # Fetch MLB schedule data
-    teams_playing = mlb_client.teams_playing_today(today_str)
-    probable_pitchers = mlb_client.probable_pitchers_today(today_str)
+    teams_playing = mlb_client.teams_playing_today(target_date_str)
+    probable_pitchers = mlb_client.probable_pitchers_today(target_date_str)
+    matchups = mlb_client.game_matchups_today(target_date_str)
 
     # Build probable starters set (player names)
     probable_starter_names = set(probable_pitchers.values())
@@ -612,7 +639,9 @@ def cmd_today(args):
             groups["not_playing"].append(player)
 
     print(formatters.format_today(groups, probable_starter_names,
-                                   team_name=team_name, fmt=args.format))
+                                   team_name=team_name, fmt=args.format,
+                                   date_str=target_date_str,
+                                   matchups=matchups))
 
 
 # ---------------------------------------------------------------------------
@@ -658,7 +687,7 @@ def cmd_optimize(args):
     today_str = date.today().strftime("%Y-%m-%d")
 
     try:
-        roster = tm.roster(day=date.today())
+        roster = yahoo_api.get_roster(tm, day=date.today())
     except Exception as e:
         print(f"Error fetching roster: {e}", file=sys.stderr)
         sys.exit(1)
@@ -798,7 +827,7 @@ def cmd_swap(args):
     tm = yahoo_api.get_team(league, team_key)
     today = date.today()
 
-    roster = tm.roster(day=today)
+    roster = yahoo_api.get_roster(tm, day=today)
 
     if args.auto:
         # Run optimize logic and execute all swap suggestions
@@ -916,7 +945,7 @@ def cmd_move_to_il(args):
     tm = yahoo_api.get_team(league, team_key)
     today = date.today()
 
-    roster = tm.roster(day=today)
+    roster = yahoo_api.get_roster(tm, day=today)
     player = _resolve_player_on_roster(roster, args.player)
     name = formatters._player_name(player)
     pid = formatters._player_id(player)
@@ -977,7 +1006,7 @@ def cmd_drop(args):
     league, team_key, team_name = _get_league_and_team(args, config)
     tm = yahoo_api.get_team(league, team_key)
 
-    roster = tm.roster()
+    roster = yahoo_api.get_roster(tm)
     player = _resolve_player_on_roster(roster, args.player)
     name = formatters._player_name(player)
     pid = formatters._player_id(player)
@@ -1010,7 +1039,7 @@ def cmd_add_drop(args):
     add_name = formatters._player_name(add_player)
     add_pid = formatters._player_id(add_player)
 
-    roster = tm.roster()
+    roster = yahoo_api.get_roster(tm)
     drop_player = _resolve_player_on_roster(roster, args.drop)
     drop_name = formatters._player_name(drop_player)
     drop_pid = formatters._player_id(drop_player)
@@ -1054,7 +1083,7 @@ def cmd_claim(args):
 
     drop_pid = None
     if args.drop:
-        roster = tm.roster()
+        roster = yahoo_api.get_roster(tm)
         drop_player = _resolve_player_on_roster(roster, args.drop)
         drop_name = formatters._player_name(drop_player)
         drop_pid = formatters._player_id(drop_player)
@@ -1127,7 +1156,7 @@ def main():
     # roster
     roster_parser = subparsers.add_parser("roster", help="Current roster with stats")
     _add_common_args(roster_parser)
-    roster_parser.add_argument("--date", help="Date for roster (YYYY-MM-DD)")
+    roster_parser.add_argument("--date", help="Date for roster (e.g. 3/22/2026 or 2026-03-22)")
 
     # lineup
     lineup_parser = subparsers.add_parser("lineup", help="Roster with scoring categories for start/sit analysis")
@@ -1154,7 +1183,7 @@ def main():
     players_parser.add_argument("--search", help="Filter by player name")
     players_parser.add_argument("--position", help="Filter by position (e.g., SP, OF, SS)")
     players_parser.add_argument("--status", help="Player status: FA (free agents, default), A (available=FA+W), T (taken), W (waivers), ALL (every player)")
-    players_parser.add_argument("--sort", help="Sort order: OR (overall rank), AR (actual rank), PTS (points), NAME, or stat abbrev (HR, ERA, SB, etc.)")
+    players_parser.add_argument("--sort", help="Sort order: OR (overall/preseason rank, default), AR (actual/current rank), PTS (points), NAME, or stat abbrev (HR, ERA, SB, etc.)")
     players_parser.add_argument("--sort-type", help="Sort period: season, lastweek, lastmonth")
     players_parser.add_argument("--count", type=int, help="Max players to show (default: 25)")
     players_parser.add_argument("--start", type=int, help="Start offset for pagination")
@@ -1173,9 +1202,14 @@ def main():
     injuries_parser = subparsers.add_parser("injuries", help="Injured players on roster")
     _add_common_args(injuries_parser)
 
-    # today (Phase 2)
-    today_parser = subparsers.add_parser("today", help="Daily roster status with MLB schedule")
+    # today (Phase 2) — shortcut for 'day' with today's date
+    today_parser = subparsers.add_parser("today", help="Daily roster status with MLB schedule (today)")
     _add_common_args(today_parser)
+
+    # day — roster status for a specific date
+    day_parser = subparsers.add_parser("day", help="Roster status for a given date with MLB schedule")
+    _add_common_args(day_parser)
+    day_parser.add_argument("--date", help="Date (e.g. 3/22/2026 or 2026-03-22, default: today)")
 
     # optimize (Phase 3)
     optimize_parser = subparsers.add_parser("optimize", help="Roster optimization suggestions")
@@ -1239,6 +1273,7 @@ def main():
         "transactions": cmd_transactions,
         "injuries": cmd_injuries,
         "today": cmd_today,
+        "day": cmd_day,
         "optimize": cmd_optimize,
         "swap": cmd_swap,
         "move-to-il": cmd_move_to_il,

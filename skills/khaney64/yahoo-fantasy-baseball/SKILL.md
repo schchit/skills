@@ -34,7 +34,7 @@ Manage your Yahoo Fantasy Baseball league: view data, optimize your daily lineup
 ### 2. Authenticate
 
 ```bash
-python yahoo-fantasy-baseball.py auth
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py auth
 ```
 
 Follow the prompts to enter your Consumer Key and Secret. A browser window opens for Yahoo OAuth authorization. Tokens are cached automatically — you only need to do this once.
@@ -42,41 +42,44 @@ Follow the prompts to enter your Consumer Key and Secret. A browser window opens
 ### 3. Find Your League
 
 ```bash
-python yahoo-fantasy-baseball.py leagues
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py leagues
 ```
 
 ### 4. Set Defaults
 
 ```bash
-python yahoo-fantasy-baseball.py config --league 12345
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py config --league 12345
 ```
 
 The skill auto-detects your team within the league. You can also set it explicitly:
 
 ```bash
-python yahoo-fantasy-baseball.py config --league 12345 --team 3
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py config --league 12345 --team 3
 ```
 
 ## Quick Start
 
 ```bash
 # View your roster
-python yahoo-fantasy-baseball.py roster
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py roster
 
 # Daily roster status (who's playing, who's off)
-python yahoo-fantasy-baseball.py today
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py today
+
+# Roster status for a specific date
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py day --date 2026-03-25
 
 # Get optimization suggestions
-python yahoo-fantasy-baseball.py optimize
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py optimize
 
 # Auto-swap inactive players for bench players
-python yahoo-fantasy-baseball.py swap --auto --confirm
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py swap --auto --confirm
 
 # Add a free agent
-python yahoo-fantasy-baseball.py add --player "Jake Burger" --confirm
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py add --player "Jake Burger" --confirm
 
 # League standings
-python yahoo-fantasy-baseball.py standings
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py standings
 ```
 
 ## Commands
@@ -85,42 +88,45 @@ python yahoo-fantasy-baseball.py standings
 
 ```bash
 # Auth & Config
-python yahoo-fantasy-baseball.py auth
-python yahoo-fantasy-baseball.py config --league 12345 --team 3 --season 2026
-python yahoo-fantasy-baseball.py config
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py auth
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py config --league 12345 --team 3 --season 2026
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py config
 
 # Leagues & Teams
-python yahoo-fantasy-baseball.py leagues [--season YEAR]
-python yahoo-fantasy-baseball.py teams
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py leagues [--season YEAR]
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py teams
 
 # Roster & Lineup
-python yahoo-fantasy-baseball.py roster [--date YYYY-MM-DD]
-python yahoo-fantasy-baseball.py lineup [--week N]
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py roster [--date YYYY-MM-DD]
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py lineup [--week N]
 
 # Standings & Matchups
-python yahoo-fantasy-baseball.py standings
-python yahoo-fantasy-baseball.py matchup [--week N]
-python yahoo-fantasy-baseball.py scoreboard [--week N]
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py standings
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py matchup [--week N]
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py scoreboard [--week N]
 
 # Players & Draft
-python yahoo-fantasy-baseball.py players [--search NAME] [--position POS] [--status FA|A|T|W|ALL] [--sort OR|AR|PTS|NAME|HR|ERA|...] [--sort-type season|lastweek|lastmonth] [--stat-season YEAR] [--count N]
-python yahoo-fantasy-baseball.py draft [--team ID]
-python yahoo-fantasy-baseball.py transactions [--type add,drop,trade]
-python yahoo-fantasy-baseball.py injuries
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py players [--search NAME] [--position POS] [--status FA|A|T|W|ALL] [--sort OR|AR|PTS|NAME|HR|ERA|...] [--sort-type season|lastweek|lastmonth] [--stat-season YEAR] [--count N]
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py draft [--team ID]
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py transactions [--type add,drop,trade]
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py injuries
 ```
 
 ### Daily Management
 
 ```bash
-# Today: roster status with MLB schedule awareness
-python yahoo-fantasy-baseball.py today
+# Today: roster status with MLB schedule awareness (shortcut for 'day' with today's date)
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py today
+
+# Day: roster status for a specific date
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py day --date 2026-03-25
 ```
 
-Groups your roster into ACTIVE (team playing), NOT PLAYING (team off), INJURED, and BENCH. Flags probable starting pitchers.
+Groups your roster into ACTIVE (team playing), NOT PLAYING (team off), INJURED, and BENCH. Shows each player's eligible positions and flags probable starting pitchers. The `today` command is a shortcut for `day` with today's date.
 
 ```bash
 # Optimize: smart roster analysis with suggestions
-python yahoo-fantasy-baseball.py optimize
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py optimize
 ```
 
 Three analysis categories:
@@ -134,25 +140,25 @@ All write commands show a preview by default. Add `--confirm` to execute.
 
 ```bash
 # Swap a player to a different position slot
-python yahoo-fantasy-baseball.py swap --player "Aaron Judge" --to BN [--confirm]
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py swap --player "Aaron Judge" --to BN [--confirm]
 
 # Auto-execute all optimize swap suggestions
-python yahoo-fantasy-baseball.py swap --auto [--confirm]
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py swap --auto [--confirm]
 
 # Move injured player to IL slot
-python yahoo-fantasy-baseball.py move-to-il --player "Zack Wheeler" [--confirm]
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py move-to-il --player "Zack Wheeler" [--confirm]
 
 # Add a free agent
-python yahoo-fantasy-baseball.py add --player "Jake Burger" [--confirm]
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py add --player "Jake Burger" [--confirm]
 
 # Drop a player
-python yahoo-fantasy-baseball.py drop --player "Jake Burger" [--confirm]
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py drop --player "Jake Burger" [--confirm]
 
 # Atomic add + drop
-python yahoo-fantasy-baseball.py add-drop --add "Jake Burger" --drop "Luis Arraez" [--confirm]
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py add-drop --add "Jake Burger" --drop "Luis Arraez" [--confirm]
 
 # Waiver claim (with optional FAAB bid and drop)
-python yahoo-fantasy-baseball.py claim --player "Jake Burger" [--drop "Luis Arraez"] [--faab 15] [--confirm]
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py claim --player "Jake Burger" [--drop "Luis Arraez"] [--faab 15] [--confirm]
 ```
 
 ## Common Flags
@@ -163,10 +169,10 @@ python yahoo-fantasy-baseball.py claim --player "Jake Burger" [--drop "Luis Arra
 | `--team ID` | Team ID (overrides config/auto-detect) |
 | `--season YEAR` | Season year (for historical data) |
 | `--week N` | Scoring week number |
-| `--date YYYY-MM-DD` | Specific date (roster command) |
+| `--date` | Specific date — accepts MM/DD/YYYY, M/D/YYYY, MM-DD-YYYY, or YYYY-MM-DD (roster, day commands) |
 | `--format text\|json\|discord` | Output format (default: text) |
 | `--status FA\|A\|T\|W\|ALL` | Player status filter: FA (free agents), A (available=FA+W), T (taken), W (waivers), ALL (every player) |
-| `--sort OR\|AR\|PTS\|NAME\|{stat}` | Sort order for players. See stat sort reference below |
+| `--sort OR\|AR\|PTS\|NAME\|{stat}` | Sort order: OR = overall/preseason rank (default), AR = actual/current rank, PTS = points, NAME = alphabetical, or stat abbreviation. See stat sort reference below |
 | `--sort-type season\|lastweek\|lastmonth` | Sort period (used with --sort) |
 | `--stat-season YEAR` | Season year for stat columns (auto-detects: falls back to previous year if league hasn't started) |
 | `--confirm` | Execute write operations (without this, preview only) |
@@ -237,23 +243,23 @@ Mookie Betts              SS,OF,Util   SS    LAD
 Zack Wheeler              SP           IL    PHI    IL-60
 ```
 
-**today:**
+**today / day:**
 
 ```
 Today — Team Name
 
   ACTIVE (team playing today) (8)
-    Aaron Judge            OF    NYY
-    Gerrit Cole            SP    NYY   [PROBABLE STARTER]
+    Aaron Judge            OF,Util        NYY  vs BOS
+    Gerrit Cole            SP             NYY  vs BOS  [PROBABLE STARTER]
 
   NOT PLAYING (team off today) (3)
-    Mookie Betts           SS    LAD
-
-  INJURED LIST (1)
-    Zack Wheeler           IL    PHI   (IL-60)
+    Mookie Betts           SS,OF,Util     LAD
 
   BENCH (3)
-    Jake Burger            BN    MIA
+    Jake Burger            3B,1B,Util     MIA  at ATL
+
+  INJURED LIST (1)
+    Zack Wheeler           SP             PHI          (IL-60)
 ```
 
 **optimize:**
@@ -299,7 +305,7 @@ All commands support `--format discord` which wraps text output in code blocks.
 - **Rate limits**: Yahoo enforces API rate limits. Avoid rapid-fire requests.
 - **Season scope**: Data is scoped to the configured season. Use `--season` for historical data.
 - **OAuth tokens**: Tokens auto-refresh but may eventually expire, requiring re-authentication via `auth`.
-- **MLB schedule**: The `today` and `optimize` commands use the MLB Stats API for schedule data (off days, probable pitchers). This data is not available from the Yahoo Fantasy API.
+- **MLB schedule**: The `today`, `day`, and `optimize` commands use the MLB Stats API for schedule data (off days, probable pitchers). This data is not available from the Yahoo Fantasy API.
 
 ## Credential Storage
 
