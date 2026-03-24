@@ -1,9 +1,10 @@
+
 ---
 name: china-tour
 displayName: ChinaTour
-version: 1.1.0
+version: 1.0.2
 license: MIT
-description: AI-powered offline tour guide for China's 30+ scenic spots. Personalized routes, photo spots, cultural narration. Bilingual support. 中国景区智能导览助手，支持 30+ 个 5A 景区，个性化路线推荐、拍照机位、文化讲解，中英双语。
+description: AI-powered offline tour guide for China's 30+ scenic spots. Personalized routes, photo spots, cultural narration. Bilingual support. 中国景区智能导览助手，支持30+个5A景区，个性化路线推荐、拍照机位、文化讲解，中英双语。
 tags:
   - travel
   - china
@@ -29,19 +30,14 @@ tags:
 ## Trigger Conditions
 
 **Chinese Triggers** (examples):
-- "我在故宫，怎么逛？" (I'm at Forbidden City, how to visit?)
-- "想看兵马俑，怎么安排？" (How to visit Terracotta Army?)
-- "接下来去哪儿？" (What's next?)
-- "故宫开放时间？" (What are the opening hours?)
-- "门票多少钱？" (How much is the ticket?)
-- "票价？" (Ticket price?)
+- "我在故宫, 怎么逛?" (I'm at Forbidden City, how to visit?)
+- "想看兵马俑, 怎么安排?" (How to visit Terracotta Army?)
+- "接下来去哪儿?" (What's next?)
 
 **English Triggers**:
 - "I'm at Forbidden City, how to visit?"
 - "How to visit Terracotta Army?"
 - "What's next?" / "Best photo spots?"
-- "What are the opening hours?"
-- "How much is the ticket?" / "Ticket price?"
 
 **Not Triggered**: Multi-day itinerary planning, cross-city travel consulting, hotel booking
 
@@ -118,42 +114,6 @@ Do you prefer a slow or quick tour?
 
 ---
 
-## Quick Reply with Numbers
-
-**MANDATORY**: When providing 2 or more options, ALWAYS use numbered format!
-
-**Rules**:
-1. Each option must have a number (1, 2, 3, etc.)
-2. Numbers must be at the START of each option
-3. Tell user they can reply with just the number
-4. Use format: `> Just reply with a number (e.g., "1")`
-
-**Good Example**:
-```
-当前体验如何？
-1. 满意，继续下一站
-2. 想更深，补充细节
-3. 太啰嗦，简单点
-4. 想拍照，推荐机位
-5. 累了，要休息
-
-> 直接回复数字即可（如回复"2"）
-```
-
-**Bad Example** (DO NOT DO THIS):
-```
-当前体验如何？
-- 满意，继续下一站
-- 想更深，补充细节
-- 太啰嗦，简单点
-
-> 请告诉我您的选择
-```
-
-**Why**: Users can quickly reply with "1", "2", "3" instead of typing full text.
-
----
-
 ## Tour Guide Flow
 
 ### Route Recommendation
@@ -223,30 +183,6 @@ Load data from `references/`:
 - `culture-stories/[province]/[attraction]-stories-en.md` - English narration
 
 **Supported Attractions**: 30+ core 5A-rated scenic spots (Beijing, Xi'an, Hangzhou, Lhasa, Guilin, Zhangjiajie, Huangshan, etc.)
-
----
-
-## Opening Hours & Ticket Price
-
-Use `web_search` tool to query real-time opening hours and ticket prices.
-
-**Triggers**:
-- "开放时间？" / "What are the opening hours?"
-- "门票多少钱？" / "How much is the ticket?"
-- "票价？" / "Ticket price?"
-
-**How to Use**:
-```
-User: "故宫开放时间？"
-AI: [Call web_search with query like "故宫博物院 开放时间 2026"]
-    [Parse results and reply with opening hours + ticket price]
-    [Remind user to verify latest info before travel]
-```
-
-**Important Notes**:
-- Always include current year in search query for latest info
-- Remind user that data may change (holidays, special events)
-- Suggest checking official website before travel
 
 ---
 
