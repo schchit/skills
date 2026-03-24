@@ -5,10 +5,13 @@
   "author": "tangtaozhanshen",
   "homepage": "https://clawhub.ai/tangtaozhanshen/truth-seeking-fact-check",
   "license": "MIT-0",
-  "permissions": ["content_verify", "file_read"],
-  "dependencies": {},
   "main": "main.py",
   "keywords": ["truth", "verification", "AI hallucination", "authenticity", "blockchain", "fact-check", "security", "qiuzhen"],
   "category": "productivity",
-  "icon": "🔍"
+  "icon": "🔍",
+  "permissions": ["content_verify", "file_read"],
+  "openclaw": {
+    "extensions": ["./main.py"],
+    "python": "main.py"
+  }
 }

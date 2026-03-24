@@ -1,243 +1,116 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-求真Skill v1.2.0 - AI内容真实性核验工具
-全球首款AI输出真实性核验平台，彻底解决AI幻觉问题
+Truth (求真) Skill v1.3 - 入口模块
+功能：6层事实核查，识别AI幻觉，输出可信度评分，支持区块链存证验证
+可简称 truth 使用
 """
 
-import argparse
+from typing import Dict, List, Union, Optional
 import json
-import hashlib
-import os
-import re
-from datetime import datetime
+import logging
+from preprocess import TextPreprocessor
+from checker import FactChecker
+from datasource import DataSourceManager
+from batch import BatchProcessor
+from formatter import OutputFormatter
+from compliance import ComplianceChecker
 
-class TruthVerifier:
-    def __init__(self):
-        self.version = "1.2.0"
+logger = logging.getLogger(__name__)
+
+class TruthSkill:
+    """Truth (求真) 技能主类 - v1.3 6层校验版本"""
     
-    def verify_content(self, content: str) -> dict:
-        """核验内容真实性"""
-        result = {
-            "version": self.version,
-            "content": content[:100] + "..." if len(content) > 100 else content,
-            "timestamp": datetime.now().isoformat(),
-            "hash": hashlib.sha256(content.encode()).hexdigest(),
-            "is_truth": True,
-            "confidence": 0.999,
-            "evidence": ["内容核验通过", "哈希值已生成"],
-            "chain_hash": "0x" + hashlib.sha256((content + str(datetime.now())).encode()).hexdigest()[:64],
-            "hallucination_detection": {}
+    def __init__(self, config: Optional[Dict] = None):
+        """初始化"""
+        self.config = config or {}
+        self.compliance = ComplianceChecker()
+        self.preprocessor = TextPreprocessor()
+        self.datasource = DataSourceManager(self.config.get('datasources', {}))
+        self.checker = FactChecker(self.datasource)
+        self.batch_processor = BatchProcessor(self.checker, max_concurrency=2)  # 适配2核2G，最大并发=2
+        self.formatter = OutputFormatter()
+        
+    def get_metadata(self) -> Dict:
+        """获取技能元数据"""
+        return {
+            "name": "Truth (求真)",
+            "version": "v1.3",
+            "description": "事实核查技能，6层深度核查（含区块链存证验证），核查内容真实性，识别AI幻觉。可简称truth使用。",
+            "author": "tangtaozhanshen",
+            "license": "MIT-0",
+            "features": [
+                "6层事实核查",
+                "区块链存证验证",
+                "批量核查支持",
+                "置信度解释",
+                "适配2核2G环境"
+            ]
         }
+    
+    def check_text(self, text: str, output_format: str = "both") -> Union[Dict, str]:
+        """单篇文本核查 - 6层版本"""
+        # 1. 合规检查
+        is_ok, reason = self.compliance.check(text)
+        if not is_ok:
+            return self.formatter.format_error(reason, output_format)
         
-        # 幻觉专项检测
-        path_result = self.detect_path_hallucination(content)
-        data_result = self.verify_data_authenticity(content)
-        sensitive_result = self.scan_sensitive_content(content)
+        # 2. 文本预处理
+        sentences = self.preprocessor.split_sentences(text)
         
-        result["hallucination_detection"] = {
-            "path_hallucination": path_result,
-            "fake_data": data_result,
-            "sensitive_content": sensitive_result
-        }
+        # 3. 6层事实核查
+        result = self.checker.check(text, sentences)
         
-        # 综合判定
-        total_issues = path_result["count"] + data_result["count"] + sensitive_result["count"]
-        if total_issues > 0:
-            result["is_truth"] = False
-            result["confidence"] = max(0.5, 1.0 - total_issues * 0.1)
-            result["evidence"].append(f"检测到 {total_issues} 处可疑内容")
+        # 4. 格式化输出
+        return self.formatter.format_result(result, output_format)
+    
+    def check_batch(self, texts: List[str], output_format: str = "both") -> Union[Dict, str]:
+        """批量文本核查"""
+        # 合规检查每篇文本
+        for idx, text in enumerate(texts):
+            is_ok, reason = self.compliance.check(text)
+            if not is_ok:
+                texts[idx] = f"【违规内容已拦截】{reason}"
         
+        # 批量核查
+        results = self.batch_processor.process_batch(texts)
+        
+        # 格式化输出
+        return self.formatter.format_batch_result(results, output_format)
+    
+    def check_url(self, url: str, output_format: str = "both") -> Union[Dict, str]:
+        """网页URL核查"""
+        # TODO: 实现网页抓取
+        # 占位：下一阶段完成
+        error_msg = "网页核查功能开发中，敬请期待 v1.4"
+        return self.formatter.format_error(error_msg, output_format)
+    
+    def skill_entry(self, params: Dict) -> Dict:
+        """OpenClaw 技能标准入口 - v1.3"""
+        text = params.get('text', '')
+        texts = params.get('texts', [])
+        url = params.get('url', '')
+        output_format = params.get('output_format', 'both')
+        
+        if url:
+            result = self.check_url(url, output_format='json')
+        elif texts:
+            result = self.check_batch(texts, output_format='json')
+        elif text:
+            result = self.check_text(text, output_format='json')
+        else:
+            return {"error": "缺少输入参数：text/texts/url 其中一项必填"}
+        
+        if isinstance(result, str):
+            return json.loads(result)
         return result
-    
-    def detect_path_hallucination(self, text: str) -> dict:
-        """检测路径幻觉"""
-        path_patterns = [
-            r'/(?:[a-zA-Z0-9_\-\.]+/)*[a-zA-Z0-9_\-\.]*',
-            r'[a-zA-Z]:\\(?:[a-zA-Z0-9_\-\.]+\\)*[a-zA-Z0-9_\-\.]*',
-            r'~/[a-zA-Z0-9_\-\./]*'
-        ]
-        
-        suspicious_paths = []
-        for pattern in path_patterns:
-            paths = re.findall(pattern, text)
-            for path in paths:
-                suspicious = False
-                reasons = []
-                
-                if len(path) > 200:
-                    suspicious = True
-                    reasons.append("路径长度异常")
-                
-                suspicious_keywords = ['fake', 'test', 'dummy', 'temp', 'tmp', 'hallucination']
-                for keyword in suspicious_keywords:
-                    if keyword in path.lower():
-                        suspicious = True
-                        reasons.append(f"包含可疑关键词: {keyword}")
-                
-                if path.count('/') > 20 or path.count('\\') > 20:
-                    suspicious = True
-                    reasons.append("目录层级过深")
-                
-                if suspicious:
-                    suspicious_paths.append({
-                        "path": path,
-                        "suspicious": True,
-                        "reasons": reasons,
-                        "confidence": 0.9 if len(reasons) > 1 else 0.7
-                    })
-        
-        return {
-            "has_hallucination": len(suspicious_paths) > 0,
-            "suspicious_paths": suspicious_paths,
-            "count": len(suspicious_paths)
-        }
-    
-    def verify_data_authenticity(self, text: str) -> dict:
-        """核验数据真实性"""
-        suspicious_data = []
-        
-        numbers = re.findall(r'(\d+(?:\.\d+)?)\s*(%|x|ms|s|m|gb|mb|kb)?', text.lower())
-        
-        thresholds = {
-            "%": 100,
-            "x": 100,
-            "ms": 1,
-            "s": 0.001,
-            "gb": 10000,
-            "mb": 1000000,
-            "kb": 1000000000,
-        }
-        
-        for value, unit in numbers:
-            try:
-                num = float(value)
-                if unit in thresholds and num > thresholds[unit]:
-                    suspicious_data.append({
-                        "value": f"{value}{unit}",
-                        "threshold": thresholds[unit],
-                        "reason": f"数值超过常识阈值 {thresholds[unit]}{unit}"
-                    })
-            except:
-                pass
-        
-        if "100%" in text or "0 error" in text.lower() or "perfect" in text.lower():
-            suspicious_data.append({
-                "value": "完美数据",
-                "reason": "宣称100%完美的结果通常不可信"
-            })
-        
-        return {
-            "has_fake_data": len(suspicious_data) > 0,
-            "suspicious_data": suspicious_data,
-            "count": len(suspicious_data)
-        }
-    
-    def scan_sensitive_content(self, text: str) -> dict:
-        """扫描敏感内容"""
-        sensitive_items = []
-        
-        patterns = [
-            (r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', "邮箱"),
-            (r'1[3-9]\d{9}', "手机号"),
-            (r'https?://[^\s<>"]+|www\.[^\s<>"]+', "链接"),
-            (r'商务合作|联系我们|联系方式|微信|QQ|电话|邮箱', "商务相关词汇")
-        ]
-        
-        for pattern, item_type in patterns:
-            matches = re.findall(pattern, text)
-            for match in matches:
-                suspicious = False
-                reasons = []
-                
-                if item_type == "邮箱":
-                    fake_domains = ['example.com', 'test.com', 'fake.com', 'dummy.com']
-                    for domain in fake_domains:
-                        if domain in match.lower():
-                            suspicious = True
-                            reasons.append("使用测试域名")
-                
-                if item_type == "链接":
-                    fake_domains = ['example.com', 'test.com', 'fake.com', 'placeholder.com']
-                    for domain in fake_domains:
-                        if domain in match.lower():
-                            suspicious = True
-                            reasons.append("使用占位符域名")
-                
-                sensitive_items.append({
-                    "content": match,
-                    "type": item_type,
-                    "suspicious": suspicious,
-                    "reasons": reasons
-                })
-        
-        return {
-            "has_sensitive_content": len(sensitive_items) > 0,
-            "sensitive_items": sensitive_items,
-            "count": len(sensitive_items)
-        }
-    
-    def verify_path(self, path: str) -> dict:
-        """核验路径真实性"""
-        exists = os.path.exists(path)
-        is_file = os.path.isfile(path) if exists else False
-        is_dir = os.path.isdir(path) if exists else False
-        size = os.path.getsize(path) if exists else 0
-        
-        result = {
-            "version": self.version,
-            "path": path,
-            "exists": exists,
-            "is_file": is_file,
-            "is_dir": is_dir,
-            "size": size,
-            "timestamp": datetime.now().isoformat(),
-            "is_truth": exists,
-            "confidence": 1.0 if exists else 0.0,
-            "evidence": [f"路径{'存在' if exists else '不存在'}"]
-        }
-        return result
-    
-    def batch_verify(self, file_list: list) -> list:
-        """批量核验"""
-        results = []
-        for item in file_list:
-            if os.path.exists(item):
-                with open(item, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                results.append(self.verify_content(content))
-        return results
 
-def main():
-    parser = argparse.ArgumentParser(description="求真Skill v1.2.0 - AI内容真实性核验工具")
-    parser.add_argument("--verify", type=str, help="核验文本内容")
-    parser.add_argument("--verify-path", type=str, help="核验路径真实性")
-    parser.add_argument("--batch", type=str, help="批量核验文件列表")
-    parser.add_argument("--detect-hallucination", type=str, help="专项检测AI幻觉")
-    parser.add_argument("--version", action="store_true", help="显示版本信息")
-    
-    args = parser.parse_args()
-    verifier = TruthVerifier()
-    
-    if args.version:
-        print(f"求真Skill v{verifier.version}")
-        return
-    
-    if args.verify:
-        result = verifier.verify_content(args.verify)
-        print(json.dumps(result, ensure_ascii=False, indent=2))
-    elif args.verify_path:
-        result = verifier.verify_path(args.verify_path)
-        print(json.dumps(result, ensure_ascii=False, indent=2))
-    elif args.batch:
-        with open(args.batch, 'r', encoding='utf-8') as f:
-            files = [line.strip() for line in f if line.strip()]
-        results = verifier.batch_verify(files)
-        print(json.dumps(results, ensure_ascii=False, indent=2))
-    elif args.detect_hallucination:
-        result = verifier.verify_content(args.detect_hallucination)
-        print(json.dumps(result["hallucination_detection"], ensure_ascii=False, indent=2))
-    else:
-        parser.print_help()
 
+# 独立运行测试
 if __name__ == "__main__":
-    main()
+    import sys
+    logging.basicConfig(level=logging.INFO)
+    
+    skill = TruthSkill()
+    print("=== Truth (求真) v1.3 测试 ===")
+    print("元数据:", json.dumps(skill.get_metadata(), indent=2, ensure_ascii=False))
