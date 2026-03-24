@@ -3,11 +3,16 @@
   "slug": "resource-master",
   "displayName": "resource-master",
   "latest": {
-    "version": "1.0.5",
-    "publishedAt": 1773977376137,
-    "commit": "https://github.com/openclaw/skills/commit/413df7fe576885de948cbe04f3cf8b433bb335c2"
+    "version": "1.0.6",
+    "publishedAt": 1774255895241,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.5",
+      "publishedAt": 1773977376137,
+      "commit": "https://github.com/openclaw/skills/commit/413df7fe576885de948cbe04f3cf8b433bb335c2"
+    },
     {
       "version": "1.0.4",
       "publishedAt": 1773396693568,
