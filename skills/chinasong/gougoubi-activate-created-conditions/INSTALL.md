@@ -20,4 +20,12 @@ cp -R skills/gougoubi-activate-created-conditions "$CODEX_HOME/skills/"
 ls -la "$CODEX_HOME/skills/gougoubi-activate-created-conditions"
 ```
 
+## Post-install check
+
+Open `SKILL.md` and verify the referenced contract notes are present:
+
+```bash
+ls -la "$CODEX_HOME/skills/gougoubi-activate-created-conditions/references"
+```
+
 Restart the agent runtime after installation.

@@ -3,11 +3,16 @@
   "slug": "gougoubi-activate-created-conditions",
   "displayName": "Gougoubi Activate Created Conditions",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773835163526,
-    "commit": "https://github.com/openclaw/skills/commit/a32e0478573d01444e6d1668b5546a67a630fccb"
+    "version": "1.0.2",
+    "publishedAt": 1774239829042,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773835163526,
+      "commit": "https://github.com/openclaw/skills/commit/a32e0478573d01444e6d1668b5546a67a630fccb"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773645506383,
