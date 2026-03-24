@@ -21,3 +21,9 @@ Typical input:
   "deadlineIsoUtc": "2026-12-30T16:00:00Z"
 }
 ```
+
+Script entry:
+
+- `scripts/pbft-create-from-polymarket.mjs`
+- `node scripts/pbft-create-from-polymarket.mjs --help`
+- `node scripts/pbft-create-from-polymarket.mjs "<polymarket url>" --dry-run`
