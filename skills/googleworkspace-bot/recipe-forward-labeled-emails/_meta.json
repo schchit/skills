@@ -3,11 +3,16 @@
   "slug": "recipe-forward-labeled-emails",
   "displayName": "Recipe Forward Labeled Emails",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1774300614379,
-    "commit": "https://github.com/openclaw/skills/commit/8a573a572962b1df5cac74d5ce858b6b1c5b16fc"
+    "version": "1.0.5",
+    "publishedAt": 1774385982365,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1774300614379,
+      "commit": "https://github.com/openclaw/skills/commit/8a573a572962b1df5cac74d5ce858b6b1c5b16fc"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773404039835,
