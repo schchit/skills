@@ -46,7 +46,7 @@ CONFIG_SCHEMA = {
     "bet_size":           {"env": "SIMMER_ETHMC_BET_SIZE",  "default": 5.0,     "type": float},
     "momentum_threshold": {"env": "SIMMER_ETHMC_THRESHOLD", "default": 0.0012,  "type": float},
     "btc_gate_threshold": {"env": "SIMMER_ETHMC_BTC_GATE",  "default": 0.0015,  "type": float},
-    "min_volume_ratio":   {"env": "SIMMER_ETHMC_VOL_RATIO", "default": 1.1,     "type": float},
+    "min_volume_ratio": {"env": "SIMMER_ETHMC_VOL_RATIO", "default": 0.0, "type": float},
     "min_entry_price":    {"env": "SIMMER_ETHMC_MIN_ENTRY", "default": 0.45,    "type": float},
     "max_entry_price":    {"env": "SIMMER_ETHMC_MAX_ENTRY", "default": 0.65,    "type": float},
     "enable_1m_confirm":  {"env": "SIMMER_ETHMC_1M_CONFIRM","default": False,   "type": bool},
@@ -54,6 +54,7 @@ CONFIG_SCHEMA = {
     "discord_webhook":    {"env": "SIMMER_ETHMC_WEBHOOK",   "default": "",      "type": str},
     "max_position_usd":   {"env": "SIMMER_ETHMC_MAX_POS",   "default": 50.0,    "type": float},
     "sizing_pct":         {"env": "SIMMER_ETHMC_SIZING_PCT","default": 0.03,    "type": float},
+    "max_consecutive_losses": {"env": "SIMMER_ETHMC_MAX_LOSSES", "default": 3, "type": int},
 }
 
 try:
@@ -78,6 +79,7 @@ ENABLE_1M_CONFIRM   = _config["enable_1m_confirm"]
 DISCORD_WEBHOOK     = _config["discord_webhook"]
 MAX_POSITION_USD    = _config["max_position_usd"]
 SMART_SIZING_PCT    = _config["sizing_pct"]
+MAX_CONSECUTIVE_LOSSES = _config["max_consecutive_losses"]
 
 # Parse skip hours
 try:
@@ -158,11 +160,12 @@ def check_context_safeguards(context):
         return False, [f"Slippage too high: {estimates[0].get('slippage_pct', 0):.1%}"]
     return True, reasons
 
-def execute_trade(market_id, side, amount, reasoning=""):
+def execute_trade(market_id, side, amount, reasoning="", signal_data=None):
     try:
         result = get_client().trade(
             market_id=market_id, side=side, amount=amount,
             source=TRADE_SOURCE, skill_slug=SKILL_SLUG, reasoning=reasoning,
+            signal_data=signal_data if signal_data else None,
         )
         return {
             "success": result.success,
@@ -310,6 +313,61 @@ def _mark_traded(market_id):
         print(f"  ⚠️ Failed to save dedup state: {e}")
 
 # ──────────────────────────────────────────────
+# Circuit breaker
+# ──────────────────────────────────────────────
+
+_CB_STATE = Path(__file__).parent / "circuit_state.json"
+
+def _load_cb_state():
+    if _CB_STATE.exists():
+        try:
+            return json.loads(_CB_STATE.read_text())
+        except Exception:
+            pass
+    return {"consecutive_losses": 0, "paused_until": None}
+
+def _save_cb_state(state):
+    try:
+        _CB_STATE.write_text(json.dumps(state))
+    except Exception as e:
+        print(f"  ⚠️ Failed to save circuit breaker state: {e}")
+
+def check_circuit_breaker():
+    """Returns (allowed, reason). Checks and clears expired pauses."""
+    if MAX_CONSECUTIVE_LOSSES <= 0:
+        return True, ""
+    state = _load_cb_state()
+    paused_until = state.get("paused_until")
+    if paused_until:
+        if datetime.now(timezone.utc).isoformat() < paused_until:
+            losses = state.get("consecutive_losses", 0)
+            return False, f"Circuit breaker: {losses} consecutive losses — paused until {paused_until[:16]} UTC"
+        else:
+            # Pause expired — reset
+            state["paused_until"] = None
+            state["consecutive_losses"] = 0
+            _save_cb_state(state)
+    return True, ""
+ 
+def record_trade_outcome(success: bool):
+    """Call after trade result is known. Updates consecutive loss counter."""
+    if MAX_CONSECUTIVE_LOSSES <= 0:
+        return
+    state = _load_cb_state()
+    if success:
+        state["consecutive_losses"] = 0
+        state["paused_until"] = None
+    else:
+        state["consecutive_losses"] = state.get("consecutive_losses", 0) + 1
+        if state["consecutive_losses"] >= MAX_CONSECUTIVE_LOSSES:
+            # Pause for 2 hours
+            pause_until = (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat()
+            state["paused_until"] = pause_until
+            print(f"  🛑 Circuit breaker triggered: {state['consecutive_losses']} consecutive losses — pausing until {pause_until[:16]} UTC")
+            notify_discord(f"🛑 ETH Midcandle circuit breaker: {state['consecutive_losses']} consecutive losses — paused 2h")
+    _save_cb_state(state)
+
+# ──────────────────────────────────────────────
 # Discord
 # ──────────────────────────────────────────────
 
@@ -362,6 +420,14 @@ def run_strategy(dry_run=True, positions_only=False, show_config=False,
     trades_executed = 0
     skip_reasons = []
     execution_errors = []
+
+    # 0. Circuit breaker
+    cb_ok, cb_reason = check_circuit_breaker()
+    if not cb_ok:
+        print(f"⏸️ {cb_reason}")
+        skip_reasons.append("circuit_breaker")
+        _emit_automaton(signals_found, trades_attempted, trades_executed, skip_reasons, execution_errors)
+        return
 
     # 1. Hour filter
     current_hour = datetime.now(timezone.utc).hour
@@ -448,6 +514,11 @@ def run_strategy(dry_run=True, positions_only=False, show_config=False,
     prob = market.get("yes_price") or market.get("probability") or market.get("current_probability") or 0.5
     entry_price = prob if side == "yes" else (1 - prob)
     print(f"💲 Entry price: {entry_price:.3f} (side={side})")
+
+    # Fee awareness: at entry > 0.58, breakeven WR rises above ~64% after ~2% Polymarket fee
+    if entry_price > 0.58:
+        print(f"  ⚠️ Fee note: entry {entry_price:.3f} > 0.58 — breakeven WR ~{(1/(entry_price*0.98)):.0%} after fees")
+
     if entry_price > MAX_ENTRY_PRICE:
         print(f"⏸️ Entry {entry_price:.2f} > max {MAX_ENTRY_PRICE} — too expensive")
         skip_reasons.append("entry_too_expensive")
@@ -497,13 +568,23 @@ def run_strategy(dry_run=True, positions_only=False, show_config=False,
     print(f"\n🚀 Placing {side.upper()} ${position_size:.2f} — {reasoning}")
 
     trades_attempted += 1
-    result = execute_trade(market["id"], side, position_size, reasoning)
+    _signal_data = {
+        "momentum_pct": round(c5, 4),
+        "change_3m_pct": round(c3, 4),
+        "volume_ratio": round(vol_ratio, 2),
+        "entry_price": round(entry_price, 4),
+        "btc_change_pct": round(btc_pct, 4),
+        "mins_remaining": mins_remaining,
+        "signal_source": "eth_5m_momentum",
+    }
+    result = execute_trade(market["id"], side, position_size, reasoning, signal_data=_signal_data)
 
     if result.get("success"):
         shares = result.get("shares_bought", 0) or 0
         cost   = result.get("cost", position_size) or position_size
         print(f"✅ Filled: {shares:.1f} {side.upper()} shares for ${cost:.2f}")
         _mark_traded(market["id"])
+        record_trade_outcome(True)
         trades_executed += 1
         notify_discord(
             f"🔥 ETH Midcandle | {side.upper()} ${cost:.2f} | "
@@ -515,6 +596,7 @@ def run_strategy(dry_run=True, positions_only=False, show_config=False,
     else:
         err = result.get("error", "unknown error")
         print(f"❌ Trade failed: {err}")
+        record_trade_outcome(False)
         execution_errors.append(err)
         if result.get("skip_reason"):
             skip_reasons.append(result["skip_reason"])

@@ -3,7 +3,7 @@ name: polymarket-eth-midcandle
 description: "ETH Mid-Candle Scalper — 77%+ win rate on Polymarket ETH 15-minute markets. Enters mid-candle (2–12 min remaining) when ETH intracandle momentum is confirmed AND BTC is aligned. The BTC alignment gate is the secret sauce — it filters out noise trades where ETH is fighting the broader crypto trend. Fully configurable: tune momentum threshold, volume ratio, entry price window, and BTC gate to find your edge. Proven on real money. Use when you want the highest-WR crypto scalper running 24/7 on Polymarket."
 metadata:
   author: "DjDyll"
-  version: "1.0.0"
+  version: "1.1.1"
   displayName: "ETH Mid-Candle Scalper"
   difficulty: "intermediate"
 ---
