@@ -6,9 +6,8 @@
 
 ```bash
 python3 scripts/provider_sync.py \
-  --provider-id cliplus \
+  --provider-id my-provider \
   --endpoint https://api.example.com/v1/models \
-  --response-root data \
   --mapping-file references/mapping.openai-models.json \
   --normalize-models \
   --preserve-existing-model-fields \
@@ -19,9 +18,8 @@ python3 scripts/provider_sync.py \
 
 ```bash
 python3 scripts/provider_sync.py \
-  --provider-id cliplus \
+  --provider-id my-provider \
   --endpoint https://api.example.com/v1/models \
-  --response-root data \
   --mapping-file references/mapping.openai-models.json \
   --normalize-models \
   --probe-api-modes openai-responses,openai-completions \
@@ -32,9 +30,8 @@ python3 scripts/provider_sync.py \
 
 ```bash
 python3 scripts/provider_sync.py \
-  --provider-id cliplus \
+  --provider-id my-provider \
   --endpoint https://api.example.com/v1/models \
-  --response-root data \
   --mapping-file references/mapping.openai-models.json \
   --normalize-models \
   --preserve-existing-model-fields
@@ -55,9 +52,8 @@ python3 scripts/provider_sync.py \
 
 ```bash
 python3 scripts/provider_sync.py \
-  --provider-id cliplus \
+  --provider-id my-provider \
   --endpoint https://api.example.com/v1/models \
-  --response-root data \
   --mapping-file references/mapping.openai-models.json \
   --normalize-models \
   --check-only
@@ -67,9 +63,8 @@ python3 scripts/provider_sync.py \
 
 ```bash
 python3 scripts/provider_sync.py \
-  --provider-id cliplus \
+  --provider-id my-provider \
   --endpoint https://api.example.com/v1/models \
-  --response-root data \
   --mapping-file references/mapping.openai-models.json \
   --normalize-models \
   --include-model gpt-5 \
@@ -81,9 +76,8 @@ python3 scripts/provider_sync.py \
 
 ```bash
 python3 scripts/provider_sync.py \
-  --provider-id cliplus \
+  --provider-id my-provider \
   --endpoint https://api.example.com/v1/models \
-  --response-root data \
   --mapping-file references/mapping.openai-models.json \
   --normalize-models \
   --output json \
@@ -96,7 +90,6 @@ python3 scripts/provider_sync.py \
 python3 scripts/provider_sync.py \
   --provider-id my-gemini \
   --endpoint https://api.example.com/v1/models \
-  --response-root data \
   --mapping-file references/mapping.openai-models.json \
   --normalize-models \
   --normalize-profile gemini \
@@ -104,7 +97,23 @@ python3 scripts/provider_sync.py \
   --dry-run
 ```
 
-## 9. 典型触发表达
+> 如果上游主要是 Gemini 模型，即使不写 profile，`auto` 也会按模型族系自动走 `gemini`。
+
+## 9. GPT / Codex provider（默认自动走 gpt）
+
+```bash
+python3 scripts/provider_sync.py \
+  --provider-id my-gpt-provider \
+  --endpoint https://api.example.com/v1/models \
+  --mapping-file references/mapping.openai-models.json \
+  --normalize-models \
+  --preserve-existing-model-fields \
+  --dry-run
+```
+
+如果上游主要是 GPT / Codex 模型，即使不写 profile，`auto` 也会按模型族系自动走 `gpt`；只有在想强制覆盖时，才需要显式带 `--normalize-profile gpt`。
+
+## 10. 典型触发表达
 
 以下说法都应该触发该 skill：
 

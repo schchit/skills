@@ -14,9 +14,9 @@ spdx: MIT
 当你只发送 `/provider_sync`（不带任何参数）时，我会回复一组**蓝色命令选项**（可直接点击/复制发送）：
 
 选 provider（默认 dry-run，不写配置）：
-/provider_sync provider=cli-usa
-/provider_sync provider=cliplus
-/provider_sync provider=newapi
+/provider_sync provider=my-provider
+/provider_sync provider=my-gpt-provider
+/provider_sync provider=my-gemini-provider
 /provider_sync provider=all
 
 新增 provider（向导）：
@@ -24,7 +24,7 @@ spdx: MIT
 
 > 说明：这是“无 inline button 也能点选”的默认方案，任何环境都可用。
 > 
-> 你也可以一步到位直接写：/provider_sync provider=<cli-usa|cliplus|newapi|all>（默认 dry-run）。
+> 你也可以一步到位直接写：/provider_sync provider=<your-provider-id|all>（默认 dry-run）。
 
 ## 适用场景
 - 拉取上游 `/v1/models`（OpenAI 兼容）并同步到本地 `openclaw.json`
@@ -40,17 +40,17 @@ spdx: MIT
 ### 方式 A：交互式（默认）
 - 发送：`/provider_sync`
 - 然后在我返回的“蓝色命令选项”里点一个（或复制发送）：
-  - /provider_sync provider=cli-usa
-  - /provider_sync provider=cliplus
-  - /provider_sync provider=newapi
+  - /provider_sync provider=my-provider
+  - /provider_sync provider=my-gpt-provider
+  - /provider_sync provider=my-gemini-provider
   - /provider_sync provider=all
 - 新增 provider：发送 /provider_sync add 进入文本向导（会先 dry-run 验证，再二次确认写入配置）
 
 ### 方式 B：直接带参数（一步到位）
 把下面任意一行发出去即可（默认 dry-run）：
-- `/provider_sync provider=cli-usa`
-- `/provider_sync provider=cliplus`
-- `/provider_sync provider=newapi`
+- `/provider_sync provider=my-provider`
+- `/provider_sync provider=my-gpt-provider`
+- `/provider_sync provider=my-gemini-provider`
 - `/provider_sync provider=all`
 
 ### 方式 C：新增 provider（一步到位，非交互）
@@ -66,9 +66,9 @@ spdx: MIT
 
 ### 指定 provider
 - 预览：
-  - `/provider_sync provider=cli-usa`
-  - `/provider_sync provider=cliplus`
-  - `/provider_sync provider=newapi`
+  - `/provider_sync provider=my-provider`
+  - `/provider_sync provider=my-gpt-provider`
+  - `/provider_sync provider=my-gemini-provider`
 
 ## 权限/安全口径（默认建议）
 - 群聊：仅允许 dry-run / check-only（只读）；不要在群聊应用配置变更。
@@ -85,8 +85,18 @@ spdx: MIT
 - 其他高级参数（可选）：
   - `config=<path>`（默认 `/root/.openclaw/openclaw.json`）
   - `mapping=<path>`（默认 `references/mapping.openai-models.json`）
-  - `profile=generic|gemini`
+  - `profile=auto|generic|gemini|gpt`
   - `probe=openai-responses,openai-completions`
+
+默认 profile：
+- `auto`：按模型族系启发式自动判断
+  - `gemini*` → `gemini`
+  - `gpt-*` / `*codex*` → `gpt`
+  - 其他 → `generic`
+
+推荐：
+- 一般不用手动写 `profile=`，让 skill 按模型族系自动选就行
+- 只有在想强制覆盖默认行为时，再显式传 `profile=gemini` / `profile=gpt` / `profile=generic`
 
 ## 备注（实现边界）
 - 这个 skill 的“按钮面板”属于聊天交互层能力；在未启用 Telegram inlineButtons 的实例上，依然能用本文件提供的纯文本命令完成全部操作。

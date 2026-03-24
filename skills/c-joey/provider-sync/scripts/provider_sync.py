@@ -596,26 +596,134 @@ def infer_gemini_input(raw: Dict[str, Any], model_id: str) -> List[str]:
     return sorted(set(out))
 
 
+GPT_FAMILY_OVERRIDES: Dict[str, Dict[str, Any]] = {
+    "gpt-5.4": {
+        "reasoning": True,
+        "input": ["text", "image"],
+        "contextWindow": 400000,
+        "maxTokens": 128000,
+    },
+    "gpt-5.4-mini": {
+        "reasoning": True,
+        "input": ["text", "image"],
+        "contextWindow": 400000,
+        "maxTokens": 128000,
+    },
+    "gpt-5.2": {
+        "reasoning": True,
+        "input": ["text", "image"],
+        "contextWindow": 400000,
+        "maxTokens": 128000,
+    },
+    "gpt-5.2-codex": {
+        "reasoning": True,
+        "input": ["text", "image"],
+        "contextWindow": 400000,
+        "maxTokens": 128000,
+    },
+    "gpt-5.3-codex": {
+        "reasoning": True,
+        "input": ["text"],
+        "contextWindow": 400000,
+        "maxTokens": 128000,
+    },
+    "gpt-5.1-codex": {
+        "reasoning": True,
+        "input": ["text"],
+        "contextWindow": 400000,
+        "maxTokens": 32768,
+    },
+    "gpt-5.1-codex-max": {
+        "reasoning": True,
+        "input": ["text"],
+        "contextWindow": 400000,
+        "maxTokens": 128000,
+    },
+    "gpt-5.1-codex-mini": {
+        "reasoning": True,
+        "input": ["text"],
+        "contextWindow": 400000,
+        "maxTokens": 32768,
+    },
+}
+
+
+def infer_generic_input(raw: Dict[str, Any], default: List[str] | None = None) -> List[str]:
+    input_modes = pick(raw, ["input", "modalities", "capabilities"])
+    if isinstance(input_modes, list):
+        out = []
+        for x in input_modes:
+            s = str(x).lower()
+            out.append("image" if s in ("vision", "image") else s)
+        out = sorted(set(v for v in out if v))
+        if out:
+            return out
+    return list(default or ["text"])
+
+
+def infer_gpt_family(raw: Dict[str, Any], model_id: str, default_ctx: int, default_max: int) -> Tuple[bool, List[str], int, int]:
+    lower_id = (model_id or "").lower()
+    explicit = GPT_FAMILY_OVERRIDES.get(lower_id)
+    if explicit:
+        return (
+            bool(explicit["reasoning"]),
+            list(explicit["input"]),
+            int(explicit["contextWindow"]),
+            int(explicit["maxTokens"]),
+        )
+
+    explicit_reasoning = pick(raw, ["reasoning", "supports_reasoning", "thinking"])
+    reasoning = bool(explicit_reasoning) if explicit_reasoning is not None else lower_id.startswith("gpt-")
+
+    default_input = ["text", "image"] if lower_id.startswith("gpt-") and "codex" not in lower_id else ["text"]
+    input_list = infer_generic_input(raw, default=default_input)
+
+    fallback_ctx = 400000 if lower_id.startswith("gpt-") else default_ctx
+    fallback_max = 128000 if lower_id.startswith("gpt-") else default_max
+    ctx = to_int(
+        pick(raw, ["contextWindow", "context_window", "context", "max_context_tokens", "inputTokenLimit", "input_token_limit"]),
+        fallback_ctx,
+    )
+    max_tokens = to_int(
+        pick(raw, ["maxTokens", "max_tokens", "max_output_tokens", "output_tokens", "outputTokenLimit", "output_token_limit"]),
+        fallback_max,
+    )
+    return reasoning, input_list, ctx, max_tokens
+
+
+def infer_model_normalize_profile(raw: Dict[str, Any], model_id: str, model_name: str, requested_profile: str) -> str:
+    requested = (requested_profile or "auto").strip().lower()
+    if requested and requested != "auto":
+        return requested
+
+    lower_id = (model_id or "").strip().lower()
+    lower_name = (model_name or "").strip().lower()
+    haystack = f"{lower_id} {lower_name}"
+
+    if lower_id.startswith("gpt-") or "codex" in haystack:
+        return "gpt"
+    if lower_id.startswith("gemini") or "gemini" in haystack:
+        return "gemini"
+    return "generic"
+
+
 def normalize_model(raw: Dict[str, Any], provider_api: str, default_ctx: int, default_max: int, normalize_profile: str = "generic") -> Tuple[Dict[str, Any], Dict[str, Any]]:
     mid = pick(raw, ["id", "model", "name"]) or "unknown"
     name = pick(raw, ["name", "display_name", "title"], mid)
+    effective_profile = infer_model_normalize_profile(raw, mid, name, normalize_profile)
 
-    if normalize_profile == "gemini":
+    if effective_profile == "gemini":
         reasoning = infer_gemini_reasoning(raw, mid)
         ctx = to_int(pick(raw, ["contextWindow", "context_window", "context", "max_context_tokens", "inputTokenLimit", "input_token_limit"]), default_ctx)
         max_tokens = to_int(pick(raw, ["maxTokens", "max_tokens", "max_output_tokens", "output_tokens", "outputTokenLimit", "output_token_limit"]), default_max)
         input_list = infer_gemini_input(raw, mid)
+    elif effective_profile == "gpt":
+        reasoning, input_list, ctx, max_tokens = infer_gpt_family(raw, mid, default_ctx, default_max)
     else:
         reasoning = bool(pick(raw, ["reasoning", "supports_reasoning", "thinking"], False))
         ctx = to_int(pick(raw, ["contextWindow", "context_window", "context", "max_context_tokens"]), default_ctx)
         max_tokens = to_int(pick(raw, ["maxTokens", "max_tokens", "max_output_tokens", "output_tokens"]), default_max)
-
-        input_modes = pick(raw, ["input", "modalities", "capabilities"])
-        if isinstance(input_modes, list):
-            input_list = ["image" if str(x).lower() in ("vision", "image") else str(x).lower() for x in input_modes]
-            input_list = sorted(set(input_list))
-        else:
-            input_list = ["text"]
+        input_list = infer_generic_input(raw, default=["text"])
 
     api = pick(raw, ["api"], provider_api)
 
@@ -906,7 +1014,7 @@ def print_summary(summary: Dict[str, Any]):
         if summary.get("recommendedProviderApi"):
             print(f"Recommended provider.api: {summary['recommendedProviderApi']}")
 
-    if summary.get("normalizeProfile") and summary.get("normalizeProfile") != "generic":
+    if summary.get("normalizeProfile"):
         print(f"\nNormalization profile: {summary['normalizeProfile']}")
 
     if summary.get("preserveExistingModelFields"):
@@ -947,7 +1055,7 @@ def main():
     ap.add_argument("--preserve-existing-model-fields", action="store_true", help="preserve existing local model capability fields by model id")
     ap.add_argument("--default-context-window", type=int, default=128000)
     ap.add_argument("--default-max-tokens", type=int, default=8192)
-    ap.add_argument("--normalize-profile", default="generic", choices=["generic", "gemini"], help="field normalization profile")
+    ap.add_argument("--normalize-profile", default="auto", choices=["auto", "generic", "gemini", "gpt"], help="field normalization profile (default: auto by model family)")
     ap.add_argument("--probe-api-modes", default="", help="comma-separated api modes to probe, e.g. openai-responses,openai-completions")
     ap.add_argument("--auto-detect-provider-api", action="store_true", help="set provider.api based on probe results")
     ap.add_argument("--allow-outside-provider", action="store_true", help="allow writing outside provider subtree")
@@ -1059,6 +1167,7 @@ def main():
     provider_base = f"{args.provider_root}.{args.provider_id}"
     provider_obj = get_path(cfg, provider_base) or {}
     provider_api = provider_obj.get("api", "openai-completions")
+    effective_normalize_profile = (args.normalize_profile or "auto").strip().lower() or "auto"
 
     include_models = expand_list_args(args.include_model)
     exclude_models = expand_list_args(args.exclude_model)
@@ -1118,7 +1227,7 @@ def main():
                 provider_api=provider_api,
                 default_ctx=args.default_context_window,
                 default_max=args.default_max_tokens,
-                normalize_profile=args.normalize_profile,
+                normalize_profile=effective_normalize_profile,
             )
             model_notes.extend(notes)
 
@@ -1244,7 +1353,7 @@ def main():
         dry_run=args.dry_run,
         check_only=args.check_only,
         preserve_existing_model_fields=args.preserve_existing_model_fields,
-        normalize_profile=args.normalize_profile,
+        normalize_profile=effective_normalize_profile,
         fetch=fetch_meta,
         timing={"totalMs": _t_total_ms},
         model_delta=model_delta,

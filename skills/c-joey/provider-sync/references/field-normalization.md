@@ -92,3 +92,31 @@
 - 优先补齐 OpenClaw 必需字段
 - 不追求一开始就支持所有供应商私有字段
 - 对不稳定或临时字段保持保守，不要默认写入配置
+
+## 规范化 profile
+
+### auto
+- 默认模式
+- 按模型族系自动选择：
+  - `gemini*` / 名称含 `gemini` → `gemini`
+  - `gpt-*` / 名称含 `codex` → `gpt`
+  - 其他 → `generic`
+- 保持 provider-agnostic，不依赖某个部署环境里的 provider id 命名
+
+### generic
+- 保守模式
+- 如果上游不给能力字段，通常回退到 `reasoning=false`、`input=['text']`
+
+### gemini
+- 适合 Gemini / gemini-compatible 上游
+- 会对 `thinking` / `supportedGenerationMethods` / `vision` 等字段做更积极推断
+
+### gpt
+- 适合 GPT / Codex 系列
+- 对已知模型 ID 使用固定能力模板，避免被 generic 口径冲回：
+  - `gpt-5.4` / `gpt-5.4-mini` → `text,image` + `reasoning=true` + `400k` + `128k`
+  - `gpt-5.2` / `gpt-5.2-codex` → `text,image` + `reasoning=true` + `400k` + `128k`
+  - `gpt-5.3-codex` → `text` + `reasoning=true` + `400k` + `128k`
+  - `gpt-5.1-codex-max` → `text` + `reasoning=true` + `400k` + `128k`
+  - `gpt-5.1-codex-mini` → `text` + `reasoning=true` + `400k` + `32k`
+- 对未显式收录但命中 `gpt-*` 的模型，会做温和推断：优先 `reasoning=true`，普通 GPT 默认 `text,image`，Codex 默认 `text`

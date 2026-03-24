@@ -22,8 +22,10 @@
 - 同一 provider 可能同时兼容 `openai-responses` 和 `openai-completions`
 
 推荐：
-- `response-root` 设为 `data`
+- 如果使用默认 `references/mapping.openai-models.json`，不要再额外设 `response-root=data`（该 mapping 本身已经从 `data` 取模型列表）
 - 同时启用 `--normalize-models`
+- 默认让脚本按模型族系自动选 profile：`gemini* -> gemini`，`gpt-* / *codex* -> gpt`，其他回退 `generic`
+- 只有在需要覆盖默认行为时，再显式传 `--normalize-profile gemini|gpt|generic`
 - 如不确定兼容模式，启用 `--probe-api-modes`
 
 ## 2. Provider meta endpoint
