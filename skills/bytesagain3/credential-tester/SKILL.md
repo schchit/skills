@@ -1,52 +1,35 @@
 ---
-version: "2.0.0"
-name: Mimikatz
-description: "A little tool to play with Windows security credential-tester, c. Use when you need credential-tester capabilities. Triggers on: credential-tester."
-author: BytesAgain
+name: "credential-tester"
+version: "4.0.1"
+description: "Reference tool for devtools — covers intro, quickstart, patterns and more. Quick lookup for Credential Tester concepts, best practices, and implementation pa..."
+author: "BytesAgain"
+homepage: "https://bytesagain.com"
+source: "https://github.com/bytesagain/ai-skills"
+tags: [credential,tester, reference]
+category: "devtools"
 ---
 
-# Mimikatz
+# Credential Tester
 
-A little tool to play with Windows security ## Commands
+Reference tool for devtools — covers intro, quickstart, patterns and more. Quick lookup for Credential Tester concepts, best practices, and implementation pa... No API keys or credentials required.
 
-- `help` - Help
-- `run` - Run
-- `info` - Info
-- `status` - Status
+## Commands
 
-## Features
+| Command | Description |
+|---------|-------------|
+| `intro` | intro reference |
+| `quickstart` | quickstart reference |
+| `patterns` | patterns reference |
+| `debugging` | debugging reference |
+| `performance` | performance reference |
+| `security` | security reference |
+| `migration` | migration reference |
+| `cheatsheet` | cheatsheet reference |
 
-- Core functionality from gentilkiwi/credential-tester
+## Output Format
 
-## Usage
+All commands output plain-text reference documentation via heredoc. No external API calls, no credentials needed, no network access.
 
-Run any command: `credential-tester <command> [args]`
 ---
-💬 Feedback & Feature Requests: https://bytesagain.com/feedback
-Powered by BytesAgain | bytesagain.com
 
-## Examples
-
-```bash
-# Show help
-credential-tester help
-
-# Run
-credential-tester run
-```
-
-- Run `credential-tester help` for commands
-- No API keys needed
-
-- Run `credential-tester help` for all commands
-
-- Run `credential-tester help` for all commands
-
-## Configuration
-
-Set `CREDENTIAL_TESTER_DIR` to change data directory. Default: `~/.local/share/credential-tester/`
-
-## When to Use
-
-- Quick credential tasks from terminal
-- Automation pipelines
+*Powered by BytesAgain | bytesagain.com | hello@bytesagain.com*

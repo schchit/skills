@@ -1,332 +1,255 @@
 #!/usr/bin/env bash
-# Credential Tester — security tool
+# credential-tester — Credential Tester reference tool. Use when working with credential tester in security contexts.
 # Powered by BytesAgain | bytesagain.com | hello@bytesagain.com
 set -euo pipefail
 
-DATA_DIR="${HOME}/.local/share/credential-tester"
-mkdir -p "$DATA_DIR"
+VERSION="4.0.0"
 
-_log() { echo "$(date '+%m-%d %H:%M') $1: $2" >> "$DATA_DIR/history.log"; }
+show_help() {
+    cat << 'HELPEOF'
+credential-tester v$VERSION — Credential Tester Reference Tool
 
-_version() { echo "credential-tester v2.0.0"; }
+Usage: credential-tester <command>
 
-_help() {
-    echo "Credential Tester v2.0.0 — security toolkit"
-    echo ""
-    echo "Usage: credential-tester <command> [args]"
-    echo ""
-    echo "Commands:"
-    echo "  generate           Generate"
-    echo "  check-strength     Check Strength"
-    echo "  rotate             Rotate"
-    echo "  audit              Audit"
-    echo "  store              Store"
-    echo "  retrieve           Retrieve"
-    echo "  expire             Expire"
-    echo "  policy             Policy"
-    echo "  report             Report"
-    echo "  hash               Hash"
-    echo "  verify             Verify"
-    echo "  revoke             Revoke"
-    echo "  stats              Summary statistics"
-    echo "  export <fmt>       Export (json|csv|txt)"
-    echo "  status             Health check"
-    echo "  help               Show this help"
-    echo "  version            Show version"
-    echo ""
-    echo "Data: $DATA_DIR"
+Commands:
+  intro           Overview and core concepts
+  quickstart      Getting started guide
+  patterns        Common patterns and best practices
+  debugging       Debugging and troubleshooting
+  performance     Performance optimization tips
+  security        Security considerations
+  migration       Migration and upgrade guide
+  cheatsheet      Quick reference cheat sheet
+  help              Show this help
+  version           Show version
+
+Powered by BytesAgain | bytesagain.com
+HELPEOF
 }
 
-_stats() {
-    echo "=== Credential Tester Stats ==="
-    local total=0
-    for f in "$DATA_DIR"/*.log; do
-        [ -f "$f" ] || continue
-        local name=$(basename "$f" .log)
-        local c=$(wc -l < "$f")
-        total=$((total + c))
-        echo "  $name: $c entries"
-    done
-    echo "  ---"
-    echo "  Total: $total entries"
-    echo "  Data size: $(du -sh "$DATA_DIR" 2>/dev/null | cut -f1)"
-    echo "  Since: $(head -1 "$DATA_DIR/history.log" 2>/dev/null | cut -d'|' -f1 || echo 'N/A')"
+cmd_intro() {
+    cat << 'EOF'
+# Credential Tester — Overview
+
+## What is Credential Tester?
+Credential Tester (credential-tester) is a specialized tool/concept in the security domain.
+It provides essential capabilities for professionals working with credential tester.
+
+## Key Concepts
+- Core credential tester principles and fundamentals
+- How credential tester fits into the broader security ecosystem  
+- Essential terminology every practitioner should know
+
+## Why Credential Tester Matters
+Understanding credential tester is critical for:
+- Improving efficiency in security workflows
+- Reducing errors and downtime
+- Meeting industry standards and compliance requirements
+- Enabling better decision-making with accurate data
+
+## Getting Started
+1. Understand the basic credential tester concepts
+2. Learn the standard tools and interfaces
+3. Practice with common scenarios
+4. Review safety and compliance requirements
+EOF
 }
 
-_export() {
-    local fmt="${1:-json}"
-    local out="$DATA_DIR/export.$fmt"
-    case "$fmt" in
-        json)
-            echo "[" > "$out"
-            local first=1
-            for f in "$DATA_DIR"/*.log; do
-                [ -f "$f" ] || continue
-                local name=$(basename "$f" .log)
-                while IFS='|' read -r ts val; do
-                    [ $first -eq 1 ] && first=0 || echo "," >> "$out"
-                    printf '  {"type":"%s","time":"%s","value":"%s"}' "$name" "$ts" "$val" >> "$out"
-                done < "$f"
-            done
-            echo "" >> "$out"
-            echo "]" >> "$out"
-            ;;
-        csv)
-            echo "type,time,value" > "$out"
-            for f in "$DATA_DIR"/*.log; do
-                [ -f "$f" ] || continue
-                local name=$(basename "$f" .log)
-                while IFS='|' read -r ts val; do
-                    echo "$name,$ts,$val" >> "$out"
-                done < "$f"
-            done
-            ;;
-        txt)
-            echo "=== Credential Tester Export ===" > "$out"
-            for f in "$DATA_DIR"/*.log; do
-                [ -f "$f" ] || continue
-                echo "--- $(basename "$f" .log) ---" >> "$out"
-                cat "$f" >> "$out"
-                echo "" >> "$out"
-            done
-            ;;
-        *) echo "Formats: json, csv, txt"; return 1 ;;
-    esac
-    echo "Exported to $out ($(wc -c < "$out") bytes)"
+cmd_quickstart() {
+    cat << 'EOF'
+# Credential Tester — Quick Start Guide
+
+## Prerequisites
+- Basic understanding of security concepts
+- Required tools and access credentials
+- System meeting minimum requirements
+
+## Installation
+1. Download or clone the credential tester package
+2. Install dependencies
+3. Configure initial settings
+4. Verify installation
+
+## First Steps
+1. Run the hello-world example
+2. Review the default configuration
+3. Try a simple real-world task
+4. Explore available commands and options
+
+## Next Steps
+- Read the full documentation
+- Join the community forum
+- Try advanced features
+- Set up automated workflows
+EOF
 }
 
-_status() {
-    echo "=== Credential Tester Status ==="
-    echo "  Version: v2.0.0"
-    echo "  Data dir: $DATA_DIR"
-    echo "  Entries: $(cat "$DATA_DIR"/*.log 2>/dev/null | wc -l) total"
-    echo "  Disk: $(du -sh "$DATA_DIR" 2>/dev/null | cut -f1)"
-    local last=$(tail -1 "$DATA_DIR/history.log" 2>/dev/null || echo "never")
-    echo "  Last activity: $last"
-    echo "  Status: OK"
+cmd_patterns() {
+    cat << 'EOF'
+# Credential Tester — Common Patterns & Best Practices
+
+## Design Patterns
+1. **Standard Pattern**: The most common approach for credential tester
+2. **Scalable Pattern**: For high-volume or distributed scenarios
+3. **Resilient Pattern**: For fault-tolerant implementations
+
+## Best Practices
+- Follow the principle of least privilege
+- Use version control for all configurations
+- Implement comprehensive logging
+- Test changes in staging before production
+- Document all custom configurations
+
+## Anti-Patterns to Avoid
+- Hardcoding credentials or configuration
+- Skipping validation and error handling
+- Ignoring monitoring and alerting
+- Making changes without documentation
+- Over-engineering simple solutions
+EOF
 }
 
-_search() {
-    local term="${1:?Usage: credential-tester search <term>}"
-    echo "Searching for: $term"
-    local found=0
-    for f in "$DATA_DIR"/*.log; do
-        [ -f "$f" ] || continue
-        local matches=$(grep -i "$term" "$f" 2>/dev/null || true)
-        if [ -n "$matches" ]; then
-            echo "  --- $(basename "$f" .log) ---"
-            echo "$matches" | while read -r line; do
-                echo "    $line"
-                found=$((found + 1))
-            done
-        fi
-    done
-    [ $found -eq 0 ] && echo "  No matches found."
+cmd_debugging() {
+    cat << 'EOF'
+# Credential Tester — Debugging Guide
+
+## Common Errors
+1. **Connection refused**: Check service status and network
+2. **Permission denied**: Verify credentials and access rights
+3. **Timeout**: Check network, increase limits, optimize queries
+4. **Invalid input**: Validate data format and encoding
+
+## Debugging Tools
+- Built-in logging and diagnostics
+- Network analysis tools (tcpdump, wireshark)
+- System monitoring (top, htop, iostat)
+- Application-specific debug modes
+
+## Debug Workflow
+1. Reproduce the issue consistently
+2. Check logs for error messages
+3. Isolate the failing component
+4. Test with minimal configuration
+5. Apply fix and verify
+EOF
 }
 
-_recent() {
-    echo "=== Recent Activity ==="
-    if [ -f "$DATA_DIR/history.log" ]; then
-        tail -20 "$DATA_DIR/history.log" | while IFS='' read -r line; do
-            echo "  $line"
-        done
-    else
-        echo "  No activity yet."
-    fi
+cmd_performance() {
+    cat << 'EOF'
+# Credential Tester — Performance Optimization
+
+## Key Metrics
+- Response time / latency
+- Throughput / operations per second
+- Resource utilization (CPU, memory, I/O)
+- Error rate and retry frequency
+
+## Optimization Strategies
+1. **Caching**: Reduce redundant operations
+2. **Batching**: Group small operations
+3. **Indexing**: Speed up data lookups
+4. **Compression**: Reduce data transfer size
+5. **Parallel Processing**: Utilize multiple cores
+
+## Monitoring
+- Set up baseline performance metrics
+- Configure alerts for anomalies
+- Track trends over time
+- Regular capacity planning reviews
+EOF
 }
 
-# Main dispatch
-case "${1:-help}" in
-    generate)
-        shift
-        if [ $# -eq 0 ]; then
-            echo "Recent generate entries:"
-            tail -20 "$DATA_DIR/generate.log" 2>/dev/null || echo "  No entries yet. Use: credential-tester generate <input>"
-        else
-            local input="$*"
-            local ts=$(date '+%Y-%m-%d %H:%M')
-            echo "$ts|$input" >> "$DATA_DIR/generate.log"
-            local total=$(wc -l < "$DATA_DIR/generate.log")
-            echo "  [Credential Tester] generate: $input"
-            echo "  Saved. Total generate entries: $total"
-            _log "generate" "$input"
-        fi
-        ;;
-    check-strength)
-        shift
-        if [ $# -eq 0 ]; then
-            echo "Recent check-strength entries:"
-            tail -20 "$DATA_DIR/check-strength.log" 2>/dev/null || echo "  No entries yet. Use: credential-tester check-strength <input>"
-        else
-            local input="$*"
-            local ts=$(date '+%Y-%m-%d %H:%M')
-            echo "$ts|$input" >> "$DATA_DIR/check-strength.log"
-            local total=$(wc -l < "$DATA_DIR/check-strength.log")
-            echo "  [Credential Tester] check-strength: $input"
-            echo "  Saved. Total check-strength entries: $total"
-            _log "check-strength" "$input"
-        fi
-        ;;
-    rotate)
-        shift
-        if [ $# -eq 0 ]; then
-            echo "Recent rotate entries:"
-            tail -20 "$DATA_DIR/rotate.log" 2>/dev/null || echo "  No entries yet. Use: credential-tester rotate <input>"
-        else
-            local input="$*"
-            local ts=$(date '+%Y-%m-%d %H:%M')
-            echo "$ts|$input" >> "$DATA_DIR/rotate.log"
-            local total=$(wc -l < "$DATA_DIR/rotate.log")
-            echo "  [Credential Tester] rotate: $input"
-            echo "  Saved. Total rotate entries: $total"
-            _log "rotate" "$input"
-        fi
-        ;;
-    audit)
-        shift
-        if [ $# -eq 0 ]; then
-            echo "Recent audit entries:"
-            tail -20 "$DATA_DIR/audit.log" 2>/dev/null || echo "  No entries yet. Use: credential-tester audit <input>"
-        else
-            local input="$*"
-            local ts=$(date '+%Y-%m-%d %H:%M')
-            echo "$ts|$input" >> "$DATA_DIR/audit.log"
-            local total=$(wc -l < "$DATA_DIR/audit.log")
-            echo "  [Credential Tester] audit: $input"
-            echo "  Saved. Total audit entries: $total"
-            _log "audit" "$input"
-        fi
-        ;;
-    store)
-        shift
-        if [ $# -eq 0 ]; then
-            echo "Recent store entries:"
-            tail -20 "$DATA_DIR/store.log" 2>/dev/null || echo "  No entries yet. Use: credential-tester store <input>"
-        else
-            local input="$*"
-            local ts=$(date '+%Y-%m-%d %H:%M')
-            echo "$ts|$input" >> "$DATA_DIR/store.log"
-            local total=$(wc -l < "$DATA_DIR/store.log")
-            echo "  [Credential Tester] store: $input"
-            echo "  Saved. Total store entries: $total"
-            _log "store" "$input"
-        fi
-        ;;
-    retrieve)
-        shift
-        if [ $# -eq 0 ]; then
-            echo "Recent retrieve entries:"
-            tail -20 "$DATA_DIR/retrieve.log" 2>/dev/null || echo "  No entries yet. Use: credential-tester retrieve <input>"
-        else
-            local input="$*"
-            local ts=$(date '+%Y-%m-%d %H:%M')
-            echo "$ts|$input" >> "$DATA_DIR/retrieve.log"
-            local total=$(wc -l < "$DATA_DIR/retrieve.log")
-            echo "  [Credential Tester] retrieve: $input"
-            echo "  Saved. Total retrieve entries: $total"
-            _log "retrieve" "$input"
-        fi
-        ;;
-    expire)
-        shift
-        if [ $# -eq 0 ]; then
-            echo "Recent expire entries:"
-            tail -20 "$DATA_DIR/expire.log" 2>/dev/null || echo "  No entries yet. Use: credential-tester expire <input>"
-        else
-            local input="$*"
-            local ts=$(date '+%Y-%m-%d %H:%M')
-            echo "$ts|$input" >> "$DATA_DIR/expire.log"
-            local total=$(wc -l < "$DATA_DIR/expire.log")
-            echo "  [Credential Tester] expire: $input"
-            echo "  Saved. Total expire entries: $total"
-            _log "expire" "$input"
-        fi
-        ;;
-    policy)
-        shift
-        if [ $# -eq 0 ]; then
-            echo "Recent policy entries:"
-            tail -20 "$DATA_DIR/policy.log" 2>/dev/null || echo "  No entries yet. Use: credential-tester policy <input>"
-        else
-            local input="$*"
-            local ts=$(date '+%Y-%m-%d %H:%M')
-            echo "$ts|$input" >> "$DATA_DIR/policy.log"
-            local total=$(wc -l < "$DATA_DIR/policy.log")
-            echo "  [Credential Tester] policy: $input"
-            echo "  Saved. Total policy entries: $total"
-            _log "policy" "$input"
-        fi
-        ;;
-    report)
-        shift
-        if [ $# -eq 0 ]; then
-            echo "Recent report entries:"
-            tail -20 "$DATA_DIR/report.log" 2>/dev/null || echo "  No entries yet. Use: credential-tester report <input>"
-        else
-            local input="$*"
-            local ts=$(date '+%Y-%m-%d %H:%M')
-            echo "$ts|$input" >> "$DATA_DIR/report.log"
-            local total=$(wc -l < "$DATA_DIR/report.log")
-            echo "  [Credential Tester] report: $input"
-            echo "  Saved. Total report entries: $total"
-            _log "report" "$input"
-        fi
-        ;;
-    hash)
-        shift
-        if [ $# -eq 0 ]; then
-            echo "Recent hash entries:"
-            tail -20 "$DATA_DIR/hash.log" 2>/dev/null || echo "  No entries yet. Use: credential-tester hash <input>"
-        else
-            local input="$*"
-            local ts=$(date '+%Y-%m-%d %H:%M')
-            echo "$ts|$input" >> "$DATA_DIR/hash.log"
-            local total=$(wc -l < "$DATA_DIR/hash.log")
-            echo "  [Credential Tester] hash: $input"
-            echo "  Saved. Total hash entries: $total"
-            _log "hash" "$input"
-        fi
-        ;;
-    verify)
-        shift
-        if [ $# -eq 0 ]; then
-            echo "Recent verify entries:"
-            tail -20 "$DATA_DIR/verify.log" 2>/dev/null || echo "  No entries yet. Use: credential-tester verify <input>"
-        else
-            local input="$*"
-            local ts=$(date '+%Y-%m-%d %H:%M')
-            echo "$ts|$input" >> "$DATA_DIR/verify.log"
-            local total=$(wc -l < "$DATA_DIR/verify.log")
-            echo "  [Credential Tester] verify: $input"
-            echo "  Saved. Total verify entries: $total"
-            _log "verify" "$input"
-        fi
-        ;;
-    revoke)
-        shift
-        if [ $# -eq 0 ]; then
-            echo "Recent revoke entries:"
-            tail -20 "$DATA_DIR/revoke.log" 2>/dev/null || echo "  No entries yet. Use: credential-tester revoke <input>"
-        else
-            local input="$*"
-            local ts=$(date '+%Y-%m-%d %H:%M')
-            echo "$ts|$input" >> "$DATA_DIR/revoke.log"
-            local total=$(wc -l < "$DATA_DIR/revoke.log")
-            echo "  [Credential Tester] revoke: $input"
-            echo "  Saved. Total revoke entries: $total"
-            _log "revoke" "$input"
-        fi
-        ;;
-    stats) _stats ;;
-    export) shift; _export "$@" ;;
-    search) shift; _search "$@" ;;
-    recent) _recent ;;
-    status) _status ;;
-    help|--help|-h) _help ;;
-    version|--version|-v) _version ;;
-    *)
-        echo "Unknown command: $1"
-        echo "Run 'credential-tester help' for available commands."
-        exit 1
-        ;;
+cmd_security() {
+    cat << 'EOF'
+# Credential Tester — Security Considerations
+
+## Authentication & Authorization
+- Use strong, unique credentials
+- Implement role-based access control
+- Enable multi-factor authentication where possible
+- Regularly review and rotate credentials
+
+## Data Protection
+- Encrypt data at rest and in transit
+- Implement proper backup procedures
+- Follow data retention policies
+- Sanitize inputs to prevent injection
+
+## Network Security
+- Use firewalls and network segmentation
+- Monitor for suspicious activity
+- Keep all software patched and updated
+- Disable unnecessary services and ports
+EOF
+}
+
+cmd_migration() {
+    cat << 'EOF'
+# Credential Tester — Migration & Upgrade Guide
+
+## Pre-Migration Checklist
+- [ ] Current system fully documented
+- [ ] Complete backup taken and verified
+- [ ] Target environment prepared
+- [ ] Rollback plan documented
+- [ ] Stakeholders notified
+
+## Migration Steps
+1. Prepare target environment
+2. Export data from source
+3. Transform data if needed
+4. Import to target
+5. Verify data integrity
+6. Update configurations
+7. Test all functionality
+8. Switch traffic / go live
+
+## Post-Migration
+- Monitor for errors and performance
+- Verify all integrations working
+- Update documentation
+- Decommission old system after confirmation
+EOF
+}
+
+cmd_cheatsheet() {
+    cat << 'EOF'
+# Credential Tester — Quick Reference
+
+## Essential Commands
+| Command | Description |
+|---------|-------------|
+| help | Show available commands |
+| version | Display version info |
+| intro | Overview and fundamentals |
+| troubleshooting | Common problems and fixes |
+
+## Common Workflows
+1. **Setup**: install → configure → verify → test
+2. **Daily**: check → monitor → report → review
+3. **Issue**: diagnose → isolate → fix → verify → document
+
+## Key Shortcuts
+- Use tab completion for commands
+- Check logs first when troubleshooting
+- Always backup before making changes
+- Document everything you change
+EOF
+}
+
+CMD="${1:-help}"
+shift 2>/dev/null || true
+
+case "$CMD" in
+    intro) cmd_intro "$@" ;;
+    quickstart) cmd_quickstart "$@" ;;
+    patterns) cmd_patterns "$@" ;;
+    debugging) cmd_debugging "$@" ;;
+    performance) cmd_performance "$@" ;;
+    security) cmd_security "$@" ;;
+    migration) cmd_migration "$@" ;;
+    cheatsheet) cmd_cheatsheet "$@" ;;
+    help|--help|-h) show_help ;;
+    version|--version|-v) echo "credential-tester v$VERSION — Powered by BytesAgain" ;;
+    *) echo "Unknown: $CMD"; echo "Run: credential-tester help"; exit 1 ;;
 esac
