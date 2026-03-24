@@ -10,6 +10,7 @@
 
 import argparse
 import json
+import math
 import sys
 import time
 from dataclasses import dataclass, field, asdict
@@ -65,6 +66,8 @@ class CrisisClassification:
     is_escalating: bool = False
     cascade_risk: list = field(default_factory=list)
     available_decision_window_s: float = 0
+    compound_type: Optional[str] = None
+    special_action: Optional[str] = None
 
 
 @dataclass
@@ -142,6 +145,69 @@ _CRISIS_BASELINE_RULES = {
     "collision_risk.power_line": CrisisLevel.L4_SEVERE,
 }
 
+# 复合故障矩阵：当快照中同时存在多个故障信号时，识别复合故障
+# key: frozenset of crisis types, value: compound info
+COMPOUND_FAILURE_MATRIX = {
+    frozenset(["navigation_failure.gps_loss", "communication_failure.link_lost"]): {
+        "compound_type": "navigation_comms_blackout",
+        "level_override": CrisisLevel.L4_SEVERE,
+        "cascade_risks": ["设备进入盲飞状态：无GPS且无遥测链路，无法接收指令也无法自主导航"],
+        "special_action": "立即激活预置返航程序（不依赖GPS的惯导模式）",
+    },
+    frozenset(["power_failure.single_motor_loss", "power_failure.battery_critical"]): {
+        "compound_type": "degraded_power_critical",
+        "level_override": CrisisLevel.L4_SEVERE,
+        "cascade_risks": ["剩余电机因过载可能继续失效", "电量不足以支撑降级飞行完成返航"],
+        "special_action": "放弃返航，就近选择安全区域立即降落",
+    },
+    frozenset(["power_failure.battery_thermal", "power_failure.battery_critical"]): {
+        "compound_type": "battery_failure_imminent",
+        "level_override": CrisisLevel.L5_CRITICAL,
+        "cascade_risks": ["热失控可能在60秒内导致爆炸或起火，威胁地面人员"],
+        "special_action": "优先寻找水域或空旷地执行受控坠机，人员撤离",
+    },
+    frozenset(["navigation_failure.gps_loss", "navigation_failure.imu_failure"]): {
+        "compound_type": "full_navigation_failure",
+        "level_override": CrisisLevel.L5_CRITICAL,
+        "cascade_risks": ["无任何可靠位置/姿态参考，设备无法维持稳定飞行"],
+        "special_action": "立即切换视觉定位（如有），否则执行最近区域受控降落",
+    },
+    frozenset(["power_failure.multi_motor_loss", "power_failure.battery_critical"]): {
+        "compound_type": "catastrophic_power_failure",
+        "level_override": CrisisLevel.L5_CRITICAL,
+        "cascade_risks": ["多电机失效 + 低电量，设备无法维持飞行，迫降不可避免"],
+        "special_action": "立即选择损失最小的坠落区域，发出紧急广播",
+    },
+}
+
+
+def detect_compound_failures(snapshot: dict, detected_types: list) -> Optional[dict]:
+    """
+    检测复合故障。
+
+    Args:
+        snapshot: 态势感知快照（保留以供将来扩展）
+        detected_types: 已在快照中检测到的危机类型列表
+
+    Returns:
+        匹配的复合故障信息字典，若有多个匹配则返回等级最高的一个；无匹配则返回 None
+    """
+    matches = []
+
+    # 检查所有两两组合是否命中复合故障矩阵
+    n = len(detected_types)
+    for i in range(n):
+        for j in range(i + 1, n):
+            pair = frozenset([detected_types[i], detected_types[j]])
+            if pair in COMPOUND_FAILURE_MATRIX:
+                matches.append(COMPOUND_FAILURE_MATRIX[pair])
+
+    if not matches:
+        return None
+
+    # 多个匹配时，返回等级最高的复合故障
+    return max(matches, key=lambda m: m["level_override"].severity_rank)
+
 
 def classify_crisis(snapshot: dict) -> CrisisClassification:
     """
@@ -166,6 +232,43 @@ def classify_crisis(snapshot: dict) -> CrisisClassification:
     # 评估级联风险
     cascade_risk = _assess_cascade_risk(crisis_type, snapshot)
 
+    # ── 复合故障检测 ──────────────────────────────────────────
+    # 收集快照中所有检测到的故障类型
+    detected_types = [crisis_type] if crisis_type != "unknown" else []
+
+    # 扫描 additional_failures 字段（列表）中的附加故障信号
+    additional_failures = snapshot.get("additional_failures", [])
+    for af in additional_failures:
+        inferred = _infer_crisis_type(str(af), snapshot)
+        if inferred != "unknown" and inferred not in detected_types:
+            detected_types.append(inferred)
+
+    # 从 crisis_trigger 文本中挖掘第二信号（已由主类型覆盖，追加剩余类型）
+    # additional_failures 优先；此处 crisis_trigger 已作为主类型处理，无需重复
+
+    compound_info = detect_compound_failures(snapshot, detected_types)
+
+    compound_type: Optional[str] = None
+    special_action: Optional[str] = None
+
+    if compound_info:
+        # 用复合故障等级覆盖调整后等级（取更高者）
+        compound_level = compound_info["level_override"]
+        if compound_level.severity_rank > adjusted_level.severity_rank:
+            adjusted_level = compound_level
+
+        # 合并级联风险
+        for cr in compound_info.get("cascade_risks", []):
+            if cr not in cascade_risk:
+                cascade_risk.append(cr)
+
+        compound_type = compound_info.get("compound_type")
+        special_action = compound_info.get("special_action")
+
+    # ── 动态置信度计算 ────────────────────────────────────────
+    rule_matched = crisis_type in _CRISIS_BASELINE_RULES
+    confidence = _compute_confidence(snapshot, crisis_type, rule_matched)
+
     # 计算可用决策时间窗口
     altitude = snapshot.get("altitude_agl", 100)
     velocity_vertical = abs(snapshot.get("velocity_vertical", 0))
@@ -183,11 +286,55 @@ def classify_crisis(snapshot: dict) -> CrisisClassification:
         level=adjusted_level,
         crisis_type=crisis_type.rsplit(".", 1)[0] if "." in crisis_type else crisis_type,
         sub_type=crisis_type.rsplit(".", 1)[1] if "." in crisis_type else "",
-        confidence=0.85,
+        confidence=confidence,
         is_escalating=is_escalating,
         cascade_risk=cascade_risk,
         available_decision_window_s=decision_window,
+        compound_type=compound_type,
+        special_action=special_action,
     )
+
+
+def _compute_confidence(snapshot: dict, crisis_type: str, rule_matched: bool) -> float:
+    """
+    动态计算分类置信度。
+
+    Args:
+        snapshot: 态势快照
+        crisis_type: 推断的危机类型
+        rule_matched: 该类型是否在基线规则表中
+
+    Returns:
+        置信度分数，范围 [0.40, 0.97]
+    """
+    # 基础分
+    if crisis_type in _CRISIS_BASELINE_RULES:
+        confidence = 0.90
+    elif crisis_type == "unknown":
+        confidence = 0.65
+    else:
+        confidence = 0.75
+
+    # 传感器数据存在 → +0.05
+    if "failed_motors" in snapshot or "battery_temp" in snapshot:
+        confidence += 0.05
+
+    # trends 字典至少有 2 个键 → +0.05
+    trends = snapshot.get("trends", {})
+    if isinstance(trends, dict) and len(trends) >= 2:
+        confidence += 0.05
+
+    # crisis_trigger 过短（< 5 字符），报告可能不完整 → -0.10
+    trigger = snapshot.get("crisis_trigger", "")
+    if len(trigger) < 5:
+        confidence -= 0.10
+
+    # 缺少关键字段 → -0.05
+    if "altitude_agl" not in snapshot or "battery_level" not in snapshot:
+        confidence -= 0.05
+
+    # 钳制到 [0.40, 0.97]
+    return max(0.40, min(0.97, confidence))
 
 
 def _infer_crisis_type(trigger: str, snapshot: dict) -> str:
@@ -289,6 +436,73 @@ def _assess_cascade_risk(crisis_type: str, snapshot: dict) -> list:
         risks.append("热失控可能导致起火或爆炸")
         risks.append("可能波及全部供电系统")
     return risks
+
+
+def predict_landing_zone(snapshot: dict) -> dict:
+    """
+    基于运动学预测设备可能的落点范围。
+
+    使用简单抛体运动模型（不考虑空气阻力），
+    结合水平速度预测落点中心和不确定性半径。
+
+    Returns:
+        {
+            "time_to_impact_s": float,        # 预计触地时间（秒）
+            "horizontal_drift_m": float,       # 水平漂移距离（米）
+            "drift_direction_deg": float,      # 漂移方向（航向角度）
+            "uncertainty_radius_m": float,     # 不确定性半径（考虑风速）
+            "is_controlled": bool,             # 是否为受控降落（有动力）vs 自由落体
+            "worst_case_radius_m": float,      # 最坏情况半径
+            "recommendation": str,             # 文字建议
+        }
+    """
+    altitude = snapshot.get("altitude_agl", 0)
+    v_vertical = abs(snapshot.get("velocity_vertical", 0))   # m/s 下降速率
+    v_horizontal = snapshot.get("velocity_horizontal", 0)    # m/s
+    heading = snapshot.get("heading", 0)                     # degrees
+    wind_speed = snapshot.get("wind_speed_ms", 0)            # m/s
+
+    # 触地时间
+    if v_vertical > 0:
+        time_to_impact = altitude / v_vertical
+        is_controlled = True
+    else:
+        # 自由落体
+        time_to_impact = math.sqrt(2 * altitude / 9.8) if altitude > 0 else 0.0
+        is_controlled = False
+
+    # 水平漂移
+    horizontal_drift = v_horizontal * time_to_impact
+
+    # 不确定性半径（风速因子）
+    uncertainty_radius = wind_speed * time_to_impact * 0.5
+
+    # 最坏情况半径
+    worst_case = horizontal_drift + uncertainty_radius * 2
+
+    # 推荐文字
+    t = time_to_impact
+    r = worst_case
+    d = horizontal_drift
+
+    if t < 5:
+        recommendation = f"紧急：预计 {t:.1f}s 内触地，立即执行应急程序"
+    elif t < 15:
+        recommendation = f"警告：{t:.1f}s 内落地，优先疏散半径 {worst_case:.0f}m 内人员"
+    elif worst_case > 50:
+        recommendation = f"落点不确定性大（{worst_case:.0f}m 半径），建议广播紧急警告"
+    else:
+        recommendation = f"预计 {t:.1f}s 后在当前位置 {d:.0f}m 范围内落地"
+
+    return {
+        "time_to_impact_s": round(time_to_impact, 2),
+        "horizontal_drift_m": round(horizontal_drift, 2),
+        "drift_direction_deg": float(heading),
+        "uncertainty_radius_m": round(uncertainty_radius, 2),
+        "is_controlled": is_controlled,
+        "worst_case_radius_m": round(worst_case, 2),
+        "recommendation": recommendation,
+    }
 
 
 # ─── 方案匹配与评分 ─────────────────────────────────────────────
@@ -658,6 +872,7 @@ def _run_demo():
         "velocity_horizontal": 15,
         "velocity_vertical": -2,
         "heading": 30,
+        "wind_speed_ms": 12,
         "battery_level": 34,
         "flight_phase": "巡航",
         "payload": "3.2kg 快递包裹",
@@ -673,6 +888,8 @@ def _run_demo():
             "voltage_trend": "stable",
             "altitude_trend": "stable",
         },
+        # 复合故障演示：附加一个电池低电量信号
+        "additional_failures": ["电池电量低于15%，持续放电"],
     }
 
     print(f"\n[场景] 设备 {demo_snapshot['device_id']}")
@@ -680,6 +897,8 @@ def _run_demo():
     print(f"  电量: {demo_snapshot['battery_level']}%")
     print(f"  触发: {demo_snapshot['crisis_trigger']}")
     print(f"  周边: {demo_snapshot['nearby_threats']}")
+    if demo_snapshot.get("additional_failures"):
+        print(f"  附加故障: {demo_snapshot['additional_failures']}")
 
     # Phase 2: 分级分类
     print(f"\n{'─' * 40}")
@@ -687,12 +906,28 @@ def _run_demo():
     classification = classify_crisis(demo_snapshot)
     print(f"  等级: {classification.level.value}")
     print(f"  类型: {classification.crisis_type}.{classification.sub_type}")
+    print(f"  置信度: {classification.confidence:.2f}")
     print(f"  恶化中: {'是' if classification.is_escalating else '否'}")
     print(f"  决策时间窗口: {classification.available_decision_window_s:.1f}秒")
+    if classification.compound_type:
+        print(f"  复合故障类型: {classification.compound_type}")
+    if classification.special_action:
+        print(f"  特殊处置指令: {classification.special_action}")
     if classification.cascade_risk:
         print(f"  级联风险:")
         for risk in classification.cascade_risk:
             print(f"    - {risk}")
+
+    # Phase 2.5: 落点预测
+    print(f"\n{'─' * 40}")
+    print("[Phase 2.5] 运动学落点预测")
+    lz = predict_landing_zone(demo_snapshot)
+    print(f"  预计触地时间: {lz['time_to_impact_s']:.1f}s")
+    print(f"  水平漂移距离: {lz['horizontal_drift_m']:.1f}m  方向: {lz['drift_direction_deg']:.0f}°")
+    print(f"  不确定性半径: {lz['uncertainty_radius_m']:.1f}m")
+    print(f"  最坏情况半径: {lz['worst_case_radius_m']:.1f}m")
+    print(f"  受控降落: {'是' if lz['is_controlled'] else '否（自由落体）'}")
+    print(f"  建议: {lz['recommendation']}")
 
     # Phase 3: 方案匹配
     print(f"\n{'─' * 40}")
