@@ -1,11 +1,17 @@
 {
   "owner": "sealawyer2026",
   "slug": "zhang-land-law",
-  "displayName": "Zhang Land Law",
+  "displayName": "九章land-law专家V1.1.0",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773916085097,
-    "commit": "https://github.com/openclaw/skills/commit/aa883c154bf7ca4d99113bebec78dd38e95a8565"
+    "version": "1.1.0",
+    "publishedAt": 1774251245978,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773916085097,
+      "commit": "https://github.com/openclaw/skills/commit/aa883c154bf7ca4d99113bebec78dd38e95a8565"
+    }
+  ]
 }
