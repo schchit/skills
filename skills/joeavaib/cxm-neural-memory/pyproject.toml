@@ -7,7 +7,7 @@ name = "contextmachine"
 version = "0.1.0"
 description = "CXM - The Developer's Context Machine for AI Orchestration"
 authors = [
-    {name = "Joe", email = "No@thankyou.com"}
+    {name = "Joe", email = "joe@example.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.8"
@@ -28,6 +28,7 @@ dependencies = [
 [project.scripts]
 cxm = "cli:main"
 cxmd = "dashboard:main"
+cxmg = "gui:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

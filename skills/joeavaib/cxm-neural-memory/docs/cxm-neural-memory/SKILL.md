@@ -5,85 +5,59 @@ description: Use this skill when you need to understand the architecture of a co
 
 # CXM Neural Memory Skill
 
-This skill equips you with the ability to use the local CXM (ContextMachine) tool. CXM acts as an external "Neural Memory" and architectural mapping tool for your context window.
+This skill provides you with a localized "Neural Memory" and architectural mapping tool. It allows you to find code semantically and map dependencies using bundled AST-parsing tools.
 
-## 🛠️ Setup & Self-Healing
+## 🔒 Security & Transparency (Disclosure)
 
-If you are triggered but notice that the directory `src/` or the file `src/cli.py` is missing in the current workspace, you **MUST** perform the following setup steps before using any CXM tools:
+To ensure safe and transparent operation, be aware of the following behaviors:
+- **Local Indexing:** This skill performs recursive file reads within the project to build a local vector index (FAISS) stored in `~/.cxm`.
+- **Resource Footprint:** Initial indexing is CPU-intensive. Runtime RAM usage ranges from ~300MB (Mini-BERT) to ~1GB (MPNet).
+- **Network Access:** On the very first execution, this skill will download a pre-trained model (~80MB to ~400MB) from the HuggingFace Hub. No project data is ever uploaded.
+- **File Modification:** The tool can patch files. It strictly respects the `allowed_write_paths` and `mode` (e.g., `ask_first`) defined in the project's `.cxm.yaml`.
 
-1. **Clone the Engine:**
-   ```bash
-   git clone https://github.com/Joeavaib/partner .
-   ```
-2. **Install Dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+## 🛠️ Local Engine Usage
 
-**Crucial Instruction:** Always use the `--agent-mode` flag when calling `python src/cli.py` so that the output is strict, parseable JSON.
+You are already bundled with the CXM source code. All commands must be executed via the local `src/cli.py` script.
+
+**Crucial Instruction:** Always use the `--agent-mode` flag to receive strict, parseable JSON.
 
 ## Core Capabilities & Usage
 
 ### 1. Semantic Search (Vibe Searching)
 
-When you know *what* a piece of code does but not what it is called or where it is located, use the semantic vector search.
+Use this when you need to find logic by its purpose, even if you don't know the exact file name or variable names.
 
 **Command:**
 ```bash
 python src/cli.py --agent-mode harvest --semantic "your natural language query"
 ```
 
-**Example:**
-If you need to find where user permissions are checked, do not run `grep "permission"`. Instead, ask CXM:
-```bash
-python src/cli.py --agent-mode harvest --semantic "Where is the user authorization and permission logic?"
-```
-
 **Interpretation:** 
-The output will be a JSON object containing a `results` array with file paths and the relevant code chunks.
+The JSON output contains a `results` array with `path`, `content`, and `start_line`/`end_line` for precise targeting.
 
-### 2. Dependency Graphing (Blast Radius Check)
+### 2. Dependency Graphing (Architectural Mapping)
 
-Before refactoring a core module, you must verify what other parts of the system depend on it.
+Use this before refactoring to see which files or modules depend on your target file.
 
 **Command:**
 ```bash
-python src/cli.py --agent-mode map path/to/target/file.py
-```
-
-**Example:**
-If you are asked to change `src/auth.py`, first check its dependencies:
-```bash
-python src/cli.py --agent-mode map src/auth.py
+python src/cli.py --agent-mode map path/to/file.py
 ```
 
 **Interpretation:**
-The output is a JSON dependency graph (AST-based) showing which files import the target and what functions/classes are connected. Use this to formulate a safe refactoring plan.
+The JSON output includes an `edges` list and a `hotspots` array showing the most heavily used modules in the project.
 
-### 3. Architecture & Documentation Ingestion
+### 3. Architecture Ingestion
 
-By default, standard searches might focus mostly on code. If you need high-level understanding (e.g., from `README.md`, `docker-compose.yml`, or `package.json`), force CXM to ingest these non-code files.
+Force CXM to index non-code files like `README.md`, `docker-compose.yml`, or `package.json` to understand the system's infrastructure.
 
 **Command:**
-```bash
-python src/cli.py --agent-mode ingest docs_or_root_directory
-```
-
-**Example:**
 ```bash
 python src/cli.py --agent-mode ingest .
 ```
 
-### 4. Background Memory Sync (Watcher)
+## Workflow for Complex Refactoring
 
-If the user mentions that they are actively editing files while you work, you can suggest they start the background watcher in a separate terminal tab so your searches always return the freshest state. 
-
-*(Note: As an agent, do not run the `watch` command yourself as it is a blocking daemon process. Advise the user to run it).*
-User Command: `python src/cli.py watch`
-
-## Workflow Checklist for Complex Refactoring
-
-1. **Understand:** Run `python src/cli.py --agent-mode ingest .` to ensure docs are indexed.
-2. **Locate:** Use `python src/cli.py --agent-mode harvest --semantic "<intent>"` to find the relevant code sections.
-3. **Map:** Once you identify the file to change, run `python src/cli.py --agent-mode map <file_path>` to see what else might break.
-4. **Execute:** Perform your file edits using your standard tools.
+1. **Locate:** Use `semantic search` to find the relevant code sections.
+2. **Map:** Run `map` on the identified files to see the blast radius.
+3. **Execute:** Apply your changes knowing the full architectural context.

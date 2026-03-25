@@ -46,8 +46,13 @@ class DependencyGrapher:
             files_to_parse.extend(target_path.rglob("*.py"))
             
         for file_path in files_to_parse:
-            # Skip virtual environments
-            if "venv" in file_path.parts or ".venv" in file_path.parts or "node_modules" in file_path.parts:
+            # Aggressively skip non-project directories
+            forbidden_parts = {
+                'venv', '.venv', 'partner', 'env', 'ENV', 'node_modules', 
+                '.git', '__pycache__', '.pytest_cache', 'site-packages', 
+                'dist', 'build', '.cxm', 'cxm_agent_bundle'
+            }
+            if any(part in file_path.parts for part in forbidden_parts):
                 continue
                 
             try:

@@ -55,6 +55,11 @@ class RAGEngine:
         os.environ['TRANSFORMERS_VERBOSITY'] = 'error'
         os.environ['HF_HUB_DISABLE_PROGRESS_BARS'] = '1'
         
+        # Additional silence for torch/sentence-transformers
+        import logging
+        logging.getLogger("transformers").setLevel(logging.ERROR)
+        logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
+        
         self.workspace = Path(workspace)
         self.workspace.mkdir(parents=True, exist_ok=True)
         

@@ -7,6 +7,14 @@ description: Use this skill when you need to understand the architecture of a co
 
 This skill provides you with a localized "Neural Memory" and architectural mapping tool. It allows you to find code semantically and map dependencies using bundled AST-parsing tools.
 
+## 🔒 Security & Transparency (Disclosure)
+
+To ensure safe and transparent operation, be aware of the following behaviors:
+- **Local Indexing:** This skill performs recursive file reads within the project to build a local vector index (FAISS) stored in `~/.cxm`.
+- **Resource Footprint:** Initial indexing is CPU-intensive. Runtime RAM usage ranges from ~300MB (Mini-BERT) to ~1GB (MPNet).
+- **Network Access:** On the very first execution, this skill will download a pre-trained model (~80MB to ~400MB) from the HuggingFace Hub. No project data is ever uploaded.
+- **File Modification:** The tool can patch files. It strictly respects the `allowed_write_paths` and `mode` (e.g., `ask_first`) defined in the project's `.cxm.yaml`.
+
 ## 🛠️ Local Engine Usage
 
 You are already bundled with the CXM source code. All commands must be executed via the local `src/cli.py` script.

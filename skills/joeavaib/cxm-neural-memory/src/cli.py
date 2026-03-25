@@ -3,11 +3,18 @@ import argparse
 import os
 import hashlib
 import json
+import warnings
 from pathlib import Path
 from rich.console import Console
 from rich.prompt import Prompt, Confirm
 from rich.panel import Panel
 import pyperclip
+
+# --- SILENCE EXTERNAL NOISE ---
+# Suppress all library warnings (like requests, torch, etc.)
+warnings.filterwarnings("ignore")
+os.environ['TRANSFORMERS_VERBOSITY'] = 'error'
+os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 
 # Ensure we can find the modules if we're running locally without installation
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -180,32 +187,36 @@ def handle_search(args):
     query_words = len(args.query.split())
     target_limit = args.limit
     if getattr(args, 'agent_mode', False) and query_words > 5:
-        target_limit = max(target_limit, 10) # Give agents more context for complex queries
+        target_limit = max(target_limit, 10) 
         
-    # We fetch more than target_limit to analyze similarity spread
-    results = rag.search(args.query, k=target_limit * 2)
+    # We fetch more than target_limit to allow filtering
+    results = rag.search(args.query, k=target_limit * 3)
     
     if getattr(args, 'agent_mode', False):
+        # --- NEW: Advanced Selection Layer ---
+        evaluator = ContextEvaluator()
+        # Filter for relevance and remove Trigram redundancy
+        filtered_results = evaluator.evaluate_batch(args.query, results, max_overlap=0.4)
+        
+        # Take the best ones after deduplication
+        results = filtered_results[:target_limit]
+        
         clean_results = []
-        if results:
-            # If the spread between top 1 and top 10 is very small, include more.
-            # Otherwise, stick to the target limit.
-            top_sim = results[0]['similarity']
+        for i, r in enumerate(results):
+            content = r.get('full_content', r.get('content_preview', ''))
+            preview = r.get('content_preview', '')
+            lines = _estimate_line_numbers(content, preview)
             
-            for i, r in enumerate(results):
-                # Include if within target_limit OR if it's highly similar to the top result (>90% relative sim)
-                if i < target_limit or (r['similarity'] > top_sim * 0.9 and i < target_limit * 2):
-                    content = r.get('full_content', r.get('content_preview', ''))
-                    preview = r.get('content_preview', '')
-                    lines = _estimate_line_numbers(content, preview)
-                    
-                    clean_results.append({
-                        "path": r['path'],
-                        "similarity": r['similarity'],
-                        "start_line": lines["start_line"],
-                        "end_line": lines["end_line"],
-                        "content": preview # Agents usually just need the chunk, not the whole file, but line numbers help them locate it
-                    })
+            clean_results.append({
+                "path": r['path'],
+                "similarity": r['similarity'],
+                "relevance_score": r.get('_relevance_score', 0.0),
+                "relevance_type": r.get('_relevance_type', 'general'),
+                "evaluation": r.get('_evaluation_reason', ''),
+                "start_line": lines["start_line"],
+                "end_line": lines["end_line"],
+                "content": preview
+            })
         print(json.dumps({"results": clean_results}))
         return
 
