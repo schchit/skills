@@ -1,11 +1,17 @@
 {
   "owner": "15217172098",
   "slug": "designer-intelligence-station",
-  "displayName": "Designer Intelligence Station",
+  "displayName": "设计师情报站",
   "latest": {
-    "version": "1.3.0",
-    "publishedAt": 1774070433924,
-    "commit": "https://github.com/openclaw/skills/commit/029237939617e08f94c84dc351ff46088a4e2ab6"
+    "version": "2.0.0",
+    "publishedAt": 1774409310647,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.3.0",
+      "publishedAt": 1774070433924,
+      "commit": "https://github.com/openclaw/skills/commit/029237939617e08f94c84dc351ff46088a4e2ab6"
+    }
+  ]
 }
