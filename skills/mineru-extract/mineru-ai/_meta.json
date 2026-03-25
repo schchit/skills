@@ -1,0 +1,11 @@
+{
+  "owner": "mineru-extract",
+  "slug": "mineru-ai",
+  "displayName": "MinerU Document Extractor",
+  "latest": {
+    "version": "1.0.7",
+    "publishedAt": 1774362760693,
+    "commit": null
+  },
+  "history": []
+}
