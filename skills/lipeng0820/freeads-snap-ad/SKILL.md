@@ -1,7 +1,7 @@
 ---
 name: freeads-snap-ad
 description: "🎬 AI 高端广告视频生成器 - 将产品照片转化为 8 秒专业广告视频（含 BGM、Slogan、音效、丰富运镜）。使用 Atlas Cloud API 调用 Veo 3.1 生成视频。触发词：随手拍广告、生成广告视频、产品广告。核心输出：视频文件 URL。"
-version: 3.0.0
+version: 3.5.2
 author: lipeng0820
 metadata:
   category: media-generation
@@ -14,492 +14,370 @@ metadata:
   estimated-cost: "$0.80-1.60 per video"
 ---
 
-# FreeAds 随手拍广告 - AI 高端广告视频生成器 🎬
+# FreeAds 随手拍广告 🎬
 
-> **这是一个视频生成器，不是文案/方案生成器！**
+> **AI 高端广告视频生成器** | 最终产出：8 秒 TVC 级 MP4 视频（含 BGM、音效、专业运镜）
 > 
-> **最终产出：8 秒 MP4 广告视频（含 BGM、Slogan、音效、丰富运镜）**
-> 
-> 📦 快速安装：`clawhub install lipeng0820/freeads-snap-ad`
+> 📦 安装：`clawhub install lipeng0820/freeads-snap-ad`
 
 ---
 
-## 🚨🚨🚨 核心定位（AI 助手必读）🚨🚨🚨
+## 🚨 执行说明（AI 助手必读）
 
-### 这个 Skill 是什么？
+当用户要求生成广告视频时，**立即执行以下 Python 代码**，不要只输出方案！
 
-**✅ 是：AI 高端商业广告视频生成器**
-- 输入：产品照片（随手拍）
-- 输出：**8 秒 MP4 高端广告视频**
-- 特点：**必须有 BGM、Slogan、音效、丰富运镜**
-- 调用：Atlas Cloud Veo 3.1 API (`google/veo3.1/image-to-video`)
-
-**❌ 不是：广告文案/方案生成器**
-- 分镜脚本只是中间步骤，用于生成视频提示词
-- 最终产出**必须是视频**，不是文案、方案、设计稿
-
-### 视频质量要求（必须满足）：
-
-| 要素 | 要求 |
-|------|------|
-| **BGM** | 必须有背景音乐，与产品调性匹配 |
-| **Slogan** | 必须在视频中展示品牌/产品 Slogan |
-| **音效** | 必须有环境音效增强沉浸感 |
-| **运镜** | 必须有丰富运镜（推轨、摇移、特写等） |
-| **商业感** | 必须有高端商业广告的质感 |
-
-### 禁止输出以下内容作为最终结果：
-- ❌ "📸 功能简介... Slogan & 广告文案..."
-- ❌ 广告方案文档
-- ❌ 设计建议
-- ❌ 简单平移的产品展示
-- ❌ 没有 BGM 的静默视频
+**工作流程**：
+1. ✅ 直接使用用户原图（不做抠图）
+2. ✅ 使用 Kimi K2.5 识别产品并生成专业分镜脚本（最多 3 个镜头）
+3. ✅ 输出结构化 JSON 提示词
+4. ✅ 使用 Veo 3.1 生成 8 秒 TVC 级广告视频
+5. ✅ 输出完整的中间结果供用户检查
 
 ---
 
-## 🔧 使用的模型（Atlas Cloud）
+## 🔑 API Key 获取
 
-| 功能 | 模型 ID | 说明 |
-|------|---------|------|
-| **智能抠图** | `google/nano-banana-2/edit` | 提取产品主体，生成白底图 |
-| **分镜脚本生成** | `zai-org/glm-5-turbo` | 分析产品，生成英文视频 prompt |
-| **视频生成** | `google/veo3.1/image-to-video` | 生成 8 秒高端广告视频 |
+当用户没有配置 `ATLASCLOUD_API_KEY` 环境变量时，输出以下提示：
 
-**⚠️ 注意：Atlas Cloud 没有 Gemini 模型，使用 `zai-org/glm-5-turbo` 替代！**
+```
+❌ 需要 Atlas Cloud API Key 才能生成视频 🎬
 
----
-
-## 🚨 执行规则（违反即失败）🚨
-
-**禁止说以下任何借口：**
-- ❌ "Atlas Cloud 没有视频生成模型" - **Veo 3.1 就是视频模型！**
-- ❌ "API 计费系统不可用" - **直接调用 API**
-- ❌ "模型不可用" - **用备选模型 `zai-org/glm-5-turbo`**
-
-**必须执行的 API 调用：**
-```python
-# 1. 抠图 - 使用 Nano Banana 2
-POST https://api.atlascloud.ai/api/v1/model/generateImage
-{
-    "model": "google/nano-banana-2/edit",
-    "prompt": "Remove background, keep product only, white background",
-    "image_url": "用户上传的图片URL"
-}
-
-# 2. 生成分镜脚本 - 使用 GLM-5-Turbo（不是 Gemini！）
-POST https://api.atlascloud.ai/v1/chat/completions
-{
-    "model": "zai-org/glm-5-turbo",  # 注意：不是 gemini-3.1-pro！
-    "messages": [...]
-}
-
-# 3. 视频生成 - 使用 Veo 3.1
-POST https://api.atlascloud.ai/api/v1/model/generateVideo
-{
-    "model": "google/veo3.1/image-to-video",
-    "prompt": "分镜脚本生成的英文 prompt",
-    "image_url": "抠图后的白底图URL",
-    "durationSeconds": 8,
-    "withAudio": true  # 必须启用音频！
-}
+请按以下步骤获取：
+1. 访问 Atlas Cloud: https://www.atlascloud.ai?ref=LJNA3T
+   🎁 新用户福利：使用此链接注册，首次充值可获得 25% 奖励（最高 $100）！
+2. 登录后进入 Console -> API Keys
+3. 创建并复制 API Key
+4. 配置环境变量：
+   export ATLASCLOUD_API_KEY="your-api-key"
 ```
 
 ---
 
-## 工作流程（简化版，不收集 LOGO）
+## 模型配置
 
-**输入** → **处理** → **输出**
-
-```
-用户产品图片 → 上传 → 抠图提取主体（白底图）→ 分析产品生成分镜脚本 → Veo 3.1 生成视频 → 视频 URL
-```
-
-| 步骤 | 操作 | API/模型 | 输出 |
-|------|------|---------|------|
-| 1 | 上传图片 | `uploadMedia` | 图片 URL |
-| 2 | **抠图**（必须） | `google/nano-banana-2/edit` | 白底产品图 URL |
-| 3 | 产品分析+分镜脚本 | `zai-org/glm-5-turbo` | 英文视频 prompt |
-| 4 | 费用预估 | - | 显示费用，用户确认 |
-| 5 | **生成视频**（核心） | `google/veo3.1/image-to-video` | **视频 URL** ← 最终产出 |
-
-**⚠️ 重要变更：**
-- **不收集 LOGO**：避免 LOGO 图片干扰产品识别
-- **只用产品图**：仅使用用户上传的产品随手拍进行处理
-- **必须先抠图**：提取产品主体，生成干净的白底图后再生成视频
+| 功能 | 模型 ID |
+|------|---------|
+| 分镜脚本（多模态） | `moonshotai/kimi-k2.5` |
+| **视频生成** | `google/veo3.1/image-to-video` |
 
 ---
 
-## API Key 配置
-
-在首次使用前，配置 Atlas Cloud API Key：
-
-```bash
-# 在 ~/.zshrc 或 ~/.bashrc 中添加
-export ATLASCLOUD_API_KEY="your-api-key"
-```
-
-如果环境变量未设置，询问用户：
-
-> 请提供您的 Atlas Cloud API Key（可在 https://console.atlascloud.ai/ 获取）。
-
----
-
-## 完整工作流程
-
-### Step 1: 获取用户图片
-
-请用户提供产品图片（随手拍），支持：
-- 直接粘贴图片
-- 提供本地文件路径
-- 提供图片 URL
-
-**⚠️ 不要询问 LOGO！只使用用户上传的产品图片！**
-
----
-
-### Step 2: 上传图片到 Atlas Cloud
+## 🎬 专业分镜 Prompt（核心 - 最多 3 镜头）
 
 ```python
-import requests
-import os
+STORYBOARD_SYSTEM_PROMPT = """You are a world-class TVC commercial director. Create an 8-SECOND video concept for the product in the image.
 
-api_key = os.environ.get("ATLASCLOUD_API_KEY")
+## CRITICAL RULES
 
-# 上传本地图片
-upload_response = requests.post(
-    "https://api.atlascloud.ai/api/v1/model/uploadMedia",
-    headers={"Authorization": f"Bearer {api_key}"},
-    files={"file": open("product_photo.jpg", "rb")}
-)
-image_url = upload_response.json().get("url")
-print(f"图片已上传: {image_url}")
+### 1. Product Recognition (First Priority)
+- Identify the EXACT product: type, material, color, texture, visible text/logos
+- Determine the product CATEGORY: kitchen appliance, electronics, fashion, beauty, food, etc.
+
+### 2. Scene Selection Based on Product Category
+Choose the MOST APPROPRIATE environment for this product:
+- Kitchen Appliance → Modern minimalist kitchen, marble countertop, natural morning light
+- Electronics/Tech → Clean desk setup, tech workspace, soft ambient lighting
+- Fashion/Accessories → Lifestyle setting, urban backdrop, editorial style
+- Beauty/Skincare → Spa-like bathroom, soft diffused light, luxurious textures
+- Food/Beverage → Dining table, rustic or modern setting, appetizing presentation
+- Fitness/Sports → Gym environment, outdoor nature, dynamic energy
+- Home Decor → Living room, bedroom, architectural interior
+- Default → Professional studio with gradient backdrop
+
+### 3. Shot Structure (MAXIMUM 3 SHOTS for 8 seconds)
+- **Shot 1 (0-3s): REVEAL** - Product emerges in its natural environment, establishing context
+- **Shot 2 (3-6s): SHOWCASE** - Slow orbital or push-in highlighting key features
+- **Shot 3 (6-8s): HERO + SLOGAN** - Final beauty composition with text overlay
+
+### 4. Camera Movement (Smooth, Cinematic)
+- Use slow, fluid movements - NO rapid cuts or jarring transitions
+- Orbital rotation: max 90 degrees over 3 seconds
+- Dolly/push-in: gradual and smooth
+- Final shot: static or very subtle drift
+
+### 5. Output Format (JSON Structure)
+You MUST output a valid JSON object:
+
+```json
+{
+  "product": {
+    "type": "product category",
+    "name": "specific product name",
+    "material": "material description",
+    "color": "color description",
+    "features": ["feature1", "feature2"],
+    "brand_elements": "any visible logos or text"
+  },
+  "scene": {
+    "environment": "chosen environment type",
+    "setting_description": "detailed scene description",
+    "lighting": "lighting style description",
+    "mood": "emotional tone"
+  },
+  "slogan": "2-5 word premium slogan",
+  "shots": [
+    {
+      "number": 1,
+      "timing": "0-3s",
+      "type": "REVEAL",
+      "description": "detailed shot description",
+      "camera": "camera movement description",
+      "audio": "sound/music cue"
+    },
+    {
+      "number": 2,
+      "timing": "3-6s", 
+      "type": "SHOWCASE",
+      "description": "detailed shot description",
+      "camera": "camera movement description",
+      "audio": "sound/music cue"
+    },
+    {
+      "number": 3,
+      "timing": "6-8s",
+      "type": "HERO",
+      "description": "detailed shot description with slogan",
+      "camera": "camera movement description",
+      "audio": "sound/music cue"
+    }
+  ],
+  "video_prompt": "Single paragraph prompt for Veo 3.1, 100-150 words, combining all shots into continuous prose"
+}
+```"""
+
+STORYBOARD_USER_PROMPT = """Analyze this product image carefully.
+
+1. Identify the exact product (type, material, color, features)
+2. Choose the most appropriate environment/scene for this product
+3. Create a 3-shot storyboard for 8-second TVC commercial
+4. Output as valid JSON
+
+Remember: Maximum 3 shots, smooth camera movements, product must appear in a contextually appropriate environment."""
 ```
 
 ---
 
-### Step 3: 使用 Nano Banana 2 抠图（必须执行）
-
-**⚠️ 此步骤必须执行，不能跳过！**
+## 完整代码
 
 ```python
 import requests
 import time
-
-def remove_background(image_url: str, api_key: str) -> str:
-    """
-    使用 Nano Banana 2 抠图，提取产品主体
-    """
-    prompt = """Remove the background COMPLETELY and extract the product only.
-
-REQUIREMENTS:
-- Keep ONLY the main product, remove ALL background elements
-- Remove any table, surface, other objects, hands, shadows from background
-- Maintain EXACT product shape, proportions, colors, textures
-- Keep all product details crisp and sharp
-- Preserve any text, labels, logos ON the product itself
-
-OUTPUT:
-- Pure white (#FFFFFF) background
-- Product centered with professional studio lighting
-- Clean, precise edges
-- Subtle soft shadow for depth
-
-The product must look like a professional e-commerce photo."""
-
-    response = requests.post(
-        "https://api.atlascloud.ai/api/v1/model/generateImage",
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        },
-        json={
-            "model": "google/nano-banana-2/edit",
-            "prompt": prompt,
-            "image_url": image_url,
-            "output_format": "png"
-        }
-    )
-    
-    prediction_id = response.json().get("predictionId")
-    
-    # 轮询获取结果
-    while True:
-        result = requests.get(
-            f"https://api.atlascloud.ai/api/v1/model/getResult?predictionId={prediction_id}",
-            headers={"Authorization": f"Bearer {api_key}"}
-        ).json()
-        
-        if result.get("status") == "completed":
-            return result.get("output")
-        elif result.get("status") == "failed":
-            raise Exception(f"抠图失败: {result.get('error')}")
-        
-        time.sleep(2)
-
-# 使用示例
-white_bg_image_url = remove_background(image_url, api_key)
-print(f"白底图生成完成: {white_bg_image_url}")
-```
-
----
-
-### Step 4: 使用 GLM-5-Turbo 分析产品并生成分镜脚本
-
-**⚠️ 使用 `zai-org/glm-5-turbo`，不是 `gemini-3.1-pro`！**
-
-```python
+import os
+import json
 from openai import OpenAI
 
-client = OpenAI(
-    api_key=api_key,
-    base_url="https://api.atlascloud.ai/v1"
-)
+api_key = os.environ.get("ATLASCLOUD_API_KEY")
+if not api_key:
+    print("""❌ 需要 Atlas Cloud API Key 才能生成视频 🎬
 
-# 生成分镜脚本（不是简单文案！）
-response = client.chat.completions.create(
-    model="zai-org/glm-5-turbo",  # 注意：不是 gemini！
+请按以下步骤获取：
+1. 访问 Atlas Cloud: https://www.atlascloud.ai?ref=LJNA3T
+   🎁 新用户福利：使用此链接注册，首次充值可获得 25% 奖励（最高 $100）！
+2. 登录后进入 Console -> API Keys
+3. 创建并复制 API Key
+4. 配置环境变量：export ATLASCLOUD_API_KEY="your-api-key"
+""")
+    exit(1)
+
+original_image_url = "用户提供的图片URL"
+
+print(f"\n{'='*70}")
+print("🎬 FreeAds TVC 广告生成器 v3.5.0")
+print(f"{'='*70}")
+print(f"\n📤 [输入] 原图 URL:\n{original_image_url}")
+
+# ========== Step 1: 生成分镜脚本 ==========
+print(f"\n{'='*70}")
+print("📝 Step 1: 生成分镜脚本（Kimi K2.5）")
+print(f"{'='*70}")
+
+STORYBOARD_SYSTEM_PROMPT = """...(如上所示)..."""
+
+client = OpenAI(api_key=api_key, base_url="https://api.atlascloud.ai/v1")
+
+llm_response = client.chat.completions.create(
+    model="moonshotai/kimi-k2.5",
     messages=[
-        {
-            "role": "system",
-            "content": """You are a world-class commercial video director. Analyze the product image and create a CINEMATIC video prompt for Veo 3.1.
-
-Your prompt MUST create a HIGH-END COMMERCIAL with:
-
-1. **DYNAMIC CAMERA MOVEMENTS** (CRITICAL):
-   - Opening: Dramatic reveal (dolly in from black, or light sweep)
-   - Middle: Smooth orbital rotation around product
-   - Close-up: Detailed texture/feature shots
-   - Ending: Pull back to hero shot
-   
-2. **PROFESSIONAL LIGHTING**:
-   - Dramatic studio lighting with key, fill, and rim lights
-   - Light rays, lens flares, or sparkle effects
-   - Reflections on glossy surfaces
-   
-3. **AUDIO ELEMENTS** (MUST SPECIFY):
-   - Epic/emotional background music matching product type
-   - Subtle sound effects (whoosh, impact, shimmer)
-   - Professional audio atmosphere
-   
-4. **SLOGAN/TEXT OVERLAY**:
-   - Suggest a short, powerful slogan to appear in video
-   - Specify when text should appear and fade
-   
-5. **VISUAL EFFECTS**:
-   - Particle effects, light leaks, or subtle motion graphics
-   - Premium color grading (cinematic, warm/cool tone)
-   - Depth of field effects
-
-Output format (in English):
-SLOGAN: [2-5 word powerful slogan]
-PROMPT: [Detailed video prompt for Veo 3.1, 150-250 words, describing camera movements, lighting, effects, and audio in detail]"""
-        },
+        {"role": "system", "content": STORYBOARD_SYSTEM_PROMPT},
         {
             "role": "user",
             "content": [
-                {
-                    "type": "image_url",
-                    "image_url": {"url": white_bg_image_url}
-                },
-                {
-                    "type": "text",
-                    "text": "Analyze this product and create a cinematic video prompt. The video MUST feel like a high-end TV commercial with BGM, sound effects, and dynamic camera movements."
-                }
+                {"type": "image_url", "image_url": {"url": original_image_url}},
+                {"type": "text", "text": STORYBOARD_USER_PROMPT}
             ]
         }
     ],
-    max_tokens=1024
+    max_tokens=2000
 )
 
-video_script = response.choices[0].message.content
-print(video_script)
-```
+raw_script = llm_response.choices[0].message.content
+print(f"\n📋 [输出] 原始分镜脚本:\n{raw_script}")
 
----
+# 解析 JSON
+try:
+    # 提取 JSON 部分
+    json_match = re.search(r'\{[\s\S]*\}', raw_script)
+    if json_match:
+        storyboard = json.loads(json_match.group())
+    else:
+        raise ValueError("未找到 JSON")
+except Exception as e:
+    print(f"⚠️ JSON 解析失败: {e}")
+    storyboard = None
 
-### Step 5: 费用预估
+# ========== Step 2: 构建 Veo 3.1 提示词 ==========
+print(f"\n{'='*70}")
+print("🎯 Step 2: 构建 Veo 3.1 提示词")
+print(f"{'='*70}")
 
-**费用参考：**
-
-| 步骤 | 模型 | 费用估算 |
-|------|------|----------|
-| 智能抠图 | Nano Banana 2 | $0.02 - $0.05 |
-| 分镜脚本 | GLM-5-Turbo | $0.01 - $0.02 |
-| 视频生成 (8秒含音频) | Veo 3.1 I2V | $0.72 - $1.60 |
-| **总计** | - | **$0.75 - $1.67** |
-
-向用户展示费用预估后，等待用户确认再继续。
-
----
-
-### Step 6: 使用 Veo 3.1 生成高端广告视频（核心步骤）
-
-**⚠️ 这是最关键的步骤！必须生成有 BGM、音效、丰富运镜的高端广告！**
-
-```python
-def generate_commercial_video(
-    image_url: str,
-    video_prompt: str,
-    api_key: str,
-    duration: int = 8
-) -> str:
-    """
-    使用 Veo 3.1 生成高端商业广告视频
-    """
-    # 增强 prompt，确保视频有商业广告质感
-    enhanced_prompt = f"""{video_prompt}
-
-MANDATORY COMMERCIAL QUALITY REQUIREMENTS:
-
-CAMERA WORK:
-- Cinematic camera movements: dolly, crane, orbital, push-in
-- Smooth transitions between shots
-- Professional depth of field with bokeh
-- Multiple angle changes for dynamic feel
-
-AUDIO (CRITICAL - Must have audio!):
-- Epic/emotional background music matching the product mood
-- Subtle sound effects: whoosh on camera moves, impact on reveals
-- Professional audio mixing and atmosphere
-- Music should build and peak at product reveal
-
-VISUAL QUALITY:
-- High-end commercial color grading
-- Dramatic lighting with rim lights and lens flares  
-- Premium visual effects: light rays, particles, reflections
-- Text/slogan overlay with elegant animation
-
-PRODUCT PRESENTATION:
-- Hero product must be the star
-- Maintain exact product appearance throughout
-- Professional studio quality
-- Luxurious, aspirational feel
-
-This must look like a Super Bowl commercial, not a simple product video."""
-
-    response = requests.post(
-        "https://api.atlascloud.ai/api/v1/model/generateVideo",
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        },
-        json={
-            "model": "google/veo3.1/image-to-video",
-            "prompt": enhanced_prompt,
-            "image_url": image_url,
-            "durationSeconds": duration,
-            "resolution": "1080p",
-            "aspectRatio": "16:9",
-            "withAudio": True  # 必须启用音频！
-        }
-    )
+if storyboard:
+    # 从结构化数据构建提示词
+    veo_prompt = storyboard.get("video_prompt", "")
     
-    prediction_id = response.json().get("predictionId")
-    print(f"视频生成中，任务ID: {prediction_id}")
-    print("预计需要 2-3 分钟，请耐心等待...")
+    # 如果没有 video_prompt，从 shots 构建
+    if not veo_prompt:
+        shots_desc = []
+        for shot in storyboard.get("shots", []):
+            shots_desc.append(f"{shot['timing']}: {shot['description']} Camera: {shot['camera']}")
+        veo_prompt = " ".join(shots_desc)
     
-    # 轮询获取结果
-    while True:
-        result = requests.get(
-            f"https://api.atlascloud.ai/api/v1/model/getResult?predictionId={prediction_id}",
-            headers={"Authorization": f"Bearer {api_key}"}
-        ).json()
-        
-        if result.get("status") == "completed":
-            return result.get("output")
-        elif result.get("status") == "failed":
-            raise Exception(f"视频生成失败: {result.get('error')}")
-        
-        print("视频生成中，请稍候...")
-        time.sleep(10)
+    print(f"\n📋 [输出] 结构化分镜数据:")
+    print(json.dumps(storyboard, indent=2, ensure_ascii=False))
+    
+    print(f"\n📋 [输出] Veo 3.1 提示词:")
+    print(veo_prompt)
+else:
+    veo_prompt = raw_script
 
-# 使用示例
-video_url = generate_commercial_video(
-    image_url=white_bg_image_url,
-    video_prompt=video_script,  # 从 Step 4 获得的分镜脚本
-    api_key=api_key,
-    duration=8
+# 添加必要的视频生成指令
+veo_final_prompt = f"""{veo_prompt}
+
+CRITICAL: The product MUST be exactly as shown in the input image.
+Style: Premium TVC commercial, cinematic quality.
+Duration: 8 seconds with smooth transitions between shots.
+Audio: Epic background music with synchronized sound effects."""
+
+print(f"\n📋 [输出] 最终提示词（发送给 Veo 3.1）:")
+print(veo_final_prompt)
+
+# ========== Step 3: 生成视频 ==========
+print(f"\n{'='*70}")
+print("🎬 Step 3: 生成视频（Veo 3.1）")
+print(f"{'='*70}")
+
+video_response = requests.post(
+    "https://api.atlascloud.ai/api/v1/model/generateVideo",
+    headers={
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    },
+    json={
+        "model": "google/veo3.1/image-to-video",
+        "prompt": veo_final_prompt,
+        "image_url": original_image_url,
+        "durationSeconds": 8,
+        "resolution": "1080p",
+        "aspectRatio": "16:9",
+        "withAudio": True
+    }
 )
-print(f"\n✅ 广告视频生成完成！\n🎬 视频链接: {video_url}")
+
+# ... 轮询获取结果 ...
+
+# ========== 最终输出 ==========
+print(f"\n{'='*70}")
+print("📊 完整输出报告")
+print(f"{'='*70}")
+
+print(f"""
+## 1. 输入
+- 原图: {original_image_url}
+
+## 2. 产品识别
+{json.dumps(storyboard.get('product', {}), indent=2, ensure_ascii=False)}
+
+## 3. 场景设计
+{json.dumps(storyboard.get('scene', {}), indent=2, ensure_ascii=False)}
+
+## 4. 分镜脚本（3镜头）
+{json.dumps(storyboard.get('shots', []), indent=2, ensure_ascii=False)}
+
+## 5. Slogan
+{storyboard.get('slogan', 'N/A')}
+
+## 6. Veo 3.1 提示词
+{veo_final_prompt}
+
+## 7. 输出视频
+{video_url}
+
+## 8. 费用
+~$1.20
+""")
 ```
 
 ---
 
-## 正确的最终输出格式
+## 输出示例
+
+执行后会输出完整报告：
 
 ```
-✅ 广告视频生成完成！
+======================================================================
+📊 完整输出报告
+======================================================================
 
-🎬 视频链接: https://atlas-media.oss-xxx.aliyuncs.com/videos/xxxxx.mp4
+## 1. 输入
+- 原图: https://example.com/product.jpg
 
-📋 生成摘要
-| 步骤 | 状态 | 结果 |
-|------|------|------|
-| 1. 上传图片 | ✅ | 完成 |
-| 2. Nano Banana 2 抠图 | ✅ | 白底图生成成功 |
-| 3. 分镜脚本生成 | ✅ | GLM-5-Turbo 完成 |
-| 4. Veo 3.1 视频生成 | ✅ | 8秒视频完成 |
+## 2. 产品识别
+{
+  "type": "kitchen appliance",
+  "name": "Air Fryer",
+  "material": "matte white plastic",
+  "color": "white with black display",
+  "features": ["digital touchscreen", "pull-out drawer"],
+  "brand_elements": "none visible"
+}
 
-📝 Slogan: [生成的 Slogan]
+## 3. 场景设计
+{
+  "environment": "modern minimalist kitchen",
+  "setting_description": "Marble countertop in bright contemporary kitchen",
+  "lighting": "soft natural morning light through window",
+  "mood": "fresh, modern, inviting"
+}
 
-💰 实际费用
-- 智能抠图: ~$0.03
-- 分镜脚本: ~$0.02
-- 视频生成 (8秒): ~$1.20
-- **总计: ~$1.25**
+## 4. 分镜脚本（3镜头）
+[
+  {
+    "number": 1,
+    "timing": "0-3s",
+    "type": "REVEAL",
+    "description": "Air fryer sits on marble countertop, morning light streams in",
+    "camera": "Slow dolly in from wide establishing shot",
+    "audio": "Soft ambient music begins"
+  },
+  ...
+]
 
-视频已生成，可直接下载使用！🎉
+## 5. Slogan
+Crisp Perfection
+
+## 6. Veo 3.1 提示词
+A sleek white air fryer on a marble kitchen countertop...
+
+## 7. 输出视频
+https://atlas-media.../video.mp4
+
+## 8. 费用
+~$1.20
 ```
-
----
-
-## 注意事项
-
-1. **不收集 LOGO** - 避免 LOGO 图片干扰产品识别，只使用用户上传的产品图
-2. **必须先抠图** - 提取产品主体，去除背景杂物
-3. **使用 GLM-5-Turbo** - Atlas Cloud 没有 Gemini，用 `zai-org/glm-5-turbo` 替代
-4. **视频必须有音频** - `withAudio: true` 确保有 BGM 和音效
-5. **商业质感** - Prompt 中明确要求高端商业广告效果
-
----
-
-## 故障排查
-
-### 常见问题
-
-1. **"Gemini 模型不可用"**
-   - 原因：Atlas Cloud 没有 Gemini 模型
-   - 解决：使用 `zai-org/glm-5-turbo` 替代
-
-2. **视频没有 BGM/音效**
-   - 原因：未启用 `withAudio`
-   - 解决：确保请求中 `"withAudio": true`
-
-3. **视频只是简单产品旋转，没有商业感**
-   - 原因：Prompt 不够详细
-   - 解决：使用增强的 prompt，明确要求运镜、灯光、特效
-
-4. **产品识别错误（如圣诞帽识别为跑鞋）**
-   - 原因：LOGO 图片干扰了产品识别
-   - 解决：不收集 LOGO，只用产品图
-
-5. **API Key 无效**
-   - 检查环境变量是否正确设置
-   - 确认 API Key 未过期
-
----
-
-## 支持文件
-
-- **`references/atlas-cloud-api.md`** - Atlas Cloud API 详细文档
 
 ---
 
 ## 版本历史
 
-- **v3.0.0** - 重大更新
-  - 移除 LOGO 收集功能，避免干扰产品识别
-  - 模型从 `gemini-3.1-pro` 改为 `zai-org/glm-5-turbo`
-  - 增强视频 prompt，要求 BGM、Slogan、音效、丰富运镜
-  - 简化工作流程
-  - 作者更正为 `lipeng0820`
+- **v3.5.0** - 优化分镜结构（最多3镜头）；增加场景选择逻辑；输出结构化 JSON；完整中间结果报告
+- **v3.4.0** - 优化分镜脚本 prompt
+- **v3.3.0** - 移除抠图步骤
