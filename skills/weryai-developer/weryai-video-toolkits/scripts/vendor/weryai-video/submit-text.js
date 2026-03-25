@@ -3,7 +3,7 @@ import { formatApiError, formatNetworkError, isApiSuccess } from '../weryai-core
 import { buildBody, fetchModelRegistry, lookupModel, validateWithModel } from './model-registry.js';
 import { DEFAULT_MODEL, FALLBACK_DEFAULTS } from './models.js';
 import { normalizeVideoInput } from './normalize-input.js';
-import { coerceBool } from './utils.js';
+import { resolveDefaultGenerateAudio } from './audio-default.js';
 import { validateSubmitText } from './validators.js';
 
 export async function execute(input, ctx) {
@@ -62,8 +62,19 @@ export async function execute(input, ctx) {
     taskStatus: null,
     videos: null,
     balance: null,
+    requestSummary: buildRequestSummary(body),
     errorCode: null,
     errorMessage: null,
+  };
+}
+
+function buildRequestSummary(body) {
+  return {
+    model: body?.model ?? null,
+    duration: body?.duration ?? null,
+    aspectRatio: body?.aspect_ratio ?? null,
+    resolution: body?.resolution ?? null,
+    generateAudio: body?.generate_audio ?? null,
   };
 }
 
@@ -76,9 +87,7 @@ function buildFallbackBody(input, model) {
   const aspectRatio = input.aspect_ratio || input.aspectRatio;
   if (aspectRatio) body.aspect_ratio = aspectRatio;
   if (input.resolution) body.resolution = input.resolution;
-  if (input.generate_audio != null || input.generateAudio != null) {
-    body.generate_audio = coerceBool(input.generate_audio ?? input.generateAudio, false);
-  }
+  body.generate_audio = resolveDefaultGenerateAudio(input, model);
   if (input.negative_prompt || input.negativePrompt) {
     body.negative_prompt = input.negative_prompt || input.negativePrompt;
   }
