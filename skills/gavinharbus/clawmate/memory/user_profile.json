@@ -1,0 +1,18 @@
+{
+  "activePersona": "",
+  "relationshipStage": "acquaintance",
+  "daysSinceFirstChat": 0,
+  "firstChatDate": "",
+  "timezone": "",
+  "language": "",
+  "deliveryChannel": "",
+  "deliveryTo": "",
+  "moodLog": [],
+  "recentTopics": [],
+  "sleepPattern": {},
+  "mealPreferences": {},
+  "cronJobIds": [],
+  "lastInteraction": "",
+  "totalConversations": 0,
+  "conflictCooldown": false
+}
