@@ -1,10 +1,59 @@
 #!/bin/bash
-# Per-Agent Memory Compression Skill - Universal Installer v1.3.2
+# Per-Agent Memory Compression Skill - Universal Installer v1.3.6
 # Auto-discovers agents and registers compression tasks with full feature set
 
 set -e
 
-echo "🎯 Installing Per-Agent Memory Compression Skill (Universal) v1.2.1"
+# Default delivery configuration (can be overridden by CLI args or interactive prompts)
+DELIVERY_CHANNEL="${DELIVERY_CHANNEL:-dingtalk-connector}"
+DELIVERY_TO="${DELIVERY_TO:-}"
+DELIVERY_ACCOUNT="${DELIVERY_ACCOUNT:-}"
+
+# Parse command-line arguments for delivery preferences
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --channel)
+      DELIVERY_CHANNEL="$2"
+      shift 2
+      ;;
+    --to)
+      DELIVERY_TO="$2"
+      shift 2
+      ;;
+    --account)
+      DELIVERY_ACCOUNT="$2"
+      shift 2
+      ;;
+    *)
+      echo "⚠️  Unknown argument: $1"
+      shift
+      ;;
+  esac
+done
+
+# If not all required params provided and stdin is a TTY, offer interactive prompts
+if [[ -t 0 ]] && [[ -z "$DELIVERY_TO" ]]; then
+  echo "🔧 Interactive installation mode detected."
+  read -p "Enter delivery channel (default: $DELIVERY_CHANNEL): " input_channel
+  DELIVERY_CHANNEL="${input_channel:-$DELIVERY_CHANNEL}"
+  read -p "Enter recipient ID (--to): " input_to
+  DELIVERY_TO="${input_to:-$DELIVERY_TO}"
+  if [[ -n "$DELIVERY_TO" ]]; then
+    read -p "Enter account/bot ID (optional, --account): " input_account
+    DELIVERY_ACCOUNT="${input_account:-$DELIVERY_ACCOUNT}"
+  fi
+  echo ""
+fi
+
+# Validate required delivery config
+if [[ -z "$DELIVERY_TO" ]]; then
+  echo "❌ Delivery recipient (--to) is required for DingTalk connector."
+  echo "   Provide it via --to flag, or set DELIVERY_TO environment variable."
+  exit 1
+fi
+
+echo "🎯 Installing Per-Agent Memory Compression Skill (Universal) v1.3.6"
+echo "📦 Delivery: channel=$DELIVERY_CHANNEL, to=$DELIVERY_TO${DELIVERY_ACCOUNT:+ (account=$DELIVERY_ACCOUNT)}"
 echo ""
 
 # 1. Pre-checks
@@ -73,22 +122,40 @@ echo "$AGENTS" | while IFS='=' read -r agent_id workspace; do
   # Determine domain context
   DOMAIN="${DOMAIN_CONTEXT[$agent_id]:-$DOMAIN_CONTEXT[default]}"
   
+  # Determine delivery configuration
+  DELIVERY_CONFIG=""
+  if [[ -n "$DELIVERY_ACCOUNT" ]]; then
+    DELIVERY_CONFIG="--account $DELIVERY_ACCOUNT"
+  fi
+  
   # Two-step message setting to bypass CLI length limit
   # MSG_SHORT: concise but includes all essential logic (~500 chars)
   # MSG_FULL: complete reference (used via edit after add)
-  MSG_SHORT="AUTONOMOUS: Weekly per-agent memory consolidation for '$agent_id'.\n\nWorkspace: $workspace\nDAILY_NOTES_DIR: {WORKSPACE}/memory\nPROCESSED_DIR: {WORKSPACE}/memory/processed\nSTATE_FILE: {WORKSPACE}/memory/.compression_state.json\nTARGET_FILES: USER.md, IDENTITY.md, SOUL.md, MEMORY.md\n\nDOMAIN_CONTEXT: \"$DOMAIN\"\n\nEXECUTION:\n1) Pre-check paths; init state\n2) List YYYY-MM-DD.md (<7d, not processed), sort oldest, limit 5\n3) For each: read, extract factual info, dedupe (same date), append to targets with date header (### [YYYY-MM-DD])\n4) Move to processed/, update state\n5) Announce summary (processed, remaining)\n\nIMPORTANT: Extract ONLY factual/explicit info. Append only. Continue on error. Full spec in README.\n\nExecute without waiting."
+  MSG_SHORT="AUTONOMOUS: Weekly per-agent memory consolidation for '$agent_id'.\n\nWorkspace: $workspace\nDAILY_NOTES_DIR: {WORKSPACE}/memory\nPROCESSED_DIR: {WORKSPACE}/memory/processed\nSTATE_FILE: {WORKSPACE}/memory/.compression_state.json\nTARGET_FILES: USER.md, IDENTITY.md, SOUL.md, MEMORY.md\n\nDOMAIN_CONTEXT: \"$DOMAIN\"\n\nPURPOSE: Systematically preserve conversation history by extracting key information (decisions, constraints, principles, todos, metrics, people, context) from daily notes and solidifying into agent configuration files.\n\nEXECUTION:\n1) Pre-check paths; init state\n2) List YYYY-MM-DD.md (<7d, not processed), sort oldest, limit 5\n3) For each: read full content, apply COMPREHENSIVE EXTRACTION framework, dedupe (same date), append to targets with structured header (### [YYYY-MM-DD])\n4) Move to processed/, update state\n5) Announce summary (processed, remaining)\n\nIMPORTANT: Capture ALL key elements: decisions, constraints, principles, todos, metrics, people, context, problems/solutions. Do NOT oversimplify. Full extraction guide in README. Append only. Continue on error.\n\nExecute without waiting."
   
-  MSG_FULL="AUTONOMOUS: Weekly per-agent memory consolidation for '$agent_id'.\n\nWorkspace: $workspace\nDAILY_NOTES_DIR: {WORKSPACE}/memory\nPROCESSED_DIR: {WORKSPACE}/memory/processed\nSTATE_FILE: {WORKSPACE}/memory/.compression_state.json\nTARGET_FILES: USER.md, IDENTITY.md, SOUL.md, MEMORY.md\n\nDOMAIN_CONTEXT: \"$DOMAIN\"\n\nEXECUTION PLAN:\n1) Pre-check paths (workspace, memory/, targets)\n2) Load/init state (JSON: last_compressed_date, processed_notes set)\n3) List daily notes: memory/YYYY-MM-DD.md, date < today-7, not in processed_notes\n4) Sort by date (oldest first), limit to 5 notes per run\n5) For each note:\n   - Read note content\n   - Extract: preferences, decisions, personal info, facts\n   - Dedupe: if same date already in target, skip\n   - Append to targets:\n     * USER.md → under \"## Personal Info / Preferences\", header \"### [YYYY-MM-DD]\"\n     * IDENTITY.md → under \"## Notes\" (create if missing), header \"### [YYYY-MM-DD]\"\n     * SOUL.md → under \"## Principles\" or \"## Boundaries\" (contextual), header \"### [YYYY-MM-DD]\"\n     * MEMORY.md → under \"## Key Learnings\" (create if missing), format \"- [YYYY-MM-DD] <summary>\"\n6) Move processed note to memory/processed/ (create dir if needed)\n7) Update state: add note date to processed_notes, update last_compressed_date\n8) Save state file (JSON)\n9) Clean working buffer if needed\n10) Announce summary: processed count, remaining old notes count\n\nIMPORTANT:\n- Extract ONLY factual/explicit info from notes\n- Append only; never modify existing content\n- Continue on error (log and proceed to next note)\n- See skill README for full details and troubleshooting\n\nExecute without waiting."
+  MSG_FULL="AUTONOMOUS: Weekly per-agent memory consolidation for '$agent_id'.\n\nWorkspace: $workspace\nDAILY_NOTES_DIR: {WORKSPACE}/memory\nPROCESSED_DIR: {WORKSPACE}/memory/processed\nSTATE_FILE: {WORKSPACE}/memory/.compression_state.json\nTARGET_FILES: USER.md, IDENTITY.md, SOUL.md, MEMORY.md\n\nDOMAIN_CONTEXT: \"$DOMAIN\"\n\nDELIVERY: channel=$DELIVERY_CHANNEL, to=$DELIVERY_TO${DELIVERY_ACCOUNT:+ (account=$DELIVERY_ACCOUNT)}\n\nPURPOSE: Systematically preserve conversation history by extracting key information from daily notes and solidifying into agent configuration files. Goal: Capture decisions, constraints, principles, todos, metrics, people, context, problem-solution pairs, and user traits.\n\nEXECUTION PLAN:\n1) Pre-check paths (workspace, memory/, targets)\n2) Load/init state (JSON: last_compressed_date, processed_notes set)\n3) List daily notes: memory/YYYY-MM-DD.md, date < today-7, not in processed_notes\n4) Sort by date (oldest first), limit to 5 notes per run\n5) For each note:\n   a) Read full content (entire daily note)\n   b) Apply COMPREHENSIVE EXTRACTION FRAMEWORK (see below)\n   c) Dedupe: if note date already in target files, consider skip or refresh (skip for now)\n   d) Append to targets with structured header \"### [YYYY-MM-DD]\" and domain-tailored summary\n6) Move processed note to memory/processed/ (create dir if needed)\n7) Update state: add note date to processed_notes, update last_compressed_date\n8) Save state file (JSON)\n9) Announce summary: processed count, remaining old notes count\n\nRETRY & ALERT POLICY:\n- For transient errors (network, API rate limits, temporary model failures), implement auto-retry up to 3 times with exponential backoff (2s, 4s, 8s)\n- Log each retry attempt with error details\n- If all retries exhausted, record failure in state and continue to next note\n- At the end, if any notes failed completely, include failure count in the summary announcement\n- Do NOT retry on permanent errors (syntax, missing files) - log and skip\n\nCOMPREHENSIVE EXTRACTION FRAMEWORK:\nFor each daily note, extract and summarize:\n- **Key Decisions**: Major choices made, paths selected, alternatives rejected\n- **Constraints**: Time, budget, resource limits; rules/policies; hard boundaries\n- **Principles & Values**: Stated priorities, ethical positions, non-negotiable tenets\n- **Todos & Commitments**: Action items, promises, follow-ups (who/what/when)\n- **Metrics & Targets**: Numbers, dates, frequencies, KPIs, success criteria\n- **People & Roles**: Names, teams, stakeholders, relationships\n- **Context**: Project background, environmental factors, external conditions\n- **Problems & Solutions**: Obstacles encountered, resolutions attempted, outcomes\n- **Preferences**: Likes/dislikes, communication style, working habits\n- **User Traits & Self-Profile**: Personality traits, communication preferences, learning style, values, interests, strengths/weaknesses, self-descriptions (direct quotes or paraphrased)\n- **References**: Tools, systems, documents mentioned (capture names/IDs)\n\nFORMAT BY TARGET:\n- USER.md → \"## Personal Info / Preferences\" section, include User Traits prominently, use bullet points, include dates\n- IDENTITY.md → \"## Notes\" section, capture identity-relevant facts and context\n- SOUL.md → \"## Principles\" or \"## Boundaries\" (choose based on content), formalize as guidelines\n- MEMORY.md → \"## Key Learnings\" section, format: \"- [YYYY-MM-DD] Concise summary covering multiple categories above\"\n\nIMPORTANT:\n- DO NOT oversimplify. Capture substance, not just labels.\n- Preserve nuance: convert conversational language to structured statements.\n- If uncertain, include with low confidence marker? (No—only extract clear info)\n- Append only; never modify existing content (duplicate dates means content drift; instead, update by replacing? Actually instruction: dedupe by checking if date exists → skip. But we may want to refresh if note is newer. Keep simple: skip if same date already in targets.\n- Continue on error (log and proceed to next note)\n- See README for full details and examples\n\nExecute without waiting."
+  
+  # Build announce delivery arguments with channel/to/account
+  ANNOUNCE_ARGS="--announce"
+  if [[ -n "$DELIVERY_CHANNEL" ]]; then
+    ANNOUNCE_ARGS="$ANNOUNCE_ARGS --channel $DELIVERY_CHANNEL"
+  fi
+  if [[ -n "$DELIVERY_TO" ]]; then
+    ANNOUNCE_ARGS="$ANNOUNCE_ARGS --to $DELIVERY_TO"
+  fi
+  if [[ -n "$DELIVERY_ACCOUNT" ]]; then
+    ANNOUNCE_ARGS="$ANNOUNCE_ARGS --account $DELIVERY_ACCOUNT"
+  fi
   
   if openclaw cron add \
     --name "$TASK_NAME" \
     --cron "$CRON" \
     --tz "Asia/Shanghai" \
-    --agent "main" \
+    --agent "$agent_id" \
     --message "$MSG_SHORT" \
     --timeout 1200 \
     --session "isolated" \
-    --announce 2>&1; then
+    $ANNOUNCE_ARGS 2>&1; then
     
     # Get the job ID of the just-created task
     JOB_ID=$(openclaw cron list --json 2>&1 | jq -r --arg name "$TASK_NAME" '.jobs[] | select(.name == $name) | .id')

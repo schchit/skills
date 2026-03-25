@@ -6,6 +6,41 @@ All notable changes to this skill will be documented in this file.
 
 ---
 
+## [1.4.0] - 2026-03-20 (Delivery Flexibility & Resilience)
+
+### Added
+- **Interactive installer with delivery prompts**: `install.sh` now accepts `--channel`, `--to`, `--account` arguments to configure task announcement destination. If no arguments provided and running in an interactive terminal, installer prompts for these values.
+- **Automatic retry with exponential backoff**: Task execution now includes retry logic for transient failures (network issues, API rate limits, temporary model errors). Up to 3 attempts with delays 2s, 4s, 8s. Permanent errors are logged and skipped.
+- **Enhanced failure reporting**: If any notes fail extraction after all retries, the summary announcement includes a failure count, providing visibility into issues.
+- **Per-agent execution (security hardening)**: Changed `--agent "main"` to `--agent "$agent_id"` so each cron task runs under its respective agent (hrbp, parenting, decoration, etc.), achieving true isolation and minimizing privileges.
+- **Explicit binary dependencies**: `skill.json` now declares `"binaries": ["openclaw", "jq"]` to reflect actual installer requirements.
+
+### Technical Details
+- Delivery configuration is embedded in the task message and applied to the cron job's announce delivery parameters.
+- Retry logic is part of the execution plan in MSG_FULL; agents will automatically retry failed note processing.
+- State tracking remains unchanged; failures do not block subsequent notes.
+- Per-agent execution eliminates the previous central-executor model; each task operates only on its own workspace, reducing blast radius and aligning with the `workspace-isolation` capability.
+- The `jq` binary is required for parsing `openclaw agents list --json` during agent discovery.
+
+---
+
+<a name="chinese-1-4-0"></a>( Chinese )
+### 新增（Added）
+- **交互式安装器**：`install.sh` 现在接受 `--channel`、`--to`、`--account` 参数来配置任务公告的目标通道和接收者。如果未提供参数且运行在交互式终端中，安装程序会提示输入这些值。
+- **自动重试机制**：任务执行现在包含针对 transient 失败（网络问题、API 速率限制、临时模型错误）的重试逻辑。最多 3 次尝试，延迟分别为 2s、4s、8s（指数退避）。永久性错误将被记录并跳过。
+- **增强的失败报告**：如果任何笔记在所有重试后仍失败，摘要公告将包含失败计数，提供问题可见性。
+- **Per-agent 执行（安全加固）**：将 `--agent "main"` 改为 `--agent "$agent_id"`，使每个 cron 任务在对应代理（hrbp、parenting、decoration 等）上下文中运行，实现真正隔离并最小化权限。
+- **显式二进制依赖声明**：`skill.json` 新增 `"binaries": ["openclaw", "jq"]`，反映实际安装器依赖。
+
+### 技术细节（Technical Details）
+- 交付配置嵌入任务消息中，并应用于 cron 作业的 announce 投递参数。
+- 重试逻辑是 MSG_FULL 执行计划的一部分；代理将自动重试失败的笔记处理。
+- 状态跟踪保持不变；失败不会阻塞后续笔记。
+- Per-agent 执行消除了之前的中央执行器模型；每个任务仅操作自身 workspace，缩小爆炸半径，并与 `workspace-isolation` 能力保持一致。
+- `jq` 二进制是代理发现阶段解析 `openclaw agents list --json` 所必需的。
+
+---
+
 ## [1.3.4] - 2026-03-19 (Critical Bug Fix: STATE_FILE Variable & Task Reliability)
 
 ### Fixed
@@ -26,6 +61,19 @@ All notable changes to this skill will be documented in this file.
 1. **Re-run install script**: `./install.sh` to update all existing tasks with corrected variable.
 2. **Monitor** next scheduled runs (starting 2026-03-21) to confirm all 5 tasks complete successfully.
 3. **Optional**: Increase timeout to 6000s for larger workspaces (already applied in previous manual fixes).
+
+### Enhanced
+- **Extraction framework expansion**: Added **User Traits & Self-Profile** category to capture personality traits, communication preferences, learning style, values, interests, strengths/weaknesses, and self-descriptions.
+- **USER.md format update**: Extraction now explicitly includes User Traits prominently in the `## Personal Info / Preferences` section.
+- **Comprehensiveness**: Extraction categories increased from 10 to 11, ensuring user characteristics are systematically preserved alongside decisions, constraints, principles, todos, metrics, people, context, problems, preferences, and references.
+
+### Impact
+- Agents will now solidify a more holistic profile of the user, including self-perceived traits and communication style.
+- This addresses the observation that extracted content was too sparse; the enhanced framework captures more nuanced user information.
+- All tasks (hrbp, parenting, decoration, memory_master, main) updated to include new category in their execution plan.
+
+### Note
+Existing installations should re-run `./install.sh` to apply the enhanced extraction framework to their tasks.
 
 ---
 
@@ -411,7 +459,6 @@ Simply run `./install.sh` after placing the skill in `/root/.openclaw/workspace/
 | CLI length workaround | ❌ | ✅ | ✅ | ✅ |
 | No hardcoded credentials | ❌ | ❌ | ❌ | ✅ |
 
-( Chinese )
 ### 功能对比
 
 | 功能 | 1.1.0 | 1.2.2 | 1.2.3-1.2.6 | 1.3.0+ |

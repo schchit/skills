@@ -4,30 +4,137 @@
 
 # Per-Agent Memory Compression Skill (Universal)
 
-**Version**: 1.3.4  
+**Version**: 1.4.0  
 **Purpose**: Zero-config deployment of weekly memory consolidation for multi-agent OpenClaw systems  
 **Created**: 2026-03-18  
 **Compatibility**: OpenClaw 2026.3.8+  
-**Status**: ✅ Production Ready (tested with real workloads)
+**Status**: ✅ Production Ready (tested with real workloads, includes User Traits extraction)
 
 ---
 
-## 🎉 Latest Update (v1.3.4) - Critical Bug Fix
+## 🎉 Latest Update (v1.4.0) - Delivery Flexibility & Resilience
 
-This release fixes a **showstopper bug** in v1.3.3 and earlier where tasks would hang indefinitely due to case-sensitive environment variable substitution failure.
+This release adds **configurable delivery** and **automatic retry** capabilities, making the skill more adaptable to multi-channel environments and resilient to transient failures.
 
-### What Was Broken
-- `STATE_FILE={workspace}` used lowercase `{workspace}` which OpenClaw does **not** substitute (it's case-sensitive)
-- Result: tasks could not create `.compression_state.json`, hung at step 2, and eventually timed out after 3600s
-- Affected **all** per_agent_compression_* tasks created before v1.3.4
+### What's New
 
-### What's Fixed
-- All task messages now use uppercase `{WORKSPACE}` consistently
-- Install script (`install.sh`) corrected to generate proper variable names
-- Verified successful completion with per_agent_compression_hrbp (9 min runtime, 3 notes processed)
+**1. Interactive Installer with Delivery Prompts**
+- Installer now accepts `--channel`, `--to`, `--account` arguments to control where task summaries are sent.
+- If no arguments provided and running in an interactive terminal, you'll be prompted to enter these values.
+- Eliminates hardcoded defaults; adapts to your DingTalk/Telegram/WeCom setup.
 
-### Action Required
-**Existing users must re-run `./install.sh`** to update all tasks with the corrected variable. This will not duplicate tasks; it only edits existing ones to fix the message.
+**2. Automatic Retry with Exponential Backoff**
+- Task execution includes retry logic for transient failures (network glitches, API rate limits, temporary model errors).
+- Up to 3 attempts with delays 2s → 4s → 8s.
+- Permanent errors are logged and skipped; the task continues with the next note.
+
+**3. Enhanced Failure Reporting**
+- If any notes fail after all retries, the summary announcement includes a failure count, giving you visibility into issues.
+
+### Technical Details
+- Delivery configuration is embedded in the task message and applied to the cron job's announce parameters.
+- Retry logic is part of the execution plan in MSG_FULL; no changes to the core compression algorithm.
+- State tracking unchanged; failures do not block subsequent notes.
+
+### Migration
+Existing users should **re-run `./install.sh`** to update their tasks with the new delivery configuration and retry policy. The script will:
+- Prompt for delivery preferences (or use existing env args)
+- Re-create tasks with updated message (including retry instructions)
+- Preserve existing state files and processed notes
+
+This is a **non-breaking** update; your compressed notes remain safe.
+
+---
+
+## [Older Updates]
+
+---
+
+## 🎉 Previously: v1.3.5 - User Traits Enhancement
+
+Added **User Traits & Self-Profile** extraction category to capture personality, communication style, values, interests, strengths/weaknesses, and self-descriptions. This builds a richer user profile over time.
+
+---
+
+## 🎉 Previously: v1.3.4 - Critical Bug Fix
+
+Fixed a **showstopper bug** where tasks would hang indefinitely due to `{workspace}` (lowercase) not being substituted. All tasks now use `{WORKSPACE}` (uppercase). Verified successful completion.
+
+---
+
+## 🆕 Latest Enhancement (v1.3.5) - User Traits & Self-Profile Extraction
+
+Based on user feedback, the extraction framework has been expanded to better capture user characteristics.
+
+### What's New
+- **New extraction category**: **User Traits & Self-Profile**
+  - Captures personality traits, communication preferences, learning style, values, interests, strengths/weaknesses, and self-descriptions (direct quotes or paraphrased)
+  - This information is prominently saved to `USER.md` under `## Personal Info / Preferences`
+- **Framework growth**: Comprehensive Extraction Framework now has **11 categories** (up from 10)
+- **Better profiling**: Agents can build a more complete picture of the user's personality and preferences over time
+
+### Why It Matters
+- Previously extracted content was too sparse; user traits were not systematically captured
+- Now agents can remember not just *what* you did, but *who you are* and *how you prefer to communicate*
+- Enables more personalized interactions based on accumulated self-profile
+
+### Updated Extraction Categories
+1. Key Decisions
+2. Constraints
+3. Principles & Values
+4. Todos & Commitments
+5. Metrics & Targets
+6. People & Roles
+7. Context
+8. Problems & Solutions
+9. Preferences
+10. **User Traits & Self-Profile** ← NEW
+11. References
+
+### Migration
+Re-run `./install.sh` to update existing tasks with the enhanced extraction framework. No data loss; old compressed notes remain in `processed/` and new runs will use the 11-category framework.
+
+---
+
+## [Older Updates]
+
+---
+
+## 📦 Publishing & Release Process
+
+This skill follows the **Skill Release SOP** (see `SKILL_RELEASE_SOP.md`) for all official releases.
+
+### For Maintainers: Releasing a New Version
+
+```bash
+# 1. Update files
+# - CHANGELOG.md (add new entry at top, bilingual)
+# - README.md (version header)
+# - skill.json (version)
+# - (optional) Add release notes in scripts/release.sh
+
+# 2. Run automated release script
+cd /root/.openclaw/workspace/skills/per-agent-compression-universal
+./scripts/release.sh X.Y.Z "Brief changelog entry"
+
+# 3. Follow prompts
+# - Script will verify security, run tests, commit, tag, publish to ClawHub
+# - It will create a draft GitHub Release (requires gh CLI and repo permissions)
+# - It will sync local deploy folder
+
+# 4. Review and publish GitHub draft manually
+# https://github.com/your-org/your-repo/releases/tag/vX.Y.Z
+
+# 5. Notify users if needed
+```
+
+**Prerequisites**:
+- `clawhub` CLI installed and authenticated
+- `gh` CLI installed and authenticated (for GitHub releases)
+- Git repository initialized (if using GitHub)
+- All security scans must pass before release
+
+**See**: `SKILL_RELEASE_SOP.md` for complete checklist, troubleshooting, and compliance notes.
 
 ---
 
@@ -54,7 +161,7 @@ This release fixes a **showstopper bug** in v1.3.3 and earlier where tasks would
 | Feature | Description |
 |---------|-------------|
 | **Auto-Discovery** | Automatically finds all agents with workspaces via `openclaw agents list` |
-| **Per-Agent Isolation** | Each agent compresses only its own `memory/` directory and updates its own config files |
+| **Per-Agent Isolation** | Each cron task runs under its respective agent (`--agent "$agent_id"`) and operates only on that agent's workspace, ensuring strict separation of concerns and minimal permissions. |
 | **State Persistence** | `.compression_state.json` tracks processed notes, last run time, and status |
 | **Deduplication** | Before appending, checks if the note's date already exists in target files |
 | **Moved-File Marking** | Processed notes are moved to `memory/processed/` for clear separation |
@@ -67,6 +174,15 @@ This release fixes a **showstopper bug** in v1.3.3 and earlier where tasks would
 ---
 
 ## Installation
+
+### Prerequisites
+
+Before running the installer, ensure the following tools are available on your system:
+
+- **OpenClaw CLI** (`openclaw`) — for managing agents and cron jobs
+- **jq** — for JSON parsing during agent discovery
+
+Both should be in your PATH. The skill requires OpenClaw version `>=2026.3.8`.
 
 ### Quick Start
 
@@ -105,7 +221,7 @@ openclaw cron add \
   --name "per_agent_compression_<agent_id>" \
   --cron "<cron_expr>" \
   --tz "Asia/Shanghai" \
-  --agent "main" \
+  --agent "$agent_id" \
   --message "<concise_execution_plan>" \
   --timeout 1200 \
   --session "isolated" \
@@ -126,25 +242,43 @@ openclaw cron edit per_agent_compression_<agent_id> --message "$(cat FULL_DETAIL
 ```
 
 ### 3. Execution
-When the cron triggers, the `main` agent executes the task instructions:
+When the cron triggers, the designated agent (e.g., `hrbp`, `parenting`, etc.) executes the task instructions within its own workspace:
 
 1. **Pre-check** - Verifies workspace, `memory/` dir, target files exist
-2. **Load state** - Reads `{workspace}/memory/.compression_state.json` (or initializes)
+2. **Load state** - Reads `{WORKSPACE}/memory/.compression_state.json` (or initializes)
 3. **List notes** - Finds `memory/*.md` matching `YYYY-MM-DD.md`, filters date < today-7, excludes already processed
 4. **Sort & limit** - Oldest first, max 5 notes per run
-5. **Process each note**:
-   - Read full content
-   - Extract: user preferences, key decisions, personal info (domain-specific)
-   - Dedupe: skip if target files already have entry for this note date
-   - Append to:
-     - `USER.md` → under `## Personal Info / Preferences`, header `### [YYYY-MM-DD]`
-     - `IDENTITY.md` → under `## Notes` (create if missing), header `### [YYYY-MM-DD]`
-     - `SOUL.md` → under `## Principles` or `## Boundaries` as appropriate, header `### [YYYY-MM-DD]`
-     - `MEMORY.md` → under `## Key Learnings` (create if missing), format `- [YYYY-MM-DD] <summary>`
-   - Move note file to `{workspace}/memory/processed/`
-   - Update state: `processed_notes.append(filename)`, `last_compressed_date = note_date`
-6. **Finalize** - Save state (`last_run_at`, `status="completed"`), clean working buffer
+5. **Process each note** using **Comprehensive Extraction Framework**:
+   - Read full daily note content (entire conversation history)
+   - Extract **11 categories** of key information:
+     - **Key Decisions**: Major choices, selected paths, rejected alternatives
+     - **Constraints**: Time, budget, resource limits; rules/policies; hard boundaries
+     - **Principles & Values**: Stated priorities, ethical positions, non-negotiable tenets
+     - **Todos & Commitments**: Action items, promises, follow-ups (who/what/when)
+     - **Metrics & Targets**: Numbers, dates, frequencies, KPIs, success criteria
+     - **People & Roles**: Names, teams, stakeholders, relationships
+     - **Context**: Project background, environmental factors, external conditions
+     - **Problems & Solutions**: Obstacles encountered, resolutions attempted, outcomes
+     - **Preferences**: Likes/dislikes, communication style, working habits
+     - **User Traits & Self-Profile**: Personality traits, communication preferences, learning style, values, interests, strengths/weaknesses, self-descriptions
+     - **References**: Tools, systems, documents mentioned (capture names/IDs)
+   - Format domain-tailored summary (see below)
+   - Dedupe: skip if target files already have entry for this note date (preserve first occurrence; later runs will skip)
+   - Append to target files under appropriate sections with header `### [YYYY-MM-DD]`
+   - Move note file to `{WORKSPACE}/memory/processed/`
+   - Update state: add note date to `processed_notes`, set `last_compressed_date`
+6. **Save state** - Write `.compression_state.json`
 7. **Announce** - Send summary to DingTalk: agent, count processed, remaining old notes, any errors
+
+**Target File Mapping** (where extracted content goes):
+- `USER.md` → `## Personal Info / Preferences` (bullet points, include dates)
+- `IDENTITY.md` → `## Notes` (identity-relevant facts and context)
+- `SOUL.md` → `## Principles` or `## Boundaries` (based on content) - formalize as guidelines
+- `MEMORY.md` → `## Key Learnings` (format: `- [YYYY-MM-DD] Concise summary covering multiple categories`)
+
+**Note**: The task deliberately does NOT touch `working-buffer.md` or any other files outside its scope. It focuses solely on memory compression.
+
+**Key Design Principle**: This skill's sole purpose is to **solidify** daily conversation history into permanent configuration. It does not perform WAL cleanup, validation, or any other maintenance tasks. Those are handled by separate autonomous jobs.
 
 ---
 

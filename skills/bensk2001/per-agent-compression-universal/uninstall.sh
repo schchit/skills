@@ -6,7 +6,7 @@ set -e
 
 echo "🗑️  Uninstalling Per-Agent Memory Compression Skill..."
 
-TASKS=$(openclaw cron list --json 2>/dev/null | jq -r '.jobs[] | select(.name | test("^peragent_compression_")) | .id')
+TASKS=$(openclaw cron list --json 2>/dev/null | jq -r '.jobs[] | select(.name | test("^per_agent_compression_")) | .id')
 
 if [ -z "$TASKS" ]; then
   echo "ℹ️  No per-agent compression tasks found. Already uninstalled?"
