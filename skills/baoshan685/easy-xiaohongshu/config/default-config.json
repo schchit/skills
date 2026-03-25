@@ -9,11 +9,16 @@
   "hashtag_count": 10,
   "output_dir": "./generated_images",
   "api": {
-    "api_key": "",
+    "key": "",
     "base_url": "https://z.3i0.cn/v1beta",
     "model": "gemini-3.1-flash-image-preview",
     "timeout_seconds": 120,
     "max_retries": 3
+  },
+  "user_preferences": {
+    "account_type": "科技博主",
+    "content_direction": "AI 工具、数码测评",
+    "target_audience": "职场人士、效率追求者"
   },
   "mcp": {
     "url": "http://localhost:18060/mcp",
