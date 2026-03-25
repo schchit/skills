@@ -11,9 +11,9 @@
 **⚠️ 环境要求**：需要有图形界面环境（桌面系统），不支持无界面服务器（Linux SSH/Docker 等）。
 
 **流程**：
-- 自动唤起浏览器打开网盘授权页面
-- 用户在网盘页面中完成登录和授权
-- 授权完成后自动完成 token 交换
+- 启动本地 HTTP 服务器（端口 19526）等待回调
+- 唤起网盘页面，用户在网盘页面中完成登录和授权
+- 用户授权后网盘自动回调，MCP 用 code 换取 access_token
 - 5 分钟超时
 - 如已有有效登录，返回当前账号信息
 
@@ -67,7 +67,7 @@
 |------|------|------|------|
 | spaceId | string | 是 | 目标空间 ID（从 list_authorized_spaces 中获取） |
 
-切换后即可对目标空间进行文件操作。
+切换后自动创建 SMHClient 并配置好 libraryId、spaceId、accessToken。
 
 **重要**：如果目标空间不在 `list_authorized_spaces` 返回的列表中，需重新调用 `login` 唤起网盘页面授权该空间。
 
@@ -94,8 +94,10 @@
 | content | string | 否 | 直接提供文件内容（与 localFilePath 二选一） |
 | conflictStrategy | enum | 否 | 冲突策略：`ask`/`rename`(默认)/`overwrite` |
 
-- **localFilePath 模式**：上传本地文件到云端
-- **content 模式**：直接将文本内容作为文件上传
+- **localFilePath 模式**：使用 `SMHClient.createUploadTask()` + 事件驱动完成上传
+- **content 模式**：使用 `SMHClient.file.simpleUploadFile()` 接口
+  - 返回 200 + confirmKey 表示需要继续处理
+  - 返回 201 表示秒传成功
 
 ### download_file
 
@@ -108,8 +110,8 @@
 | historyId | string | 否 | 历史版本 ID（获取特定版本） |
 | purpose | enum | 否 | 用途：`download`/`preview` |
 
-- **localFilePath 模式**：直接下载文件到本地指定路径
-- **无 localFilePath**：返回带时效性的下载 URL
+- **localFilePath 模式**：使用 `SMHClient.createDownloadTask()` + 事件驱动下载到本地
+- **无 localFilePath**：调用 `SMHClient.file.downloadFile()` 获取带时效性的下载 URL
 
 ### file_info
 
@@ -182,6 +184,8 @@
 | `TCED_PAN_DOMAIN` | 网盘域名 | `https://pan.tencent.com` |
 | `TCED_BASE_PATH` | API 基础路径 | `https://api.tencentsmh.cn` |
 
+> **⚠️ 安全说明**：这两个环境变量决定了所有 API 请求（包含 OAuth2 Token）的发送目标。**必须**在 `mcp.json` 的 `env` 中显式配置为官方生产地址，不要指向非可信域名。配置的值会在启动时持久化到本地凭据文件 `~/.tced-mcp/auth.json`。
+
 ---
 
 ## 错误处理
@@ -195,7 +199,7 @@
 | 刷新令牌已过期 | RefreshToken 也已过期 | 重新调用 login 授权 |
 | 本地文件不存在 | localFilePath 路径错误 | 检查本地文件路径 |
 | 文件不存在 | 云端路径错误 | 检查文件路径 |
-| 端口被占用 | 登录服务端口被其他程序占用 | 关闭占用程序后重试，或刷新 MCP 连接 |
+| 端口已被占用 | 端口 19526 被其他程序占用 | 关闭占用端口的程序或等待占用释放 |
 | 授权超时 | 5 分钟内未完成授权 | 重新调用 login |
 | 权限不足 | 无操作权限 | 确认授权范围包含所需权限 |
 
@@ -203,20 +207,20 @@
 
 ## 故障排查
 
-### 授权登录失败
+### 端口 19526 被占用
 
-如遇到登录或授权错误：
+`login` 启动本地 HTTP 服务器监听 OAuth2 回调，如端口被占用：
 
-1. 确认 `mcp.json` 中 `env` 配置的域名正确
-2. 刷新 MCP 连接，重新调用 `login`
-3. 确认网络可以访问 `pan.tencent.com`
+1. 查找占用进程：`lsof -i :19526`（macOS/Linux）或 `netstat -ano | findstr 19526`（Windows）
+2. 如果是之前未关闭的 tced-mcp 进程，终止该进程后重试
+3. 如果是其他程序占用，关闭该程序或等待其释放端口
 
 ### OAuth2 回调超时
 
 `login` 调用后 5 分钟内未完成授权会超时：
 
 1. 确认浏览器已正常打开网盘授权页面
-2. 检查网络连接是否正常
+2. 检查网络连接是否正常（需能访问 `pan.tencent.com`）
 3. 确认已在网盘页面点击「同意授权」
 4. 超时后直接重新调用 `login` 重试
 
@@ -225,8 +229,8 @@
 AccessToken 过期时自动通过 RefreshToken 刷新。如刷新失败：
 
 1. RefreshToken 已过期 → 重新调用 `login` 授权
-2. 网络异常 → 检查网络后重试，系统会自动重试刷新
-3. 调用 `current_account` 查看 Token 状态
+2. 网络异常导致刷新请求失败 → 检查网络后重试操作，系统会自动重试刷新
+3. 调用 `current_account` 查看 Token 状态，确认是否需要重新授权
 
 ### 文件操作返回错误
 

@@ -5,18 +5,17 @@
 
 set -e
 
-# ========== 配置 ==========
-
-# Skill 最新版下载地址（发布后替换为实际地址）
-# 支持：npm 包附件、GitHub Release、COS 等
-SKILL_DOWNLOAD_URL="https://registry.npmjs.org/tced-mcp/-/tced-mcp-latest.tgz"
-SKILL_VERSION_CHECK_URL=""  # 可选：版本检查 API
-
 # 颜色
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
+
+# 官方生产域名（固定，不可覆盖）
+OFFICIAL_PAN_DOMAIN="https://pan.tencent.com"
+OFFICIAL_API_BASE_PATH="https://api.tencentsmh.cn"
+# 推荐锁定的版本号
+RECOMMENDED_VERSION="1.0.2"
 
 ok()   { echo -e "${GREEN}✓${NC} $1"; }
 fail() { echo -e "${RED}✗${NC} $1"; }
@@ -69,6 +68,9 @@ check_tced_mcp_package() {
     local ver
     ver=$(npm view tced-mcp version 2>/dev/null)
     ok "tced-mcp v${ver} 已发布到 npm"
+    if [ "$ver" != "$RECOMMENDED_VERSION" ]; then
+      warn "推荐锁定版本 ${RECOMMENDED_VERSION}，当前最新版为 ${ver}。升级前请查看 changelog。"
+    fi
     return 0
   else
     fail "tced-mcp 未在 npm 上找到"
@@ -116,15 +118,65 @@ check_gui_environment() {
 }
 
 check_env_vars() {
+  # TCED_PAN_DOMAIN 检查
   if [ -n "$TCED_PAN_DOMAIN" ]; then
-    ok "TCED_PAN_DOMAIN = $TCED_PAN_DOMAIN"
+    if [ "$TCED_PAN_DOMAIN" = "$OFFICIAL_PAN_DOMAIN" ]; then
+      ok "TCED_PAN_DOMAIN = $TCED_PAN_DOMAIN (官方地址 ✓)"
+    else
+      fail "TCED_PAN_DOMAIN = $TCED_PAN_DOMAIN (非官方地址！应为 $OFFICIAL_PAN_DOMAIN)"
+      echo "    ⚠️  非官方域名可能导致 Token 泄露，请确认是否为可信的私有化部署地址。"
+    fi
   else
-    warn "TCED_PAN_DOMAIN 未设置（使用默认 https://pan.tencent.com）"
+    warn "TCED_PAN_DOMAIN 未设置（建议在 mcp.json 的 env 中显式配置为 $OFFICIAL_PAN_DOMAIN）"
   fi
+  # TCED_BASE_PATH 检查
   if [ -n "$TCED_BASE_PATH" ]; then
-    ok "TCED_BASE_PATH = $TCED_BASE_PATH"
+    if [ "$TCED_BASE_PATH" = "$OFFICIAL_API_BASE_PATH" ]; then
+      ok "TCED_BASE_PATH = $TCED_BASE_PATH (官方地址 ✓)"
+    else
+      fail "TCED_BASE_PATH = $TCED_BASE_PATH (非官方地址！应为 $OFFICIAL_API_BASE_PATH)"
+      echo "    ⚠️  非官方域名可能导致 Token 泄露，请确认是否为可信的私有化部署地址。"
+    fi
   else
-    warn "TCED_BASE_PATH 未设置（使用默认 https://api.tencentsmh.cn）"
+    warn "TCED_BASE_PATH 未设置（建议在 mcp.json 的 env 中显式配置为 $OFFICIAL_API_BASE_PATH）"
+  fi
+  return 0
+}
+
+check_auth_file() {
+  local auth_file="$HOME/.tced-mcp/auth.json"
+  if [ -f "$auth_file" ]; then
+    ok "凭据文件存在: $auth_file"
+    # 检查文件权限
+    local perms
+    if [[ "$OSTYPE" == "darwin"* ]] || [[ "$OSTYPE" == "linux"* ]]; then
+      perms=$(stat -f '%Lp' "$auth_file" 2>/dev/null || stat -c '%a' "$auth_file" 2>/dev/null)
+      if [ "$perms" = "600" ]; then
+        ok "文件权限 $perms (仅所有者可读写 ✓)"
+      else
+        warn "文件权限 $perms (建议设置为 600: chmod 600 $auth_file)"
+      fi
+    fi
+    # 检查域名配置是否指向官方地址
+    if command -v python3 &>/dev/null; then
+      local api_base pan_domain
+      api_base=$(python3 -c "import json; d=json.load(open('$auth_file')); print(d.get('apiBasePath',''))" 2>/dev/null)
+      pan_domain=$(python3 -c "import json; d=json.load(open('$auth_file')); print(d.get('panDomain',''))" 2>/dev/null)
+      if [ -n "$api_base" ] && [ "$api_base" != "$OFFICIAL_API_BASE_PATH" ]; then
+        fail "auth.json 中 apiBasePath = $api_base (非官方地址！)"
+        echo "    应为 $OFFICIAL_API_BASE_PATH。请在 mcp.json 中配置 env.TCED_BASE_PATH 后重启 MCP 进程。"
+      elif [ -n "$api_base" ]; then
+        ok "auth.json 中 apiBasePath 指向官方地址 ✓"
+      fi
+      if [ -n "$pan_domain" ] && [ "$pan_domain" != "$OFFICIAL_PAN_DOMAIN" ]; then
+        fail "auth.json 中 panDomain = $pan_domain (非官方地址！)"
+        echo "    应为 $OFFICIAL_PAN_DOMAIN。请在 mcp.json 中配置 env.TCED_PAN_DOMAIN 后重启 MCP 进程。"
+      elif [ -n "$pan_domain" ]; then
+        ok "auth.json 中 panDomain 指向官方地址 ✓"
+      fi
+    fi
+  else
+    warn "凭据文件不存在: $auth_file（首次 login 后自动创建）"
   fi
   return 0
 }
@@ -144,86 +196,33 @@ do_check() {
   check_tced_mcp_package || true
   check_tced_mcp_global || true
   echo ""
-  echo "--- 环境变量（可选） ---"
+  echo "--- 环境变量 ---"
   check_env_vars || true
+  echo ""
+  echo "--- 凭据与配置 ---"
+  check_auth_file || true
   echo ""
   echo "--- MCP 客户端配置 ---"
   echo ""
   echo "将以下配置添加到你的 MCP 客户端配置文件（mcp.json）中："
   echo ""
-  cat <<'EOF'
-{
-  "mcpServers": {
-    "tced-mcp": {
-      "command": "npx",
-      "args": ["-y", "tced-mcp@1.0.1"],
-      "env": {
-        "TCED_PAN_DOMAIN": "https://pan.tencent.com",
-        "TCED_BASE_PATH": "https://api.tencentsmh.cn"
-      }
-    }
-  }
-}
-EOF
+  echo '{'
+  echo '  "mcpServers": {'
+  echo '    "tced-mcp": {'
+  echo "      \"command\": \"npx\","
+  echo "      \"args\": [\"-y\", \"tced-mcp@${RECOMMENDED_VERSION}\"],"
+  echo '      "env": {'
+  echo "        \"TCED_PAN_DOMAIN\": \"${OFFICIAL_PAN_DOMAIN}\","
+  echo "        \"TCED_BASE_PATH\": \"${OFFICIAL_API_BASE_PATH}\""
+  echo '      }'
+  echo '    }'
+  echo '  }'
+  echo '}'
   echo ""
-  echo "安全建议: 建议使用锁定版本号，升级前查看 npm 包变更记录"
-  echo "  https://www.npmjs.com/package/tced-mcp"
+  echo "⚠️  建议锁定具体版本号（当前推荐 ${RECOMMENDED_VERSION}），不要使用 @latest。"
+  echo "⚠️  必须配置 env 字段，确保 API 请求指向官方可信端点。"
   echo ""
   echo "然后使用 MCP 工具调用 login 进行 OAuth2 授权即可开始使用。"
-}
-
-# ========== 更新 MCP 缓存 ==========
-
-do_update_mcp() {
-  echo "=== 更新 tced-mcp ==="
-  echo ""
-
-  # 1. 检查 npm 上最新版本
-  echo "--- 检查最新版本 ---"
-  local latest_ver
-  latest_ver=$(npm view tced-mcp version 2>/dev/null || echo "unknown")
-  echo "npm 最新版本: tced-mcp@${latest_ver}"
-
-  # 2. 清除 npx 缓存
-  echo ""
-  echo "--- 清除 npx 缓存 ---"
-  npm cache clean --force 2>/dev/null && ok "npm 缓存已清除" || warn "缓存清除失败（不影响使用）"
-
-  # 3. 检查本地认证文件是否存在（不读取内容）
-  echo ""
-  echo "--- 检查本地配置 ---"
-  local auth_file="$HOME/.tced-mcp/auth.json"
-  if [ -f "$auth_file" ]; then
-    ok "本地认证文件存在: ~/.tced-mcp/auth.json"
-    echo "  提示: 域名配置以 mcp.json 中的 env 字段为准"
-  else
-    warn "本地认证文件不存在（首次登录后会自动创建）"
-  fi
-
-  echo ""
-  echo "--- 推荐的 mcp.json 配置 ---"
-  echo ""
-  echo "将版本号更新为最新版本后刷新 MCP 连接："
-  echo ""
-  cat <<EOF
-{
-  "mcpServers": {
-    "tced-mcp": {
-      "command": "npx",
-      "args": ["-y", "tced-mcp@${latest_ver}"],
-      "env": {
-        "TCED_PAN_DOMAIN": "https://pan.tencent.com",
-        "TCED_BASE_PATH": "https://api.tencentsmh.cn"
-      }
-    }
-  }
-}
-EOF
-  echo ""
-  echo "安全建议: 升级前请查看 npm 包页面确认变更内容"
-  echo "  https://www.npmjs.com/package/tced-mcp"
-  echo ""
-  ok "更新完成！请刷新 MCP 连接使其生效。"
 }
 
 # ========== 主入口 ==========
@@ -232,32 +231,18 @@ case "$1" in
   --check|--check-only)
     do_check
     ;;
-  --update-mcp)
-    do_update_mcp
-    ;;
   *)
-    echo "腾讯云企业网盘 TCED Skill 工具"
+    echo "腾讯云企业网盘 TCED Skill 环境检查工具"
     echo ""
     echo "用法:"
-    echo "  $0 --check         检查环境状态和 tced-mcp 可用性"
-    echo "  $0 --update-mcp    更新 tced-mcp（清除缓存、检查配置）"
+    echo "  $0 --check"
+    echo "    检查环境状态和 tced-mcp 可用性"
     echo ""
-    echo "tced-mcp 已发布到 npm，在 MCP 客户端配置中添加以下配置即可："
+    echo "安装方式:"
+    echo "  tced-mcp 已发布到 npm，无需手动安装。"
+    echo "  在 MCP 客户端配置文件中添加以下配置即可："
     echo ""
-    cat <<'EOF'
-{
-  "mcpServers": {
-    "tced-mcp": {
-      "command": "npx",
-      "args": ["-y", "tced-mcp@1.0.1"],
-      "env": {
-        "TCED_PAN_DOMAIN": "https://pan.tencent.com",
-        "TCED_BASE_PATH": "https://api.tencentsmh.cn"
-      }
-    }
-  }
-}
-EOF
+    echo "  {\"mcpServers\":{\"tced-mcp\":{\"command\":\"npx\",\"args\":[\"-y\",\"tced-mcp@${RECOMMENDED_VERSION}\"],\"env\":{\"TCED_PAN_DOMAIN\":\"${OFFICIAL_PAN_DOMAIN}\",\"TCED_BASE_PATH\":\"${OFFICIAL_API_BASE_PATH}\"}}}}"
     echo ""
     ;;
 esac

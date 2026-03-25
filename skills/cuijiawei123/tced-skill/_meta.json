@@ -1,11 +1,17 @@
 {
   "owner": "cuijiawei123",
   "slug": "tced-skill",
-  "displayName": "腾讯云企业网盘 TCED",
+  "displayName": "☁️ TCED Cloud Drive | 腾讯云企业网盘",
   "latest": {
-    "version": "0.3.0",
-    "publishedAt": 1773907243168,
-    "commit": "https://github.com/openclaw/skills/commit/06ac74d4c3746a9c3133ab99324334243ed6319f"
+    "version": "1.0.0",
+    "publishedAt": 1774338527465,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.3.0",
+      "publishedAt": 1773907243168,
+      "commit": "https://github.com/openclaw/skills/commit/06ac74d4c3746a9c3133ab99324334243ed6319f"
+    }
+  ]
 }
