@@ -1,0 +1,11 @@
+{
+  "owner": "orzinfo",
+  "slug": "product-planning-assistant",
+  "displayName": "产品规划助手",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1774153988433,
+    "commit": null
+  },
+  "history": []
+}
