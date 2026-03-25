@@ -3,9 +3,15 @@
   "slug": "benchmark",
   "displayName": "Benchmark",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773850095834,
-    "commit": "https://github.com/openclaw/skills/commit/e52ef81991a3764afc53a663503431aee721d7cb"
+    "version": "2.0.4",
+    "publishedAt": 1774314718646,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773850095834,
+      "commit": "https://github.com/openclaw/skills/commit/e52ef81991a3764afc53a663503431aee721d7cb"
+    }
+  ]
 }
