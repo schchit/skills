@@ -1,0 +1,11 @@
+{
+  "owner": "subscriptionmanager26-png",
+  "slug": "saffronai-etf-data",
+  "displayName": "SaffronAI ETF Data",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774200191876,
+    "commit": null
+  },
+  "history": []
+}
