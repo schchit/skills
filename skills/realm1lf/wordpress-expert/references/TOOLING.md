@@ -17,6 +17,7 @@ OpenClaw typically provides **`exec`** (shell), **`browser`**, and workspace fil
    - **c)** Else **`curl`** (or equivalent) via **`exec`** when **`WORDPRESS_SITE_URL`** + valid auth are set.  
    - Good for: content CRUD, media metadata, many read-only endpoints.  
    - WooCommerce: often namespace `wc/v3` (app password or appropriate role).
+   - **Optional verify:** Core **Plugins** REST (`/wp/v2/plugins`, when available for the authenticated user) follows WordPress’s documented routes and identifiers—use the [REST reference](https://developer.wordpress.org/rest-api/reference/plugins/) if you rely on it; **correct files on disk** under the site’s `wp-content` remain authoritative.
 
 2b. **OpenClaw MU helper REST** (`openclaw-helper/v1/...`)—**only** if the MU plugin is on the **WordPress site** ([bundled/mu-plugin/README.md](../bundled/mu-plugin/README.md)) and you need it (REST-only, sandbox without shell, app-password user capabilities, consolidated health). **Always first** use normal WP core/plugin REST (`wp/v2`, Woo, …) for domain tasks; not for plugin file I/O—see [MU_HELPER.md](MU_HELPER.md).
 
@@ -33,7 +34,7 @@ Without extra in-WP helpers (e.g. custom MU plugin), many tasks are **not** clea
 | **Nav menus** | REST/CLI gaps depending on setup | WP-CLI only if in **allowlist preset**; else browser/admin |
 | **Some page builders** | Data in builder format, not classic posts | Builder docs, **browser**, or **small custom plugin** |
 | **Admin-only plugins** | No public API | Browser or manual |
-| **Complex Woo setup** | Partly admin-only | Prefer REST `wc/v3`; else [WOO_ELEMENTOR.md](WOO_ELEMENTOR.md) |
+| **Complex Woo setup** | Partly admin-only | Prefer REST `wc/v3`; else [WOOCOMMERCE.md](WOOCOMMERCE.md) |
 
 Do **not** let users believe “everything” works via chat—name gaps clearly. Post-install verification: [CONNECTING.md](CONNECTING.md).
 

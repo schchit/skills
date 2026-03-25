@@ -2,6 +2,8 @@
 
 DDEV runs WordPress in containers. The **OpenClaw gateway** runs on your **host** (Linux/macOS/WSL). This skill/plugin is designed for that.
 
+**Layout:** The WordPress tree may sit under a **docroot subdirectory** (common: `web/`) while **`WORDPRESS_PATH`** is the **project root** (with `.ddev/`). Plugin files must live under the **`wp-content/plugins/…`** that **that** installation actually uses—confirm if unsure ([PLUGIN_DEV_PLAYBOOK.md](PLUGIN_DEV_PLAYBOOK.md)).
+
 ## REST (no special case)
 
 - **URL:** `https://<projectname>.ddev.site` (no trailing slash) → `WORDPRESS_SITE_URL`

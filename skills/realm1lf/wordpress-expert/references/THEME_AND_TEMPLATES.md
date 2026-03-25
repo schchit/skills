@@ -38,7 +38,7 @@ Changes often need **no PHP** for layout. Prefer `theme.json` plus templates. Us
 | Global colors/fonts in **block** theme | `theme.json` |
 | Homepage structure in **block** theme | `templates/front-page.html` or `home.html` as appropriate |
 | Add hooks without touching templates | Small **custom plugin** ([PLUGIN_DEV_PLAYBOOK.md](PLUGIN_DEV_PLAYBOOK.md)) |
-| WooCommerce cart/checkout look | Woo template overrides in child theme or documented hooks ([WOO_ELEMENTOR.md](WOO_ELEMENTOR.md)) |
+| WooCommerce cart/checkout look | Woo template overrides in child theme or documented hooks ([WOOCOMMERCE.md](WOOCOMMERCE.md)) |
 
 ## Child themes
 

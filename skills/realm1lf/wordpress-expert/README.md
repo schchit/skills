@@ -1,10 +1,12 @@
 # WordPress Expert (`wordpress-expert`)
 
+**Bundle version:** 1.1.1 (see `SKILL.md` `metadata.version`).
+
 **Skill id / folder / ClawHub slug:** `wordpress-expert` — ClawHub display name: **WordPress Expert** (`clawhub publish --name "WordPress Expert"`). The **URL path** is `…/wordpress-expert`; the **page title** is set by `--name` or ClawHub settings.
 
 **Migrating from v1.0.5 and earlier:** the skill was **`wordpress-site-ops`**. Remove `skills/wordpress-site-ops`, run [`sync-openclaw-wordpress.sh`](../scripts/sync-openclaw-wordpress.sh) (or copy into `skills/wordpress-expert`), and rename **`skills.entries["wordpress-site-ops"]` → `skills.entries["wordpress-expert"]`** in `openclaw.json`. Then `clawhub install wordpress-expert` / publish with `--slug wordpress-expert`—see [CLAWHUB_RELEASE_1.0.6.md](../docs/openclaw-wordpress/CLAWHUB_RELEASE_1.0.6.md).
 
-**Quick read for humans:** **[SKILL.md](SKILL.md)** (*For people* — especially **Strong recommendation: companion plugin*)—then **Trust** and **Connect** below.
+**Quick read for humans:** **[SKILL.md](SKILL.md)** (companion plugin recommendation, setup, expectations)—then **Trust** and **Connect** below.
 
 ## At a glance (ClawHub & new users)
 

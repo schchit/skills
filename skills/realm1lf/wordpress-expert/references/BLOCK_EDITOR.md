@@ -57,7 +57,7 @@ Missing dependencies in the generated `*.asset.php` file often cause **white scr
 
 ## Woo / Elementor overlap
 
-WooCommerce blocks and Elementor have their own constraints—[WOO_ELEMENTOR.md](WOO_ELEMENTOR.md). Do not replace Elementor widgets with raw HTML shortcuts.
+WooCommerce blocks: [WOOCOMMERCE.md](WOOCOMMERCE.md). Elementor: [ELEMENTOR.md](ELEMENTOR.md). Do not replace Elementor widgets with raw HTML shortcuts.
 
 ## Pitfalls
 

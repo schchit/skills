@@ -14,7 +14,7 @@ Skill **`wordpress-expert`** must **not** build a parallel OpenClaw. Prefer Word
 | **Inside-WP diagnostics** (extensions, cron backlog, REST user caps, health) | **`wordpress_rest_request`** to `openclaw-helper/v1/*` **if** MU helper is installed on site | WP-CLI/`exec` on gateway (if allowed)—see [MU_HELPER.md](MU_HELPER.md) |
 | Composer, npm, git, Docker, systemd | **`exec`** | — |
 | UI without API (Customizer, some plugins) | **`browser`** (only with clear user approval for writes) | — |
-| Local dev code in workspace | Workspace **read** / **write** / **edit** | — |
+| Drafts / templates / no path to the site’s `wp-content` | Workspace **read** / **write** / **edit** | Site tree via **`wordpress_plugin_files`** or an explicit host path ([PLUGIN_DEV_PLAYBOOK.md](PLUGIN_DEV_PLAYBOOK.md)) |
 
 ## Notes
 

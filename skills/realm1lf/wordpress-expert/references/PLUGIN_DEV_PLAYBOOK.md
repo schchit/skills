@@ -4,12 +4,22 @@ Curated guardrails for **your own** plugins and **addon** plugins (do not patch 
 
 **When to load:** Tasks with **PHP/JS under `wp-content/plugins/`** or **custom REST routes**—together with `{baseDir}/references/DOMAIN.md`, `{baseDir}/references/WORKFLOWS.md`, and for blocks/themes/perf: [BLOCK_EDITOR.md](BLOCK_EDITOR.md), [THEME_AND_TEMPLATES.md](THEME_AND_TEMPLATES.md), [PERFORMANCE_AND_SECURITY.md](PERFORMANCE_AND_SECURITY.md).
 
+## Where OpenClaw should write new plugin code
+
+OpenClaw’s **workspace** is the agent’s general file area ([Tools](https://docs.openclaw.ai/tools))—**not** the implied install location for “a plugin for **my** WordPress site.”
+
+**Default order for site-specific plugins:**
+
+1. **`wordpress_plugin_files`** when allowed and it maps to that site’s `wp-content/plugins/<slug>/` ([CONNECTING.md](CONNECTING.md) §3.8, [NATIVE_VS_PLUGIN.md](NATIVE_VS_PLUGIN.md)).
+2. Otherwise a **host path** the user stated or that matches the same WordPress tree as **`WORDPRESS_PATH`** / the running site—if ambiguous, verify with WP-CLI, a directory check, or ask.
+3. **Workspace** for drafts, reusable templates, or when **no** filesystem path to the target site exists.
+
 ## OpenClaw vs. in-WordPress agent
 
 `wordpress-site-tools` does **not** offer `patch_plugin_file` or a dedicated grep tool. Workflow:
 
 - **Read:** Workspace files or `wordpress_wp_cli` / `exec` only within allowlist; optionally `wordpress_rest_request` for site data.
-- **Write:** Targeted edits in the **workspace** (or synced plugin folder); **always read the full file** before large overwrites (like patch vs. write: do not replace whole files blindly without read).
+- **Write:** Prefer the **site plugin directory** (section above) or **`wordpress_plugin_files`**; else workspace or another path the user approves. **Always read the full file** before large overwrites (do not replace whole files blindly without read).
 - **Verify:** Read-after-write, `wordpress_connection_check` for config topics, PHP log only if access is allowed and safe.
 
 **Forbidden as strategy:** Running arbitrary PHP on the server just to change Woo/content—use **REST** (`wc/v3`, …) or **WP-CLI** with an appropriate `wpCliProfile` ([WPCLI_PRESETS.md](WPCLI_PRESETS.md)).
@@ -92,8 +102,8 @@ Addition to the table in [DOMAIN.md](DOMAIN.md):
 | Admin settings | Settings API or options page, capability, nonce |
 | Frontend CSS/JS | `wp_enqueue_style` / `wp_enqueue_script`, `filemtime` for version |
 | REST endpoints | separate file, `rest_api_init`, `permission_callback` |
-| Woo-related | `Requires Plugins: woocommerce`, dependency check, HPOS declaration where needed ([WOO_ELEMENTOR.md](WOO_ELEMENTOR.md)) |
-| Elementor-related | `Requires Plugins: elementor`, version check ([WOO_ELEMENTOR.md](WOO_ELEMENTOR.md)) |
+| Woo-related | `Requires Plugins: woocommerce`, dependency check, HPOS declaration where needed ([WOOCOMMERCE.md](WOOCOMMERCE.md)) |
+| Elementor-related | `Requires Plugins: elementor`, version check ([ELEMENTOR.md](ELEMENTOR.md)) |
 
 ## Quality (on the user’s machine)
 

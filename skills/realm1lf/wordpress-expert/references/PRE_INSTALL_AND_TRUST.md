@@ -35,3 +35,5 @@ You can still use **generic** OpenClaw tools (`exec`, browser, workspace) with t
 ## 6. ClawHub / registry notes
 
 Registries and security scanners may flag skills that mention credentials, shell install steps, or third-party repos. This skill declares **expected** REST configuration via **`metadata.openclaw.requires.env`** in `SKILL.md` (the YAML **`description`** may be marketing-only; requirements are not duplicated there). If you believe a flag is a **false positive**, contact ClawHub maintainers with links to this file and the public plugin repo.
+
+**VirusTotal (on ClawHub):** ClawHub may show a **VirusTotal** integration (e.g. scan status **Pending** or occasional detections). That is a **third-party** heuristic on archives or metadata—it is **not** proof of malware in this skill. The maintainer’s ClawHub package is **text-only** (Markdown and references; the packaging script strips non-text files such as `.php` from the upload bundle). The full source is in **git** for review. If a result looks wrong, use ClawHub / OpenClaw support channels; you may also use VirusTotal’s community or dispute flows where applicable—outcomes are not guaranteed.

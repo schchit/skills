@@ -23,7 +23,8 @@ Skill id **`wordpress-expert`** (ClawHub display name **WordPress Expert**). Sho
 | [BLOCK_EDITOR.md](BLOCK_EDITOR.md) | Block editor: scaffold, static vs dynamic, `block.json`, REST vs files |
 | [THEME_AND_TEMPLATES.md](THEME_AND_TEMPLATES.md) | Classic vs block themes, hierarchy, child themes, FSE |
 | [PERFORMANCE_AND_SECURITY.md](PERFORMANCE_AND_SECURITY.md) | Query/cache/asset hygiene, REST and upload hardening |
-| [WOO_ELEMENTOR.md](WOO_ELEMENTOR.md) | WooCommerce and Elementor limits and workflows |
+| [WOOCOMMERCE.md](WOOCOMMERCE.md) | WooCommerce limits and workflows (REST, WP-CLI) |
+| [ELEMENTOR.md](ELEMENTOR.md) | Elementor layouts and constraints |
 
 Content: curated WordPress / OpenClaw working rules for agents on the host.
 

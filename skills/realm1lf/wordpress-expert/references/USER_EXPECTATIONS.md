@@ -107,7 +107,7 @@ Details: [README.md](../README.md), [AUTH.md](AUTH.md), `openclaw-wordpress-tool
 **Gap to target “complete + developer”:**
 
 - WP-CLI presets: [WPCLI_PRESETS.md](WPCLI_PRESETS.md); runtime selection in plugin via **`wpCliProfile`** (config + gateway restart).
-- Developer playbooks: [PLUGIN_DEV_PLAYBOOK.md](PLUGIN_DEV_PLAYBOOK.md); Woo/Elementor: [WOO_ELEMENTOR.md](WOO_ELEMENTOR.md).
+- Developer playbooks: [PLUGIN_DEV_PLAYBOOK.md](PLUGIN_DEV_PLAYBOOK.md); WooCommerce: [WOOCOMMERCE.md](WOOCOMMERCE.md); Elementor: [ELEMENTOR.md](ELEMENTOR.md).
 - Optional: additional controlled tools instead of generic `exec` only.
 - Tests/review: manual tests per [CONNECTING.md](CONNECTING.md); full matrix in source repo (`docs/openclaw-wordpress/TEST_MATRIX.md`); **no** automatic CI in the skill.
 

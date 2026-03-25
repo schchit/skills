@@ -1,147 +1,72 @@
 ---
 name: wordpress-expert
-description: "Give your OpenClaw WordPress superpowers! From creating custom plugins, managing pages, posts, settings, layouts, SEO, and security to cron jobs and more!"
-metadata: {"openclaw":{"skillKey":"wordpress-expert","homepage":"https://github.com/realM1lF/openclaw-wordpress-tool","requires":{"anyBins":["wp","curl"],"env":["WORDPRESS_SITE_URL","WORDPRESS_USER","WORDPRESS_APPLICATION_PASSWORD"]}}}
+description: "Enable WordPress superpowers for OpenClaw. Your Developer, Content Manager, Author, Security Specialists, Contributor, Subscriber and Admin and more."
+metadata: {"version":"1.1.1","openclaw":{"skillKey":"wordpress-expert","homepage":"https://github.com/realM1lF/openclaw-wordpress-tool","requires":{"anyBins":["wp","curl"],"env":["WORDPRESS_SITE_URL","WORDPRESS_USER","WORDPRESS_APPLICATION_PASSWORD"]}}}
 ---
 
-# WordPress Expert
+# WordPress Expert: User Guide
 
-## For people (what am I getting?)
+## What This Skill Is
 
-### What this skill is
+This skill equips your OpenClaw agent with the necessary instructions and checklists to manage your existing WordPress website. It empowers the AI to perform tasks related to content, settings, media, plugins, themes, and extensions like WooCommerce or Elementor.
 
-- A **pack of instructions and checklists** for your OpenClaw agent so it can **work with a WordPress site you already have**—content, settings, media, plugins, themes, WooCommerce, Elementor, and development under `wp-content`.
-- The agent reaches WordPress over **HTTPS (REST)** and, when you configure it, **WP-CLI** and **scoped file access** on the machine where the **OpenClaw gateway** runs.
+The AI typically communicates with your site via secure web interfaces (HTTPS/REST). If configured accordingly, it can also work directly via the terminal (WP-CLI) or at the file level.
 
-### Strong recommendation: install the companion OpenClaw plugin
+## Urgent Recommendation: The Companion Plugin
 
-**You should install the companion plugin [`wordpress-site-tools`](https://github.com/realM1lF/openclaw-wordpress-tool) on the OpenClaw gateway host** (clone → `npm install` → `openclaw plugins install` → enable → allow tools → gateway restart). That plugin registers **typed, policy-aware tools** (`wordpress_rest_request`, `wordpress_wp_cli`, `wordpress_connection_check`, optional media upload and plugin file access). The skill is written to **prefer those tools** over hand-built `curl`/`exec`—they are **clearer, easier to audit, and easier to allowlist**.
+For the AI to work precisely and safely, you should install the companion plugin **`wordpress-site-tools`** on the computer/server where your OpenClaw gateway runs: **[github.com/realM1lF/openclaw-wordpress-tool](https://github.com/realM1lF/openclaw-wordpress-tool)**.
 
-- The skill **works without** that plugin only via documented **fallbacks** (`exec`, `curl`, browser)—more manual and easier to get wrong; use only if you consciously skip the plugin.
-- **Before** `npm install` / enable: skim the **public source** on GitHub and read `{baseDir}/references/PRE_INSTALL_AND_TRUST.md` (staging, least privilege, secrets in config not chat).
+- **Why?** This plugin provides typed tools (e.g. `wordpress_rest_request`, `wordpress_wp_cli`, `wordpress_connection_check`, optional media and plugin file access).
+- **Benefit:** Clearer, easier to audit, and easier to allowlist than ad-hoc `exec`/`curl`. Without it, the skill still documents fallbacks—more manual and error-prone.
 
-Full steps: `{baseDir}/README.md`, `{baseDir}/references/CONNECTING.md`.
+## Installation Steps (Typical Flow)
 
-**OpenClaw UI:** the YAML **`description`** is the **short teaser** in the gateway’s skill list (marketing line only). **`metadata.openclaw.homepage`** is the **Website** link in the Skills UI ([docs](https://docs.openclaw.ai/skills/))—here the **companion plugin** repo. Requirements (**env vars**, binaries) come from **`metadata.openclaw.requires`** and this file’s sections below, not from `description`.
+On your OpenClaw gateway machine:
 
-### What you can expect
+1. **Install the skill** (e.g. ClawHub or `skills/wordpress-expert` in the workspace).
+2. **Clone** the `wordpress-site-tools` repo, run **`npm install`**, then **`openclaw plugins install`** / **`enable`** (see plugin README).
+3. **Grant tools:** Add WordPress tools to **`tools.allow`** in `openclaw.json`.
+4. **Environment variables:** Set the three required variables below (host env or `skills.entries["wordpress-expert"].env`). Optional: **`WORDPRESS_PATH`** if you use WP-CLI or `wordpress_plugin_files`—see `{baseDir}/references/CONNECTING.md`.
+5. **`openclaw gateway restart`** after plugin, allowlist, or env changes.
 
-| You want… | What usually happens |
-|-----------|----------------------|
-| “Create a draft post”, “list plugins”, “upload an image” | Agent uses REST—with **`wordpress-site-tools`** installed, prefer **`wordpress_rest_request`** and related tools against **your** site URL. |
-| “Run WP-CLI” or “edit my custom plugin files” | You need **`WORDPRESS_PATH`** and narrow **allowlists**; see `{baseDir}/references/CONNECTING.md` and `{baseDir}/references/WPCLI_PRESETS.md`. |
-| “Full admin without limits” | **Out of scope for safe defaults.** Use staging, least-privilege users, and explicit user approval for destructive actions. |
+Full detail: `{baseDir}/README.md`, `{baseDir}/references/CONNECTING.md`, `{baseDir}/references/PRE_INSTALL_AND_TRUST.md`.
 
-### What you must configure (minimum)
+## What You Can Expect from the AI
 
-OpenClaw needs these **environment variables** (host env or `skills.entries["wordpress-expert"].env`) so the skill is **eligible** and the agent can reach your site:
+- **Everyday tasks:** e.g. “Create a draft post” or “Upload an image” via REST—with **`wordpress-site-tools`**, prefer **`wordpress_rest_request`** and related tools.
+- **Advanced tasks:** WP-CLI or plugin file edits need **`WORDPRESS_PATH`**, narrow allowlists, and explicit configuration—see `{baseDir}/references/CONNECTING.md` and `{baseDir}/references/WPCLI_PRESETS.md`.
+- **Security:** The AI is not an omnipotent admin by default; use staging, least-privilege users, and approval for destructive work. The AI should use fresh tool/API data, not guesses.
 
-1. **`WORDPRESS_SITE_URL`** — site base URL (no trailing slash), HTTPS.  
-2. **`WORDPRESS_USER`** — WordPress username the **application password** belongs to.  
-3. **`WORDPRESS_APPLICATION_PASSWORD`** — from WP Admin → Users → Application passwords (not the login password).
+## Required Setup (Environment Variables)
 
-Optional: **`WORDPRESS_PATH`** — directory on the **gateway** machine where `wp` works, if you use WP-CLI or `wordpress_plugin_files`.
+These three are **required** (see **`metadata.openclaw.requires`**):
 
-Details: `{baseDir}/references/AUTH.md`, `{baseDir}/references/CONNECTING.md`.
+1. **`WORDPRESS_SITE_URL`** — Base URL of the site (HTTPS, no trailing slash), e.g. `https://yoursite.com`.
+2. **`WORDPRESS_USER`** — WordPress username for the application password.
+3. **`WORDPRESS_APPLICATION_PASSWORD`** — From **Users → Profile → Application Passwords** in WordPress (not the login password). Store in env/config, never in chat or Git.
 
-### Typical flow (simple)
+Optional: **`WORDPRESS_PATH`** — Directory on the gateway where `wp` runs, if you use WP-CLI or plugin file tools. Details: `{baseDir}/references/AUTH.md`, `{baseDir}/references/CONNECTING.md`.
 
-1. **Install this skill** (e.g. ClawHub or `skills/wordpress-expert` in the workspace).  
-2. **Install and enable [`wordpress-site-tools`](https://github.com/realM1lF/openclaw-wordpress-tool) on the gateway** — this is the **default path we recommend**; see subsection above.  
-3. **Set the three env vars** above; add the WordPress tools to **`tools.allow`** in `openclaw.json`.  
-4. **`openclaw gateway restart`** after plugin, allowlist, or env changes.
+## Important Rules for People and the AI
 
-Full walkthrough: `{baseDir}/README.md` and `{baseDir}/references/CONNECTING.md`.
-
-### Before production or shared gateways
-
-Read **`{baseDir}/references/PRE_INSTALL_AND_TRUST.md`**: review the companion plugin source, use staging, never paste secrets into chat, and know that **ClawHub text bundles may omit MU-helper `.php`**—copy PHP from a full git checkout if you need that helper.
+- **No secrets in chat or Git** — see `{baseDir}/references/AUTH.md`.
+- **Deeper topics** load from `{baseDir}/references/` as needed (progressive disclosure).
 
 ---
 
 ## When the agent should use this skill
 
-Use for **WordPress-related** work: content, media, plugins, themes, WooCommerce, Elementor, REST, and code under `wp-content`.
+Use for **WordPress-related** work: content, media, plugins, themes, WooCommerce, Elementor, REST, code under `wp-content`. Do **not** use for unrelated tasks.
 
-Also load **block/theme/performance** references when working on custom blocks, classic or block themes, template hierarchy, or performance and hardening:
+Load **`{baseDir}/references/`** files when the task matches (examples: **`CONNECTING.md`**, **`PLUGIN_DEV_PLAYBOOK.md`**, **`DOMAIN.md`**, **`WOOCOMMERCE.md`**, **`ELEMENTOR.md`**, **`BLOCK_EDITOR.md`**, **`THEME_AND_TEMPLATES.md`**, **`PERFORMANCE_AND_SECURITY.md`**, **`SAFETY.md`**, **`WORKFLOWS.md`**). Full index: **`{baseDir}/references/OVERVIEW.md`**.
 
-- `{baseDir}/references/BLOCK_EDITOR.md`  
-- `{baseDir}/references/THEME_AND_TEMPLATES.md`  
-- `{baseDir}/references/PERFORMANCE_AND_SECURITY.md`  
+## Rules for the assistant (summary)
 
-Do **not** activate this skill for unrelated tasks.
+1. Use **fresh data** from tools/API before writes; do not invent site state.
+2. **Never** echo secrets; store credentials in host env or `openclaw.json` skill env—not chat.
+3. Prefer **`wordpress_rest_request`** / **`wordpress_wp_cli`** / **`wordpress_connection_check`** (and related plugin tools) when in **`tools.allow`**; see `{baseDir}/references/NATIVE_VS_PLUGIN.md` and `{baseDir}/references/TOOLING.md`.
+4. For **new site-specific plugin files**, prefer the **real** `wp-content/plugins/…` tree or **`wordpress_plugin_files`**—not the generic OpenClaw workspace by default; see `{baseDir}/references/PLUGIN_DEV_PLAYBOOK.md` (**“Where OpenClaw should write”**).
+5. After plugin or **`tools.allow`** changes, **`openclaw gateway restart`** is usually required—see `{baseDir}/references/CONNECTING.md`.
+6. Do not patch third-party plugins in place—addon approach in `{baseDir}/references/PLUGIN_DEV_PLAYBOOK.md` and `{baseDir}/references/USER_EXPECTATIONS.md`.
 
----
-
-## Rules for the assistant
-
-### Data, secrets, and honesty
-
-1. Use **fresh data** before writes (no stale assumptions).  
-2. State facts only from the **latest tool output** or API response—do not invent site state.  
-3. **Never** put secrets in replies or Git; see `{baseDir}/references/AUTH.md`.  
-4. For shell commands that write: **no** raw user input without safe quoting/escaping.
-
-### Prefer these tools (when listed in `tools.allow`)
-
-5. **REST:** Prefer **`wordpress_rest_request`** (plugin **`wordpress-site-tools`**) over hand-built `curl`. If those tools are **missing**, **tell the user** installing/enabling **`wordpress-site-tools`** on the gateway is the recommended fix (`{baseDir}/README.md`, `{baseDir}/references/CONNECTING.md`); only then fall back to `{baseDir}/references/TOOLING.md`.  
-6. **WP-CLI:** Prefer **`wordpress_wp_cli`** when allowed and **`WORDPRESS_PATH`** (or plugin config) is set—respect allowlist / **`wpCliProfile`**; else `exec` per TOOLING.  
-7. **Connectivity:** After config changes or errors, prefer **`wordpress_connection_check`** when allowed (`{baseDir}/references/CONNECTING.md`).  
-8. **Media:** Prefer **`wordpress_media_upload`** when allowed over manual `curl -F`.  
-9. **Plugin files on disk:** Prefer **`wordpress_plugin_files`** (only under `wp-content/plugins/<slug>/`) when allowed—see `{baseDir}/references/NATIVE_VS_PLUGIN.md` and CONNECTING §3.8.  
-10. **MU helper REST** (`openclaw-helper/v1/…`): only if MU plugin from `{baseDir}/bundled/mu-plugin/README.md` is on the **WordPress** site; for diagnostics/capabilities—see `{baseDir}/references/MU_HELPER.md`; not a substitute for WP-CLI or plugin file tools.
-
-### OpenClaw platform behavior
-
-11. **Native tools:** Do not pretend the WordPress plugin replaces shell, browser, or workspace—see `{baseDir}/references/NATIVE_VS_PLUGIN.md`.  
-12. **Gateway restart:** New/changed plugin tools (`tools.allow`, `plugins.allow`, install/enable) usually need **`openclaw gateway restart`**. Do **not** insist **`/new`** is always required; use `/new` only if tools are still missing after restart and correct config. Skill env changes: try same session first; then restart—`{baseDir}/references/CONNECTING.md`.
-
-### Development and UX
-
-13. **Plugin/theme code:** Load `{baseDir}/references/DOMAIN.md` and `{baseDir}/references/PLUGIN_DEV_PLAYBOOK.md`; follow `{baseDir}/references/WORKFLOWS.md`. Blocks / themes / perf / Woo: `BLOCK_EDITOR`, `THEME_AND_TEMPLATES`, `PERFORMANCE_AND_SECURITY`, `WOO_ELEMENTOR`. Do not patch third-party plugins—addon approach in the playbook.  
-14. **Non-technical users:** Plain language first; commands and JSON only when asked or briefly at the end.
-
----
-
-## Reference library (progressive disclosure)
-
-**Trust and setup**
-
-- `{baseDir}/references/PRE_INSTALL_AND_TRUST.md` — trust, credentials, MU bundle vs full repo  
-- `{baseDir}/references/CONNECTING.md` — topologies, `openclaw.json`, verification, gateway vs `/new`  
-- `{baseDir}/references/AUTH.md` — URLs, application passwords, env  
-- `{baseDir}/README.md` — human-oriented install and config (outside agent-only path)
-
-**OpenClaw policy and tooling**
-
-- `{baseDir}/references/OPENCLAW_INTEGRATION.md` — sandbox, allowlists, official links  
-- `{baseDir}/references/NATIVE_VS_PLUGIN.md` — plugin tools vs exec / browser / workspace  
-- `{baseDir}/references/TOOLING.md` — REST vs WP-CLI vs browser  
-- `{baseDir}/references/WPCLI_PRESETS.md` — `wpCliProfile` / allowlist presets  
-- `{baseDir}/references/DDEV.md` — local DDEV
-
-**Optional MU helper (WordPress server)**
-
-- `{baseDir}/bundled/mu-plugin/README.md` — deploy to `wp-content/mu-plugins/`  
-- `{baseDir}/references/MU_HELPER.md` — when REST helper endpoints help
-
-**Safety, workflow, expectations**
-
-- `{baseDir}/references/SAFETY.md` — defaults, destructive actions, MUST NOT summary  
-- `{baseDir}/references/WORKFLOWS.md` — Read, Plan, Write, Verify  
-- `{baseDir}/references/USER_EXPECTATIONS.md` — product expectations  
-- `{baseDir}/references/FOR_SITE_OWNERS.md` — non-technical readers  
-- `{baseDir}/references/OVERVIEW.md` — full index
-
-**WordPress development topics**
-
-- `{baseDir}/references/DOMAIN.md` — blocks, plugins, CPT, pitfalls  
-- `{baseDir}/references/PLUGIN_DEV_PLAYBOOK.md` — hooks, REST, security, layout  
-- `{baseDir}/references/BLOCK_EDITOR.md` — blocks, `block.json`  
-- `{baseDir}/references/THEME_AND_TEMPLATES.md` — themes, hierarchy, FSE  
-- `{baseDir}/references/PERFORMANCE_AND_SECURITY.md` — performance and hardening  
-- `{baseDir}/references/WOO_ELEMENTOR.md` — WooCommerce and Elementor
-
----
-
-**Where work runs:** On the **OpenClaw gateway** (REST, shell, browser, workspace). The optional **MU helper** (if copied onto the WordPress server) only adds extra REST endpoints for diagnostics—see `{baseDir}/references/MU_HELPER.md`.
+**Where work runs:** On the **OpenClaw gateway** (REST, shell, browser, workspace). Optional MU helper on the WordPress server is documented under `{baseDir}/bundled/mu-plugin/README.md` and `{baseDir}/references/MU_HELPER.md`.
