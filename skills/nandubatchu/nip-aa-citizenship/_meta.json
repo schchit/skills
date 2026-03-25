@@ -1,11 +1,17 @@
 {
   "owner": "nandubatchu",
   "slug": "nip-aa-citizenship",
-  "displayName": "NIP-AA Citizenship",
+  "displayName": "Nip Aa Citizenship",
   "latest": {
-    "version": "0.2.0",
-    "publishedAt": 1773865905786,
-    "commit": "https://github.com/openclaw/skills/commit/7ebfe5501ff836d854944265bcfd63f176e32c72"
+    "version": "0.3.0",
+    "publishedAt": 1774295921173,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.2.0",
+      "publishedAt": 1773865905786,
+      "commit": "https://github.com/openclaw/skills/commit/7ebfe5501ff836d854944265bcfd63f176e32c72"
+    }
+  ]
 }
