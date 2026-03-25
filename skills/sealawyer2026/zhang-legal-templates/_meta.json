@@ -1,11 +1,17 @@
 {
   "owner": "sealawyer2026",
   "slug": "zhang-legal-templates",
-  "displayName": "Zhang Legal Templates",
+  "displayName": "九章法律文书模板 V1.3.0",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773916183093,
-    "commit": "https://github.com/openclaw/skills/commit/de8b3ffeeef41aa146470fc538e98393a72b1fff"
+    "version": "1.3.0",
+    "publishedAt": 1774416862996,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773916183093,
+      "commit": "https://github.com/openclaw/skills/commit/de8b3ffeeef41aa146470fc538e98393a72b1fff"
+    }
+  ]
 }
