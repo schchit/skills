@@ -3,9 +3,15 @@
   "slug": "feishu-pro-testcase-generation",
   "displayName": "Automatic Test Case Generation Pro",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773997917984,
-    "commit": "https://github.com/openclaw/skills/commit/8fc1ee6cf46affa803a069a1c9a94669aa26d127"
+    "version": "1.0.1",
+    "publishedAt": 1774232674120,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773997917984,
+      "commit": "https://github.com/openclaw/skills/commit/8fc1ee6cf46affa803a069a1c9a94669aa26d127"
+    }
+  ]
 }
