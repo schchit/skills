@@ -25,7 +25,22 @@ metadata:
 
 # Social Content Pro 📱
 
-**AI-powered viral content generator for all social platforms.**
+---
+
+## 💰 付费服务
+
+**社交媒体代运营**:
+
+| 服务 | 价格 | 交付 |
+|------|------|------|
+| 单平台内容 | ¥2000/月 | 30 条原创内容 |
+| 多平台分发 | ¥5000/月 | 5 平台同步 |
+| 爆款文案 | ¥500/条 | 定制化爆款文案 |
+| 全案代运营 | ¥15000/月 | 策划 + 内容 + 运营 |
+
+**联系**: 微信/Telegram 私信，备注"社媒代运营"
+
+---**AI-powered viral content generator for all social platforms.**
 
 Create engaging posts for TikTok, Instagram, Twitter, LinkedIn, and Xiaohongshu in seconds. Optimize hashtags, schedule posts, and track performance.
 
