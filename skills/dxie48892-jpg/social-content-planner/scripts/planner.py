@@ -27,4 +27,7 @@ def main():
     print(json.dumps(results, ensure_ascii=False, indent=2))
 
 if __name__ == "__main__":
+    # Fix Windows UTF-8 output
+    if sys.platform == 'win32':
+        sys.stdout.reconfigure(encoding='utf-8')
     main()
