@@ -42,6 +42,24 @@ reminders:
   weekly_review: "Sunday 20:00"
   enabled: true
 
+productivity_system:
+  root: "~/.dida-coach/productivity"
+  bootstrap_from_dida: true
+  auto_update_after_init: true
+  managed_files:
+    - dashboard.md
+    - commitments/promises.md
+    - commitments/delegated.md
+    - planning/daily.md
+    - planning/weekly.md
+    - planning/focus-blocks.md
+    - reviews/weekly.md
+    - reviews/monthly.md
+    - focus/sessions.md
+    - focus/distractions.md
+    - routines/morning.md
+    - routines/shutdown.md
+
 review:
   dimensions:
     - completion_rate

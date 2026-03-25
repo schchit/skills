@@ -11,6 +11,16 @@
 
 按天收集本周任务，确保能按日期分组。
 
+如果本地生产力系统已初始化，先准备并允许刷新这些文件：
+
+- `dashboard.md`
+- `commitments/promises.md`
+- `commitments/delegated.md`
+- `focus/sessions.md`
+- `focus/distractions.md`
+- `planning/weekly.md`
+- `reviews/weekly.md`
+
 推荐工具组合：
 
 - 本周未完成：`list_undone_tasks_by_date`
@@ -54,6 +64,7 @@
 3. 哪些重复动作适合变成循环任务或提醒？
 
 不要只做回顾；要把周复盘自然衔接到下周规划。
+周复盘不是只看任务完成率，还要结合承诺、等待项和干扰模式。
 
 如果状态字段与完成时间字段冲突，优先保守处理为“待人工确认”，不要直接算作已完成。
 
