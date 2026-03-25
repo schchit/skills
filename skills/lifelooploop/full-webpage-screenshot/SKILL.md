@@ -10,7 +10,7 @@ metadata:
       setup: "cd ~/.openclaw/skills/full-webpage-screenshot/scripts && npm install"
 ---
 
-# Webpage Screenshot
+# Full Webpage Screenshot
 
 Capture complete webpage screenshots using Puppeteer, including content that loads dynamically on scroll.
 
@@ -39,7 +39,7 @@ Capture complete webpage screenshots using Puppeteer, including content that loa
 First-time setup (installs Puppeteer):
 
 ```bash
-cd ~/.openclaw/skills/webpage-screenshot/scripts
+cd ~/.openclaw/skills/full-webpage-screenshot/scripts
 npm install
 ```
 
@@ -48,7 +48,7 @@ npm install
 ### Basic Screenshot
 
 ```bash
-cd ~/.openclaw/skills/webpage-screenshot/scripts
+cd ~/.openclaw/skills/full-webpage-screenshot/scripts
 node screenshot.js "https://example.com" ~/workspace/screenshot.png
 ```
 
@@ -56,6 +56,7 @@ node screenshot.js "https://example.com" ~/workspace/screenshot.png
 
 ```bash
 # Mobile view
+cd ~/.openclaw/skills/full-webpage-screenshot/scripts
 VIEWPORT_WIDTH=375 VIEWPORT_HEIGHT=812 node screenshot.js "https://example.com" mobile.png
 
 # Desktop HD
@@ -65,7 +66,7 @@ VIEWPORT_WIDTH=1920 VIEWPORT_HEIGHT=1080 node screenshot.js "https://example.com
 ### Slow-Loading Pages
 
 ```bash
-# Wait longer for content
+cd ~/.openclaw/skills/full-webpage-screenshot/scripts
 WAIT_AFTER=5000 node screenshot.js "https://slow-site.com" screenshot.png
 ```
 
@@ -102,6 +103,7 @@ node screenshot.js "$URL" ~/workspace/screenshot.png
 **"Mobile screenshot"**
 
 ```bash
+cd ~/.openclaw/skills/full-webpage-screenshot/scripts
 VIEWPORT_WIDTH=375 VIEWPORT_HEIGHT=812 node screenshot.js "$URL" mobile.png
 ```
 
