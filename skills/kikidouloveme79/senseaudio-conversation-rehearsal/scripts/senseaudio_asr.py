@@ -28,6 +28,8 @@ def _bootstrap_shared_senseaudio_env() -> None:
 
 _bootstrap_shared_senseaudio_env()
 
+from senseaudio_api_guard import ensure_runtime_api_key
+
 
 OPENAPI_URL = "https://api.senseaudio.cn/v1/audio/transcriptions"
 SUPPORTED_SUFFIXES = {".mp3", ".wav", ".mp4"}
@@ -200,9 +202,7 @@ def main() -> int:
     parser.add_argument("--api-key-env", default="SENSEAUDIO_API_KEY")
     args = parser.parse_args()
 
-    api_key = os.getenv(args.api_key_env)
-    if not api_key:
-        raise SystemExit(f"Missing API key in ${args.api_key_env}.")
+    api_key = ensure_runtime_api_key(os.getenv(args.api_key_env), args.api_key_env, purpose="asr")
     path = Path(args.input)
     validate_input(path)
     response = transcribe_with_stream(path, api_key, args.model, args.response_format, args.language, stream=args.stream)

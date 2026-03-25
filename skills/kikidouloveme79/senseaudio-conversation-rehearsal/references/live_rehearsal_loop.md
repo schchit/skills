@@ -18,10 +18,10 @@ One workable MVP loop is:
 9. Repeat for 3 to 4 rounds.
 10. Concatenate the user's replies and run `analyze_rehearsal_transcript.py`.
 
-Good fit for OpenClaw:
+Good fit for AudioClaw:
 
-- OpenClaw handles state and session memory.
-- SenseAudio handles:
+- AudioClaw handles state and session memory.
+- AudioClaw handles:
   - ASR for user spoken turns
   - TTS for counterpart turns
 - LLM layer handles:

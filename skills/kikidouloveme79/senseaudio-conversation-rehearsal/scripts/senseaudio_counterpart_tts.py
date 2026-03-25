@@ -24,6 +24,8 @@ def _bootstrap_shared_senseaudio_env() -> None:
 
 _bootstrap_shared_senseaudio_env()
 
+from senseaudio_api_guard import ensure_runtime_api_key
+
 
 API_URL = "https://api.senseaudio.cn/v1/t2a_v2"
 
@@ -109,9 +111,7 @@ def main() -> int:
     parser.add_argument("--api-key-env", default="SENSEAUDIO_API_KEY")
     args = parser.parse_args()
 
-    api_key = os.getenv(args.api_key_env)
-    if not api_key:
-        raise SystemExit(f"Missing API key in ${args.api_key_env}.")
+    api_key = ensure_runtime_api_key(os.getenv(args.api_key_env), args.api_key_env, purpose="tts")
 
     blueprint = json.loads(Path(args.blueprint_json).read_text(encoding="utf-8"))
     turn = json.loads(Path(args.turn_json).read_text(encoding="utf-8"))

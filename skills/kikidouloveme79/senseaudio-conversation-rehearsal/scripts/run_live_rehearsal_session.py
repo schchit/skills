@@ -22,6 +22,8 @@ def _bootstrap_shared_senseaudio_env() -> None:
 
 _bootstrap_shared_senseaudio_env()
 
+from audioclaw_paths import get_workspace_root
+from senseaudio_api_guard import ensure_runtime_api_key
 from analyze_rehearsal_transcript import analyze_text
 from build_counterpart_turn import build_turn
 from senseaudio_asr import transcribe as transcribe_audio, validate_input as validate_audio
@@ -71,9 +73,7 @@ def main() -> int:
     parser.add_argument("--api-key-env", default="SENSEAUDIO_API_KEY")
     args = parser.parse_args()
 
-    api_key = os.getenv(args.api_key_env)
-    if not api_key:
-        raise SystemExit(f"Missing API key in ${args.api_key_env}.")
+    api_key = ensure_runtime_api_key(os.getenv(args.api_key_env), args.api_key_env, purpose="tts")
 
     blueprint = load_json(Path(args.blueprint_json))
     user_audio_dir = Path(args.user_audio_dir)
@@ -201,7 +201,7 @@ def main() -> int:
                 "--out-json",
                 str(send_results_path),
                 "--workspace-root",
-                args.workspace_root or str(Path.home() / ".picoclaw" / "workspace"),
+                args.workspace_root or str(get_workspace_root()),
                 *(["--chat-id", args.chat_id] if args.chat_id else []),
                 *(["--session-file", args.session_file] if args.session_file else []),
                 *(["--send-labels"] if args.send_labels else []),
