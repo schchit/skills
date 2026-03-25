@@ -260,3 +260,9 @@ python quant_trading_assistant.py dragon sh600519
 - 市场有风险，投资需谨慎
 - 亏损8%请无条件止损
 - 请根据自身风险承受能力决策
+
+## 更新日志
+
+### v1.0.1 (2026-03-22)
+- 修复：Windows控制台UTF-8编码输出问题
+- 修复：_meta.json作者信息修正为dxie48892-jpg
