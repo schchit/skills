@@ -1,11 +1,17 @@
 {
   "owner": "jolestar",
   "slug": "board-webmcp",
-  "displayName": "Board WebMCP",
+  "displayName": "Board Webmcp",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1773759389617,
-    "commit": "https://github.com/openclaw/skills/commit/1700d99bda5bb26a8b7f8dd2ca229960bcfefe44"
+    "version": "0.1.1",
+    "publishedAt": 1774368627129,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1773759389617,
+      "commit": "https://github.com/openclaw/skills/commit/1700d99bda5bb26a8b7f8dd2ca229960bcfefe44"
+    }
+  ]
 }
