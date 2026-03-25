@@ -1,0 +1,11 @@
+{
+  "owner": "amdf01-debug",
+  "slug": "sw-paywall-upgrade-cro",
+  "displayName": "Paywall Upgrade CRO",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774097673871,
+    "commit": null
+  },
+  "history": []
+}
