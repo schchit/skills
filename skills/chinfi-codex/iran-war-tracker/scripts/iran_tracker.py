@@ -16,18 +16,24 @@ from __future__ import annotations
 
 import argparse
 import csv
-import hashlib
 import io
 import json
 import os
-import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import pandas as pd
 import requests
+
+from cls_telegraph import (
+    CLS_COL_CONTENT,
+    CLS_COL_TAGS,
+    CLS_COL_TIME,
+    CLS_COL_TITLE,
+    cls_telegraphs,
+    filter_cls_items,
+)
 
 
 DEFAULT_TIMEOUT = 20
@@ -83,14 +89,6 @@ ISRAEL_KEYWORDS = ["israel", "israeli", "idf", "netanyahu", "israeli military", 
 IRAN_KEYWORDS = ["iran", "iranian", "tehran", "khamenei", "araghchi", "伊朗", "德黑兰", "哈梅内伊"]
 LEADER_KEYWORDS = ["president", "prime minister", "foreign minister", "defense minister", "commander", "trump", "netanyahu", "khamenei", "araghchi", "总统", "总理", "外长", "防长", "指挥官"]
 CLS_NOISE_KEYWORDS = ["market wrap", "premarket", "stocks to watch", "stock market", "app store", "盘前要闻", "股市"]
-
-CLS_COL_TITLE = "标题"
-CLS_COL_CONTENT = "内容"
-CLS_COL_LEVEL = "等级"
-CLS_COL_TAGS = "标签"
-CLS_COL_TIME = "发布时间"
-CLS_COL_DATE = "发布日期"
-
 
 @dataclass
 class SearchBundle:
@@ -513,70 +511,6 @@ def smart_search(session: requests.Session, api_key: str, topic_name: str, query
     
     # 所有方法都失败
     return SearchBundle(query=query, answer="", results=[], error=" | ".join(errors))
-
-
-def cls_telegraphs(session: requests.Session) -> pd.DataFrame:
-    current_time = int(time.time())
-    url = "https://www.cls.cn/nodeapi/telegraphList"
-    params = {"app": "CailianpressWeb", "category": "", "lastTime": current_time, "last_time": current_time, "os": "web", "refresh_type": "1", "rn": "2000", "sv": "7.7.5"}
-    text = session.get(url, params=params, timeout=DEFAULT_TIMEOUT).url.split("?")[1]
-    text_bytes = text if isinstance(text, bytes) else bytes(text, "utf-8")
-    sha1 = hashlib.sha1(text_bytes).hexdigest()
-    params["sign"] = hashlib.md5(sha1.encode()).hexdigest()
-    headers = {
-        "Accept": "application/json, text/plain, */*",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-        "Cache-Control": "no-cache",
-        "Connection": "keep-alive",
-        "Content-Type": "application/json;charset=utf-8",
-        "Host": "www.cls.cn",
-        "Pragma": "no-cache",
-        "Referer": "https://www.cls.cn/telegraph",
-        "sec-ch-ua": '".Not/A)Brand";v="99", "Google Chrome";v="103", "Chromium";v="103"',
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": '"Windows"',
-        "Sec-Fetch-Dest": "empty",
-        "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Site": "same-origin",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36",
-    }
-    data = session.get(url, headers=headers, params=params, timeout=DEFAULT_TIMEOUT).json()
-    df = pd.DataFrame(data["data"]["roll_data"])
-    df = df[["title", "content", "level", "subjects", "ctime"]]
-    df["ctime"] = pd.to_datetime(df["ctime"], unit="s", utc=True).dt.tz_convert("Asia/Shanghai")
-    df.columns = [CLS_COL_TITLE, CLS_COL_CONTENT, CLS_COL_LEVEL, CLS_COL_TAGS, CLS_COL_TIME]
-    df.sort_values([CLS_COL_TIME], ascending=False, inplace=True)
-    df.reset_index(inplace=True, drop=True)
-    df[CLS_COL_TAGS] = [",".join([t["subject_name"] for t in tags]) if tags else "" for tags in df[CLS_COL_TAGS].to_numpy()]
-    df[CLS_COL_DATE] = df[CLS_COL_TIME].dt.date.astype(str)
-    df[CLS_COL_TIME] = df[CLS_COL_TIME].dt.strftime("%H:%M:%S")
-    return df
-
-
-def filter_cls_items(df: pd.DataFrame) -> list[dict[str, Any]]:
-    if df.empty:
-        return []
-    ranked: list[tuple[int, dict[str, Any]]] = []
-    for item in df.to_dict("records"):
-        title = normalize_text(item.get(CLS_COL_TITLE, ""))
-        content = normalize_text(item.get(CLS_COL_CONTENT, ""))
-        tags = normalize_text(item.get(CLS_COL_TAGS, ""))
-        title_text = lowered_text([title])
-        primary_text = lowered_text([title, tags])
-        full_text = lowered_text([title, content, tags])
-        if has_any_keyword(title_text, CLS_NOISE_KEYWORDS):
-            continue
-        if not is_iran_war_related(full_text, allowed_topics={"war", "economy", "diplomacy"}):
-            continue
-        if not has_any_keyword(primary_text, FOCUS_GEO_KEYWORDS):
-            continue
-        trimmed = dict(item)
-        trimmed[CLS_COL_TITLE] = compact_snippet(title, limit=90)
-        trimmed[CLS_COL_CONTENT] = compact_snippet(content, limit=120)
-        ranked.append((relevance_score(full_text), trimmed))
-    ranked.sort(key=lambda item: item[0], reverse=True)
-    return [item[1] for item in ranked[:20]]
 
 
 def fetch_stooq_asset(session: requests.Session, symbol: str) -> dict[str, Any] | None:

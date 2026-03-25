@@ -3,11 +3,16 @@
   "slug": "iran-war-tracker",
   "displayName": "Iran War Tracker",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1774147159069,
-    "commit": "https://github.com/openclaw/skills/commit/65f96e4f4c73812dceb917438c24a6ccf84325da"
+    "version": "1.0.4",
+    "publishedAt": 1774148909911,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1774147159069,
+      "commit": "https://github.com/openclaw/skills/commit/65f96e4f4c73812dceb917438c24a6ccf84325da"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1773835387533,

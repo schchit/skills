@@ -1,7 +1,7 @@
 \---
 
 name: iran-war-tracker
-version: 1.0.3
+version: 1.0.4
 description: 伊朗动态播报 | Iran War Tracker - 当用户说"伊朗播报"、"伊朗局势"、"伊朗动态"、"美以伊"、"霍尔木兹"、"Iran situation"、"Iran war"、"Middle East conflict"时触发。Track Iran conflict developments with Tavily news search, CLS Telegraph fast news, and risk asset monitoring for BTC, gold, WTI crude, natural gas, and Nasdaq futures. Use when user needs a structured Iran situation report covering war intensity, Hormuz Strait status, energy supply changes, leader statements, risk assets, and trading clues.
 ---
 
@@ -94,7 +94,7 @@ python scripts/iran\_tracker.py --force-tavily
      * 石油供应、出口、制裁及产量变化 / oil supply, exports, sanctions, production
      * 天然气供应、LNG、基础设施及出口变化 / natural gas supply, LNG, infrastructure, exports
      * 领导人、外交官及军方表态 / leader, diplomat, military statements
-2. 爬取财联社(CLS Telegraph)快讯
+2. 明确调用独立脚本 `python scripts/cls_telegraph.py` 抓取并过滤财联社(CLS Telegraph)快讯
 3. 从 Stooq 获取风险资产数据，BTC 使用 CoinGecko 作为降级
 4. 在撰写结论前优先加载远程分析框架 Gist，若失败则回退到本地框架 Markdown 文件
 5. 生成报告，使用框架解释从战争升级到油气、通胀和风险资产的传导路径
@@ -108,6 +108,8 @@ python scripts/iran\_tracker.py --force-tavily
 * 必须先加载并使用远程分析框架 Gist：`https://gist.githubusercontent.com/chinfi-codex/b311c4c284c8aa6dae9c833a146a1840/raw/%E4%BC%8A%E6%9C%97%E5%B1%80%E5%8A%BF%E5%85%B3%E9%94%AE%E5%8F%98%E9%87%8F%E4%B8%8E%E7%BB%8F%E6%B5%8E%E5%BD%B1%E5%93%8D%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A.md`
 * 远程 Gist 加载必须设置 `10s` 超时，超时或失败后再加载本地文件：`伊朗局势关键变量与经济影响分析报告.md`
 * 若远程和本地都无法加载，需明确说明框架加载失败并降低置信度。
+* 报告默认必须使用中文产出。只有用户明确要求英文时，才允许输出英文或中英双语版本。
+* 标题、正文、结论、情景推演、交易线索默认都应以中文为主，不要因为引用英文新闻就切成英文写作。
 * 不能仅停留在事件总结。每个部分都需要证据加解读。
 * 必须分开分析石油和天然气，不能合并成笼统的"能源"段落。
 * 必须解释以下传导路径：
@@ -127,7 +129,7 @@ python scripts/iran\_tracker.py --force-tavily
 
 ## 报告结构 / Output Structure
 
-生成报告必须包含以下部分。每个部分都应内容充实，而非一句话总结。
+生成报告默认必须使用中文，并包含以下部分。每个部分都应内容充实，而非一句话总结。
 
 ### 📊 战争烈度评估 / War Intensity Assessment
 
@@ -263,6 +265,26 @@ X级（🔺上升/🔻下降/➡️持平）/ Level X (Rising/Falling/Stable)
    * `伊朗局势关键变量与经济影响分析报告.md`
 3. 报告中默认以成功加载的第一个版本为准，不要混合两个版本的规则。
 4. 若发生回退，建议在内部推理中记录“远程失败，本地回退已启用”，无需在用户输出中展开技术细节，除非这影响结论置信度。
+
+### CLS Telegraph 调用方式 / CLS Telegraph Entry Point
+
+如需单独获取财联社快讯，明确调用：
+
+```bash
+python scripts/cls_telegraph.py
+```
+
+输出 JSON 到文件：
+
+```bash
+python scripts/cls_telegraph.py --output cls_telegraph.json
+```
+
+限制条数：
+
+```bash
+python scripts/cls_telegraph.py --limit 10
+```
 
 \---
 
