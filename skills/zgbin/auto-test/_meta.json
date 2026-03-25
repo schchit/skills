@@ -1,0 +1,11 @@
+{
+  "owner": "zgbin",
+  "slug": "auto-test",
+  "displayName": "Auto Test",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774215665418,
+    "commit": null
+  },
+  "history": []
+}
