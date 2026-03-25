@@ -1,15 +1,13 @@
 #!/usr/bin/env node
 /**
  * Knitify API wrapper script for OpenClaw skill tools.
- * Reads KNITIFY_API_KEY and KNITIFY_API_URL from process.env
- * (set via skills.entries.knitify-research.env in openclaw.json).
+ * Configured via KNITIFY_API_KEY and KNITIFY_API_URL (see SKILL.md config section).
  *
  * Usage: node knitify-api.js <action> [--param value ...]
  * Actions: signup, research, product
  */
 
-const API_KEY = process.env.KNITIFY_API_KEY;
-const API_URL = process.env.KNITIFY_API_URL || 'https://knitify.innovohealthlabs.com';
+const config = require('./config');
 
 function parseArgs(argv) {
   const args = {};
@@ -23,7 +21,8 @@ function parseArgs(argv) {
 }
 
 async function signup(email) {
-  const res = await fetch(`${API_URL}/api/public/v1/openclaw/signup`, {
+  const { apiUrl } = config;
+  const res = await fetch(`${apiUrl}/api/public/v1/openclaw/signup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email }),
@@ -32,13 +31,14 @@ async function signup(email) {
 }
 
 async function research(query, tone = 'general') {
-  if (!API_KEY) {
+  const { apiKey, apiUrl } = config;
+  if (!apiKey) {
     return { error: 'KNITIFY_API_KEY not set. Sign up first or set your API key.' };
   }
-  const res = await fetch(`${API_URL}/api/public/v1/research/chat-stream`, {
+  const res = await fetch(`${apiUrl}/api/public/v1/research/chat-stream`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${API_KEY}`,
+      'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -70,13 +70,14 @@ async function research(query, tone = 'general') {
 }
 
 async function productResearch(productUrl, question) {
-  if (!API_KEY) {
+  const { apiKey, apiUrl } = config;
+  if (!apiKey) {
     return { error: 'KNITIFY_API_KEY not set. Sign up first or set your API key.' };
   }
-  const res = await fetch(`${API_URL}/api/public/v1/research/product-research-chat-stream`, {
+  const res = await fetch(`${apiUrl}/api/public/v1/research/product-research-chat-stream`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${API_KEY}`,
+      'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
