@@ -1,11 +1,17 @@
 {
   "owner": "chenghaifeng08-creator",
   "slug": "audio-cog-automaton",
-  "displayName": "Audio Cog (Automaton)",
+  "displayName": "Audio Cog",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774062513077,
-    "commit": "https://github.com/openclaw/skills/commit/0c89166a282c6f0094ca4e5c9f9c97177949e153"
+    "version": "1.0.4",
+    "publishedAt": 1774355486804,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774062513077,
+      "commit": "https://github.com/openclaw/skills/commit/0c89166a282c6f0094ca4e5c9f9c97177949e153"
+    }
+  ]
 }

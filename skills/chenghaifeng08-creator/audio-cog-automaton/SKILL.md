@@ -14,6 +14,21 @@ Create professional audio with AI - from voiceovers and narration to background 
 
 ---
 
+## 💰 付费服务
+
+**AI 音频定制**:
+
+| 服务 | 价格 | 交付 |
+|------|------|------|
+| 配音服务 | ¥500/分钟 | 专业语音合成 |
+| 播客制作 | ¥1500/期 | 完整后期制作 |
+| 有声书 | ¥3000/万字 | 全书配音 + 后期 |
+| 广告配音 | ¥2000/条 | 商业级配音 |
+
+**联系**: 微信/Telegram 私信，备注"音频定制"
+
+---
+
 ## Prerequisites
 
 This skill requires the `cellcog` skill for SDK setup and API calls.
