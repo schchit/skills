@@ -2,7 +2,7 @@
 name: tiktok-viral-editor
 description: >
   Scenario-focused Sparki skill for TikTok-native pacing and viral-style edits while using the latest official Sparki setup, API-key, and upload workflow guidance.
-version: 1.0.11
+version: 1.0.12
 metadata:
   clawdbot:
     requires:
