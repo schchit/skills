@@ -1,6 +1,6 @@
 ---
 name: month-end-close
-description: "Orchestrate and validate the full month-end close for a QBO client. Reads client SOP, runs automated close checks, scores each item, proposes journal entries, tracks CDC progress, and outputs a controller-ready Excel workbook. Use when running monthly close for any PrecisionLedger client. NOT for P&L variance analysis, bank reconciliation only, or budget vs. actual comparisons."
+description: "Orchestrate and validate the full month-end close for a QBO client. Reads client SOP, runs automated close checks, scores each item, proposes journal entries, tracks CDC progress, and outputs a controller-ready Excel workbook. Use when running monthly close for any QBO-connected client. NOT for P&L variance analysis, bank reconciliation only, or budget vs. actual comparisons."
 license: MIT
 metadata:
   openclaw:
@@ -8,7 +8,6 @@ metadata:
 ---
 
 # Month-End Close Checklist — SKILL.md
-## PrecisionLedger Pipeline #4
 
 Orchestrates and validates the full month-end close for a QBO client.
 Reads `clients/{slug}/sop.md` to determine which checks apply,
@@ -21,8 +20,8 @@ and outputs a controller-ready Excel workbook.
 ## Trigger
 
 Use this skill when:
-- Irfan says "run close", "month-end close", "close checklist", or "close [client] for [month]"
-- Monthly close workflow is needed for any PrecisionLedger client
+- User says "run close", "month-end close", "close checklist", or "close [client] for [month]"
+- Monthly close workflow is needed for any QBO-connected client
 - Re-running close to check if open items have been resolved
 
 Do NOT use for:
@@ -200,7 +199,7 @@ Net balance ≠ $0.02 → ACTION NEEDED with elimination entry.
 ## Dependencies
 
 - Python 3.10+ with `openpyxl` (`pip install openpyxl`)
-- Node.js qbo-client at `integrations/qbo-client/` with valid auth tokens
+- Node.js QBO client with valid auth tokens
 - Client SOP at `clients/{slug}/sop.md` (optional but recommended)
 - Completed bank-recon run for `bank_recon` check to PASS
 
