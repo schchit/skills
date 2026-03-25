@@ -3,11 +3,16 @@
   "slug": "feishu-zh6",
   "displayName": "Feishu Zh6",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1774237840966,
-    "commit": "https://github.com/openclaw/skills/commit/6fc22b8c9ba6fe4a7eec82c4d1dee02bd302bbb8"
+    "version": "1.0.5",
+    "publishedAt": 1774244041609,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1774237840966,
+      "commit": "https://github.com/openclaw/skills/commit/6fc22b8c9ba6fe4a7eec82c4d1dee02bd302bbb8"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1774236832370,
