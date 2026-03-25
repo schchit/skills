@@ -2,6 +2,38 @@
 """
 报告生成器 - 生成统一格式的综合分析报告
 
+风格规范 (v2.0):
+================
+1. 公式格式:
+   - 使用 <div class="process-flow"> 包裹
+   - 公式整体单行展示
+   - 变量说明在"其中:"后单独成行
+   - 乘号使用 × (U+00D7)，不使用 ·
+   - 下标使用 <sub> 标签，如 Diversity<sub>it</sub>
+   - 公式示例:
+     PlayDuration<sub>it</sub> = β₀ + β<sub>1</sub> × Diversity<sub>it</sub> + α<sub>i</sub> + ε<sub>it</sub>
+
+2. p值显示:
+   - 使用粗体数字: <strong>0.0001</strong>
+   - 不使用"显著/不显著"等文字标签
+   - p < 0.0001 时显示: <strong>&lt; 0.0001</strong>
+
+3. 结论框:
+   - 使用 <div class="conclusion-box">
+   - 标题统一为"结论": <div class="conclusion-title">结论</div>
+   - 不使用"✅ 显著"等前缀
+   - 内容使用 <ul class="conclusion-list"> 列表
+
+4. 表格:
+   - 使用 <table class="financial-table">
+   - 数字列使用 <td class="num">
+   - 表头使用 <thead> 包裹
+
+5. 层级结构:
+   - 一级: <div class="section">
+   - 二级: <div class="dimension-block">
+   - 三级: <div class="insight-item">
+
 输出:
 - HTML报告（整合所有内容，内嵌图表）
 - Markdown报告（文字部分）
@@ -300,6 +332,80 @@ class ReportGenerator:
         .financial-table .num {{
             text-align: right;
             font-family: 'Helvetica Neue', monospace;
+        }}
+
+        /* 公式/流程展示 */
+        .process-flow {{
+            margin-left: 15px;
+            padding: 10px 15px;
+            background: #f8f9fa;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 11px;
+            line-height: 1.8;
+            border-left: 3px solid #666;
+            margin-bottom: 12px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }}
+
+        /* 结论框 */
+        .conclusion-box {{
+            margin-left: 15px;
+            padding: 12px 15px;
+            background: #f0f9f4;
+            border-left: 3px solid #27ae60;
+            margin-top: 10px;
+        }}
+
+        .conclusion-box.warning {{
+            background: #fffbf0;
+            border-left-color: #f39c12;
+        }}
+
+        .conclusion-box.critical {{
+            background: #fff5f5;
+            border-left-color: #c00;
+        }}
+
+        .conclusion-title {{
+            font-size: 12px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+        }}
+
+        .conclusion-list {{
+            margin: 0;
+            padding-left: 18px;
+            font-size: 11px;
+            line-height: 1.6;
+        }}
+
+        .conclusion-list li {{
+            margin-bottom: 4px;
+        }}
+
+        /* 假设状态 */
+        .hypothesis-status {{
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 2px;
+            font-size: 10px;
+        }}
+
+        .hypothesis-status.status-supported {{
+            color: #27ae60;
+            background: #f0f9f4;
+        }}
+
+        .hypothesis-status.status-weak {{
+            color: #f39c12;
+            background: #fffbf0;
+        }}
+
+        .hypothesis-status.status-rejected {{
+            color: #c00;
+            background: #fff5f5;
         }}
 
         /* 数据质量问题列表 */
@@ -699,6 +805,42 @@ class ReportGenerator:
             </div>
             '''
 
+        return html
+
+    def _format_p_value(self, p_value: float) -> str:
+        """格式化p值为粗体数字，不使用文字标签"""
+        if p_value < 0.0001:
+            return "<strong>&lt; 0.0001</strong>"
+        return f"<strong>{p_value:.4f}</strong>"
+
+    def _generate_formula_html(self, title: str, formula_lines: List[str], variables: List[tuple]) -> str:
+        """
+        生成标准格式的公式HTML
+
+        Args:
+            title: 公式标题（如"基础模型"）
+            formula_lines: 公式行列表，每行一个公式
+            variables: 变量说明列表，每个元素为(name, description)元组
+        """
+        html = '<div class="process-flow">\n'
+        html += f'{title}:\n'
+        for line in formula_lines:
+            html += f'  {line}\n'
+        html += '\n其中:\n'
+        for name, desc in variables:
+            html += f'  {name} = {desc}\n'
+        html += '</div>'
+        return html
+
+    def _generate_conclusion_box(self, title: str = "结论", items: List[str] = None, box_type: str = "") -> str:
+        """生成结论框HTML"""
+        box_class = f"conclusion-box {box_type}".strip()
+        html = f'<div class="{box_class}">'
+        html += f'<div class="conclusion-title">{title}</div>'
+        html += '<ul class="conclusion-list">'
+        for item in items or []:
+            html += f'<li>{item}</li>'
+        html += '</ul></div>'
         return html
 
     def _generate_quality_section(self, validation_report: Dict) -> str:

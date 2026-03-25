@@ -146,6 +146,30 @@ class UniversalDataAnalystV2:
 
         return results
 
+    # ========== V1 API 兼容层 ==========
+
+    def load_data(self, file_path: str, **kwargs) -> DataLoadResult:
+        """V1 API 兼容：加载单个文件"""
+        results = self.load_multiple_files([file_path], **kwargs)
+        table_name = Path(file_path).stem
+        if table_name in results:
+            return results[table_name]
+        return DataLoadResult(success=False, errors=[f"加载失败: {file_path}"])
+
+    @property
+    def data(self):
+        """V1 API 兼容：获取主表 DataFrame"""
+        if self.primary_table and self.primary_table in self.data_dict:
+            return self.data_dict[self.primary_table]
+        return None
+
+    @property
+    def load_result(self):
+        """V1 API 兼容：获取主表加载结果"""
+        if self.primary_table and self.primary_table in self.load_results:
+            return self.load_results[self.primary_table]
+        return None
+
     def analyze_join_feasibility(self, left_table: str = None, right_table: str = None,
                                   left_key: str = None, right_key: str = None) -> MultiTableProfile:
         """

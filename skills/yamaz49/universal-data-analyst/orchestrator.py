@@ -1,20 +1,12 @@
 #!/usr/bin/env python3
 """
-Orchestrator - 数据分析流程编排器
+Orchestrator V2 - 增强版流程编排器
 
-整合完整的数据分析流程：
-1. 数据加载 (data_loader)
-2. 本体识别 -> 调用LLM思考
-3. 数据质量校验 (data_validator) - 必须执行，输出到报告
-4. 方案规划 -> 调用LLM思考
-5. 脚本生成 -> 调用LLM思考
-6. 执行分析
-7. 综合报告生成 -> 输出HTML报告 + MD报告 + 图表
-
-特点：
-- 每次判断都调用大模型，不依赖硬编码
-- 支持单轮完整分析（用户信息充分时）
-- 最终输出统一格式的综合报告
+改进点：
+1. 集成流程健康监控 - 每个步骤都有状态追踪
+2. 明确的错误提示 - 步骤失败时给用户清晰的报错和建议
+3. 流程中断检测 - 关键步骤失败时阻止后续步骤执行
+4. 最终健康报告 - 输出完整的流程执行状态
 """
 
 import os
@@ -30,19 +22,15 @@ SKILL_ROOT = Path(__file__).parent
 sys.path.insert(0, str(SKILL_ROOT))
 sys.path.insert(0, str(SKILL_ROOT / 'layers'))
 
-from main import UniversalDataAnalyst, DataOntology, AnalysisPlan
+from main import UniversalDataAnalystV2 as UniversalDataAnalyst, DataOntology, AnalysisPlan
 from llm_analyzer import LLMAnalyzer, OntologyResult, AnalysisPlan as LLMAnalysisPlan
 from report_generator import ReportGenerator
+from flow_health_monitor import FlowHealthMonitor, StepStatus, StepImportance
 
 
-class DataAnalysisOrchestrator:
+class DataAnalysisOrchestratorV2:
     """
-    数据分析流程编排器
-
-    关键设计：
-    - 每个思考步骤都生成提示词，通过 Claude 调用大模型
-    - 数据质量诊断必须执行，结果整合到最终报告
-    - 最终输出统一格式的HTML报告 + MD报告
+    增强版数据分析流程编排器（带健康监控）
     """
 
     def __init__(self, output_dir: str = "./analysis_output"):
@@ -53,6 +41,9 @@ class DataAnalysisOrchestrator:
         self.analyst = UniversalDataAnalyst()
         self.llm_analyzer = LLMAnalyzer()
         self.report_generator = None
+
+        # 初始化流程健康监控器
+        self.health_monitor = FlowHealthMonitor()
 
         # 会话状态
         self.session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -69,205 +60,409 @@ class DataAnalysisOrchestrator:
         self.data_info: Optional[Dict] = None
 
     def step1_load_data(self, file_path: str, **kwargs) -> Tuple[bool, str]:
-        """
-        步骤1: 加载数据
-        返回: (是否成功, 消息)
-        """
+        """步骤1: 加载数据（带健康监控）"""
         print("\n" + "="*80)
         print("【步骤1/7】数据加载")
         print("="*80)
 
-        result = self.analyst.load_data(file_path, **kwargs)
+        # 检查是否可以执行
+        if not self.health_monitor.record_step_start("load"):
+            return False, "步骤被阻塞，无法执行"
 
-        if result.success:
-            msg = f"✅ 加载成功: {result.rows:,} 行 × {result.columns} 列"
-            print(msg)
+        try:
+            result = self.analyst.load_data(file_path, **kwargs)
 
-            # 保存数据基本信息
-            self.data_info = {
-                "file_path": file_path,
-                "file_name": Path(file_path).name,
-                "rows": result.rows,
-                "columns": result.columns,
-                "memory_mb": result.memory_usage_mb,
-                "column_names": list(self.analyst.data.columns),
-                "report_title": f"{Path(file_path).stem} 数据分析报告"
-            }
-            self._save_json("step1_data_info.json", self.data_info)
-            return True, msg
-        else:
-            msg = f"❌ 加载失败: {result.errors}"
-            print(msg)
-            return False, msg
+            if result.success:
+                msg = f"✅ 加载成功: {result.rows:,} 行 × {result.columns} 列"
+                print(msg)
 
-    def step2_identify_ontology(self) -> Tuple[str, str]:
-        """
-        步骤2: 识别数据本体
-        返回: (提示词, 提示词文件路径)
-        """
+                # 检查编码回退警告
+                if result.warnings:
+                    print(f"\n⚠️ 警告:")
+                    for warning in result.warnings:
+                        print(f"   - {warning}")
+
+                # 保存数据基本信息
+                self.data_info = {
+                    "file_path": file_path,
+                    "file_name": Path(file_path).name,
+                    "rows": result.rows,
+                    "columns": result.columns,
+                    "memory_mb": result.memory_usage_mb,
+                    "column_names": list(self.analyst.data.columns),
+                    "encoding": result.encoding,
+                    "report_title": f"{Path(file_path).stem} 数据分析报告"
+                }
+                self._save_json("step1_data_info.json", self.data_info)
+
+                # 记录成功
+                self.health_monitor.record_step_success(
+                    "load",
+                    message=msg,
+                    details={
+                        "rows": result.rows,
+                        "columns": result.columns,
+                        "encoding": result.encoding
+                    }
+                )
+                return True, msg
+            else:
+                msg = f"❌ 加载失败: {result.errors}"
+                print(msg)
+
+                # 分析错误类型，给出建议
+                suggestions = []
+                for error in result.errors:
+                    if "encoding" in error.lower() or "codec" in error.lower():
+                        suggestions.extend([
+                            "文件编码可能不是UTF-8，尝试手动指定encoding参数",
+                            "常见中文编码: gbk, gb2312, gb18030",
+                            "可使用文本编辑器查看或转换文件编码"
+                        ])
+                    elif "parser" in error.lower() or "tokeniz" in error.lower():
+                        suggestions.extend([
+                            "文件格式可能损坏，检查CSV分隔符是否正确",
+                            "尝试用文本编辑器打开文件检查内容",
+                            "如果是Excel文件，请先另存为CSV格式"
+                        ])
+                    elif "permission" in error.lower():
+                        suggestions.extend([
+                            "检查文件读取权限",
+                            "尝试将文件复制到其他目录"
+                        ])
+                    else:
+                        suggestions.extend([
+                            "检查文件路径是否正确",
+                            "确认文件未被其他程序占用"
+                        ])
+
+                # 记录失败
+                self.health_monitor.record_step_failure(
+                    "load",
+                    error="; ".join(result.errors),
+                    suggestions=suggestions,
+                    is_critical=True
+                )
+                return False, msg
+
+        except Exception as e:
+            error_msg = f"❌ 加载异常: {str(e)}"
+            print(error_msg)
+            self.health_monitor.record_step_failure(
+                "load",
+                error=str(e),
+                suggestions=[
+                    "检查文件路径是否正确",
+                    "确认文件格式是否为支持的格式(CSV/Excel/Parquet/JSON)",
+                    "检查系统内存是否充足"
+                ],
+                is_critical=True
+            )
+            return False, error_msg
+
+    def step2_identify_ontology(self) -> Tuple[bool, str, str]:
+        """步骤2: 识别数据本体（带健康监控）"""
         print("\n" + "="*80)
-        print("【步骤2/7】数据本体识别 - 调用大模型思考")
+        print("【步骤2/7】数据本体识别")
         print("="*80)
-        print("🤔 正在生成数据本体识别提示词...")
 
-        # 生成数据画像
-        data_profile = self.analyst._generate_data_profile()
+        # 检查依赖
+        if not self.health_monitor.record_step_start("ontology"):
+            blocked_result = self.health_monitor.step_results.get("ontology")
+            msg = f"⛔ 步骤被阻塞: {blocked_result.message if blocked_result else '未知原因'}"
+            print(msg)
+            return False, "", ""
 
-        # 生成提示词
-        prompt = self.llm_analyzer.identify_ontology(data_profile)
+        try:
+            # 生成数据画像
+            data_profile = self.analyst._generate_data_profile(self.analyst.data)
 
-        # 保存提示词
-        prompt_file = self.session_dir / "step2_ontology_prompt.txt"
-        prompt_file.write_text(prompt, encoding='utf-8')
+            # 生成提示词
+            prompt = self.llm_analyzer.identify_ontology(data_profile)
 
-        print(f"💾 提示词已保存: {prompt_file}")
-        print("\n📋 提示词预览（前1000字符）:")
-        print("-" * 80)
-        print(prompt[:1000])
-        print("...")
+            # 保存提示词
+            prompt_file = self.session_dir / "step2_ontology_prompt.txt"
+            prompt_file.write_text(prompt, encoding='utf-8')
 
-        return str(prompt), str(prompt_file)
+            print("💾 提示词已生成")
+            print("\n📋 提示词预览（前500字符）:")
+            print("-" * 80)
+            print(prompt[:500])
+            print("...")
 
-    def step3_validate_data(self) -> Dict[str, Any]:
-        """
-        步骤3: 数据质量校验（必须执行）
-        返回: 验证报告字典
-        """
+            # 记录成功（但提醒用户需要手动调用LLM）
+            self.health_monitor.record_step_success(
+                "ontology",
+                message="提示词已生成，需要调用LLM完成本体识别",
+                details={"prompt_file": str(prompt_file)}
+            )
+
+            # 显示重要提醒
+            print("\n" + "⚠️" * 40)
+            print("【重要提醒】")
+            print("⚠️  本体识别需要调用大模型完成！")
+            print(f"⚠️  提示词已保存到: {prompt_file}")
+            print("⚠️  请使用此提示词调用 Claude 或其他LLM，")
+            print("⚠️  然后将结果保存为: ontology_result.json")
+            print("⚠️" * 40)
+
+            return True, str(prompt), str(prompt_file)
+
+        except Exception as e:
+            error_msg = f"生成提示词失败: {str(e)}"
+            print(f"❌ {error_msg}")
+            self.health_monitor.record_step_failure(
+                "ontology",
+                error=error_msg,
+                suggestions=[
+                    "检查数据是否正确加载",
+                    "确认 llm_analyzer 模块正常工作",
+                    "可以尝试使用 autonomous 模式跳过此步骤"
+                ]
+            )
+            return False, "", ""
+
+    def step3_validate_data(self) -> Optional[Dict[str, Any]]:
+        """步骤3: 数据质量校验（带健康监控）"""
         print("\n" + "="*80)
         print("【步骤3/7】数据质量校验")
         print("="*80)
 
-        report = self.analyst.validate_data()
+        # 检查依赖
+        if not self.health_monitor.record_step_start("validation"):
+            blocked_result = self.health_monitor.step_results.get("validation")
+            print(f"⛔ 步骤被阻塞: {blocked_result.message if blocked_result else '未知原因'}")
+            return None
 
-        # 转换为字典
-        self.validation_report_dict = report.to_dict()
+        try:
+            report = self.analyst.validate_data()
 
-        # 保存校验结果
-        self._save_json("step3_validation_report.json", self.validation_report_dict)
+            # 转换为字典
+            self.validation_report_dict = report.to_dict()
 
-        # 生成清洗报告
-        cleaning_report = report.generate_cleaning_report()
-        cleaning_file = self.session_dir / "step3_cleaning_report.txt"
-        cleaning_file.write_text(cleaning_report, encoding='utf-8')
+            # 保存校验结果
+            self._save_json("step3_validation_report.json", self.validation_report_dict)
 
-        # 显示关键信息
-        print(f"\n📊 质量评分: {report.overall_score:.1f}/100")
-        print(f"📋 发现问题: {len(report.issues)} 个")
+            # 生成清洗报告
+            cleaning_report = report.generate_cleaning_report()
+            cleaning_file = self.session_dir / "step3_cleaning_report.txt"
+            cleaning_file.write_text(cleaning_report, encoding='utf-8')
 
-        critical_count = len(report.get_issues_by_severity(report.issues[0].severity if report.issues else None))
-        warning_count = sum(1 for i in report.issues if str(i.severity) == 'IssueSeverity.WARNING')
+            # 显示关键信息
+            print(f"\n📊 质量评分: {report.overall_score:.1f}/100")
 
-        if report.issues:
-            print(f"   - Critical: {critical_count} 个")
-            print(f"   - Warning: {warning_count} 个")
+            if report.issues:
+                critical_count = sum(1 for i in report.issues if str(i.severity) == 'IssueSeverity.CRITICAL')
+                warning_count = sum(1 for i in report.issues if str(i.severity) == 'IssueSeverity.WARNING')
 
-        summary = report.get_cleaning_summary()
-        if summary.get('recommended_deletions', 0) > 0:
-            print(f"🗑️  建议删除: {summary['recommended_deletions']:,} 行")
-        if summary.get('recommended_fills', 0) > 0:
-            print(f"📝 建议填充: {summary['recommended_fills']:,} 个缺失值")
+                print(f"📋 发现问题: {len(report.issues)} 个")
+                print(f"   - Critical: {critical_count} 个")
+                print(f"   - Warning: {warning_count} 个")
 
-        print(f"💾 校验报告已保存: {cleaning_file}")
+                # 如果有严重问题，给出警告
+                if critical_count > 0:
+                    print("\n" + "⚠️" * 20)
+                    print("⚠️  发现严重数据质量问题！")
+                    print("⚠️  建议在继续分析前处理这些问题")
+                    print("⚠️  查看 step3_cleaning_report.txt 了解详情")
+                    print("⚠️" * 20)
+            else:
+                print("✅ 未发现数据质量问题")
 
-        return self.validation_report_dict
+            summary = report.get_cleaning_summary()
+            if summary.get('recommended_deletions', 0) > 0:
+                print(f"🗑️  建议删除: {summary['recommended_deletions']:,} 行")
+            if summary.get('recommended_fills', 0) > 0:
+                print(f"📝 建议填充: {summary['recommended_fills']:,} 个缺失值")
 
-    def step4_plan_analysis(self, user_intent: str) -> Tuple[str, str]:
-        """
-        步骤4: 规划分析方案
-        返回: (提示词, 提示词文件路径)
-        """
+            # 记录成功
+            self.health_monitor.record_step_success(
+                "validation",
+                message=f"质量评分 {report.overall_score:.1f}/100",
+                details={
+                    "score": report.overall_score,
+                    "issues_count": len(report.issues)
+                }
+            )
+
+            return self.validation_report_dict
+
+        except Exception as e:
+            error_msg = f"数据校验失败: {str(e)}"
+            print(f"❌ {error_msg}")
+            self.health_monitor.record_step_failure(
+                "validation",
+                error=error_msg,
+                suggestions=[
+                    "检查数据是否正确加载",
+                    "确认 data_validator 模块正常工作"
+                ]
+            )
+            return None
+
+    def step4_plan_analysis(self, user_intent: str) -> Tuple[bool, str, str]:
+        """步骤4: 规划分析方案（带健康监控）"""
         print("\n" + "="*80)
-        print("【步骤4/7】分析方案规划 - 调用大模型思考")
+        print("【步骤4/7】分析方案规划")
         print("="*80)
         print(f"📝 用户诉求: {user_intent}")
 
-        # 需要先有本体结果，如果没有，使用占位
-        if self.ontology_result is None:
-            print("⚠️ 警告: 尚未进行本体识别，使用数据画像替代")
-            # 创建一个基于数据画像的简化本体
-            data_profile = self.analyst._generate_data_profile()
-            ontology = self._create_placeholder_ontology(data_profile)
-        else:
-            ontology = self.ontology_result
+        # 检查依赖
+        if not self.health_monitor.record_step_start("planning"):
+            blocked_result = self.health_monitor.step_results.get("planning")
+            msg = f"⛔ 步骤被阻塞: {blocked_result.message if blocked_result else '未知原因'}"
+            print(msg)
+            return False, "", ""
 
-        # 获取数据样本和字段详情
-        df = self.analyst.data
-        data_sample = df.head(10).to_string()
+        try:
+            # 需要先有本体结果，如果没有，使用占位
+            if self.ontology_result is None:
+                print("⚠️ 警告: 尚未进行本体识别，使用数据画像替代")
+                data_profile = self.analyst._generate_data_profile(self.analyst.data)
+                ontology = self._create_placeholder_ontology(data_profile)
+            else:
+                ontology = self.ontology_result
 
-        column_details = []
-        for col in df.columns:
-            dtype = df[col].dtype
-            unique = df[col].nunique()
-            null_pct = df[col].isnull().sum() / len(df) * 100
-            detail = f"{col}: {dtype}, 唯一值{unique:,}, 缺失{null_pct:.1f}%"
-            if hasattr(df[col], 'min') and pd.api.types.is_numeric_dtype(df[col]):
-                detail += f", 范围[{df[col].min():.2f}, {df[col].max():.2f}]"
-            column_details.append(detail)
+            # 获取数据样本和字段详情
+            df = self.analyst.data
+            data_sample = df.head(10).to_string()
 
-        # 生成提示词
-        prompt = self.llm_analyzer.plan_analysis(
-            ontology=ontology,
-            user_intent=user_intent,
-            data_sample=data_sample,
-            column_details=column_details
-        )
+            column_details = []
+            for col in df.columns:
+                dtype = df[col].dtype
+                unique = df[col].nunique()
+                null_pct = df[col].isnull().sum() / len(df) * 100
+                detail = f"{col}: {dtype}, 唯一值{unique:,}, 缺失{null_pct:.1f}%"
+                if hasattr(df[col], 'min') and pd.api.types.is_numeric_dtype(df[col]):
+                    detail += f", 范围[{df[col].min():.2f}, {df[col].max():.2f}]"
+                column_details.append(detail)
 
-        # 保存提示词
-        prompt_file = self.session_dir / "step4_planning_prompt.txt"
-        prompt_file.write_text(prompt, encoding='utf-8')
+            # 生成提示词
+            prompt = self.llm_analyzer.plan_analysis(
+                ontology=ontology,
+                user_intent=user_intent,
+                data_sample=data_sample,
+                column_details=column_details
+            )
 
-        print(f"💾 提示词已保存: {prompt_file}")
-        print("\n📋 提示词预览（前1000字符）:")
-        print("-" * 80)
-        print(prompt[:1000])
-        print("...")
+            # 保存提示词
+            prompt_file = self.session_dir / "step4_planning_prompt.txt"
+            prompt_file.write_text(prompt, encoding='utf-8')
 
-        return str(prompt), str(prompt_file)
+            print("💾 分析方案提示词已生成")
 
-    def step5_generate_script(self) -> Tuple[str, str]:
-        """
-        步骤5: 生成分析脚本
-        返回: (提示词, 提示词文件路径)
-        """
+            # 记录成功
+            self.health_monitor.record_step_success(
+                "planning",
+                message="提示词已生成，需要调用LLM完成方案规划",
+                details={"prompt_file": str(prompt_file)}
+            )
+
+            # 显示提醒
+            print("\n⚠️ 分析方案规划需要调用大模型完成！")
+            print(f"⚠️ 提示词已保存到: {prompt_file}")
+            print("⚠️ 请将结果保存为: analysis_plan.json")
+
+            return True, str(prompt), str(prompt_file)
+
+        except Exception as e:
+            error_msg = f"方案规划失败: {str(e)}"
+            print(f"❌ {error_msg}")
+            self.health_monitor.record_step_failure(
+                "planning",
+                error=error_msg,
+                suggestions=[
+                    "检查数据是否正确加载",
+                    "确认 llm_analyzer 模块正常工作"
+                ]
+            )
+            return False, "", ""
+
+    def step5_generate_script(self) -> Tuple[bool, str, str]:
+        """步骤5: 生成分析脚本（带健康监控）"""
         print("\n" + "="*80)
-        print("【步骤5/7】生成分析脚本 - 调用大模型思考")
+        print("【步骤5/7】生成分析脚本")
         print("="*80)
 
-        # 需要有分析计划
-        if self.analysis_plan is None:
-            print("❌ 错误: 尚未进行分析方案规划")
-            return "", ""
+        # 检查依赖
+        if not self.health_monitor.record_step_start("script_generation"):
+            blocked_result = self.health_monitor.step_results.get("script_generation")
+            msg = f"⛔ 步骤被阻塞: {blocked_result.message if blocked_result else '未知原因'}"
+            print(msg)
+            return False, "", ""
 
-        # 使用已识别的本体（或占位）
-        ontology = self.ontology_result or self._create_placeholder_ontology(
-            self.analyst._generate_data_profile()
-        )
+        try:
+            # 需要有分析计划
+            if self.analysis_plan is None:
+                error_msg = "尚未进行分析方案规划，无法生成脚本"
+                print(f"❌ {error_msg}")
+                self.health_monitor.record_step_failure(
+                    "script_generation",
+                    error=error_msg,
+                    suggestions=[
+                        "先完成步骤4（分析方案规划）",
+                        "将LLM的规划结果保存为 analysis_plan.json"
+                    ]
+                )
+                return False, "", ""
 
-        file_path = self.analyst.load_result.file_path if self.analyst.load_result else "data.csv"
+            # 使用已识别的本体（或占位）
+            ontology = self.ontology_result or self._create_placeholder_ontology(
+                self.analyst._generate_data_profile(self.analyst.data)
+            )
 
-        # 生成提示词
-        prompt = self.llm_analyzer.generate_script(
-            analysis_plan=self.analysis_plan,
-            ontology=ontology,
-            file_path=file_path
-        )
+            file_path = self.analyst.load_result.file_path if self.analyst.load_result else "data.csv"
 
-        # 保存提示词
-        prompt_file = self.session_dir / "step5_script_prompt.txt"
-        prompt_file.write_text(prompt, encoding='utf-8')
+            # 生成提示词
+            prompt = self.llm_analyzer.generate_script(
+                analysis_plan=self.analysis_plan,
+                ontology=ontology,
+                file_path=file_path
+            )
 
-        print(f"💾 提示词已保存: {prompt_file}")
+            # 保存提示词
+            prompt_file = self.session_dir / "step5_script_prompt.txt"
+            prompt_file.write_text(prompt, encoding='utf-8')
 
-        return str(prompt), str(prompt_file)
+            print("💾 脚本生成提示词已保存")
+
+            # 记录成功
+            self.health_monitor.record_step_success(
+                "script_generation",
+                message="提示词已生成，需要调用LLM生成脚本",
+                details={"prompt_file": str(prompt_file)}
+            )
+
+            print("\n⚠️ 脚本生成需要调用大模型完成！")
+            print(f"⚠️ 提示词已保存到: {prompt_file}")
+            print("⚠️ 请将生成的脚本保存为: analysis_script.py")
+
+            return True, str(prompt), str(prompt_file)
+
+        except Exception as e:
+            error_msg = f"脚本生成失败: {str(e)}"
+            print(f"❌ {error_msg}")
+            self.health_monitor.record_step_failure(
+                "script_generation",
+                error=error_msg,
+                suggestions=[
+                    "检查分析方案规划是否完成",
+                    "确认 llm_analyzer 模块正常工作"
+                ]
+            )
+            return False, "", ""
 
     def step6_execute_analysis(self, script_path: Optional[str] = None) -> Dict[str, Any]:
-        """
-        步骤6: 执行分析脚本
-        返回: 分析结果字典
-        """
+        """步骤6: 执行分析脚本（带健康监控）"""
         print("\n" + "="*80)
         print("【步骤6/7】执行分析")
         print("="*80)
+
+        # 检查依赖
+        if not self.health_monitor.record_step_start("execution"):
+            blocked_result = self.health_monitor.step_results.get("execution")
+            print(f"⛔ 步骤被阻塞: {blocked_result.message if blocked_result else '未知原因'}")
+            return {"status": "被阻塞", "executed": False}
 
         results = {
             "status": "未执行",
@@ -292,12 +487,38 @@ class DataAnalysisOrchestrator:
                 results["executed"] = True
                 results["script_output"] = result.stdout
 
+                # 记录成功
+                self.health_monitor.record_step_success(
+                    "execution",
+                    message="分析脚本执行完成"
+                )
+
             except Exception as e:
-                print(f"❌ 执行失败: {e}")
+                error_msg = f"执行失败: {e}"
+                print(f"❌ {error_msg}")
                 results["status"] = f"执行失败: {e}"
+                self.health_monitor.record_step_failure(
+                    "execution",
+                    error=str(e),
+                    suggestions=[
+                        "检查脚本是否存在语法错误",
+                        "确认脚本所需的依赖包已安装",
+                        "检查数据文件路径是否正确"
+                    ]
+                )
         else:
-            print("ℹ️ 未提供脚本路径，跳过执行")
+            msg = "未提供脚本路径或脚本不存在，跳过执行"
+            print(f"ℹ️ {msg}")
             results["status"] = "未提供脚本"
+            self.health_monitor.record_step_failure(
+                "execution",
+                error=msg,
+                suggestions=[
+                    "完成步骤5（脚本生成）",
+                    "将LLM生成的脚本保存为 analysis_script.py",
+                    f"或将脚本路径传入 step6_execute_analysis(script_path='...')"
+                ]
+            )
 
         # 尝试读取分析结果
         results_file = self.session_dir / "analysis_results.json"
@@ -312,204 +533,139 @@ class DataAnalysisOrchestrator:
 
         return results
 
-    def step7_generate_comprehensive_report(self,
-                                            ontology_result: Optional[Dict] = None,
-                                            analysis_plan_result: Optional[Dict] = None,
-                                            analysis_results: Optional[Dict] = None) -> Dict[str, str]:
-        """
-        步骤7: 生成综合报告（HTML + MD + 图表）
-
-        返回: 报告文件路径字典
-        """
+    def step7_generate_comprehensive_report(self, **kwargs) -> Dict[str, str]:
+        """步骤7: 生成综合报告（带健康监控）"""
         print("\n" + "="*80)
         print("【步骤7/7】生成综合报告")
         print("="*80)
 
-        # 准备数据
-        data_info = self.data_info or {
-            "file_name": "Unknown",
-            "rows": 0,
-            "columns": 0,
-            "report_title": "数据分析报告"
-        }
+        # 检查依赖
+        if not self.health_monitor.record_step_start("report"):
+            blocked_result = self.health_monitor.step_results.get("report")
+            print(f"⛔ 步骤被阻塞: {blocked_result.message if blocked_result else '未知原因'}")
+            return {}
 
-        validation_report = self.validation_report_dict or {
-            "overall_score": 0,
-            "issues": [],
-            "cleaning_summary": {}
-        }
-
-        # 使用传入的本体结果，或从文件读取，或使用占位
-        ontology = ontology_result or {}
-        if not ontology and (self.session_dir / "ontology_result.json").exists():
-            try:
-                with open(self.session_dir / "ontology_result.json", 'r', encoding='utf-8') as f:
-                    ontology = json.load(f)
-            except:
-                pass
-
-        if not ontology:
-            ontology = {
-                "entity_type": "待识别（请在步骤2调用LLM识别）",
-                "entity_type_reason": "未完成本体识别",
-                "generation_mechanism": "待识别",
-                "mechanism_reason": "未完成本体识别",
-                "core_dimensions": [],
-                "is_economic": False,
-                "economic_type": None,
-                "domain_type": "待识别",
-                "keywords": [],
-                "limitations": ["未完成本体识别"]
+        try:
+            # 准备数据（使用占位数据如果实际数据不存在）
+            data_info = self.data_info or {
+                "file_name": "Unknown",
+                "rows": 0,
+                "columns": 0,
+                "report_title": "数据分析报告"
             }
 
-        # 使用传入的分析计划，或从文件读取，或使用占位
-        plan = analysis_plan_result or {}
-        if not plan and (self.session_dir / "analysis_plan.json").exists():
-            try:
-                with open(self.session_dir / "analysis_plan.json", 'r', encoding='utf-8') as f:
-                    plan = json.load(f)
-            except:
-                pass
-
-        if not plan:
-            plan = {
-                "question_type": "待规划",
-                "question_type_reason": "未完成方案规划",
-                "frameworks": [],
-                "analysis_steps": [],
-                "expected_outputs": [],
-                "prerequisites": [],
-                "risks": []
+            validation_report = self.validation_report_dict or {
+                "overall_score": 0,
+                "issues": [],
+                "cleaning_summary": {}
             }
 
-        # 使用传入的分析结果，或从文件读取
-        results = analysis_results or {}
-        if not results and (self.session_dir / "analysis_results.json").exists():
-            try:
-                with open(self.session_dir / "analysis_results.json", 'r', encoding='utf-8') as f:
-                    results = json.load(f)
-            except:
-                pass
+            # 生成报告
+            report_paths = self.report_generator.generate_all_reports(
+                data_info=data_info,
+                validation_report=validation_report,
+                ontology=kwargs.get('ontology_result', {}),
+                analysis_plan=kwargs.get('analysis_plan_result', {}),
+                analysis_results=kwargs.get('analysis_results', {}),
+                chart_files=[]
+            )
 
-        # 如果仍然没有结果，创建占位
-        if not results:
-            results = {
-                "executive_summary": ["未完成分析执行"],
-                "findings": [],
-                "detailed_findings": {},
-                "conclusions": [],
-                "recommendations": [],
-                "limitations": ["分析脚本未执行，无详细结果"],
-                "key_metrics": {}
-            }
+            print("\n📄 报告已生成:")
+            print(f"  📘 HTML报告: {report_paths['html_report']}")
+            print(f"  📄 Markdown报告: {report_paths['markdown_report']}")
 
-        # 查找图表文件
-        chart_files = []
-        charts_dir = self.session_dir / "charts"
-        if charts_dir.exists():
-            chart_files = list(charts_dir.glob("*.png")) + list(charts_dir.glob("*.jpg"))
-            chart_files = [str(f) for f in chart_files]
+            # 记录成功
+            self.health_monitor.record_step_success(
+                "report",
+                message="综合报告已生成",
+                details=report_paths
+            )
 
-        # 生成报告
-        report_paths = self.report_generator.generate_all_reports(
-            data_info=data_info,
-            validation_report=validation_report,
-            ontology=ontology,
-            analysis_plan=plan,
-            analysis_results=results,
-            chart_files=chart_files
-        )
+            return report_paths
 
-        print("\n📄 报告已生成:")
-        print(f"  📘 HTML报告: {report_paths['html_report']}")
-        print(f"  📄 Markdown报告: {report_paths['markdown_report']}")
-        print(f"  🖼️  图表目录: {report_paths['charts_dir']}")
-
-        return report_paths
+        except Exception as e:
+            error_msg = f"报告生成失败: {str(e)}"
+            print(f"❌ {error_msg}")
+            self.health_monitor.record_step_failure(
+                "report",
+                error=error_msg,
+                suggestions=[
+                    "检查报告生成器是否正常工作",
+                    "确认输出目录有写入权限"
+                ]
+            )
+            return {}
 
     def run_full_analysis(self, file_path: str, user_intent: str) -> Dict[str, Any]:
-        """
-        运行完整分析流程（单轮完成）
-
-        适用于用户信息充分的情况
-        """
+        """运行完整分析流程（带健康监控）"""
         print("\n" + "="*80)
-        print("🚀 启动通用数据分析流程")
+        print("🚀 启动通用数据分析流程（增强版）")
         print(f"📁 数据文件: {file_path}")
         print(f"🎯 分析目标: {user_intent}")
         print("="*80)
 
-        results = {
-            "session_dir": str(self.session_dir),
-            "steps": {},
-            "reports": {}
-        }
+        # 检查流程是否可以开始
+        if not self.health_monitor.can_proceed("load"):
+            print("\n❌ 流程无法开始，检查失败")
+            return {"error": "流程初始化失败"}
 
         # 步骤1: 加载数据
         success, msg = self.step1_load_data(file_path)
-        results["steps"]["load"] = {"success": success, "message": msg}
         if not success:
-            return results
+            self._finalize_flow()
+            return {"error": msg, "session_dir": str(self.session_dir)}
 
-        # 步骤2: 本体识别（生成提示词）
-        ontology_prompt, ontology_file = self.step2_identify_ontology()
-        results["steps"]["ontology"] = {
-            "prompt_file": ontology_file,
-            "note": "请使用此提示词调用大模型进行本体识别，结果保存为 ontology_result.json"
-        }
+        # 步骤2: 本体识别
+        success, _, _ = self.step2_identify_ontology()
+        # 本体识别失败不终止流程，继续执行
 
-        # 步骤3: 数据校验（必须执行）
+        # 步骤3: 数据校验
         validation_report = self.step3_validate_data()
-        results["steps"]["validation"] = {
-            "executed": True,
-            "score": validation_report.get("overall_score", 0),
-            "issues_count": len(validation_report.get("issues", []))
-        }
 
-        # 步骤4: 方案规划（生成提示词）
-        planning_prompt, planning_file = self.step4_plan_analysis(user_intent)
-        results["steps"]["planning"] = {
-            "prompt_file": planning_file,
-            "note": "请使用此提示词调用大模型进行方案规划，结果保存为 analysis_plan.json"
-        }
+        # 步骤4: 方案规划
+        success, _, _ = self.step4_plan_analysis(user_intent)
 
-        # 步骤5: 脚本生成（生成提示词）
-        script_prompt, script_file = self.step5_generate_script()
-        results["steps"]["script_generation"] = {
-            "prompt_file": script_file,
-            "note": "请使用此提示词调用大模型生成分析脚本，保存为 analysis_script.py"
-        }
+        # 步骤5: 脚本生成
+        success, _, _ = self.step5_generate_script()
 
-        # 步骤6: 执行分析（如果有脚本）
+        # 步骤6: 执行分析
         analysis_results = self.step6_execute_analysis()
-        results["steps"]["execution"] = analysis_results
 
-        # 步骤7: 生成综合报告
+        # 步骤7: 生成报告
         report_paths = self.step7_generate_comprehensive_report()
-        results["reports"] = report_paths
 
-        # 保存完整会话摘要
-        summary_file = self.session_dir / "SESSION_SUMMARY.json"
-        self._save_json("SESSION_SUMMARY.json", results)
+        # 最终化流程
+        return self._finalize_flow()
+
+    def _finalize_flow(self) -> Dict[str, Any]:
+        """结束流程，生成最终报告"""
+        # 打印流程状态
+        self.health_monitor.print_flow_status(full_report=True)
+
+        # 保存健康报告
+        health_report = self.health_monitor.get_final_report()
+        self._save_json("FLOW_HEALTH_REPORT.json", health_report)
+
+        # 生成最终摘要
+        summary = {
+            "session_dir": str(self.session_dir),
+            "flow_completed": not self.health_monitor.flow_interrupted,
+            "health_score": self.health_monitor.health_score,
+            "health_report_file": str(self.session_dir / "FLOW_HEALTH_REPORT.json")
+        }
 
         print("\n" + "="*80)
-        print("✅ 数据分析流程完成")
+        if self.health_monitor.flow_interrupted:
+            print("🔴 流程执行失败，请查看上述错误信息并修复问题")
+        elif self.health_monitor.health_score == 100:
+            print("✅ 流程执行成功！所有步骤已完成")
+        else:
+            print("🟡 流程部分完成，部分步骤存在问题")
         print("="*80)
         print(f"\n📂 所有文件保存在: {self.session_dir}")
-        print("\n📋 生成的文件:")
-        print(f"  1. 本体识别提示词: {ontology_file}")
-        print(f"  2. 数据质量报告: {self.session_dir / 'step3_validation_report.json'}")
-        print(f"  3. 方案规划提示词: {planning_file}")
-        print(f"  4. 脚本生成提示词: {script_file}")
-        print(f"  5. 📘 HTML报告: {report_paths['html_report']}")
-        print(f"  6. 📄 Markdown报告: {report_paths['markdown_report']}")
-        print(f"  7. 🖼️  图表目录: {report_paths['charts_dir']}")
-        print("\n💡 使用说明:")
-        print("  - 查看 HTML报告 获取完整分析结果（含图表）")
-        print("  - 查看 Markdown报告 获取纯文本分析内容")
-        print("  - 图表已单独保存在 charts/ 目录下")
+        print(f"📊 流程健康报告: {summary['health_report_file']}")
 
-        return results
+        return summary
 
     def _save_json(self, filename: str, data: Dict):
         """保存JSON文件"""
@@ -518,7 +674,7 @@ class DataAnalysisOrchestrator:
             json.dump(data, f, indent=2, ensure_ascii=False, default=str)
 
     def _create_placeholder_ontology(self, data_profile: Dict) -> OntologyResult:
-        """创建占位本体结果（当尚未进行LLM识别时）"""
+        """创建占位本体结果"""
         return OntologyResult(
             entity_type="待识别",
             entity_type_reason="尚未调用大模型进行本体识别",
@@ -534,23 +690,13 @@ class DataAnalysisOrchestrator:
             confidence="低"
         )
 
-    def _create_placeholder_plan(self) -> AnalysisPlan:
-        """创建占位分析计划（当尚未进行LLM规划时）"""
-        return AnalysisPlan(
-            question_type="待规划",
-            frameworks=[],
-            analysis_steps=[],
-            script_files=[],
-            expected_outputs=["待规划"]
-        )
-
 
 def main():
     """命令行入口"""
     import argparse
 
     parser = argparse.ArgumentParser(
-        description='Universal Data Analyst - 通用数据分析流程编排器'
+        description='Universal Data Analyst V2 - 增强版流程编排器（带健康监控）'
     )
     parser.add_argument('file', help='数据文件路径')
     parser.add_argument(
@@ -567,13 +713,19 @@ def main():
     args = parser.parse_args()
 
     # 运行完整分析
-    orchestrator = DataAnalysisOrchestrator(output_dir=args.output)
+    orchestrator = DataAnalysisOrchestratorV2(output_dir=args.output)
     results = orchestrator.run_full_analysis(
         file_path=args.file,
         user_intent=args.intent
     )
 
-    print(f"\n✅ 分析流程完成，结果保存在: {results['session_dir']}")
+    # 根据健康分数决定退出码
+    if results.get('flow_completed'):
+        print("\n✅ 分析流程成功完成")
+        sys.exit(0)
+    else:
+        print("\n❌ 分析流程执行失败")
+        sys.exit(1)
 
 
 if __name__ == '__main__':
