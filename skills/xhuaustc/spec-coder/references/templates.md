@@ -185,12 +185,15 @@ For lifecycle and review templates (index.md, change spec, delta.md, status.md, 
 
 ## Tasks
 
-| Task ID | Name | Module | Dependencies | Related Spec | Acceptance Criteria | AI-Auto |
-|---------|------|--------|--------------|--------------|---------------------|---------|
-| TASK-001 | Set up project structure | Infra | — | — | Project builds and runs | Yes |
-| TASK-002 | Implement User model | Auth | TASK-001 | spec_auth.md | User CRUD passes all TPs | Yes |
-| TASK-003 | Add authentication API | Auth | TASK-002 | spec_auth.md | Login/logout flows work | Yes |
-| TASK-004 | Integrate with external payment API | Payment | TASK-001 | spec_payment.md | Manual testing required | No |
+| Task ID | Name | Module | Deps | Related Spec | Acceptance Criteria | AI-Auto | Status |
+|---------|------|--------|------|--------------|---------------------|---------|--------|
+| TASK-001 | Set up project structure | Infra | — | — | Project builds and runs | Yes | Pending |
+| TASK-002 | Implement User model | Auth | TASK-001 | spec_auth.md | User CRUD passes all TPs | Yes | Pending |
+| TASK-003 | Add authentication API | Auth | TASK-002 | spec_auth.md | Login/logout flows work | Yes | Pending |
+| TASK-004 | Integrate with external payment API | Payment | TASK-001 | spec_payment.md | Manual testing required | No | Pending |
+
+Status values: `Pending` | `In Progress` | `Done` | `Blocked [reason]`
+Update Status as each task progresses through Phase 3.
 ```
 
 ---
@@ -272,6 +275,17 @@ For lifecycle and review templates (index.md, change spec, delta.md, status.md, 
 | TP-006 | Boundary | name = 255 chars | 201, accepted | Max length |
 | TP-007 | Boundary | name = 256 chars | 400, validation error | Over max |
 | TP-008 | Boundary | name = " Alice " | 201, name stored as "Alice" | Trimming |
+
+## Implementation Map
+
+Updated after Phase 4 (Verify) passes. Enables reverse lookup from spec to code.
+
+| Spec Item | Code File(s) | Function / Class | Notes |
+|-----------|-------------|-----------------|-------|
+| Interface: POST /api/v1/users | src/routes/users.ts | createUser() | |
+| Data Model: User | src/models/user.ts | User class | |
+| BR-1: Email uniqueness | src/services/user-service.ts | validateEmail() | Case-insensitive check |
+| BR-2: Name trimming | src/services/user-service.ts | normalizeUser() | |
 ```
 
 ---
@@ -288,3 +302,78 @@ For complex features, include Combination-category test points that test multipl
 | TP-012 | Combination | Concurrent duplicate create requests | One 201 + one 409 | Race condition handling |
 | TP-013 | Combination | Bulk import with mix of valid/invalid rows | Partial success with error report | Transactional vs. best-effort |
 ```
+
+---
+
+## Non-API Test Point Examples
+
+For CLI tools, event-driven systems, UI interactions, and batch processes:
+
+```markdown
+| TP-ID | Category | Input | Expected Output | Notes |
+|-------|----------|-------|-----------------|-------|
+| TP-020 | Normal (CLI) | `mycli export --format csv --output out.csv` | Exit code 0, out.csv with correct headers and rows | |
+| TP-021 | Error (CLI) | `mycli export --format xml` (unsupported format) | Exit code 1, stderr: "Unsupported format: xml" | |
+| TP-022 | Normal (Event) | Publish `OrderCreated` event with valid payload | `InventoryReserved` event emitted within 5s, stock decremented | Async — verify via event log or poll |
+| TP-023 | Error (Event) | Publish `OrderCreated` with insufficient stock | `ReservationFailed` event emitted, order status set to "pending_stock" | Dead-letter handling |
+| TP-024 | Normal (UI) | Click "Save" with all required fields filled | Form submits, success toast appears, redirect to list view | |
+| TP-025 | Error (UI) | Click "Save" with empty required field | Inline validation error shown on the empty field, form not submitted | |
+| TP-026 | Normal (Batch) | Run nightly sync with 10,000 records | All records processed, summary log shows 10,000 success / 0 error | Runtime < 5 min |
+| TP-027 | Error (Batch) | Run sync with 3 malformed records in 10,000 | 9,997 success, 3 errors logged with row IDs, job completes (no abort) | Partial failure tolerance |
+```
+
+---
+
+## Small Track Walk-Through Example
+
+A complete example of the Small track: adding a "health check" endpoint to an existing API.
+
+**Step 1 — Write lite spec** (skip Phase 1, go straight to spec):
+
+```markdown
+# Spec: Health Check Endpoint
+
+## Feature Description
+A lightweight endpoint that reports service health, used by load balancers and monitoring.
+
+## Interface Definition
+
+### GET /api/v1/health
+
+- **Type:** REST API
+- **Auth:** None (public)
+
+**Response (200 OK):**
+{ "status": "ok", "version": "1.2.0", "uptime_seconds": 3600 }
+
+**Response (503 Service Unavailable):**
+{ "status": "degraded", "checks": { "database": "unreachable" } }
+
+## Business Rules
+
+1. Returns 200 if all dependency checks pass (database connection, cache connection).
+2. Returns 503 if any critical dependency is unreachable. Non-critical failures still return 200.
+3. Version string is read from package.json / build metadata at startup, not on every request.
+
+## Test Points
+
+| TP-ID | Category | Input | Expected Output | Notes |
+|-------|----------|-------|-----------------|-------|
+| TP-001 | Normal | GET /api/v1/health (all deps up) | 200, status=ok, version present | |
+| TP-002 | Error | GET /api/v1/health (DB down) | 503, status=degraded, checks.database=unreachable | |
+| TP-003 | Error | GET /api/v1/health (cache down, DB up) | 200, status=ok | Cache is non-critical |
+| TP-004 | Boundary | GET /api/v1/health (server just started) | 200, uptime_seconds=0 or small positive | |
+| TP-005 | Normal | GET /api/v1/health with Authorization header | 200, header ignored | Auth not required |
+
+## Implementation Map
+
+| Spec Item | Code File(s) | Function / Class | Notes |
+|-----------|-------------|-----------------|-------|
+| (filled after Phase 4) | | | |
+```
+
+**Step 2 — Generate** (Phase 3): Implement the endpoint + tests based on spec above. One commit: `feat(TASK-health): add health check endpoint`.
+
+**Step 3 — Verify** (Phase 4): Run tests, map TP-001–005 to pass/fail, update Implementation Map.
+
+**Done.** No requirements.md, no design.md, no tasks.md, no review gates (Small track, trivial scope).

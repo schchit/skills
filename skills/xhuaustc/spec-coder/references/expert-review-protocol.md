@@ -135,7 +135,7 @@ Review both the technical design document and its visual preview together in a s
 | Role | Unique Review Questions |
 |------|------------------------|
 | **Software Architect** | 1. Can each module be deployed/tested independently? 2. Are there circular dependencies? 3. Will this architecture support 10x the current load without redesign? 4. Are ADR trade-offs honestly stated? |
-| **UX/UI Designer** | 1. Does the preview's information architecture match the module structure? 2. Are all state transitions (loading, error, empty, success) represented? 3. Is the navigation depth ≤ 3 clicks for primary workflows? |
+| **UX/UI Designer** | 1. Does the preview's information architecture match the module structure? 2. Are all state transitions (loading, error, empty, success) represented? 3. Is the navigation depth ≤ 3 clicks for primary workflows? 4. Does the UI pass the [de-AI checklist](ui-design-guidelines.md#quick-checklist)? |
 | **Security Expert** | 1. Is there an auth check on every data-mutating endpoint? 2. Are sensitive fields (PII, tokens) identified and redaction-planned? 3. Is input validation defined at the boundary (not just internally)? |
 
 For non-UI projects (APIs, CLIs, data pipelines): skip UX/UI Designer role; replace design-preview review with "Architecture Diagram Review" (module relationships + data flow only).
@@ -162,7 +162,7 @@ Review the task breakdown and feature specs together — they are tightly couple
 
 | Role | Unique Review Questions |
 |------|------------------------|
-| **Code Reviewer** | 1. Are there functions > 50 lines that should be decomposed? 2. Is error handling consistent (no swallowed exceptions)? 3. Are naming conventions consistent with the existing codebase? |
+| **Code Reviewer** | 1. Are there functions > 50 lines that should be decomposed? 2. Is error handling consistent (no swallowed exceptions)? 3. Are naming conventions consistent with the existing codebase? 4. (UI projects) Does the generated UI follow the [UI Design Guidelines](ui-design-guidelines.md) — color palette, layout variety, icon consistency, copy tone? |
 | **Security Expert** | 1. Is user input validated/sanitized before use? 2. Are SQL queries parameterized (no string concatenation)? 3. Are secrets hardcoded anywhere? 4. Are auth checks present on all protected routes? |
 | **Spec Compliance Auditor** | 1. Does every Strict-tier item (interface, data model, business rule) match the spec exactly? 2. Are all `[SPEC-GAP]` items tagged and listed? 3. Is there a test function for every TP-ID in the spec? |
 

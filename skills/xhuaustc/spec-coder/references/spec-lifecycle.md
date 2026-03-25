@@ -62,32 +62,7 @@ specs/changes/CHG-NNN-name/
 
 ### Change spec.md — Delta Format
 
-```markdown
-# CHG-NNN: [Short Description]
-
-## Status: Draft | In Progress | Complete | Archived
-## Target Specs: [spec_xxx.md, design.md#Section]
-
-## Background
-[Why this change is needed. 1-2 sentences.]
-
-## Delta
-
-### MODIFIED: spec_xxx.md → [Section Name]
-- [Old behavior] → [New behavior]
-
-### ADDED: spec_xxx.md → [Section Name]
-- [New item]
-
-### REMOVED: spec_xxx.md → [Section Name]
-- [Item removed and why]
-
-## Impact Analysis
-| Affected Spec | Impact Type | Sections | Risk |
-|--------------|-------------|----------|------|
-| spec_xxx.md | Direct | Business Rules | Low |
-| spec_yyy.md | Indirect | Interface | Medium |
-```
+See [Change Spec Template](templates-lifecycle.md#change-spec-template-for-chg-nnn--delta-format) for the full template. Key sections: Status, Target Specs, Track, Background, Delta (MODIFIED / ADDED / REMOVED), and Impact Analysis.
 
 ## delta.md — Generation Rules
 
@@ -112,7 +87,7 @@ See [delta.md template](templates-lifecycle.md#deltamd-template) for the full fo
 |-------|-------------|
 | File | Trunk spec file path |
 | Section | Target section (use `→` for nested: `Business Rules → Rule 3`) |
-| Operation | `ADD (after X)` / `REPLACE` / `REMOVE` |
+| Operation | `CREATE` / `ADD (after X)` / `REPLACE` / `REMOVE` |
 | Content | Exact text to insert or replace with |
 
 ### Conflict Handling
@@ -122,6 +97,20 @@ If the conflict check finds overlapping changes:
 2. Present to user for manual resolution.
 3. User picks one version or writes a merged version.
 4. Update delta.md with the resolved content before proceeding.
+
+## Overlap Check
+
+Before creating a new change directory, check all In-Progress changes (listed in `specs/index.md`):
+
+1. Compare the new change's Target Specs against every In-Progress change's Target Specs.
+2. If any overlap (same spec file + same section), **warn the user**: list conflicting changes and affected sections.
+3. User decides: serialize (finish one first), coordinate (split non-overlapping sections), or accept risk (proceed in parallel, resolve conflicts at merge).
+
+This catches conflicts early — far cheaper than discovering them at delta merge time.
+
+## Nesting Constraint
+
+Changes are always **flat** — all change directories live directly under `specs/changes/`. Never nest a change inside another change directory. If FEAT-NNN's implementation reveals the need for a sub-feature, create `FEAT-NNN+1` as a sibling with a dependency note.
 
 ## Lifecycle Flows
 
@@ -141,10 +130,11 @@ Create CHG-NNN/ → Write delta spec.md → Phase 2d–4 → Verify → Generate
 
 1. **Timing:** Only after Phase 4 passes. Never merge spec before code is verified.
 2. **Conflict check:** Always run before applying delta (see above).
-3. **Changelog:** Every modified trunk file gets: `| YYYY-MM-DD | [description] | FEAT/CHG-NNN |`
-4. **Atomic:** All trunk updates from one change in a single commit, tagged with change ID.
-5. **Index update:** Move change from "In-Progress" to "Recent Completions" in `specs/index.md`.
-6. **Archive:** Move change directory to `specs/changes/archive/`.
+3. **File creation (Features only):** Copy `changes/FEAT-NNN/spec.md` to `specs/spec_<feature>.md`. This is the only time a new trunk-level spec file is created.
+4. **Changelog:** Every modified trunk file gets: `| YYYY-MM-DD | [description] | FEAT/CHG-NNN |`
+5. **Atomic:** All trunk updates from one change in a single commit: `spec: merge FEAT/CHG-NNN to trunk`.
+6. **Index update:** Move change from "In-Progress" to "Recent Completions" in `specs/index.md`.
+7. **Archive:** Move change directory to `specs/changes/archive/`.
 
 ## Feature Status Lifecycle
 
@@ -186,3 +176,21 @@ As the project accumulates features:
 - **Archive aggressively:** Move completed changes to `archive/` immediately after merge.
 - **Periodic audit:** Every 5–10 changes, review trunk specs: clean up `[DEPRECATED]` items, verify changelog accuracy, confirm `index.md` is current.
 - **Stale detection:** If a trunk spec hasn't been updated in 6+ months but the code has changed, flag it for review.
+
+### Deprecation Flow
+
+When a feature is retired or replaced:
+
+1. **Mark deprecated:** Add `[DEPRECATED: YYYY-MM-DD, reason]` tag to the feature's `spec_xxx.md` header and all related sections in `requirements.md` / `design.md`.
+2. **Update index.md:** Move the feature from "Active Features" to a "Deprecated Features" section (or add an inline `⚠️ Deprecated` marker).
+3. **Grace period (default 3 months):** Keep deprecated items in trunk for reference. Code may still reference them during migration.
+4. **Cleanup:** After the grace period, remove deprecated sections from trunk specs. Archive the `spec_xxx.md` to `specs/archive/` (not `changes/archive/`). Remove corresponding entries from `requirements.md`, `design.md`, and `index.md`. Log the removal in each file's changelog.
+
+### Spec Versioning
+
+Rely on **git commits** as the versioning mechanism for specs:
+
+- **Merge-to-Trunk commits:** Always use the format `spec: merge FEAT/CHG-NNN to trunk` so commits are searchable.
+- **Git tags (optional):** For milestone releases, tag the commit: `git tag spec-v1.0` or `git tag spec-after-FEAT-004`.
+- **Reconstructing past state:** To see what the spec looked like when a specific change was built, find the merge commit for that change ID in git log, then checkout that commit.
+- **Archive as snapshot:** The `specs/changes/archive/` directory preserves the change's own spec files at the time of completion, providing a partial snapshot without needing git history.

@@ -100,6 +100,11 @@ Generated when a change is complete. Provides exact merge instructions for trunk
 |---------|-----------|---------|
 | [Module] → [Subsection] | REPLACE | "[Updated design text]" |
 
+### File: specs/spec_<feature>.md (NEW — Features only)
+| Operation | Content |
+|-----------|---------|
+| CREATE | Copy from `changes/FEAT-NNN/spec.md`, rename to `spec_<feature>.md`, add to trunk |
+
 ### File: specs/requirements.md
 | Section | Operation | Content |
 |---------|-----------|---------|
@@ -149,6 +154,16 @@ Use during first-time project build. Remove after initial Phase 4 passes.
 | 2c–2d. Plan | 🔄 In Progress | tasks.md + specs | Gate 3 ⬜ |
 | 3. Generate | ⬜ | code + tests | Gate 4 ⬜ |
 | 4. Verify | ⬜ | test results | — |
+
+## Codebase Context
+
+Populated by Phase 0 (Codebase Scan). Persists scan results across sessions.
+
+- **Tech Stack:** [e.g., TypeScript + Express.js + PostgreSQL + Redis]
+- **Key Conventions:** [e.g., kebab-case file names, barrel exports, service layer pattern]
+- **Existing Interfaces:** [e.g., REST API at /api/v1/*, GraphQL at /graphql]
+- **Directory Structure:** [Brief tree summary of key directories]
+- **Notes:** [Any other relevant observations]
 
 ## Review Preferences
 
