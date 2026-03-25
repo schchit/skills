@@ -13,7 +13,7 @@ compatibility: >
   Sign up at https://robotomail.com or via the API.
 metadata:
   author: Robotomail
-  version: 1.0.2
+  version: 1.0.3
   website: https://robotomail.com
   openclaw:
     requires:
@@ -146,21 +146,24 @@ See `references/webhook-verification.md` for signature verification code.
 
 - **Daily send limits:** 50/day (free), 1,000/day (paid) per mailbox — resets at midnight UTC
 - **Monthly send limits:** 1,000/month (free), 5,000/month (paid) per mailbox
+- **Velocity limits:** 30 messages/min per mailbox, 60 messages/min per account — returns `429` if exceeded
+- **Bounce rate:** Must stay below 3% over a 7-day rolling window (minimum 50 messages). Exceeding this auto-suspends the mailbox.
+- **Complaint rate:** Must stay below 0.05% over a 7-day rolling window (minimum 50 messages). Exceeding this auto-suspends the mailbox.
 - **Attachment size:** Max 25MB per file
 - **Storage:** 1GB (free), 5GB (paid)
 - **Free tier:** 1 mailbox on `robotomail.co` only
 - **Paid ($15/mo):** 3+ mailboxes, custom domains
 
-If a send returns `429`, the mailbox has hit its daily or monthly limit. Tell the user and suggest upgrading if on the free plan.
+If a send returns `429`, the mailbox has hit its daily/monthly limit or velocity limit. Tell the user and suggest slowing down or upgrading if on the free plan.
 
 ## Error Handling
 
 All errors return `{"error": "message"}` with standard HTTP status codes:
 
 - `401` — Missing or invalid API key
-- `403` — Scoped key accessing a restricted resource
+- `403` — Account suspended or scoped key accessing a restricted resource. When suspended, response includes `{ "suspended": true, "reason": "bounce_rate_exceeded" }`. Tell the user to contact support@robotomail.com.
 - `404` — Resource not found
-- `429` — Rate limit or send quota exceeded
+- `429` — Rate limit, velocity limit, or send quota exceeded
 - `413` — Attachment too large
 
 ## Tips

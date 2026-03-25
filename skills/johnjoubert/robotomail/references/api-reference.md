@@ -7,6 +7,30 @@ All request/response bodies are JSON unless noted. Dates are ISO-8601.
 
 ---
 
+## Suspension & Rate Limiting
+
+Accounts that exceed bounce rate (3%) or complaint rate (0.05%) thresholds over a 7-day rolling window are automatically suspended. Suspended accounts receive a `403` response on all write operations:
+
+```json
+{
+  "error": "Account suspended: bounce_rate_exceeded. Contact support@robotomail.com to resolve.",
+  "suspended": true,
+  "reason": "bounce_rate_exceeded"
+}
+```
+
+The `suspended` and `reason` fields let agents detect suspension programmatically. Read-only operations (GET requests) remain accessible.
+
+**Velocity limits:** Sending is rate-limited to 30 messages/min per mailbox and 60 messages/min per account. Exceeding these returns `429 Too Many Requests`:
+
+```json
+{
+  "error": "Send rate limit exceeded — slow down"
+}
+```
+
+---
+
 ## Account
 
 ### GET /v1/account
@@ -22,6 +46,8 @@ Returns account details and usage stats. Requires full (non-scoped) API key.
     "emailVerified": true,
     "slug": "string",
     "plan": "free | paid",
+    "suspended": false,
+    "suspendedReason": "string | null",
     "storageUsedBytes": 0,
     "storageLimitBytes": 1073741824,
     "mailboxCount": 1,
@@ -359,8 +385,9 @@ Sends an email from this mailbox.
 ```
 
 **Errors:**
-- `429` — Daily or monthly send limit reached
-- `400` — Recipient on suppression list
+- `400` — Invalid input, mailbox inactive, recipient on suppression list, or message validation failed
+- `403` — Account suspended, email not verified, or scoped key referencing out-of-scope attachments
+- `429` — Daily/monthly send limit reached, velocity limit exceeded (30/min per mailbox, 60/min per account), or upstream rate limit
 
 ### GET /v1/mailboxes/{id}/messages/{msgId}
 
