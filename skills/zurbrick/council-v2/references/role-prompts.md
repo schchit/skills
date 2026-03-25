@@ -2,6 +2,17 @@
 
 All reviewers must output **JSON only** matching `references/schema.md`.
 
+## Model substitution
+
+The default model assignments (opus, gpt-5.4, grok4, deepseek, gemini) are starting
+points. The value comes from **provider diversity**, not specific model versions.
+
+When substituting models:
+- Keep reviewers on **different providers** — same-provider reviewers share training biases
+- Prefer the strongest available model from each provider
+- Override via command line: `--opus claude-sonnet-4 --gpt gpt-4.1` etc.
+- If a provider is unavailable, drop that reviewer rather than doubling up on another provider — a 4-of-5 diverse council beats 5-of-5 with duplicate bias
+
 ## Shared output instruction block
 
 Use this block in every reviewer prompt:

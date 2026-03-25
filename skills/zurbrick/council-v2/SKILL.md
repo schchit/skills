@@ -1,21 +1,24 @@
 ---
 name: council-v2
 description: >
-  Publishable multi-model council review system for code review, plan review,
-  architecture review, decision review, structured critique, adversarial review,
-  second opinion, pre-flight review, final review before merge, QA council,
-  sanity check with multiple models, and review-before-shipping workflows.
-version: 2.0.0
+ Multi-model council review that spawns 3-5 independent AI reviewers and applies
+ mechanical synthesis — votes decide, not orchestrator opinion. Use when you need
+ a second opinion on code before merge, a pre-flight check on a plan, an architecture
+ review for a technical decision, or a structured critique of options. Also use when
+ someone says "is this safe to ship?", "get me a sanity check", "review this with
+ multiple models", or "I want adversarial feedback." Do not use for trivial edits
+ or low-stakes decisions where the overhead exceeds the risk.
+version: 2.0.3
 ---
 
 # Council v2
 
-A hardened, publishable OpenClaw skill for multi-model council reviews.
+A hardened OpenClaw skill for multi-model council reviews.
 It dispatches independent reviewers, collects structured JSON, and applies a
 **mechanical synthesis protocol** so the final verdict is driven by votes and
 critical findings — not orchestrator vibes.
 
-Primary entrypoint: `bash scripts/council.sh review <type> [file]`
+Primary entrypoint: `bash skills/council-v2/scripts/council.sh review <type> [file]`
 
 ## When to Use
 
@@ -35,53 +38,31 @@ Do **not** use for:
 - Purely factual lookups with no judgment call
 - Work already reviewed recently with no material change
 
-## Council Tiers
+## Council Shape
 
-### Standard Council — 3 reviewers
-Use for routine code, plan, and decision reviews.
+Two tiers are supported:
+- **Standard** — 3 reviewers for routine code, plan, and decision reviews
+- **Full** — 5 reviewers for high-stakes, security-sensitive, or irreversible choices
 
-| Role | Model alias | Purpose |
-|------|-------------|---------|
-| Architecture Synthesizer | `opus` | Holistic reasoning and maintainability |
-| Adversarial Critic | `gpt-5.4` | Finds holes, contradictions, weak assumptions |
-| Security & Risk | `grok4` | Security, misuse, manipulation, blast radius |
+### Tier selection heuristic
 
-### Full Council — 5 reviewers
-Use for high-stakes reviews, architecture changes, security audits, and anything irreversible.
+Use **Standard** when: routine code changes, internal plans, reversible decisions,
+low blast radius. Use **Full** when: security-critical, production-facing architecture,
+irreversible commitments, high cost of being wrong, or when you want maximum coverage.
 
-| Role | Model alias | Purpose |
-|------|-------------|---------|
-| Architecture Synthesizer | `opus` | Holistic reasoning and synthesis |
-| Adversarial Critic | `gpt-5.4` | Aggressive critique and edge cases |
-| Security & Risk | `grok4` | Security, abuse, policy, and risk |
-| First Principles | `deepseek` | Assumption stripping and first-principles analysis |
-| Structural Verifier | `gemini` | Process design, systems fit, scale, and failure modes |
+When in doubt, start Standard. Escalate to Full if the Standard result is split or
+if critical findings surface that need more perspectives.
 
-## Mandatory Full Council Triggers
+### Cost note
 
-Use **Full Council** automatically when any of these are true:
-- Changes to AGENTS.md, constitutions, or operating rules
-- New tool, plugin, or capability installation
-- Security-related decisions or source/security audits
-- External communications policy changes
-- Orchestrator confidence below 0.7
-- Irreversible or high-blast-radius actions
+Full Council runs 5 model calls instead of 3. That is ~1.7x the token cost of Standard.
+Use Full when the cost of a bad decision exceeds the cost of the extra API calls —
+which for security, architecture, and irreversible choices, it almost always does.
 
-Everything else defaults to Standard Council.
-
-## Mechanical Synthesis Rules
-
-The v2 protocol is intentionally narrow:
-1. **Majority vote decides.** The synthesizer narrates; it does not override.
-2. **Critical finding auto-block.** Any reviewer finding with `severity=critical` blocks approval.
-3. **Splits default conservative.** Ambiguous or tied results resolve to modify/reject.
-4. **Conditional votes count as half.** `approve_with_conditions = 0.5`.
-5. **Anti-consensus check on unanimous outcomes.** Strongest serious counterargument must be surfaced.
-6. **Raw outputs shown on Full Council.** Operator sees source verdicts, not just the summary.
-7. **All reviewers vote (including Opus).** Synthesis is done by `synthesize.py` (script), not a model. Orchestrator writes the narrative but cannot change the verdict.
-8. **Minority reports are always preserved.** Strongest dissent is never buried.
-
-See `references/synthesis-rules.md` for examples and edge cases.
+Detailed role composition and synthesis rules live in:
+- `references/review-types.md`
+- `references/role-prompts.md`
+- `references/synthesis-rules.md`
 
 ## Review Types
 
@@ -98,19 +79,19 @@ Definitions: `references/review-types.md`
 
 ```bash
 # Standard code review
-bash scripts/council.sh review code src/auth.py
+bash skills/council-v2/scripts/council.sh review code src/auth.py
 
 # Force full plan review
-bash scripts/council.sh review plan proposal.md --tier full
+bash skills/council-v2/scripts/council.sh review plan proposal.md --tier full
 
 # Architecture review from stdin
-cat design.md | bash scripts/council.sh review architecture --tier full
+cat design.md | bash skills/council-v2/scripts/council.sh review architecture --tier full
 
 # Decision review with options
-bash scripts/council.sh review decision options.md --options "SQLite,Postgres,Cloud SQL"
+bash skills/council-v2/scripts/council.sh review decision options.md --options "SQLite,Postgres,Cloud SQL"
 
 # Emit orchestration plan as JSON
-bash scripts/council.sh review code src/auth.py --format json
+bash skills/council-v2/scripts/council.sh review code src/auth.py --format json
 ```
 
 ## How It Works
@@ -121,54 +102,94 @@ bash scripts/council.sh review code src/auth.py --format json
 4. Emits an orchestration plan suitable for `sessions_spawn`
 5. Collects reviewer JSON outputs
 6. Runs `python3 scripts/synthesize.py ...`
-7. Optionally runs a monthly retrospective via `scripts/retro.sh`
+7. Returns synthesis with mechanical result, minority report, and conditions
 
-## Installation
+## Interpreting Results
 
-Install with ClawHub when published:
+The synthesizer returns structured JSON and a meaningful exit code:
 
+| Exit code | Meaning | What to do |
+|-----------|---------|------------|
+| `0` | **Approve** — clear majority, no criticals | Ship it |
+| `1` | **Reject or Blocked** — majority rejected or a critical finding blocked | Address the critical findings or rethink the approach |
+| `2` | **Approve with conditions** — mixed or conditional majority | Fix the flagged conditions, then re-review or proceed with documented risk |
+| `3` | **Error** — invalid input or synthesis failure | Check reviewer JSON for malformed output; see error handling below |
+
+### Reading the synthesis output
+
+- **mechanical_result**: The vote-driven verdict. This is the answer.
+- **critical_blocks**: Any critical findings that auto-blocked approval. Address these first.
+- **conditions**: Aggregated recommendations from warning-level findings. These are your fix list.
+- **minority_report**: The strongest dissent from the majority. Read this even if you agree with the majority — it is often where the best insight lives.
+- **anti_consensus_check**: Fires on unanimous decisions. Treat the counterargument seriously.
+
+## Error Handling
+
+### Reviewer returns invalid JSON
+
+`synthesize.py` validates every reviewer output against required fields. If a reviewer
+returns malformed JSON, synthesis exits with code 3 and prints an error message.
+
+What to do:
+1. Check the raw reviewer output for the failing model
+2. Re-run that single reviewer (the orchestration plan shows which models to dispatch)
+3. If the model consistently fails, substitute it — see model override flags below
+
+### Provider is down or times out
+
+If a provider fails to respond, the review set will be incomplete. Run synthesis on
+whatever outputs you have — a 2-of-3 Standard review is still useful. Note the missing
+reviewer in your assessment.
+
+### Model override flags
+
+Override any model at the command line:
 ```bash
-clawhub install council-v2
+bash skills/council-v2/scripts/council.sh review code src/auth.py \
+ --opus claude-sonnet-4 \
+ --gpt gpt-4.1 \
+ --grok grok-3
 ```
 
-Manual install during development:
+Available flags: `--opus`, `--gpt`, `--grok`, `--deepseek`, `--gemini`
+
+## Model Diversity
+
+The council's value comes from **different providers with different training data and
+different biases** reviewing the same decision. The specific model versions (Opus,
+GPT-5.4, Grok 4, etc.) matter less than the diversity. Swap in whatever top-tier
+models you have access to — what matters is that they are not all from the same
+provider.
+
+## Retrospectives
+
+`scripts/retro.sh` generates a structured retrospective template for reviewing past
+council decisions against actual outcomes.
 
 ```bash
-mkdir -p ~/.openclaw/workspace/skills
-cp -R council-v2 ~/.openclaw/workspace/skills/
+# Review the 5 most recent decisions in a directory
+bash skills/council-v2/scripts/retro.sh ./council-outputs/ 5
 ```
 
-Requirements:
-- `bash`
-- `python3`
-- OpenClaw with `sessions_spawn` available for reviewer dispatch
+### When to run retros
 
-No hardcoded absolute paths are used; scripts resolve relative to the skill directory.
+Run monthly, or after any decision where the outcome surprised you. The retro surfaces:
+- Which reviewers provided signal vs. noise
+- Whether critical findings were real or false alarms
+- Whether synthesis preserved minority views accurately
+- Prompt changes to consider for role-prompts.md
 
-## Configuration
+Feed retro findings back into `references/role-prompts.md` to calibrate the council.
 
-Model aliases default to:
-- `opus`
-- `gpt-5.4`
-- `grok4`
-- `deepseek`
-- `gemini`
+## Notes
 
-Override via flags in `scripts/council.sh` if your environment uses different aliases.
-
-## Monthly Retro Protocol
-
-Run on the first Sunday of the month or after several consequential reviews:
-
-```bash
-bash scripts/retro.sh path/to/council-log-dir
-```
-
-The retro samples past decisions, checks correctness in hindsight, and highlights reviewer signal-to-noise.
+- Requires `bash`, `python3`, and OpenClaw reviewer dispatch capability
+- Model aliases can be overridden — see model override flags above
+- Synthesis rules are documented in `references/synthesis-rules.md`
 
 ## References
 
-- `references/review-types.md`
-- `references/role-prompts.md`
-- `references/schema.md`
-- `references/synthesis-rules.md`
+- `references/review-types.md` — review type definitions and tier recommendations
+- `references/role-prompts.md` — reviewer role prompts and shared output instructions
+- `references/schema.md` — JSON schemas for reviewer output and synthesis output
+- `references/synthesis-rules.md` — mechanical synthesis protocol and edge cases

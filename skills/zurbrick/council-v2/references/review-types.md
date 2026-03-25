@@ -2,6 +2,16 @@
 
 Council v2 supports four review types.
 
+## Quick tier selection
+
+| Signal | Tier |
+|--------|------|
+| Routine change, reversible, low blast radius | Standard |
+| Security-critical, production-facing, irreversible | Full |
+| Standard result was split or surfaced critical findings | Escalate to Full |
+| Cost of being wrong > cost of 2 extra API calls | Full |
+| Not sure | Start Standard, escalate if needed |
+
 ## `code`
 Use for:
 - source files
