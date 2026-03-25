@@ -31,7 +31,7 @@ def get_client():
     if _client is None:
         _client = SimmerClient(
             api_key=os.environ["SIMMER_API_KEY"],
-            venue="polymarket"
+            venue=os.environ.get("TRADING_VENUE", "sim")
         )
     return _client
 
@@ -60,9 +60,9 @@ def check_context(client, market_id, my_probability=None):
 
 KALSHI_API_BASE = "https://api.elections.kalshi.com/trade-api/v2"
 
-BUY_THRESHOLD = 0.08    # Polymarket underpriced by >8% vs Kalshi
-SELL_THRESHOLD = 0.10   # Polymarket overpriced by >10% vs Kalshi
-TRADE_SIZE_USD = 20.0
+BUY_THRESHOLD = float(os.environ.get('KALSHI_BUY_THRESHOLD', '0.08'))
+SELL_THRESHOLD = float(os.environ.get('KALSHI_SELL_THRESHOLD', '0.10'))
+TRADE_SIZE_USD = float(os.environ.get('KALSHI_TRADE_SIZE', '20.0'))
 
 # Kalshi series to monitor with Polymarket search keywords
 KALSHI_SERIES = {
@@ -147,7 +147,7 @@ def find_polymarket_match(client: SimmerClient, kalshi_market: dict, keywords: l
     # Try each keyword to search Polymarket
     for kw in keywords:
         try:
-            markets = client.search_markets(query=kw, limit=15, active=True)
+            markets = client.find_markets(query=kw)
         except Exception:
             markets = []
 
@@ -159,7 +159,7 @@ def find_polymarket_match(client: SimmerClient, kalshi_market: dict, keywords: l
         best_score = 0
 
         for pm in markets:
-            q = pm.get("question", "").lower()
+            q = (pm.question or "").lower()
             score = 0
 
             # Check for overlapping terms
@@ -223,15 +223,13 @@ def run(live: bool = False, quiet: bool = False):
                 log.debug("  No Polymarket match for: %s", kalshi_desc[:60])
                 continue
 
-            pm_price = float(pm_match.get("price", 0.5))
-            pm_question = pm_match.get("question", "")
-            market_id = pm_match.get("id", "")
-            tokens = pm_match.get("tokens", [])
+            pm_price = float(pm_match.current_probability or 0.5)
+            pm_question = pm_match.question or ""
+            market_id = pm_match.id
+            token_id = pm_match.polymarket_token_id
 
-            if not tokens:
+            if not token_id:
                 continue
-
-            token_id = tokens[0].get("token_id", "")
 
             # Calculate divergence
             divergence = kalshi_price - pm_price  # positive = PM underpriced

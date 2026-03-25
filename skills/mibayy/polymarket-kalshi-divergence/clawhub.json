@@ -1,12 +1,18 @@
 {
-  "emoji": "⚖️",
+  "emoji": "\ud83d\udcca",
+  "version": "2.0.5",
   "requires": {
-    "pip": ["simmer-sdk", "requests"],
-    "env": ["SIMMER_API_KEY"]
+    "pip": [
+      "simmer-sdk",
+      "requests"
+    ],
+    "env": [
+      "SIMMER_API_KEY"
+    ]
   },
   "cron": "*/5 * * * *",
   "automaton": {
-    "entrypoint": "kalshi_divergence.py",
-    "args": ["--live", "--quiet"]
+    "managed": true,
+    "entrypoint": "kalshi_divergence.py"
   }
 }
