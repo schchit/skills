@@ -24,7 +24,22 @@ metadata:
 
 # SEO Keyword Pro 🔍
 
-**AI-powered keyword research that finds hidden gems.**
+---
+
+## 💰 付费服务
+
+**SEO 优化咨询**:
+
+| 服务 | 价格 | 交付 |
+|------|------|------|
+| 关键词研究 | ¥800/份 | 50 个低竞争关键词 |
+| 竞品分析 | ¥1500/份 | 完整竞品策略 |
+| 内容规划 | ¥2000/月 | 30 天内容日历 |
+| SEO 顾问 | ¥5000/月 | 每周优化 + 追踪 |
+
+**联系**: 微信/Telegram 私信，备注"SEO 优化"
+
+---**AI-powered keyword research that finds hidden gems.**
 
 Discover low-competition keywords, analyze search intent, track rankings, and generate SEO-optimized content briefs. Built for bloggers, affiliate marketers, and SEO professionals.
 
