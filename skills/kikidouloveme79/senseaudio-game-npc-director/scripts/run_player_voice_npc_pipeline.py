@@ -22,6 +22,8 @@ def _bootstrap_shared_senseaudio_env() -> None:
 
 _bootstrap_shared_senseaudio_env()
 
+from audioclaw_paths import get_workspace_root
+
 
 def run_step(args: list[str], env: dict) -> None:
     completed = subprocess.run(args, env=env, check=False, capture_output=True, text=True)
@@ -29,9 +31,59 @@ def run_step(args: list[str], env: dict) -> None:
         raise SystemExit(completed.stderr.strip() or completed.stdout.strip() or f"Step failed: {' '.join(args)}")
 
 
+def write_text_transcript(path: Path, text: str) -> None:
+    cleaned = str(text or "").strip()
+    if not cleaned:
+        raise SystemExit("input text is empty")
+    payload = {
+        "request": {
+            "input_text": cleaned,
+            "channel": "",
+            "user_id": "",
+        },
+        "routing": {
+            "mode": "direct_text",
+            "selected_model": "",
+            "model_reason": "text_input_bypasses_asr",
+        },
+        "audio": {
+            "size_bytes": 0,
+            "duration_seconds": 0,
+        },
+        "transcript": {
+            "raw_text": cleaned,
+            "normalized_text": cleaned,
+            "empty": False,
+        },
+        "understanding": {
+            "clarification_needed": False,
+            "clarification_prompt": "",
+            "segment_count": 1,
+            "input_type": "text",
+        },
+        "openclaw": {
+            "turn_payload": {
+                "role": "user",
+                "content": cleaned,
+                "metadata": {
+                    "input_type": "text",
+                    "channel": "",
+                    "user_id": "",
+                    "clarification_needed": False,
+                },
+            }
+        },
+        "raw_response": {
+            "text": cleaned,
+        },
+    }
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run the full player-audio -> ASR -> NPC reply -> TTS pipeline.")
-    parser.add_argument("--input-audio", required=True)
+    parser = argparse.ArgumentParser(description="Run the full player-input -> NPC reply -> TTS pipeline.")
+    parser.add_argument("--input-audio", default="")
+    parser.add_argument("--input-text", default="")
     parser.add_argument("--profile-json", required=True)
     parser.add_argument("--relationship", default="neutral")
     parser.add_argument("--location", required=True)
@@ -61,24 +113,30 @@ def main() -> int:
     outdir.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
 
+    if bool(args.input_audio.strip()) == bool(args.input_text.strip()):
+        raise SystemExit("Provide exactly one of --input-audio or --input-text.")
+
     transcript_json = outdir / "player_transcript.json"
     manifest_json = outdir / "npc_reply_manifest.json"
     audio_dir = outdir / "audio"
 
-    run_step(
-        [
-            sys.executable,
-            str(skill_dir / "senseaudio_asr.py"),
-            "--input",
-            args.input_audio,
-            "--out-json",
-            str(transcript_json),
-            "--model",
-            args.model,
-            *(["--stream"] if args.stream_asr else []),
-        ],
-        env,
-    )
+    if args.input_audio.strip():
+        run_step(
+            [
+                sys.executable,
+                str(skill_dir / "senseaudio_asr.py"),
+                "--input",
+                args.input_audio,
+                "--out-json",
+                str(transcript_json),
+                "--model",
+                args.model,
+                *(["--stream"] if args.stream_asr else []),
+            ],
+            env,
+        )
+    else:
+        write_text_transcript(transcript_json, args.input_text)
     run_step(
         [
             sys.executable,
@@ -117,6 +175,7 @@ def main() -> int:
 
     result = {
         "input_audio": args.input_audio,
+        "input_text": args.input_text,
         "profile_json": args.profile_json,
         "relationship": args.relationship,
         "location": args.location,
@@ -139,7 +198,7 @@ def main() -> int:
                 "--out-json",
                 str(feishu_send_json),
                 "--workspace-root",
-                args.workspace_root or str(Path.home() / ".picoclaw" / "workspace"),
+                args.workspace_root or str(get_workspace_root()),
                 *(["--chat-id", args.chat_id] if args.chat_id else []),
                 *(["--session-file", args.session_file] if args.session_file else []),
                 *(["--send-labels"] if args.send_labels else []),

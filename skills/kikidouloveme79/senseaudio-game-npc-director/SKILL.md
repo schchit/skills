@@ -1,9 +1,9 @@
 ---
 name: senseaudio-game-npc-director
-description: Use when a game, interactive story, or virtual world needs reusable NPC voice behavior, including fixed voice identity, catchphrases, relationship-aware dialogue, player voice intake through SenseAudio ASR, task briefings, narration, and event announcements synthesized with SenseAudio.
+description: Use when a game, interactive story, or virtual world needs reusable NPC voice behavior, including fixed voice identity, catchphrases, relationship-aware dialogue, player voice intake through AudioClaw ASR, task briefings, narration, and event announcements synthesized with AudioClaw.
 ---
 
-# SenseAudio Game NPC Director
+# AudioClaw Game NPC Director
 
 ## What this skill is for
 
@@ -46,7 +46,7 @@ This makes the world feel reactive without needing fully hand-authored voice lib
 
 ### 3. Player voice intake
 
-Use SenseAudio ASR to transcribe a player's spoken line, then generate a relation-aware NPC reply.
+Use AudioClaw ASR to transcribe a player's spoken line, then generate a relation-aware NPC reply.
 
 This is the bridge from:
 
@@ -90,16 +90,18 @@ Generate short lore or ambient narration using one narrator voice or one faction
 4. Run either `scripts/build_npc_scene_manifest.py` or `scripts/build_npc_reply_from_player.py`.
 5. Review the generated lines.
 6. Run `scripts/batch_tts_scene.py` with the fixed `voice_id`.
-   - If you already created a clone on the SenseAudio platform, use that prepared clone `voice_id`.
+   - If you already created a clone on the AudioClaw platform, use that prepared clone `voice_id`.
    - A prepared cloned voice id commonly looks like `vc-...`, and can be passed directly with `--clone-voice-id`.
    - This skill already uses streaming TTS internally and now records stream chunk metadata.
    - If the chosen voice is a clone id like `vc-...`, scene synthesis now auto-routes to `SenseAudio-TTS-1.5`.
-7. If the user wants to hear the NPC lines directly in Feishu or PicoClaw, run `scripts/send_npc_scene_to_feishu.py`, or add `--send-feishu-audio` to `scripts/run_player_voice_npc_pipeline.py`.
+7. If the user wants to hear the NPC lines directly in Feishu or AudioClaw, run `scripts/send_npc_scene_to_feishu.py`, or add `--send-feishu-audio` to `scripts/run_player_voice_npc_pipeline.py`.
    - This step reuses the same Feishu audio delivery path as the dedicated voice-reply skill.
    - It transcodes the generated `.mp3` lines into `.ogg/.opus` and sends them one by one as real `audio` messages.
+   - `scripts/run_player_voice_npc_pipeline.py` can now take either `--input-audio` or `--input-text`, so ongoing NPC dialogue does not need to drop back to text just because the player typed instead of speaking.
+   - If the user enters an ongoing NPC dialogue mode, treat voice delivery as the default unless the user explicitly asks for text-only replies.
 8. Attach the resulting assets to your runtime, editor tooling, or content review flow.
 
-## OpenClaw Or PicoClaw Trigger Pattern
+## AudioClaw Trigger Pattern
 
 Use this skill as a mode-based session.
 
@@ -122,14 +124,20 @@ After mode entry, the agent should keep session state with:
 - location
 - objective
 - chosen `voice_id`
+- reply mode, defaulting to `voice`
 
 For each new player turn:
 
-1. If the input is audio, transcribe it with `scripts/senseaudio_asr.py` or `scripts/run_player_voice_npc_pipeline.py`.
-2. Generate the NPC reply.
-3. Synthesize the reply with the fixed voice.
-4. If the user says "直接发语音" or "一条一条发 NPC 语音", use `--send-feishu-audio` so the generated NPC lines are sent one by one as Feishu `audio` messages.
-5. Return both text and audio when the channel supports voice playback.
+1. If the input is audio, run `scripts/run_player_voice_npc_pipeline.py --input-audio ...`.
+2. If the input is text, still run `scripts/run_player_voice_npc_pipeline.py --input-text ...` so the reply stays on the same voice pipeline.
+3. In ongoing NPC dialogue mode, default to `--send-feishu-audio` so the generated NPC lines are sent one by one as Feishu `audio` messages.
+4. Only fall back to text-first replies if the user explicitly asks for text-only output or the channel cannot play voice.
+5. If the user says "直接发语音" or "一条一条发 NPC 语音", keep the same voice mode and continue sending audio without asking again.
+
+NPC mode should be sticky inside the same session:
+
+- Keep using the same NPC identity, relationship, location, objective, and voice settings for every following turn
+- Keep voice reply as the default until the user explicitly says to exit NPC mode or switch back to text replies
 
 If the user asks to switch voice, only swap the configured `voice_id`; keep the same NPC profile and relationship state.
 
@@ -142,21 +150,32 @@ If the user asks to switch voice, only swap the configured `voice_id`; keep the 
 - If you want faster perceived NPC response generation, use stream ASR for the player-input leg.
 - Treat cloned voices or exclusive voices as drop-in replacements for the same workflow.
 - Official clone support is a two-step chain:
-  - create the clone on the SenseAudio platform first
+  - create the clone on the AudioClaw platform first
   - then use the prepared clone `voice_id` here
+
+## API key lookup
+
+For the NPC generation side of this skill:
+
+- TTS-oriented scripts now default to `SENSEAUDIO_API_KEY`
+
+Practical rule:
+- `scripts/batch_tts_scene.py` and `scripts/run_player_voice_npc_pipeline.py` now default to `SENSEAUDIO_API_KEY`
+- If the host app injects `SENSEAUDIO_API_KEY` as a login token such as `v2.public...`, the shared bootstrap replaces it with the real `sk-...` value from `~/.audioclaw/workspace/state/senseaudio_credentials.json` before the TTS stage starts
+- The ASR scripts keep their own existing defaults and are intentionally not changed here
 
 ## Resources
 
 - `scripts/build_npc_scene_manifest.py`
   - Builds scene lines from an NPC profile and game state
 - `scripts/senseaudio_asr.py`
-  - Calls SenseAudio ASR using the official open API host or the official platform endpoint
+  - Calls AudioClaw ASR using the official open API host or the official platform endpoint
   - Defaults to the official `sense-asr-deepthink` model
 - `scripts/build_npc_reply_from_player.py`
   - Turns a player transcript into intent-aware NPC reply lines
 - `scripts/run_player_voice_npc_pipeline.py`
-  - Runs the full player voice pipeline end to end
-  - Supports `--stream-asr`, `--clone-voice-id`, and `--send-feishu-audio`
+  - Runs the full player input pipeline end to end
+  - Supports `--input-audio`, `--input-text`, `--stream-asr`, `--clone-voice-id`, and `--send-feishu-audio`
 - `scripts/batch_tts_scene.py`
   - Synthesizes all scene lines with one fixed voice
 - `scripts/send_npc_scene_to_feishu.py`

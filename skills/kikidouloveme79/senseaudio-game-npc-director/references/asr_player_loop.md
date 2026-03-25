@@ -1,10 +1,10 @@
-## SenseAudio ASR player loop
+## AudioClaw ASR player loop
 
 Use this when the world should react to what the player says, not just to pre-authored state.
 
-Official findings confirmed from SenseAudio sources:
+Official findings confirmed from AudioClaw-aligned sources:
 
-- SenseAudio exposes a public speech recognition workspace at `/workspace/speech-recognition`.
+- AudioClaw exposes a public speech recognition workspace at `/workspace/speech-recognition`.
 - The official HTTP API endpoint is `POST https://api.senseaudio.cn/v1/audio/transcriptions`.
 - Official open API models are `sense-asr-lite`, `sense-asr`, `sense-asr-pro`, `sense-asr-deepthink`.
 - Open API request fields include `file`, `model`, optional `language`, and optional `response_format`.
