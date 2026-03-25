@@ -1,0 +1,11 @@
+{
+  "owner": "bamdra",
+  "slug": "bamdra-memory-upgrade-operator",
+  "displayName": "Bamdra Memory Upgrade Operator",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1774191828997,
+    "commit": null
+  },
+  "history": []
+}
