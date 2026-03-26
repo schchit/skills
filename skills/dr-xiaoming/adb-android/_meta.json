@@ -1,0 +1,11 @@
+{
+  "owner": "dr-xiaoming",
+  "slug": "adb-android",
+  "displayName": "ADB Android Control",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774256750921,
+    "commit": null
+  },
+  "history": []
+}
