@@ -1,0 +1,11 @@
+{
+  "owner": "krishnakumarmahadevan-cmd",
+  "slug": "cybersec-cert-advisor",
+  "displayName": "CyberSec Cert Advisor",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774372653080,
+    "commit": null
+  },
+  "history": []
+}
