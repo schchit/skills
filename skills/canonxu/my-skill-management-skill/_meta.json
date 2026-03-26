@@ -1,0 +1,11 @@
+{
+  "owner": "canonxu",
+  "slug": "my-skill-management-skill",
+  "displayName": "My Skill Management Skill",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774253968603,
+    "commit": null
+  },
+  "history": []
+}
