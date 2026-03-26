@@ -1,0 +1,41 @@
+{
+  "name": "yunshi",
+  "version": "1.0.7",
+  "description": "运势 YunShi - 每日运程推送 + 八字命理顾问。集每日运程、八字、紫微斗数、奇门遁甲、梅花易数、六爻、风水于一体的命理平台。",
+  "keywords": [
+    "八字",
+    "命理",
+    "风水",
+    "紫微斗数",
+    "奇门遁甲",
+    "梅花易数",
+    "六爻",
+    "占卜"
+  ],
+  "author": "MingLi Mentor Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "daily": "node scripts/daily-fortune.js",
+    "register": "node scripts/register.js",
+    "ziwei": "node scripts/ziwei.js",
+    "marriage": "node scripts/marriage.js",
+    "meihua": "node scripts/meihua.js",
+    "liuyao": "node scripts/liuyao.js",
+    "qimen": "node scripts/qimen.js",
+    "fengshui": "node scripts/fengshui.js",
+    "zhuanshi": "node scripts/zhuanshi.js",
+    "profile": "node scripts/profile.js"
+  },
+  "directories": {
+    "scripts": "scripts",
+    "data": "data",
+    "docs": "docs"
+  },
+  "dependencies": {
+    "iztro": "^2.5.8",
+    "lunar-typescript": "^1.8.6"
+  }
+}
