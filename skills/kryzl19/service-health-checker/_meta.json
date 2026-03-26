@@ -1,0 +1,11 @@
+{
+  "owner": "kryzl19",
+  "slug": "service-health-checker",
+  "displayName": "Uptime Monitor",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774453271168,
+    "commit": null
+  },
+  "history": []
+}
