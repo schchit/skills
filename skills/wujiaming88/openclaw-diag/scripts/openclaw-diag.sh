@@ -7,9 +7,9 @@
 #   ./openclaw-diag.sh -f --advanced # 实时跟踪模式（高级：自动开启 debug 日志）
 #   ./openclaw-diag.sh -l 5         # 只看最近5个run
 #   ./openclaw-diag.sh -s           # 只看摘要统计
-#   ./openclaw-diag.sh -a waicode 2026-03-19  # 按 agent 过滤
+#   ./openclaw-diag.sh -a myagent 2026-03-19  # 按 agent 过滤
 #   ./openclaw-diag.sh -s -a main   # 指定 agent 的摘要
-#   ./openclaw-diag.sh -f -a waicode # 实时跟踪指定 agent
+#   ./openclaw-diag.sh -f -a myagent # 实时跟踪指定 agent
 #
 # 功能:
 #   - 解析 OpenClaw 诊断日志，展示 Run 时间线
@@ -54,7 +54,7 @@ AGENT_FILTER=""
 find_openclaw_config() {
     local config=""
     for p in \
-        "$HOME/.openclaw/openclaw.json" \
+        "/root/.openclaw/openclaw.json" \
         "$HOME/.openclaw/openclaw.json" \
         "/etc/openclaw/openclaw.json"; do
         if [ -f "$p" ]; then
@@ -282,7 +282,7 @@ while [[ $# -gt 0 ]]; do
             echo "选项:"
             echo "  -f, --follow      实时跟踪模式"
             echo "  --advanced        高级模式（自动开启 diagnostics + debug 日志）"
-            echo "  -a, --agent NAME  只看指定 agent（如 main/waicode/wairesearch）"
+            echo "  -a, --agent NAME  只看指定 agent（如 main/myagent）"
             echo "  -l N, --last N    只显示最近 N 个 run"
             echo "  -s, --summary     只显示摘要统计"
             echo "  -h, --help        帮助"
@@ -292,7 +292,7 @@ while [[ $# -gt 0 ]]; do
             echo "  $0 2026-03-11               # 解析指定日期"
             echo "  $0 -f                       # 实时跟踪（标准）"
             echo "  $0 -f --advanced            # 实时跟踪（高级：自动开启 debug）"
-            echo "  $0 -f -a waicode            # 只跟踪 waicode agent"
+            echo "  $0 -f -a myagent            # 只跟踪指定 agent"
             echo "  $0 -a main                  # 只看 main agent"
             echo "  $0 -l 3                     # 最近3个run"
             echo "  $0 -s                       # 摘要统计"
@@ -321,8 +321,8 @@ LOG="/tmp/openclaw/openclaw-${DATE}.log"
 # 自动查找会话文件目录
 SESSIONS_DIR=""
 for d in \
-    "$HOME/.openclaw/agents/main/sessions" \
-    "$HOME/.openclaw/agents/*/sessions" \
+    "/root/.openclaw/agents/main/sessions" \
+    "/root/.openclaw/agents/*/sessions" \
     "$HOME/.openclaw/agents/main/sessions" \
     "$HOME/.openclaw/agents/*/sessions"; do
     if [ -d "$d" ] 2>/dev/null; then
@@ -356,17 +356,16 @@ if [ "$FOLLOW" = true ]; then
     fi
     echo -e "${GRAY}日志文件: $LOG${NC}"
     echo ""
-    AGENT_FILTER_ENV="$AGENT_FILTER" tail -f "$LOG" 2>/dev/null | python3 -c "
+    export AGENT_FILTER_ENV="$AGENT_FILTER"
+    tail -f "$LOG" 2>/dev/null | python3 -c "
 import json, sys, os, re
 from datetime import datetime
 
 # Agent 颜色映射
 AGENT_COLORS = {
     'main':        '\033[0;36m',     # cyan
-    'waicode':     '\033[0;32m',     # green
-    'waidesign':   '\033[0;35m',     # magenta
-    'wairesearch': '\033[0;33m',     # yellow
-    'waiqa':       '\033[0;34m',     # blue
+    # 自定义 agent 颜色（按需添加）
+    # 'agent_name': '\033[0;32m',  # green
 }
 NC = '\033[0m'
 BOLD = '\033[1m'
@@ -376,15 +375,15 @@ agent_filter = os.environ.get('AGENT_FILTER_ENV', '')
 
 # 从日志消息中提取 agent 名称
 def extract_agent(msg):
-    # sessionKey=agent:waicode:main → waicode
+    # sessionKey=agent:<name>:<id> → <name>
     m = re.search(r'sessionKey=agent:([^:\s]+)', msg)
     if m:
         return m.group(1)
-    # lane=session:agent:wairesearch:main → wairesearch
+    # lane=session:agent:<name>:<id> → <name>
     m = re.search(r'lane=session:agent:([^:\s]+)', msg)
     if m:
         return m.group(1)
-    # [waicode] starting provider → waicode
+    # [<agent>] starting provider → <name>
     m = re.search(r'\[(\w+)\]\s+(?:starting|stopping)', msg)
     if m and m.group(1) != 'openclaw':
         return m.group(1)
@@ -398,6 +397,8 @@ def agent_tag(agent):
 
 # 跟踪每个 agent 的上一次时间戳
 agent_prev_times = {}
+# 当前活跃 agent（无标记事件继承最近一次有标记的 agent）
+current_agent = ''
 
 for line in sys.stdin:
     try:
@@ -409,9 +410,13 @@ for line in sys.stdin:
 
         # 提取 agent
         agent = extract_agent(msg)
+        if agent:
+            current_agent = agent
+        else:
+            agent = current_agent
 
         # 过滤
-        if agent_filter and agent and agent != agent_filter:
+        if agent_filter and agent != agent_filter:
             continue
 
         label = None
@@ -984,7 +989,7 @@ if not sorted_runs and all_infer_events:
     session_groups = defaultdict(list)
     for evt in date_filtered_events:
         sref = evt["sess_ref"]
-        # Agent 过滤（虚拟 Run: sess_ref 格式 waicode:uuid）
+        # Agent 过滤（虚拟 Run: sess_ref 格式 <agent>:uuid）
         if AGENT_FILTER:
             agent_part = sref.split(":")[0] if ":" in sref else ""
             if agent_part and agent_part != AGENT_FILTER:
@@ -1048,7 +1053,7 @@ if not sorted_runs and all_infer_events:
 
     # 重新排序
     sorted_runs = sorted(runs.items(), key=lambda x: x[1]["start"] or "")
-    # Agent 过滤（虚拟 Run 的 sess_ref 格式: waicode:uuid）
+    # Agent 过滤（虚拟 Run 的 sess_ref 格式: <agent>:uuid）
     if AGENT_FILTER:
         sorted_runs = [(rid, r) for rid, r in sorted_runs if r.get("sess_ref", "").startswith(AGENT_FILTER + ":") or not r.get("sess_ref")]
     if LAST_N > 0:
