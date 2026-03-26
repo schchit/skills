@@ -1,0 +1,11 @@
+{
+  "owner": "kid0114",
+  "slug": "myskill1",
+  "displayName": "My Skill 1",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1774448082185,
+    "commit": null
+  },
+  "history": []
+}
