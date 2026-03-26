@@ -1,0 +1,11 @@
+{
+  "owner": "jisuapi",
+  "slug": "jisu-wechat-article",
+  "displayName": "Wechat Article Search - 微信公众号文章搜索",
+  "latest": {
+    "version": "1.0.2",
+    "publishedAt": 1774435076439,
+    "commit": null
+  },
+  "history": []
+}
