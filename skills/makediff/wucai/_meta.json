@@ -1,0 +1,11 @@
+{
+  "owner": "makediff",
+  "slug": "wucai",
+  "displayName": "WuCai",
+  "latest": {
+    "version": "26.3.35",
+    "publishedAt": 1774484668571,
+    "commit": null
+  },
+  "history": []
+}
