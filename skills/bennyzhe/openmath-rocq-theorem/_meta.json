@@ -3,9 +3,15 @@
   "slug": "openmath-rocq-theorem",
   "displayName": "openmath-rocq-theorem",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1774411689877,
-    "commit": "https://github.com/openclaw/skills/commit/5fea111577074a93c4caf9db278a09daaf6d2900"
+    "version": "1.0.3",
+    "publishedAt": 1774420620945,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1774411689877,
+      "commit": "https://github.com/openclaw/skills/commit/5fea111577074a93c4caf9db278a09daaf6d2900"
+    }
+  ]
 }
