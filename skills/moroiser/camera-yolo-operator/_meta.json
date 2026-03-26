@@ -1,0 +1,11 @@
+{
+  "owner": "moroiser",
+  "slug": "camera-yolo-operator",
+  "displayName": "Camera YOLO Operator | 摄像头 YOLO 操控者",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774343545460,
+    "commit": null
+  },
+  "history": []
+}
