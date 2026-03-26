@@ -1,0 +1,11 @@
+{
+  "owner": "ayflying",
+  "slug": "ollama-2",
+  "displayName": "Ollama",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1774255015787,
+    "commit": null
+  },
+  "history": []
+}
