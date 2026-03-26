@@ -1,245 +1,182 @@
 ---
-skill_name: ogp
-version: 0.2.0
-description: Manage OGP (Open Gateway Protocol) daemon and federation. OGP adds peer-to-peer federation to OpenClaw, allowing AI agents to communicate across different deployments with cryptographic identity and signed messages.
-trigger: Use when the user wants to configure, start, or manage the OGP federation daemon, manage federated peers, send messages to peers, or check federation status.
-requires:
-  bins:
-    - ogp
-  state_paths:
-    - ~/.ogp/config.json
-    - ~/.ogp/peers.json
-    - ~/.ogp/daemon.pid
-    - ~/.ogp/keypair.json
-  install: npm install -g @dp-pcs/ogp
-  docs: https://github.com/dp-pcs/ogp
+name: ogp
+description: >
+  OGP (Open Gateway Protocol) — schedule meetings, query peers, and coordinate
+  with other OpenClaw users via federated gateway messaging. Use when the user
+  asks to schedule a meeting with someone, check a peer's availability, or
+  manage OGP federation relationships.
 ---
-## Prerequisites
 
-The OGP daemon must be installed. If you see errors like 'ogp: command not found', install it first:
+# OGP — Open Gateway Protocol
 
-```bash
-npm install -g github:dp-pcs/ogp --ignore-scripts
-ogp-install-skills
-ogp setup
-```
+OGP lets this gateway securely exchange messages with other OpenClaw gateways.
+Each relationship is explicitly approved, scoped, and authenticated with Ed25519 signatures.
 
-Full documentation: https://github.com/dp-pcs/ogp
-
-
-
-# OGP Federation Management
-
-This skill helps manage the OGP (Open Gateway Protocol) daemon, which adds federation capability to OpenClaw.
-
-## When to Use
-
-Use this skill when:
-- User wants to set up OGP federation
-- User wants to start/stop the OGP daemon
-- User wants to manage federated peers (list, approve, reject)
-- User wants to send messages to federated peers
-- User asks about OGP status or configuration
-
-## Commands
-
-### Setup
+## State Directory
 
 ```bash
-ogp setup
+OPENCLAW_STATE_DIR=~/.openclaw     # main gateway state dir
+PEER_FILE=$OPENCLAW_STATE_DIR/federation-peers.json
 ```
 
-Interactive setup wizard. Prompts for:
-- Daemon port (default: 18790)
-- OpenClaw URL (default: http://localhost:18789)
-- OpenClaw API token
-- Gateway URL (your public URL)
-- Display name
-- Email
-
-### Start/Stop Daemon
+## Step 1 — Find the peer
 
 ```bash
-# Start daemon
-ogp start
+# List all approved peers
+node ~/Documents/GitHub/openclaw/dist/index.js federation list
 
-# Stop daemon
-ogp stop
-
-# Check status
-ogp status
+# Check peer capabilities (what intents they support)
+curl -s https://<peer-gateway-url>/.well-known/ogp | python3 -m json.tool
 ```
 
-### Federation Management
+**Decision tree:**
+- Peer found + approved + has required intent → go to Step 2
+- Peer found + pending → tell user: "federation request pending, can't act yet"
+- Peer found + approved + missing intent → tell user: "peer doesn't support this yet"
+- Peer not found → go to Step 1b (request federation)
+
+## Step 1b — Request federation (if no peer exists)
 
 ```bash
-# List all peers
-ogp federation list
-
-# List only pending requests
-ogp federation list --status pending
-
-# List approved peers
-ogp federation list --status approved
-
-# Request federation with another OGP instance
-ogp federation request <peer-gateway-url> <peer-id>
-
-# Approve a pending request
-ogp federation approve <peer-id>
-
-# Reject a pending request
-ogp federation reject <peer-id>
-
-# Send message to a peer
-ogp federation send <peer-id> message '{"text":"Hello from OGP!"}'
-
-# Send task request
-ogp federation send <peer-id> task-request '{"taskType":"analysis","description":"Analyze logs"}'
+node ~/Documents/GitHub/openclaw/dist/index.js federation request \
+  --gateway <peer-gateway-url> \
+  --scope calendar-read,calendar-write,ping
 ```
 
-### Expose Daemon
+Then inform the user and wait for approval before proceeding.
+
+## Step 2 — Schedule a meeting (calendar-read + calendar-write)
+
+### 2a. Query peer's availability
 
 ```bash
-# Expose via cloudflared (default)
-ogp expose
-
-# Expose via ngrok
-ogp expose --method ngrok
+node ~/Documents/GitHub/openclaw/dist/index.js federation send \
+  <peer-gateway-id> \
+  --intent calendar-read \
+  --payload "{\"start\":\"<ISO_START>\",\"end\":\"<ISO_END>\",\"duration\":<MINS>}"
 ```
 
-## Common Workflows
+- Default window: next week, Mon–Fri, 9am–5pm peer's timezone
+- Duration: 30 minutes unless specified
+- The reply contains `available: [{start, end, duration}]`
+- Pick the **first available slot** unless user specifies otherwise
 
-### Initial Setup
-
-1. Run `ogp setup` to configure
-2. Run `ogp expose` to get a public URL
-3. Update gateway URL in config if needed
-4. Run `ogp start` to start daemon
-
-### Adding a Peer
-
-1. Get peer's gateway URL
-2. Run `ogp federation request <peer-url> <peer-id>`
-3. Wait for peer to approve
-4. Verify with `ogp federation list --status approved`
-
-### Receiving Federation Requests
-
-When another OGP instance sends a federation request:
-1. You'll see it in `ogp federation list --status pending`
-2. Approve with `ogp federation approve <peer-id>`
-3. Or reject with `ogp federation reject <peer-id>`
-
-### Approving with Scope Grants (v0.2.0)
-
-Control what intents and topics each peer can access:
+### 2b. Create the calendar event (on YOUR calendar, invite peer)
 
 ```bash
-# Approve with specific scopes
-ogp federation approve alice \
-  --intents message,agent-comms \
-  --rate 100/3600 \
-  --topics memory-management,task-delegation
-
-# View peer's scopes
-ogp federation scopes alice
-
-# Update grants for existing peer
-ogp federation grant alice \
-  --intents agent-comms \
-  --topics project-planning
+~/Documents/GitHub/openclaw-federation/scripts/gwb-calendar-write.sh \
+  "<START_ISO>" \
+  "<END_ISO>" \
+  "Meeting with <peer-display-name>" \
+  "<peer-email>" \
+  "<peer-display-name>"
 ```
 
-### Sending Messages
+The peer's email comes from their stored peer record:
+```bash
+cat ~/.openclaw/federation-peers.json | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+for k,v in d.items():
+    if '<peer-name>' in v.get('displayName','').lower():
+        print(v.get('email','not set'))
+"
+```
 
-Once peers are approved:
+## Step 3 — Confirm to user
+
+After booking:
+> "Done. Meeting scheduled with [Name] for [Day] [Date] at [Time] [TZ].
+>  Calendar invite sent to [email]. I'll let you know when they respond."
+
+## Step 4 — Monitor invite response (optional)
 
 ```bash
-# Simple message
-ogp federation send alice message '{"text":"Hi Alice!"}'
-
-# Agent-comms (v0.2.0) - agent-to-agent communication
-ogp federation agent alice memory-management "How do you persist context?"
-ogp federation agent alice task-delegation "Can you help with code review?" --priority high
-
-# Task request
-ogp federation send bob task-request '{
-  "taskType": "code-review",
-  "description": "Review PR #123",
-  "parameters": {"repo": "openclaw", "pr": 123}
-}'
-
-# Status update
-ogp federation send charlie status-update '{
-  "status": "completed",
-  "message": "Task finished"
-}'
+# Check if attendee has responded to a calendar event
+~/.nvm/versions/node/v22.22.0/bin/gws calendar events list \
+  --params '{"calendarId":"primary","timeMin":"<START>","timeMax":"<END>","singleEvents":true}' \
+  | python3 -c "
+import json,sys
+events = json.load(sys.stdin).get('items',[])
+for e in events:
+    for a in e.get('attendees',[]):
+        print(a.get('email'), ':', a.get('responseStatus'))
+"
 ```
 
-### Configuring Response Policies
+Response statuses: `needsAction` | `accepted` | `declined` | `tentative`
 
-Control how your agent responds to incoming messages:
+## Peer Address Book
+
+Known peers (update as federation relationships are added):
+
+| Name | Gateway ID | Gateway URL | Email | Notes |
+|---|---|---|---|---|
+| Alex Chen (demo) | latent-genius.local:12010 | http://localhost:12010 | david@theproctors.cloud | Demo Gateway B |
+
+To look up any peer dynamically:
+```bash
+cat ~/.openclaw/federation-peers.json | python3 -c "
+import json,sys
+peers = json.load(sys.stdin)
+for k,v in peers.items():
+    if v.get('status') == 'approved':
+        print(f\"{v['displayName']} | {k} | {v.get('email','no email')} | {v.get('scope')}\")
+"
+```
+
+## Common Intents
+
+| Intent | What it does | Required payload |
+|---|---|---|
+| `ping` | Check if peer gateway is alive | `{}` |
+| `calendar-read` | Get peer's available slots | `{start, end, duration}` |
+| `calendar-write` | Create event on peer's calendar | `{start, end, title, attendee_email, attendee_name}` |
+| `web-search` | Ask peer's gateway to search | `{query}` |
+
+## CLI Quick Reference
 
 ```bash
-# View policies
-ogp agent-comms policies
-ogp agent-comms policies alice
+# List peers
+node ~/Documents/GitHub/openclaw/dist/index.js federation list
 
-# Configure per-peer policies
-ogp agent-comms configure alice --topics "memory-management" --level full
+# Ping a peer
+node ~/Documents/GitHub/openclaw/dist/index.js federation send <id> --intent ping
 
-# View activity log
-ogp agent-comms activity
+# Check peer capabilities  
+curl -s <gateway-url>/.well-known/ogp | python3 -m json.tool
+
+# Request new federation
+node ~/Documents/GitHub/openclaw/dist/index.js federation request \
+  --gateway <url> --scope calendar-read,calendar-write,ping
+
+# Approve inbound request
+node ~/Documents/GitHub/openclaw/dist/index.js federation approve <gateway-id>
+
+# List registered intent handlers
+node ~/Documents/GitHub/openclaw/dist/index.js federation intents
+
+# Register a new intent handler
+node ~/Documents/GitHub/openclaw/dist/index.js federation register-intent <intent> \
+  --command "<shell command with {param} substitutions>"
 ```
 
-For detailed response policy setup, use the `/ogp-agent-comms` skill.
+## Environment Variables (for test gateways)
 
-## Configuration
-
-Config file: `~/.ogp/config.json`
-
-```json
-{
-  "daemonPort": 18790,
-  "openclawUrl": "http://localhost:18789",
-  "openclawToken": "your-token",
-  "gatewayUrl": "https://your-public-url.com",
-  "displayName": "Your Name",
-  "email": "you@example.com",
-  "stateDir": "~/.ogp"
-}
+When using test gateway A (port 12000) or B (port 12010), prefix commands with:
+```bash
+OPENCLAW_CONFIG_PATH=~/.openclaw-fed-a/openclaw.json \
+OPENCLAW_STATE_DIR=~/.openclaw-fed-a \
+OPENCLAW_GATEWAY_PORT=12000 \
 ```
 
-## Troubleshooting
+For the main production gateway, no prefix needed — defaults apply.
 
-### Daemon won't start
-- Check if port 18790 is already in use
-- Verify OpenClaw is running and accessible
-- Check `~/.ogp/config.json` exists and is valid
+## Error Handling
 
-### Federation request fails
-- Verify peer's gateway URL is accessible
-- Check peer's OGP daemon is running
-- Ensure network connectivity
-
-### Messages not reaching OpenClaw
-- Verify OpenClaw token is correct
-- Check OpenClaw URL is accessible
-- Look for errors in daemon logs
-
-## Architecture
-
-The OGP daemon:
-- Runs on port 18790 (configurable)
-- Uses Ed25519 for signing messages
-- Exposes `/.well-known/ogp` for discovery
-- Stores peers in `~/.ogp/peers.json`
-- Notifies OpenClaw via POST to `/api/system-event`
-
-## Security
-
-- All messages are signed with Ed25519
-- Peer public keys are verified on every message
-- Only approved peers can send messages
-- Signatures prevent tampering and impersonation
+| Error | Likely cause | Fix |
+|---|---|---|
+| `Peer not found or not approved` | Not federated or pending | Check `federation list` |
+| `Intent X not in approved scope` | Scope too narrow | Re-request with wider scope |
+| `Invalid signature` | Wrong keypair or stale peer record | Clear peers, re-establish trust |
+| `No reply received within 30 seconds` | Peer gateway down or intent handler misconfigured | Ping the peer first |
