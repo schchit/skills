@@ -1,0 +1,11 @@
+{
+  "owner": "bytesagain1",
+  "slug": "firewalld",
+  "displayName": "Firewalld",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774304325887,
+    "commit": null
+  },
+  "history": []
+}
