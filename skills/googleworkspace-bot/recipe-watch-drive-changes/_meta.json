@@ -3,11 +3,16 @@
   "slug": "recipe-watch-drive-changes",
   "displayName": "Recipe Watch Drive Changes",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1774383486734,
-    "commit": "https://github.com/openclaw/skills/commit/763021fde934a75509d0fe768e1804356c95d85f"
+    "version": "1.0.9",
+    "publishedAt": 1774540871939,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1774383486734,
+      "commit": "https://github.com/openclaw/skills/commit/763021fde934a75509d0fe768e1804356c95d85f"
+    },
     {
       "version": "1.0.3",
       "publishedAt": 1774380586919,
