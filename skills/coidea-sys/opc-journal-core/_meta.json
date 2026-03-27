@@ -1,0 +1,11 @@
+{
+  "owner": "coidea-sys",
+  "slug": "opc-journal-core",
+  "displayName": "OPC Journal Core",
+  "latest": {
+    "version": "2.2.0",
+    "publishedAt": 1774547103730,
+    "commit": null
+  },
+  "history": []
+}
