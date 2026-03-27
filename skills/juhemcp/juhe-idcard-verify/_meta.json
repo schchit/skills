@@ -1,0 +1,11 @@
+{
+  "owner": "juhemcp",
+  "slug": "juhe-idcard-verify",
+  "displayName": "身份证二要素核验 - 聚合数据",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774502373331,
+    "commit": null
+  },
+  "history": []
+}
