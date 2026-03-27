@@ -1,0 +1,11 @@
+{
+  "owner": "juhemcp",
+  "slug": "juhe-train-tickets",
+  "displayName": "火车订票班次查询 - 聚合数据",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774495520380,
+    "commit": null
+  },
+  "history": []
+}
