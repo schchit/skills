@@ -1,0 +1,11 @@
+{
+  "owner": "musharsec",
+  "slug": "raigo-af",
+  "displayName": "raigo agent firewall",
+  "latest": {
+    "version": "1.0.2",
+    "publishedAt": 1774614832325,
+    "commit": null
+  },
+  "history": []
+}
