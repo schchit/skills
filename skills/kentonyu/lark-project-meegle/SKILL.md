@@ -1,7 +1,7 @@
 ---
-name: meegle
+name: lark-project-meegle
 description: 连接飞书项目/Meegle，查询和管理工作项、待办等。自动检测登录状态，未登录时引导 Device Code 授权。
-version: 0.0.3
+version: 0.1.1
 homepage: https://www.npmjs.com/package/@lark-project/meegle
 metadata:
   openclaw:
@@ -26,11 +26,13 @@ metadata:
 
 运行环境需要 Node.js 18+。所有命令通过 `npx @lark-project/meegle@beta` 执行，无需手动安装或更新。
 
-## Auth Guard
+## Auth Guard（所有业务命令前必须执行）
 
-在执行任何 Meegle 业务命令前，必须先检查登录状态。执行以下步骤：
+按以下 STEP 顺序执行。每个 STEP 结尾的 GOTO 指明下一步，严格遵循跳转。
 
-### 步骤 1：检查登录状态
+---
+
+### STEP 1 — 检查登录状态
 
 ```bash
 npx @lark-project/meegle@beta auth status --format json
@@ -41,63 +43,96 @@ npx @lark-project/meegle@beta auth status --format json
 - 未登录且有 host：`{ "authenticated": false, "host": "meegle.com", "source": null, "expires_in_minutes": null }`
 - 未登录且无 host：`{ "authenticated": false, "host": null, "source": null, "expires_in_minutes": null }`
 
-### 步骤 2：处理结果
+解析返回值，保存变量：
+- `$authenticated` = response.authenticated
+- `$host` = response.host
 
-- **authenticated 为 true**：直接执行业务命令。
-- **authenticated 为 false**：进入登录引导流程（见下方）。
+**跳转：**
+- IF `$authenticated == true` → GOTO STEP 6
+- IF `$host != null` → GOTO STEP 3
+- IF `$host == null` → GOTO STEP 2
 
-## 登录引导流程
+---
 
-### 选择站点
+### STEP 2 — 选择站点
 
-如果 `host` 为 null（首次使用），询问用户：
+ASK user（等待用户回复）：
 
 > 你要连接哪个站点？
 > 1) 飞书项目 (project.feishu.cn)
 > 2) Meegle (meegle.com)
 > 3) 自定义域名（请直接输入域名）
 
-用户回复后获得 host 值。如果 `host` 已有值，跳过此步。
+SAVE `$host` from user reply → GOTO STEP 3
 
-### 初始化授权
+---
 
-使用 host 值执行：
-
-```bash
-npx @lark-project/meegle@beta auth login --device-code --phase init --host <host> --format json
-```
-
-返回 JSON 包含 `verification_uri_complete`、`user_code`、`device_code`、`client_id`、`interval`、`expires_in`。
-
-解析 JSON 后向用户发送：
-
-> 请在浏览器中打开以下链接完成授权：
-> <verification_uri_complete>
-
-### 等待授权完成（主动轮询）
-
-> **关键行为**：发送验证链接后，你必须**立即开始轮询**，不要等待用户回复。将 `sleep` 和 `poll` 合并为一条 Bash 命令执行，检查结果后决定下一步。
-
-按以下循环执行（**发送验证链接后立即进入第 1 步，不要停下来等用户消息**）：
-
-1. 执行 sleep + 单次轮询（合并为一条命令，避免中断）：
+### STEP 3 — 初始化 Device Code
 
 ```bash
-sleep <interval> && npx @lark-project/meegle@beta auth login --device-code --phase poll --once \
-  --device-code-value <device_code> --client-id <client_id> --format json
+npx @lark-project/meegle@beta auth login --device-code --phase init --host $host --format json
 ```
 
-2. 根据返回的 `status` 字段处理：
-   - `"ok"`：**立即通知用户登录成功**（发送消息或更新卡片），然后再继续执行用户原始请求的业务命令。
-   - `"authorization_pending"`：用户尚未完成授权，**立即回到步骤 1 继续轮询**（再次调用同样的 sleep + poll 命令）。
-   - `"slow_down"`：轮询过快，将 `interval` 增加 5 秒，回到步骤 1。
-   - `"expired_token"`：授权已超时，提示用户重新发起登录。
+SAVE from response：
+- `$verification_uri_complete` = response.verification_uri_complete
+- `$user_code` = response.user_code
+- `$device_code` = response.device_code
+- `$client_id` = response.client_id
+- `$interval` = response.interval
+- `$expires_in` = response.expires_in
+- `$max_attempts` = floor($expires_in / $interval)
 
-3. 最多轮询 `expires_in / interval` 次。超过后提示用户重试。
+**发送验证链接给用户：**
 
-> **禁止**：不要在发送验证链接后停下来等用户说"我授权好了"。你必须主动轮询，用户在浏览器完成授权后你应当自动检测到。
+IF channel == "feishu" OR channel == "lark"（参考 Runtime metadata 中的 `channel=` 字段）:
+- SEND 消息卡片（如果当前 channel 支持卡片格式）：
+  - 标题: "Meegle 授权登录"
+  - 内容: 验证码 `$user_code`，有效期 `$expires_in` 秒
+  - 按钮: "打开授权页面" → `$verification_uri_complete`
+  - 如果不支持卡片，回退到下方纯文本格式
 
-> **重要**：授权成功后，必须先单独发送一条"登录成功"的消息给用户，再执行后续业务命令。不要把登录结果和业务查询结果合并到一次响应中——用户需要第一时间看到授权状态的变化。
+ELSE:
+- SEND to user: `请在浏览器中打开以下链接完成授权：\n$verification_uri_complete\n验证码：$user_code（$expires_in 秒内有效）`
+
+> ⚠️ 发送后立即 GOTO STEP 4。**禁止**在此停下等用户回复"我授权好了"。你必须主动轮询。
+
+→ GOTO STEP 4
+
+---
+
+### STEP 4 — 轮询授权结果（循环）
+
+> ⚠️ 使用 STEP 3 保存的 `$device_code` 和 `$client_id`。**禁止**重新执行 STEP 3（否则会生成新的验证码，用户之前打开的链接作废）。
+
+```bash
+sleep $interval && npx @lark-project/meegle@beta auth login --device-code --phase poll --once \
+  --device-code-value $device_code --client-id $client_id --format json
+```
+
+PARSE response → `$status` = response.status
+
+**跳转：**
+- IF `$status == "ok"` → GOTO STEP 5
+- IF `$status == "authorization_pending"` → GOTO STEP 4（重复本步骤，继续轮询）
+- IF `$status == "slow_down"` → `$interval = $interval + 5`，GOTO STEP 4
+- IF `$status == "expired_token"` → SEND "授权已超时，请重新发起登录"，STOP
+- IF attempts > `$max_attempts` → SEND "轮询超时，请重试"，STOP
+
+---
+
+### STEP 5 — 通知登录成功
+
+SEND to user: "登录成功！"
+
+> ⚠️ 此消息**必须单独发送**，不要与后续业务查询结果合并到同一条回复中。用户需要第一时间看到授权状态变化。
+
+→ GOTO STEP 6
+
+---
+
+### STEP 6 — 执行业务命令
+
+Auth 已通过，进入下方「业务命令调用」部分执行用户请求的操作。
 
 ## 业务命令调用
 
@@ -135,7 +170,7 @@ Flag 和 --set 会覆盖 --params 中的同名字段。
 #### 查询待办
 
 ```bash
-npx @lark-project/meegle@beta my todo --format json
+npx @lark-project/meegle@beta mywork todo --format json
 ```
 
 #### 查询工作项
