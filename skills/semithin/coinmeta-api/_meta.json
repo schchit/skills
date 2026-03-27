@@ -1,0 +1,11 @@
+{
+  "owner": "semithin",
+  "slug": "coinmeta-api",
+  "displayName": "币界网API",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774599579926,
+    "commit": null
+  },
+  "history": []
+}
