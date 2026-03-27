@@ -1,7 +1,0 @@
-{
-  "name": "agent-memory-setup-v2",
-  "version": "1.0.0",
-  "description": "3-tier memory system for OpenClaw agents with Google Gemini Embeddings 2 semantic search",
-  "author": "autosolutionsai-didac",
-  "license": "MIT"
-}
