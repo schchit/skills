@@ -54,7 +54,7 @@ yt-dlp -o "<目标目录>/%(title)s.%(ext)s" "<url>"
 **用户说 "下载到 D:\Videos\bili"：**
 ```bash
 mkdir -Force D:\Videos\bili | Out-Null
-yt-dlp -o "D:\Videos\bili\%(title)s.%(ext)s" "https://www.bilibili.com/video/BV1xx411c7mD"
+yt-dlp -o "D:\Videos\bili\%(title)s.%(ext)s" "<B站视频URL>"
 ```
 
 **用户说 "下载到 ~/Videos/bili"：**
