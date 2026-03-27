@@ -3,9 +3,15 @@
   "slug": "novel-writing",
   "displayName": "novel-writing",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774578412271,
-    "commit": "https://github.com/openclaw/skills/commit/5fc8e7fd873d0a6384bb3c9f5791978891c6e08f"
+    "version": "1.2.0",
+    "publishedAt": 1774589969456,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774578412271,
+      "commit": "https://github.com/openclaw/skills/commit/5fc8e7fd873d0a6384bb3c9f5791978891c6e08f"
+    }
+  ]
 }
