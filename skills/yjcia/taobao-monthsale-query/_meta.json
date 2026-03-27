@@ -3,9 +3,15 @@
   "slug": "taobao-monthsale-query",
   "displayName": "阿里商品月销查询",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1774252843476,
-    "commit": "https://github.com/openclaw/skills/commit/f6694ba14aee371e32c4b84d2e1221525930ffc1"
+    "version": "1.0.3",
+    "publishedAt": 1774599749023,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1774252843476,
+      "commit": "https://github.com/openclaw/skills/commit/f6694ba14aee371e32c4b84d2e1221525930ffc1"
+    }
+  ]
 }
