@@ -1,0 +1,11 @@
+{
+  "owner": "lamtest556-blip",
+  "slug": "claude-code-x-scraper",
+  "displayName": "X (Twitter) Data Scraper",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1774503752144,
+    "commit": null
+  },
+  "history": []
+}
