@@ -1,0 +1,11 @@
+{
+  "owner": "glittercowboy",
+  "slug": "gsd-headless",
+  "displayName": "GSD Headless (→ gsd-orchestrator)",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774563025420,
+    "commit": null
+  },
+  "history": []
+}
