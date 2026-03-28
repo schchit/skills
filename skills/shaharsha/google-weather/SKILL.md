@@ -1,10 +1,10 @@
 ---
 name: google-weather
 description: Google Weather API - accurate, real-time weather data. Get current conditions, temperature, humidity, wind, and forecasts. Powered by Google's Weather API for reliable, hyperlocal data updated every 15 minutes. Supports any location worldwide.
-version: 1.2.0
+version: 1.3.0
 author: Leo 🦁
 tags: [weather, google, forecast, temperature, real-time, current-conditions, climate, wind, humidity]
-metadata: {"clawdbot":{"emoji":"🌤️","requires":{"env":["GOOGLE_API_KEY"]},"primaryEnv":"GOOGLE_API_KEY","secondaryEnv":["GOOGLE_WEATHER_API_KEY","GOOGLE_MAPS_API_KEY"]}}
+metadata: {"clawdbot":{"emoji":"🌤️","requires":{"env":["GOOGLE_API_KEY"]},"primaryEnv":"GOOGLE_API_KEY","secondaryEnv":["GOOGLE_WEATHER_API_KEY","GOOGLE_MAPS_API_KEY"],"optionalEnv":["GOOGLE_WEATHER_UNITS"]}}
 allowed-tools: [exec]
 ---
 
@@ -29,6 +29,7 @@ python3 skills/google-weather/lib/weather_helper.py json "Paris"
 
 ## Example Output
 
+**Metric (default):**
 ```
 *New York*
 Partly Cloudy ⛅
@@ -37,6 +38,16 @@ Partly Cloudy ⛅
 💧 Humidity: 55%
 ```
 
+**Imperial** (`GOOGLE_WEATHER_UNITS=IMPERIAL`):
+```
+*New York*
+Partly Cloudy ⛅
+🌡️ 53.6°F (feels like 50°F)
+💨 Wind: 11 mph NORTHWEST
+💧 Humidity: 55%
+```
+
+**Forecast:**
 ```
 *24h Forecast for Tel Aviv*
 18:00: 17.8°C, ☀️ 5 km/h NORTH
@@ -76,6 +87,24 @@ The skill automatically geocodes locations using Google Maps API.
 4. Create an API key and set it as `GOOGLE_API_KEY` environment variable
 
 > Also supports `GOOGLE_WEATHER_API_KEY` or `GOOGLE_MAPS_API_KEY` if you already have one configured.
+
+## Configuration
+
+### Units System
+
+By default, the skill uses **metric** units (°C, km/h). To switch to **imperial** (°F, mph), set the `GOOGLE_WEATHER_UNITS` environment variable:
+
+```yaml
+# In your OpenClaw config (env section):
+GOOGLE_WEATHER_UNITS: IMPERIAL
+```
+
+| Setting | Temperature | Wind Speed | Precipitation | Visibility |
+|---------|------------|------------|---------------|------------|
+| `METRIC` (default) | °C | km/h | mm | km |
+| `IMPERIAL` | °F | mph | inches | miles |
+
+No code changes needed — just set the env var and restart.
 
 ## Multi-language Support
 

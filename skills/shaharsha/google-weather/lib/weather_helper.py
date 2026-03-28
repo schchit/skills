@@ -51,6 +51,17 @@ class GoogleWeather:
         self.current_url = "https://weather.googleapis.com/v1/currentConditions:lookup"
         self.forecast_url = "https://weather.googleapis.com/v1/forecast/hours:lookup"
         self.geocode_url = "https://maps.googleapis.com/maps/api/geocode/json"
+        
+        # Units system: METRIC (default) or IMPERIAL
+        # Set GOOGLE_WEATHER_UNITS=IMPERIAL for Fahrenheit/mph
+        units_env = os.getenv("GOOGLE_WEATHER_UNITS", "METRIC").upper().strip()
+        self.units_system = units_env if units_env in ("METRIC", "IMPERIAL") else "METRIC"
+        self.is_imperial = self.units_system == "IMPERIAL"
+        
+        # Unit labels based on system
+        self.temp_unit = "°F" if self.is_imperial else "°C"
+        self.speed_unit = "mph" if self.is_imperial else "km/h"
+        self.speed_unit_he = "מייל/ש" if self.is_imperial else "קמ\"ש"
     
     def _validate_key(self):
         if not self.api_key:
@@ -95,7 +106,8 @@ class GoogleWeather:
             "key": self.api_key,
             "location.latitude": lat,
             "location.longitude": lon,
-            "languageCode": language
+            "languageCode": language,
+            "units_system": self.units_system
         }
         
         try:
@@ -177,7 +189,8 @@ class GoogleWeather:
             "location.latitude": lat,
             "location.longitude": lon,
             "hours": hours,
-            "languageCode": language
+            "languageCode": language,
+            "units_system": self.units_system
         }
         
         try:
@@ -228,13 +241,16 @@ class GoogleWeather:
         wind = data.get("wind", {})
         emoji = condition.get('emoji', '')
         
+        tu = self.temp_unit
+        su = self.speed_unit_he if lang == "he" else self.speed_unit
+        
         if lang == "he":
             desc = condition.get('text_he', '') or condition.get('text', '')
             lines = [
                 f"*{data.get('location', 'Unknown')}*",
                 f"{desc} {emoji}".strip(),
-                f"🌡️ {temp.get('current', '?')}°C (מרגיש כמו {temp.get('feels_like', '?')}°C)",
-                f"💨 רוח: {wind.get('speed', '?')} קמ\"ש {wind.get('direction', '')}",
+                f"🌡️ {temp.get('current', '?')}{tu} (מרגיש כמו {temp.get('feels_like', '?')}{tu})",
+                f"💨 רוח: {wind.get('speed', '?')} {su} {wind.get('direction', '')}",
                 f"💧 לחות: {data.get('humidity', '?')}%",
             ]
         else:
@@ -242,8 +258,8 @@ class GoogleWeather:
             lines = [
                 f"*{data.get('location', 'Unknown')}*",
                 f"{desc} {emoji}".strip(),
-                f"🌡️ {temp.get('current', '?')}°C (feels like {temp.get('feels_like', '?')}°C)",
-                f"💨 Wind: {wind.get('speed', '?')} km/h {wind.get('direction', '')}",
+                f"🌡️ {temp.get('current', '?')}{tu} (feels like {temp.get('feels_like', '?')}{tu})",
+                f"💨 Wind: {wind.get('speed', '?')} {su} {wind.get('direction', '')}",
                 f"💧 Humidity: {data.get('humidity', '?')}%",
             ]
         
@@ -254,13 +270,13 @@ class GoogleWeather:
         lines = [f"*תחזית ל-{data['location']} (24 שעות)*" if lang == "he" else f"*24h Forecast for {data['location']}*"]
         
         # Select key hours (every 3-4 hours to keep it brief)
+        tu = self.temp_unit
+        su = self.speed_unit_he if lang == "he" else self.speed_unit
+        
         for i, h in enumerate(data['hourly']):
             if i % 4 == 0:
                 time_str = f"{h['display_time']['hours']:02d}:00"
-                if lang == "he":
-                    lines.append(f"{time_str}: {h['temp']}°C, {h['condition']['emoji']} {h['wind']['speed']} קמ\"ש {h['wind']['direction']}")
-                else:
-                    lines.append(f"{time_str}: {h['temp']}°C, {h['condition']['emoji']} {h['wind']['speed']} km/h {h['wind']['direction']}")
+                lines.append(f"{time_str}: {h['temp']}{tu}, {h['condition']['emoji']} {h['wind']['speed']} {su} {h['wind']['direction']}")
         
         return "\n".join(lines)
 
