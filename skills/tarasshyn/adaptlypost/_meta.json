@@ -3,11 +3,16 @@
   "slug": "adaptlypost",
   "displayName": "AdaptlyPost",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1772721955633,
-    "commit": "https://github.com/openclaw/skills/commit/c5609eb6b646aef6a6ef9f56bb58b972e704f335"
+    "version": "1.0.4",
+    "publishedAt": 1774308741231,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1772721955633,
+      "commit": "https://github.com/openclaw/skills/commit/c5609eb6b646aef6a6ef9f56bb58b972e704f335"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1772529233841,

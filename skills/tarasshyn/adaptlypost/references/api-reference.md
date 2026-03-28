@@ -178,6 +178,82 @@ Same structure as individual post in the list endpoint.
 }
 ```
 
+### POST /social-posts/bulk
+
+Schedule up to 100 posts at once. Each post can have its own content, media, and scheduled time.
+
+**Request:**
+
+```json
+{
+  "platforms": ["YOUTUBE", "PINTEREST"],
+  "timezone": "America/New_York",
+  "youtubeConnectionIds": ["conn_yt123"],
+  "pinterestConnectionIds": ["conn_pin456"],
+  "youtubeConfigs": [{ "connectionId": "conn_yt123", "postType": "SHORTS", "privacyStatus": "public" }],
+  "pinterestConfigs": [{ "connectionId": "conn_pin456", "boardId": "board_abc", "title": "Default title" }],
+  "posts": [
+    {
+      "contentType": "VIDEO",
+      "text": "First video",
+      "mediaUrls": ["https://cdn.adaptlypost.com/uploads/video1.mp4"],
+      "scheduledAt": "2026-03-15T10:00:00Z"
+    },
+    {
+      "contentType": "VIDEO",
+      "text": "Second video with custom YouTube config",
+      "mediaUrls": ["https://cdn.adaptlypost.com/uploads/video2.mp4"],
+      "scheduledAt": "2026-03-15T14:00:00Z",
+      "youtubeConfigs": [{ "connectionId": "conn_yt123", "postType": "VIDEO", "videoTitle": "Full tutorial", "privacyStatus": "unlisted" }]
+    }
+  ]
+}
+```
+
+**Required fields:**
+
+- `platforms` (string[]): At least one platform
+- `timezone` (string): IANA timezone string
+- `posts` (array): 1-100 post items
+
+**Optional fields (batch-level):**
+
+- Connection ID arrays: `twitterConnectionIds`, `linkedinConnectionIds`, `instagramConnectionIds`, `tiktokConnectionIds`, `youtubeConnectionIds`, `pinterestConnectionIds`, `blueskyConnectionIds`, `threadsConnectionIds`, `pageIds`
+- Platform configs (applied to all posts as default): `pinterestConfigs`, `tiktokConfigs`, `instagramConfigs`, `facebookConfigs`, `youtubeConfigs`
+
+See [platform-configs.md](platform-configs.md) for config schemas.
+
+**Post item fields:**
+
+- `contentType` (string, required): `TEXT`, `IMAGE`, `VIDEO`, or `CAROUSEL`
+- `scheduledAt` (string, required): ISO 8601 UTC datetime
+- `text` (string): Post text
+- `platformTexts` (array): Per-platform text overrides
+- `mediaUrls` (string[]): Media file URLs
+- `thumbnailUrl` (string): Thumbnail URL for video posts
+- `thumbnailTimestampMs` (number): Thumbnail position in video (ms)
+- Platform config overrides (per-post): `pinterestConfigs`, `tiktokConfigs`, `instagramConfigs`, `facebookConfigs`, `youtubeConfigs` — when set on a post item, these override the batch-level configs for that specific post
+
+**Response:**
+
+```json
+{
+  "totalScheduled": 2,
+  "totalFailed": 0,
+  "results": [
+    { "postId": "post_abc001", "success": true, "isScheduled": true, "scheduledAt": "2026-03-15T10:00:00Z", "errorMessage": null },
+    { "postId": "post_abc002", "success": true, "isScheduled": true, "scheduledAt": "2026-03-15T14:00:00Z", "errorMessage": null }
+  ]
+}
+```
+
+**Notes:**
+
+- Maximum 100 posts per request
+- Each post is processed independently — if one fails, others still schedule
+- Only one account per platform allowed (platform ToS compliance)
+- Per-post platform configs completely replace batch-level configs (no merging)
+
 ### POST /upload-urls
 
 Get presigned upload URLs for media files. Upload 1-20 files per request.

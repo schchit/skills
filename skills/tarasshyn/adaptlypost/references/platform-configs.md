@@ -1,6 +1,10 @@
 # Platform-Specific Configs Reference
 
-Platform configs are passed as arrays in the `POST /social-posts` request body. Each config object is tied to a specific connection via `connectionId` (or `pageId` for Facebook).
+Platform configs are passed as arrays in both `POST /social-posts` and `POST /social-posts/bulk` request bodies. Each config object is tied to a specific connection via `connectionId` (or `pageId` for Facebook).
+
+For bulk scheduling, configs can be set at two levels:
+- **Batch-level** (top-level request body) — applied to all posts as the default
+- **Per-post** (inside individual post items) — overrides batch-level for that specific post
 
 ## TikTok — `tiktokConfigs`
 
