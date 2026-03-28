@@ -1,70 +1,111 @@
 ---
 name: cc
-description: Short slash command wrapper for Claude relay sessions. Use when the user wants concise /cc commands like /cc projects, /cc on <project>, /cc tail, /cc off, or /cc <message> to continue talking to Claude Code in the current project session.
-metadata: {"openclaw":{"emoji":"⚡","requires":{"bins":["tmux","claude"],"skills":["claude-relay"]}}}
+description: "Claude Code relay via tmux. Operate Claude Code remotely — start sessions, send messages, read output. Use when the user wants to interact with Claude Code from Telegram or any OpenClaw channel."
+metadata: { "openclaw": { "emoji": "⚡", "requires": { "bins": ["tmux", "claude"] } } }
 ---
 
-# cc
+# cc — Claude Code Relay
 
-Short operator commands for Claude Code relay sessions.
+Operate Claude Code remotely from any OpenClaw channel via tmux.
 
-**Requires**: `claude-relay` skill must be installed.
+Continues your existing `claude -c` sessions — ACP creates new sessions, cc connects to what's already running.
+
+**Language**: Always reply in the same language the user uses.
 
 ## Script
 
-All commands execute via:
-
 ```bash
-{baseDir}/scripts/cc.sh <raw-args>
+{baseDir}/scripts/cc.sh <command> [args...]
 ```
 
-## Command routing
+## Commands
 
-Parse user input and route:
+| Command | Action |
+|---------|--------|
+| `/cc on <project>` | Start session (`claude -c` in project dir) |
+| `/cc off [project]` | Stop session |
+| `/cc ?` | Check Claude Code status (running/idle/dead) |
+| `/cc tail [project] [lines]` | Show recent output |
+| `/cc projects` | List available projects |
+| `/cc status` | List active sessions |
+| `/cc config root <path>` | Set project root directory |
+| `/cc` | Show help + project list |
+| `/cc <message>` | Send message to Claude Code |
 
-- `projects` / `list` → list available projects from map + project root
-- `on <project>` / `start <project>` → start or reuse Claude session (fuzzy match)
-- `off [project]` / `stop [project]` → stop session (default: last project)
-- `tail [project] [lines]` → show recent output (default: 120 lines)
-- `status` → list active relay sessions
-- `/cc` (no args) → show inline button menu (if platform supports)
-- `/cc on` (no project) → show project picker buttons
-- Any other text → **relay mode send** (see below)
+## Relay Mode (CRITICAL)
 
-For the "any other text" case: if the first token resolves to an active project session, treat it as explicit project target and use remaining text as the message.
+After `/cc on <project>`, you enter relay mode:
 
-## Relay mode
+1. **ALL user messages are forwarded to Claude Code** — NEVER answer yourself
+2. Only messages NOT forwarded: `/cc off`, `/cc ?`, `/cc tail`, `/cc status`, `/cc projects`, `/cc config`
+3. Relay mode ends on `/cc off`
 
-After `on <project>`, enter relay mode. **This is the critical behavior contract**:
+**You are a transparent pipe. Never interpret, analyze, or answer the user's question yourself.**
 
-1. **ALL user messages are forwarded to Claude Code** — no exceptions. Do NOT interpret, answer, or act on the message yourself. You are a transparent pipe.
-2. Forward via `scripts/cc.sh send` → wait for output → return final result only.
-3. The ONLY messages NOT forwarded are cc commands themselves: `off`, `tail`, `status`, `projects`, `/cc`.
-4. Relay mode ends on `off`, `stop`, or `/cc` menu invocation.
+## Starting a Session
 
-Example:
-```
-[relay mode active, project=marvis]
-User: "帮我查一下这个 bug 的原因"
-→ cc.sh send marvis "帮我查一下这个 bug 的原因"
-→ wait for Claude Code output
-→ return result to user
-WRONG: answering the question yourself
-```
+1. Run: `scripts/cc.sh on <project>`
+2. Report to user:
+   ```
+   ✅ Claude Code session started for <project>
+   Your messages will now be sent directly to Claude Code.
+   Send /cc off to exit relay mode.
+   ```
+3. Enter relay mode
 
-For button specs, output formatting, approval handling, and callback routing, see [relay-mode.md](references/relay-mode.md).
+## Sending Messages (relay flow)
 
-## Key principles
+When user sends a message in relay mode:
 
-- **Never self-answer in relay mode**: forward everything, return only Claude Code's output.
-- **Final result only**: one message per interaction, no progress updates.
-- **Choices → buttons**: numbered menus in Claude Code output become inline buttons.
-- **Tool call discipline**: button/menu messages = tool call + `NO_REPLY`, no surrounding text.
+1. **Immediately reply: ⏳** (so user knows message was received)
+2. Forward: `scripts/cc.sh <project> "<user's message>"`
+3. The script returns the **incremental output** — only content from this reply, not history
+4. Return output to user (see Output Formatting below)
 
-## Environment variables
+## Stopping a Session
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `CLAUDE_RELAY_DIR` | (auto-detected) | Path to claude-relay skill directory |
-| `CLAUDE_RELAY_ROOT` | `$HOME/projects` | Root directory for project discovery |
-| `CLAUDE_RELAY_MAP` | `<relay-skill-dir>/projects.map` | Path to project alias map file |
+1. Run: `scripts/cc.sh off <project>`
+2. Report to user:
+   ```
+   Session ended. You're back to normal chat.
+   ```
+
+## Status Check (`/cc ?`)
+
+Run: `scripts/cc.sh check <project>`
+
+Report result to user:
+- "🟢 Claude Code is running and waiting for input"
+- "🔄 Claude Code is processing..."
+- "🔴 Claude Code process died — try /cc off then /cc on to restart"
+- "⚪ No active session"
+
+## `/cc` (no arguments)
+
+Run `scripts/cc.sh projects`. Show brief help + project list.
+
+If there's a last-used project (marked with ★), show it first. Keep the response short — just names, no paths.
+
+## First-time Setup
+
+When `scripts/cc.sh projects` outputs `SETUP_NEEDED` (exit 100):
+
+1. Check: `which tmux` and `which claude` — report if missing
+2. Ask user: "Where are your projects? (e.g., ~/projects)"
+3. Run: `scripts/cc.sh config root <their-answer>`
+4. List projects to confirm
+
+## Output Formatting
+
+**If output ≤ 4000 characters**: wrap in one code block and send.
+
+**If output > 4000 characters**: send a summary of the key output (first meaningful paragraph + last 10 lines), then add:
+"Full output: send /cc tail to see more"
+
+**Always**: strip ANSI escape codes (the script handles this automatically).
+
+## Requirements
+
+- `tmux` installed
+- `claude` CLI installed (`npm i -g @anthropic-ai/claude-code`)
+- Any OpenClaw channel (Telegram, Discord, CLI, etc.)
