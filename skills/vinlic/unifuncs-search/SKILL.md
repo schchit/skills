@@ -1,24 +1,64 @@
 ---
 name: unifuncs-search
-description: 使用 UniFuncs API 进行实时网络搜索，支持全球和中国地域，获取最新网络内容和新闻。当用户需要搜索、查找、联网获取信息时使用。
-argument-hint: [搜索关键词]
+description: Use unifuncs-search for real-time web search. Use this skill when users want to search the web, find articles, look up information, get the latest news, discover resources, or ask to "search", "find", "look up", check "latest updates", "find related articles", or otherwise retrieve up-to-date information from the internet.
+argument-hint: [query]
 allowed-tools: Bash(python*:*)
 ---
 
-# UniFuncs 实时搜索 Skill
+# UniFuncs Real-Time Web Search Skill
 
-快速的实时搜索服务，支持全球和中国地域搜索。
+A fast real-time web search service.
 
-## 首次使用配置
+## First-Time Setup
 
-1. 前往 https://unifuncs.com/account 获取 API Key
-2. 设置环境变量：`export UNIFUNCS_API_KEY="sk-your-api-key"`
+1. Go to <https://unifuncs.com/account> to get your API key.
+2. Set the environment variable: `export UNIFUNCS_API_KEY="sk-your-api-key"`
 
-## 使用方法
+## When to Use
+
+You need to find information on any topic.
+You do not have a specific URL yet.
+
+## Guidelines
+
+- `query` supports full search engine syntax (such as `site:` filters and exact-match phrases in quotes). For years or months in `query`
+- use the latest year by default unless the user explicitly specifies otherwise.
+- use the `freshness` parameter only when strong recency is required.
+- For market data queries (stock price, share price, index, etc.), set `useStockQuery` to `true`.
+- When needed, combine with [unifuncs-reader](../unifuncs-reader/SKILL.md) to fetch detailed content from result URLs.
+
+## Usage
 
 ```bash
-python3 scripts/search.py "搜索关键词"
+python3 search.py "query"
+```
 
-# 查看所有参数
-python3 scripts/search.py --help
+## Options
+
+```text
+usage: search.py [-h] [--freshness {Day,Week,Month,Year}]
+                 [--include-images] [--page PAGE] [--count COUNT]
+                 [--format {json,markdown,md,text,txt}]
+                 query
+
+UniFuncs real-time web search API client
+
+positional arguments:
+  query                 Search query. Full search engine syntax is
+                        supported (for example site filters and exact-
+                        match with quotes).
+
+options:
+  -h, --help            show this help message and exit
+  --freshness {Day,Week,Month,Year}
+                        Result freshness filter. Use only when strong
+                        recency is required.
+  --include-images      Include image results (default: false).
+  --page PAGE           Result page number (default: 1).
+  --count COUNT         Results per page, range 1-50 (default: 10).
+  --format {json,markdown,md,text,txt}
+                        Output format (default: json).
+
+Examples:
+  search.py "today's gold price" --page 1 --count 5
 ```
