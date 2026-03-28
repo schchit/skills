@@ -3,11 +3,16 @@
   "slug": "content-gap-analysis",
   "displayName": "Content Gap Analysis",
   "latest": {
-    "version": "3.0.0",
-    "publishedAt": 1772640667833,
-    "commit": "https://github.com/openclaw/skills/commit/9b64938ae079f8c5b5483b3eae2213c61fc7876e"
+    "version": "4.0.0",
+    "publishedAt": 1774347662071,
+    "commit": null
   },
   "history": [
+    {
+      "version": "3.0.0",
+      "publishedAt": 1772640667833,
+      "commit": "https://github.com/openclaw/skills/commit/9b64938ae079f8c5b5483b3eae2213c61fc7876e"
+    },
     {
       "version": "2.0.0",
       "publishedAt": 1771042967789,
