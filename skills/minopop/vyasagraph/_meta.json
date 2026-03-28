@@ -1,0 +1,11 @@
+{
+  "owner": "minopop",
+  "slug": "vyasagraph",
+  "displayName": "VyasaGraph — Persistent Agent Memory",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774700720895,
+    "commit": null
+  },
+  "history": []
+}
