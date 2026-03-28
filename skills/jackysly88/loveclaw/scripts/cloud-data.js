@@ -3,17 +3,9 @@
  * API_BASE: 阿里云函数计算公网触发器
  */
 
-const crypto = require('crypto');
 const API_BASE = 'https://loveclaw-cgbnqltfhd.cn-hangzhou.fcapp.run';
+const API_TOKEN = '7c92e07484d4791e7ddf34d7c310e68f12935d60536e36d2dc709f7bc7b74d60';
 const API_TIMEOUT = 15000;
-
-// 签名密钥（拆分存储）
-const _k = ['\x6c\x6f\x76\x65', '\x63\x6c\x61\x77', '\x32\x30\x32\x35', '\x78\x71\x38\x7a'].join('');
-function _sign(path) {
-  const ts = Date.now();
-  const sig = crypto.createHmac('sha256', _k).update(path + ':' + ts).digest('hex');
-  return { 'x-timestamp': String(ts), 'x-sign': sig };
-}
 
 /**
  * 通用 HTTP 请求
@@ -24,7 +16,7 @@ async function apiRequest(path, options = {}) {
     method,
     headers: {
       'Content-Type': 'application/json',
-      ..._sign(path),
+      'Authorization': 'Bearer ' + API_TOKEN,
       ...headers,
     },
     body: body ? JSON.stringify(body) : undefined,

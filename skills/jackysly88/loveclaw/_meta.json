@@ -1,11 +1,17 @@
 {
   "owner": "jackysly88",
   "slug": "loveclaw",
-  "displayName": "Loveclaw",
+  "displayName": "LoveClaw",
   "latest": {
-    "version": "2.1.9",
-    "publishedAt": 1774597984292,
-    "commit": "https://github.com/openclaw/skills/commit/d12292142fc88fd2d674a670d13226fdf7dcaf11"
+    "version": "2.1.29",
+    "publishedAt": 1774695694062,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "2.1.9",
+      "publishedAt": 1774597984292,
+      "commit": "https://github.com/openclaw/skills/commit/d12292142fc88fd2d674a670d13226fdf7dcaf11"
+    }
+  ]
 }

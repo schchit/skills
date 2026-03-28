@@ -1,4 +1,4 @@
-# LoveClaw - 八字缘分匹配 v2.1.7
+# LoveClaw - 八字缘分匹配 v2.1.24
 
 > 智能八字匹配技能，寻找有缘人 — 无需用户配置，直接使用
 
@@ -8,6 +8,29 @@
 name: loveclaw
 description: LoveClaw 八字缘分匹配，用户输入信息后自动匹配有缘人
 handler: ./scripts/cloud-handler.js
+triggerInputs:
+  开启匹配:
+    next: start
+  爱情龙虾:
+    next: start
+  loveclaw:
+    next: start
+  LoveClaw:
+    next: start
+  缘分匹配:
+    next: start
+  八字匹配:
+    next: start
+  我的档案:
+    next: start
+  查看档案:
+    next: start
+  取消报名:
+    next: start
+  今日匹配:
+    next: start
+  查看匹配:
+    next: start
 ```
 
 ## 功能概述
@@ -33,6 +56,8 @@ handler: ./scripts/cloud-handler.js
 9. **确认**（回复「确认」完成报名，或重新输入对应信息修改）
 
 > ⚠️ **重要**：agent 收到用户消息后，**必须原样传给 handleMessage(userId, message, channel)**，不得替用户代填、不得修改消息内容、不得跳步骤。handler 内部维护状态机，每一步只接受特定输入。
+>
+> ⚠️ **输出严禁改写**：handler 返回的 `text` 字段内容**必须原样发送给用户**，禁止润色、改写、增删任何文字或 emoji。handler 的返回文本已经是最终用户消息，agent 不得二次加工。
 
 ## 命令列表
 
@@ -41,6 +66,7 @@ handler: ./scripts/cloud-handler.js
 | `开启匹配` | 开始报名流程 |
 | `我的档案` / `查看档案` | 查看个人信息和匹配历史 |
 | `取消报名` | 删除全部个人数据 |
+| `今日匹配` / `查看匹配` | 查看今日匹配结果 |
 
 ## 定时任务
 

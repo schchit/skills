@@ -140,7 +140,7 @@ async function runEveningReports() {
 
       reports.push({
         channel: m.channel || 'webchat',
-        target: m.userId,
+        target: m.notificationTarget || m.userId,
         hasMatch: true,
         partnerPhotoUrl,
         message: `🌟 今日缘分已到！\n\n💕 你的有缘人：${partnerName}\n📍 城市：${m.city || '未知'}\n☎️ 联系方式：${m.matchedWith}\n\n快去联系你的有缘人吧！`,
@@ -156,7 +156,7 @@ async function runEveningReports() {
 
       reports.push({
         channel: p.channel || 'webchat',
-        target: p.userId,
+        target: p.notificationTarget || p.userId,
         hasMatch: false,
         message: `🌙 今日缘分未到...\n\n命运的齿轮继续转动，请期待月老明日的光临 ✨\n（无需重新报名，明晚继续自动匹配）`,
       });
