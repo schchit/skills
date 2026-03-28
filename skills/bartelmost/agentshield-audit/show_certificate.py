@@ -138,7 +138,7 @@ def main():
     print()
     print("=" * 60)
     print("   Other agents can verify this certificate at:")
-    print("   https://agentshield.live/api/api/verify/")
+    print("   https://agentshield.live/api/verify/")
     print("=" * 60)
 
 

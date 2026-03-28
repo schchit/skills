@@ -47,7 +47,7 @@ def initiate_handshake(my_agent_id: str, target_agent_id: str, ttl_seconds: int 
     }
     
     try:
-        response = requests.post(url, json=payload, timeout=30)
+        response = requests.post(url, json=payload, timeout=60)  # Increased for cold starts
         response.raise_for_status()
         
         data = response.json()

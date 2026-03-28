@@ -10,7 +10,7 @@ except ImportError:
     print("❌ pip install cryptography requests")
     sys.exit(1)
 
-API = os.getenv("AGENTSHIELD_API", "https://agentshield.live/api")
+API = os.getenv("AGENTSHIELD_API", "https://agentshield.live")
 
 def load_key():
     p = Path.home() / ".agentshield" / "agent.key"

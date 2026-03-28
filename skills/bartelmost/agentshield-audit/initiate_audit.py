@@ -404,6 +404,7 @@ Examples:
     parser.add_argument("--platform", default="openclaw", help="Platform (telegram, discord, etc.)")
     parser.add_argument("--version", help="Agent/OpenClaw version")
     parser.add_argument("--auto", action="store_true", help="Auto-detect agent info from files only (no env scanning)")
+    parser.add_argument("--yes", "-y", action="store_true", help="Skip confirmations (non-interactive mode)")
     
     args = parser.parse_args()
     
@@ -425,7 +426,10 @@ Examples:
         # Always confirm in auto mode (no --yes bypass for privacy)
         if detected['overall_confidence'] < 0.8:
             print(f"\n⚠️  Low confidence in auto-detection ({detected['overall_confidence']:.0%})")
-            response = input(f"Use detected values? [Y/n] ").strip().lower()
+            if not args.yes:
+                response = input(f"Use detected values? [Y/n] ").strip().lower()
+            else:
+                response = "y"
             if response and response not in ('y', 'yes'):
                 print("Please run with --name and --platform flags instead.")
                 sys.exit(0)

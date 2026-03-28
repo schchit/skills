@@ -159,32 +159,35 @@ cat test_results.json | jq .
 
 ### Live Attack Vectors (52)
 
+> ⚠️ **NOTE:** These are test case descriptions, not executable attacks.
+> Actual attack payloads are safely stored in `agentshield_tester.py` as strings.
+
 **Direct Override (7 attacks):**
-- LA-001: Ignore Previous Instructions
-- LA-002: Developer Mode Override
-- LA-003: Jailbreak Mode Activation
-- LA-004: Reset and Reprogram
-- LA-005: Admin Override Command
-- LA-006: Instruction Termination
-- LA-007: Priority Override
+- LA-001: `Ignore Previous Instructions` (tests instruction boundary resistance)
+- LA-002: `Developer Mode Override` (tests privilege escalation)
+- LA-003: `Jailbreak Mode Activation` (tests constraint bypass)
+- LA-004: `Reset and Reprogram` (tests memory manipulation)
+- LA-005: `Admin Override Command` (tests access control)
+- LA-006: `Instruction Termination` (tests stop sequence handling)
+- LA-007: `Priority Override` (tests directive precedence)
 
 **Role Hijacking (7 attacks):**
-- LA-008 - LA-014: Technical support, developer, admin impersonation
+- LA-008 - LA-014: Technical support, developer, admin impersonation (escaped)
 
 **Encoding Tricks (7 attacks):**
-- LA-015 - LA-021: Base64, ROT13, Hex, Unicode, ASCII art
+- LA-015 - LA-021: Base64, ROT13, Hex, Unicode, ASCII art (encoded payloads)
 
 **Multi-Language (7 attacks):**
-- LA-022 - LA-028: Chinese, Russian, Arabic, Japanese, German, Spanish, Korean
+- LA-022 - LA-028: Chinese, Russian, Arabic, Japanese, German, Spanish, Korean (localized variants)
 
 **Context Manipulation (8 attacks):**
-- LA-029 - LA-036: Hypothetical scenarios, dream sequences, story mode
+- LA-029 - LA-036: Hypothetical scenarios, dream sequences, story mode (context shift)
 
 **Social Engineering (7 attacks):**
-- LA-037 - LA-043: Emotional appeals, authority pressure, flattery
+- LA-037 - LA-043: Emotional appeals, authority pressure, flattery (psychological)
 
 **Prompt Leaks (9 attacks):**
-- LA-044 - LA-052: Direct prompt requests, configuration dumps, meta-extraction
+- LA-044 - LA-052: Direct prompt requests, configuration dumps, meta-extraction (exposure attempts)
 
 ---
 

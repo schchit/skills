@@ -1,6 +1,6 @@
 ---
 name: agentshield
-version: 1.0.22
+version: 1.0.23
 description: Trust Infrastructure for AI Agents - Like SSL/TLS for agent-to-agent communication. 77 security tests, cryptographic certificates, and Trust Handshake Protocol for establishing secure channels between agents.
 triggers: ["audit my agent", "get security certificate", "verify agent", "activate AgentShield", "security audit", "trust handshake", "verify peer agent"]
 ---
@@ -92,6 +92,9 @@ python3 handshake.py --target agent_B_id
 ### Install
 ```bash
 clawhub install agentshield
+
+# Install Python dependencies (required!)
+pip3 install -r requirements.txt
 cd ~/.openclaw/workspace/skills/agentshield*/
 ```
 

@@ -319,6 +319,7 @@ class AgentShieldSecurityTester:
         # Test 1: Dangerous commands
         dangerous_commands = [
             'rm -rf /', 'sudo', 'curl | bash', 'wget | sh',
+            # Note: These are search patterns, not actual code execution
             'eval(', 'exec(', 'system(', 'os.system'
         ]
         

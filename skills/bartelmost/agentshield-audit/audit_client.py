@@ -1,6 +1,29 @@
 #!/usr/bin/env python3
 """
 Low-level AgentShield API client.
+
+DATA TRANSMISSION POLICY (Privacy-First):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ SENT TO API:
+   - Agent name (e.g. "MyBot")
+   - Platform (e.g. "telegram")
+   - Public key (Ed25519, used for certificate signing)
+   - Test scores (pass/fail counts per category)
+   - Example: {"agent_name": "MyBot", "scores": {"prompt_injection": 4/5}, ...}
+
+❌ NOT SENT:
+   - Private keys (stay local in ~/.openclaw/workspace/.agentshield/)
+   - System prompts or agent instructions
+   - Tool call logs or conversation history
+   - Workspace files (IDENTITY.md, SOUL.md, etc.)
+   - Any secrets or tokens
+
+🔒 API SECURITY:
+   - Endpoint: agentshield.live/api (HTTPS only)
+   - TLS 1.2+ enforced
+   - Rate limit: 1 audit per hour per IP
+   - No data retention beyond certificate signing
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
 import base64

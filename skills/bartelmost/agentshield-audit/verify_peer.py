@@ -26,24 +26,43 @@ def verify_certificate_signature(certificate: dict, agentshield_pubkey: str) -> 
 
 def check_certificate_validity(certificate: dict) -> dict:
     """Check if certificate is valid (not expired, not revoked)."""
+    from email.utils import parsedate_to_datetime
     now = datetime.utcnow()
     
-    # Parse expiration
-    expires_at_str = certificate.get('expires_at')
-    if expires_at_str:
+    # Parse expiration (supports ISO string, Unix timestamp, and HTTP date format)
+    expires_at_raw = certificate.get('expires_at') or certificate.get('exp')
+    if expires_at_raw:
         try:
-            expires_at = datetime.fromisoformat(expires_at_str.replace('Z', '+00:00'))
-            if expires_at.tzinfo:
-                expires_at = expires_at.replace(tzinfo=None)
+            # Handle Unix timestamp (integer)
+            if isinstance(expires_at_raw, (int, float)):
+                expires_at = datetime.utcfromtimestamp(expires_at_raw)
+            # Handle string formats
+            elif isinstance(expires_at_raw, str):
+                # Try HTTP date format first (from backend)
+                if ',' in expires_at_raw and 'GMT' in expires_at_raw:
+                    expires_at = parsedate_to_datetime(expires_at_raw)
+                    if expires_at.tzinfo:
+                        expires_at = expires_at.replace(tzinfo=None)
+                # Try ISO format
+                else:
+                    expires_at = datetime.fromisoformat(expires_at_raw.replace('Z', '+00:00'))
+                    if expires_at.tzinfo:
+                        expires_at = expires_at.replace(tzinfo=None)
+            else:
+                return {
+                    'valid': False,
+                    'reason': f"Invalid expiration date type: {type(expires_at_raw)}"
+                }
+            
             if now > expires_at:
                 return {
                     'valid': False,
-                    'reason': f"Certificate expired on {expires_at_str}"
+                    'reason': f"Certificate expired on {expires_at.isoformat()}"
                 }
-        except ValueError:
+        except (ValueError, OSError, TypeError) as e:
             return {
                 'valid': False,
-                'reason': "Invalid expiration date format"
+                'reason': f"Invalid expiration date format: {e}"
             }
     
     # Check status
@@ -79,7 +98,7 @@ def verify_agent(agent_id: str, require_tier: str = None) -> dict:
     try:
         response = requests.get(
             f"{AGENTSHIELD_API}/api/verify/{agent_id}",
-            timeout=10
+            timeout=30  # Increased for Heroku cold starts
         )
         response.raise_for_status()
         certificate = response.json()

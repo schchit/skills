@@ -388,11 +388,44 @@ if __name__ == "__main__":
     
     # Register a safe tool
     def calculator(expression: str) -> float:
-        # Safe evaluation (simplified)
+        """Demo calculator using ast.literal_eval (safe alternative to eval)
+        
+        NOTE: This is a demo. Real implementations should use ast.literal_eval()
+        or a proper math parser to avoid code execution risks.
+        """
+        import ast
+        import operator
+        
+        # Whitelist safe characters
         allowed_chars = set("0123456789+-*/.() ")
         if not all(c in allowed_chars for c in expression):
             raise ValueError("Invalid characters in expression")
-        return eval(expression)
+        
+        # Use ast for safe parsing (no code execution)
+        try:
+            node = ast.parse(expression, mode='eval')
+            return _eval_expr(node.body)
+        except Exception as e:
+            raise ValueError(f"Invalid math expression: {e}")
+    
+    def _eval_expr(node):
+        """Safely evaluate AST nodes (no eval/exec)"""
+        import ast
+        import operator
+        ops = {
+            ast.Add: operator.add,
+            ast.Sub: operator.sub,
+            ast.Mult: operator.mul,
+            ast.Div: operator.truediv,
+        }
+        if isinstance(node, ast.Num):
+            return node.n
+        elif isinstance(node, ast.Constant):  # Python 3.8+
+            return node.value
+        elif isinstance(node, ast.BinOp):
+            return ops[type(node.op)](_eval_expr(node.left), _eval_expr(node.right))
+        else:
+            raise TypeError(f"Unsupported operation: {type(node)}")
     
     sb.register_tool("calculator", calculator, PermissionLevel.ALLOWED)
     

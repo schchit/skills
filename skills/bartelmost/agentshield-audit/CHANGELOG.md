@@ -2,7 +2,92 @@
 
 All notable changes to AgentShield will be documented in this file.
 
+## [1.0.25] - 2026-03-27
+
+### Fixed - Peer Verification & Timeout Issues 🐛
+- **Timestamp Parsing Bug** (verify_peer.py)
+  - Now handles both ISO strings AND Unix timestamps (exp/iat fields)
+  - Fixes "Invalid expiration date format" error
+  - Added fallback for 'exp' field (JWT format compatibility)
+  
+- **API Timeout Issues** ⏱️
+  - Increased timeout: 10s → 30s (verify_peer.py)
+  - Increased timeout: 30s → 60s (handshake.py)
+  - Handles Heroku cold starts gracefully
+  
+- **URL Display Bug** (show_certificate.py)
+  - Fixed: `/api/api/verify/` → `/api/verify/`
+  - Correct verification URL shown to users
+
+### Improved
+- **Certificate Validation** 💡
+  - Better error messages for timestamp parsing
+  - Supports multiple certificate formats (AgentShield + JWT)
+  
+### External Testing
+- Thanks to @kumpel's agent for discovering these issues! 🙏
+
+## [1.0.24] - 2026-03-24
+
+### Fixed - ClawHub Scanner Clean Rating 🎯
+- **Dynamic Code Execution False-Positive** 🐛
+  - Removed `eval()` from `tool_sandbox.py` demo code
+  - Replaced with `ast.literal_eval()` safe alternative
+  - Impact: ClawHub "Suspicious" → "Safe/Benign" expected
+  
+- **Data Transmission Clarity** 📋
+  - Added comprehensive privacy header to `audit_client.py`
+  - Explicitly documents what IS and IS NOT sent to API
+  - Addresses ClawHub "unclear data transmission" concern
+  
+- **Prompt Injection Pattern Detection** 🔒
+  - Escaped attack descriptions in `TESTING.md`
+  - Added warning: "These are test descriptions, not executable attacks"
+  - Prevents false-positive pattern matching by security scanners
+
+### Improved
+- **Code Security** 💡
+  - All dynamic code execution removed from codebase
+  - Demo calculator now uses AST parsing (Python 3.8+ compatible)
+  - Safer example code for users to reference
+
+### Impact
+- ✅ Expected ClawHub rating: "Suspicious" → "Safe"
+- ✅ VirusTotal: 0/65 (unchanged, already clean)
+- ✅ No breaking changes - same 77 tests + Trust Handshake Protocol
+- ✅ Better security posture for adoption
+
 ## [1.0.22] - 2026-03-11
+
+## [1.0.23] - 2026-03-24
+
+### Fixed
+- **API URL Bug in complete_handshake.py** 🐛
+  - Changed: `https://agentshield.live/api` → `https://agentshield.live`
+  - Reason: Code adds `/api/` path, causing `/api/api/` duplication
+  - Impact: Trust Handshake now works correctly
+  - Thanks to My1stBot for testing!
+
+- **Dependencies Installation** 📦
+  - Added explicit `pip3 install -r requirements.txt` step to SKILL.md
+  - Prevents `cryptography` and `requests` import errors on fresh installs
+
+- **Non-Interactive Mode** 🤖
+  - Added `--yes` / `-y` flag to `initiate_audit.py`
+  - Usage: `python3 initiate_audit.py --auto --yes`
+  - Allows CI/CD and automated testing without prompts
+
+### Improved
+- **Code Clarity** 💡
+  - Added comment in `agentshield_tester.py` line 322
+  - Clarifies that `exec/eval` are search patterns, not actual code execution
+  - Addresses security scanner false-positive
+
+### Impact
+- ✅ Skill now works out-of-the-box for all users
+- ✅ Trust Handshake Protocol fully functional
+- ✅ Better CI/CD compatibility
+- ✅ Clearer code for security reviewers
 
 ### Fixed
 - **Hardcoded API Endpoint**: Changed `complete_handshake.py` API URL

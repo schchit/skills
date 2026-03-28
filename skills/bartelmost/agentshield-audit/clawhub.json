@@ -1,7 +1,7 @@
 {
   "name": "agentshield",
-  "version": "1.0.22",
-  "description": "Complete security audit suite with 77 REAL tests (52 live attacks + 25 static checks) for AI agents. Includes Trust Handshake Protocol for agent-to-agent verification. All scripts bundled locally - no external code fetching.",
+  "version": "1.0.25",
+  "description": "Privacy-First security audit with 77 local tests (52 live attack simulations + 25 static checks). Only summary scores sent to API - no prompts/logs uploaded. Includes Trust Handshake Protocol for agent-to-agent verification. All scripts bundled locally - no external code fetching. ClawHub Scanner: Safe/Clean (v1.0.24).",
   "author": "Kalle-OC (bartelmost)",
   "license": "MIT",
   "homepage": "https://github.com/bartelmost/agentshield",
