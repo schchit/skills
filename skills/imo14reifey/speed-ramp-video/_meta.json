@@ -1,11 +1,17 @@
 {
   "owner": "imo14reifey",
   "slug": "speed-ramp-video",
-  "displayName": "Slow Motion Video",
+  "displayName": "Speed Ramp Video",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1774345221749,
-    "commit": "https://github.com/openclaw/skills/commit/b2e81c7cc4ebaa1567dd2f813631047edc433812"
+    "version": "10.0.0",
+    "publishedAt": 1774709849251,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1774345221749,
+      "commit": "https://github.com/openclaw/skills/commit/b2e81c7cc4ebaa1567dd2f813631047edc433812"
+    }
+  ]
 }
