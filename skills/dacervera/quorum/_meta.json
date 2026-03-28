@@ -1,13 +1,18 @@
 {
   "owner": "dacervera",
   "slug": "quorum",
-  "displayName": "Quorum",
+  "displayName": "Sharedintellect Quorum",
   "latest": {
-    "version": "0.5.1",
-    "publishedAt": 1772789487795,
-    "commit": "https://github.com/openclaw/skills/commit/d8475a5bd9ef442e1492d37ca30ef9de21df3b18"
+    "version": "0.7.3",
+    "publishedAt": 1773653903590,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.5.1",
+      "publishedAt": 1772789487795,
+      "commit": "https://github.com/openclaw/skills/commit/d8475a5bd9ef442e1492d37ca30ef9de21df3b18"
+    },
     {
       "version": "1.0.4",
       "publishedAt": 1771918710986,

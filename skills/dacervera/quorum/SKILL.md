@@ -1,12 +1,10 @@
 ---
 name: quorum
-description: Multi-agent validation framework (v0.5.0). Deterministic pre-screen + 4 independent AI critics evaluate artifacts (documents, configs, code, research) against rubrics with evidence-grounded findings. Supports batch validation and cross-artifact consistency checks.
+description: Multi-agent validation framework — 6 independent AI critics evaluate artifacts against rubrics with evidence-grounded findings.
 metadata: {"openclaw":{"requires":{"bins":["python3","pip"],"env":["ANTHROPIC_API_KEY","OPENAI_API_KEY"]},"install":[{"id":"clone-repo","kind":"shell","command":"git clone https://github.com/SharedIntellect/quorum.git /tmp/quorum-install && cd /tmp/quorum-install/reference-implementation && pip install -r requirements.txt","label":"Clone Quorum repo and install Python dependencies"}],"source":"https://github.com/SharedIntellect/quorum"}}
 ---
 
 # Quorum — Multi-Agent Validation
-
-> **⚠️ BOUNDARY DOCUMENT:** Before modifying, publishing, or releasing any Quorum code, config, or documentation, read and follow `portfolio/research-infrastructure/VALIDATOR-QUORUM-BOUNDARY.md`. This file defines the Validator (internal) / Quorum (public) boundary, what graduates and what stays proprietary, and CKMS naming conventions. No exceptions.
 
 Quorum validates AI agent outputs by spawning multiple independent critics that evaluate artifacts against rubrics. Every criticism must cite evidence. You get a structured verdict.
 
@@ -30,12 +28,15 @@ python -m quorum.cli run --target <path-to-artifact> --rubric <rubric-name>
 
 - `research-synthesis` — Research reports, literature reviews, technical analyses
 - `agent-config` — Agent configurations, YAML specs, system prompts
+- `python-code` — Python source files (25 criteria, PC-001–PC-025; auto-detected on `.py` files)
 
 ### Depth Profiles
 
 - `quick` — 2 critics (correctness, completeness) + pre-screen, ~5-10 min
-- `standard` — 4 critics (+ security, code_hygiene) + pre-screen, ~15-30 min (default)
-- `thorough` — all 4 shipped critics + pre-screen, ~30-60 min
+- `standard` — 4 active (correctness, completeness, security + tester) + pre-screen, ~15-30 min (default)
+- `thorough` — 5 active (+ code_hygiene) + pre-screen + fix loops, ~30-60 min
+
+*†Cross-Consistency requires `--relationships` flag with a relationships manifest.*
 
 All depth profiles include the deterministic pre-screen (10 checks: credentials, PII, syntax errors, broken links, TODOs, and more) before any LLM critic runs.
 
@@ -99,9 +100,9 @@ Each finding includes: severity (CRITICAL/HIGH/MEDIUM/LOW), evidence citations p
 ## More Information
 
 - [SPEC.md](https://github.com/SharedIntellect/quorum/blob/main/SPEC.md) — Full architectural specification
-- [MODEL_REQUIREMENTS.md](https://github.com/SharedIntellect/quorum/blob/main/docs/MODEL_REQUIREMENTS.md) — Supported models and tiers
-- [CONFIG_REFERENCE.md](https://github.com/SharedIntellect/quorum/blob/main/docs/CONFIG_REFERENCE.md) — All configuration options
-- [FOR_BEGINNERS.md](https://github.com/SharedIntellect/quorum/blob/main/docs/FOR_BEGINNERS.md) — New to agent validation? Start here
+- [MODEL_REQUIREMENTS.md](https://github.com/SharedIntellect/quorum/blob/main/docs/getting-started/MODEL_REQUIREMENTS.md) — Supported models and tiers
+- [CONFIG_REFERENCE.md](https://github.com/SharedIntellect/quorum/blob/main/docs/configuration/CONFIG_REFERENCE.md) — All configuration options
+- [FOR_BEGINNERS.md](https://github.com/SharedIntellect/quorum/blob/main/docs/getting-started/FOR_BEGINNERS.md) — New to agent validation? Start here
 
 
 ---
