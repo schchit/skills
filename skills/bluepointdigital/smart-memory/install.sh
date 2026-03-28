@@ -1,10 +1,10 @@
 #!/bin/bash
-# One-line installer for Smart Memory v2
+# One-line installer for Smart Memory v3.1 experimental
 # Usage: curl -sL https://raw.githubusercontent.com/BluePointDigital/smart-memory/master/install.sh | bash
 
 set -e
 
-echo "Installing Smart Memory v2 for OpenClaw..."
+echo "Installing Smart Memory v3.1 experimental for OpenClaw..."
 echo ""
 
 # Detect OpenClaw workspace
@@ -42,7 +42,7 @@ if ! command -v python3 >/dev/null 2>&1 && ! command -v python >/dev/null 2>&1; 
 fi
 
 echo "Python found"
-echo "CPU-only PyTorch is mandatory for Smart Memory v2 (GPU/CUDA builds are intentionally unsupported)."
+echo "CPU-only PyTorch is mandatory for Smart Memory v3.1 (GPU/CUDA builds are intentionally unsupported)."
 echo ""
 
 # Download latest repository snapshot
@@ -76,7 +76,5 @@ npm install --silent
 echo ""
 echo "Installation complete"
 echo ""
-echo "Smart Memory v2 is ready."
+echo "Smart Memory v3.1 experimental is ready."
 echo "The Node adapter will start the local FastAPI cognitive server automatically when used."
-
-
