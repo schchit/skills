@@ -79,17 +79,28 @@ curl -sX POST $API_URL/v1/spaces/SPACE_ID/members \
 # Share memory to space
 curl -sX POST $API_URL/v1/memories/MEMORY_ID/share \
   -H "Content-Type: application/json" -H "X-API-Key: $KEY" \
-  -d '{"target_space": "team:SPACE_UUID"}'
+  -d '{"target_space": "team/SPACE_UUID"}'
 
 # Batch share
 curl -sX POST $API_URL/v1/memories/batch-share \
   -H "Content-Type: application/json" -H "X-API-Key: $KEY" \
-  -d '{"memory_ids": ["id1","id2"], "target_space": "team:SPACE_UUID"}'
+  -d '{"memory_ids": ["id1","id2"], "target_space": "team/SPACE_UUID"}'
 
 # Pull memory from space
 curl -sX POST $API_URL/v1/memories/MEMORY_ID/pull \
   -H "Content-Type: application/json" -H "X-API-Key: $KEY" \
-  -d '{"source_space": "team:SPACE_UUID"}'
+  -d '{"source_space": "team/SPACE_UUID"}'
+
+# Auto-share rules
+curl -sX POST $API_URL/v1/spaces/SPACE_ID/auto-share-rules \
+  -H "Content-Type: application/json" -H "X-API-Key: $KEY" \
+  -d '{"source_space": "personal/USER_ID", "categories": ["cases","patterns"], "min_importance": 0.7}'
+
+# List auto-share rules
+curl -s $API_URL/v1/spaces/SPACE_ID/auto-share-rules -H "X-API-Key: $KEY"
+
+# Delete auto-share rule
+curl -sX DELETE $API_URL/v1/spaces/SPACE_ID/auto-share-rules/RULE_ID -H "X-API-Key: $KEY"
 ```
 
 ## File Upload
@@ -114,14 +125,29 @@ curl -sX POST $API_URL/v1/connectors/github/connect \
 ## Stats
 
 ```bash
-# Overview
+# Overview (by type/category/tier/space/agent + timeline)
 curl -s "$API_URL/v1/stats?days=30" -H "X-API-Key: $KEY"
 
-# Space stats
+# Space overview (per-space stats, member contributions)
 curl -s $API_URL/v1/stats/spaces -H "X-API-Key: $KEY"
 
-# Tag cloud
+# Sharing flow (who shared what, where, when + flow graph)
+curl -s "$API_URL/v1/stats/sharing?days=30" -H "X-API-Key: $KEY"
+
+# Agent activity (per-agent creation counts, top categories)
+curl -s $API_URL/v1/stats/agents -H "X-API-Key: $KEY"
+
+# Tag frequency
 curl -s "$API_URL/v1/stats/tags?limit=10" -H "X-API-Key: $KEY"
+
+# Decay curve for a specific memory
+curl -s "$API_URL/v1/stats/decay?memory_id=MEMORY_ID&points=90" -H "X-API-Key: $KEY"
+
+# Relation graph (memory relationship network with cross-space edges)
+curl -s "$API_URL/v1/stats/relations?limit=100" -H "X-API-Key: $KEY"
+
+# Server config (decay params, promotion thresholds, retrieval settings)
+curl -s $API_URL/v1/stats/config -H "X-API-Key: $KEY"
 ```
 
 ## Health
@@ -134,3 +160,47 @@ curl -s $API_URL/health
 ## Full API Documentation
 
 For complete endpoint details, request/response schemas, and error codes, READ `docs/API.md`.
+
+## Imports
+
+```bash
+# Batch import a file (with adaptive strategy)
+curl -sX POST $API_URL/v1/imports -H "X-API-Key: $KEY" \
+  -F "file=@memory.json" -F "file_type=memory" -F "strategy=auto"
+# strategy: auto (default) | atomic | section | document
+
+# Check import progress
+curl -s "$API_URL/v1/imports/IMPORT_ID" -H "X-API-Key: $KEY"
+
+# Trigger intelligence on past import
+curl -sX POST "$API_URL/v1/imports/IMPORT_ID/intelligence" -H "X-API-Key: $KEY"
+
+# Cross-reconcile (discover relations via vector similarity)
+curl -sX POST $API_URL/v1/imports/cross-reconcile -H "X-API-Key: $KEY"
+
+# Rollback an import
+curl -sX POST $API_URL/v1/imports/IMPORT_ID/rollback -H "X-API-Key: $KEY"
+```
+
+## Delete
+
+```bash
+# Batch delete by IDs
+curl -sX POST $API_URL/v1/memories/batch-delete \
+  -H "Content-Type: application/json" -H "X-API-Key: $KEY" \
+  -d '{"memory_ids": ["id1", "id2"]}'
+
+# Batch delete by filter (preview)
+curl -sX POST $API_URL/v1/memories/batch-delete \
+  -H "Content-Type: application/json" -H "X-API-Key: $KEY" \
+  -d '{"filter": {"source": "import"}, "confirm": false}'
+
+# Batch delete by filter (execute)
+curl -sX POST $API_URL/v1/memories/batch-delete \
+  -H "Content-Type: application/json" -H "X-API-Key: $KEY" \
+  -d '{"filter": {"source": "import"}, "confirm": true}'
+
+# Delete all memories (requires confirmation header)
+curl -sX DELETE $API_URL/v1/memories/all \
+  -H "X-API-Key: $KEY" -H "X-Confirm: delete-all"
+```

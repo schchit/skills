@@ -1,11 +1,17 @@
 {
   "owner": "yhyyz",
   "slug": "ourmem",
-  "displayName": "ourmem",
+  "displayName": "Ourmem",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1774626843011,
-    "commit": "https://github.com/openclaw/skills/commit/dd865215cc2e0d5b55d9c90d21abe5be9b93a772"
+    "version": "0.7.0",
+    "publishedAt": 1774701173450,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1774626843011,
+      "commit": "https://github.com/openclaw/skills/commit/dd865215cc2e0d5b55d9c90d21abe5be9b93a772"
+    }
+  ]
 }
