@@ -1,13 +1,18 @@
 {
   "owner": "nitishgargiitd",
   "slug": "audio-cog",
-  "displayName": "audio-cog",
+  "displayName": "Audio Cog",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1773922561785,
-    "commit": "https://github.com/openclaw/skills/commit/2a09463b0d3c3a97e14b6d2daafcffd14557ccaa"
+    "version": "1.0.5",
+    "publishedAt": 1774585016788,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1773922561785,
+      "commit": "https://github.com/openclaw/skills/commit/2a09463b0d3c3a97e14b6d2daafcffd14557ccaa"
+    },
     {
       "version": "1.0.3",
       "publishedAt": 1770773864201,
