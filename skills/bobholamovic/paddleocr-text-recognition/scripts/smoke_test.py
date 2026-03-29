@@ -1,26 +1,12 @@
-#!/usr/bin/env python3
-# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 """
 Smoke Test for PaddleOCR Text Recognition
 
 Verifies configuration and API connectivity.
 
 Usage:
-    python paddleocr-text-recognition/scripts/smoke_test.py
-    python paddleocr-text-recognition/scripts/smoke_test.py --skip-api-test
+    python scripts/smoke_test.py
+    python scripts/smoke_test.py --skip-api-test
+    python scripts/smoke_test.py --test-url "https://example.com/test.png"
 """
 
 import argparse
@@ -31,16 +17,18 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 
-def print_config_guide():
+def print_config_guide() -> None:
     """Print friendly configuration guide."""
+    from lib import DEFAULT_TIMEOUT
+
     print(
-        """
+        f"""
 ============================================================
 HOW TO GET YOUR API CREDENTIALS
 ============================================================
 
 1. Visit: https://paddleocr.com
-2. Log in with your Baidu account
+2. Sign in to your account
 3. Open your model's API call example page
 4. Copy the API URL from the example request
 5. Copy your access token from the same API setup page
@@ -48,14 +36,14 @@ HOW TO GET YOUR API CREDENTIALS
 Set environment variables:
   export PADDLEOCR_OCR_API_URL=https://your-api-url.paddleocr.com/ocr
   export PADDLEOCR_ACCESS_TOKEN=your_token_here
-  export PADDLEOCR_OCR_TIMEOUT=120  # optional
+  export PADDLEOCR_OCR_TIMEOUT={DEFAULT_TIMEOUT}  # optional
 
 ============================================================
 """
     )
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(
         description="PaddleOCR Text Recognition smoke test"
     )
@@ -71,7 +59,6 @@ def main():
     print("PaddleOCR Text Recognition - Smoke Test")
     print("=" * 60)
 
-    # Check dependencies first
     print("\n[1/3] Checking dependencies...")
 
     try:
@@ -80,11 +67,14 @@ def main():
         print(f"  + httpx: {httpx.__version__}")
     except ImportError:
         print("  X httpx not installed")
-        print("\nPlease install dependencies:")
+        print(
+            "\nPlease install dependencies (from the skill directory, one level above scripts/):"
+        )
+        print("  pip install -r requirements.txt")
+        print("or at minimum:")
         print("  pip install httpx")
         return 1
 
-    # Check configuration
     print("\n[2/3] Checking configuration...")
 
     from lib import get_config
@@ -99,7 +89,6 @@ def main():
         print_config_guide()
         return 1
 
-    # Test API connectivity
     if args.skip_api_test:
         print("\n[3/3] Skipping API connectivity test (--skip-api-test)")
         print("\n" + "=" * 60)
@@ -109,10 +98,9 @@ def main():
 
     print("\n[3/3] Testing API connectivity...")
 
-    # Use provided test URL or default
     test_url = (
         args.test_url
-        or "https://raw.githubusercontent.com/PaddlePaddle/PaddleOCR/release/2.7/doc/imgs/11.jpg"
+        or "https://paddle-model-ecology.bj.bcebos.com/paddlex/imgs/demo_image/general_ocr_001.png"
     )
     print(f"  Test image: {test_url}")
 
@@ -120,7 +108,7 @@ def main():
 
     result = ocr(file_url=test_url)
 
-    if not result["ok"]:
+    if not result.get("ok"):
         error = result.get("error", {})
         print(f"\n  X API call failed: {error.get('message')}")
         if "Authentication" in error.get("message", ""):
@@ -130,7 +118,6 @@ def main():
 
     print("  + API call successful!")
 
-    # Show results
     text = result.get("text", "")
     if text:
         preview = text[:200].replace("\n", " ")
@@ -142,12 +129,8 @@ def main():
     print("Smoke Test PASSED")
     print("=" * 60)
     print("\nNext steps:")
-    print(
-        '  python paddleocr-text-recognition/scripts/ocr_caller.py --file-url "URL" --pretty'
-    )
-    print(
-        '  python paddleocr-text-recognition/scripts/ocr_caller.py --file-path "image.png" --pretty'
-    )
+    print('  python scripts/ocr_caller.py --file-url "URL" --pretty')
+    print('  python scripts/ocr_caller.py --file-path "image.png" --pretty')
     print(
         "  Results are auto-saved to the system temp directory; the caller prints the saved path."
     )
