@@ -58,6 +58,32 @@ open ~/Documents/JobClaw/data/jobs.csv
 libreoffice ~/Documents/JobClaw/data/jobs.csv
 ```
 
+## Archive Management
+
+```bash
+# Preview what would be archived (no changes)
+python3 scripts/archiver.py
+
+# Apply — moves expired jobs to jobs_archive.csv
+python3 scripts/archiver.py --commit
+
+# Stats
+python3 scripts/archiver.py --stats
+
+# Restore a job by company/role/URL fragment
+python3 scripts/archiver.py --restore "Google"
+python3 scripts/archiver.py --restore "Research Scientist"
+```
+
+Archive rules:
+| Rule | Trigger | Reason tag |
+|------|---------|------------|
+| 30-day inactivity | status=New/Interested, date_found 30+ days ago | `expired_30d` |
+| Auto-rejected | status=Rejected/Passed, 60+ days ago | `auto_rejected` |
+| Dead URL | non-LinkedIn URL returns 404/dead phrase | `url_dead` |
+
+LinkedIn URLs are **skipped** for URL checking (always returns inconclusive).
+
 ## Notifications
 
 ```bash

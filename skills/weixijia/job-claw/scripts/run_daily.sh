@@ -125,8 +125,15 @@ send_summary(
     noncoding_added=$NONCODING_ADDED,
     top_coding='$CODING_TOP',
     top_noncoding='$NONCODING_TOP',
+    archived=${ARCHIVED_COUNT:-0},
 )
 PYEOF
 
+# ── Auto-archive expired jobs ──────────────────────────────────────────────
+log "Running auto-archive..."
+ARCHIVE_RESULT=$(python3 "$SCRIPT_DIR/archiver.py" --commit 2>&1 | tee -a "$LOG_FILE")
+ARCHIVED_COUNT=$(echo "$ARCHIVE_RESULT" | grep -oP "Archived: \K[0-9]+" || echo "0")
+log "Auto-archived: ${ARCHIVED_COUNT:-0} expired jobs"
+
 log "=== JobClaw Daily Search Complete ==="
-log "Summary: +$TOTAL_ADDED jobs today (coding: $CODING_ADDED, noncoding: $NONCODING_ADDED)"
+log "Summary: +$TOTAL_ADDED jobs today (coding: $CODING_ADDED, noncoding: $NONCODING_ADDED), archived: ${ARCHIVED_COUNT:-0}"

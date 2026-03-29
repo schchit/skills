@@ -184,6 +184,32 @@ When user says `/newjob <url>`:
 
 ---
 
+## Archive Management
+
+When user says "archive expired jobs", "clean up old jobs", "auto-archive":
+
+```bash
+# Dry-run (see what would be archived, no changes)
+python3 scripts/archiver.py
+
+# Apply archiving
+python3 scripts/archiver.py --commit
+
+# View archive stats
+python3 scripts/archiver.py --stats
+
+# Restore a job (by company name, role, or URL fragment)
+python3 scripts/archiver.py --restore "DeepMind"
+```
+
+Archive rules (same as the web dashboard):
+- `expired_30d` — status New/Interested with no update for 30+ days
+- `auto_rejected` — status Rejected/Passed for 60+ days
+- `url_dead` — non-LinkedIn URL returns 404/410 or contains "job has expired" etc.
+
+Archived jobs move from `data/jobs.csv` → `data/jobs_archive.csv`.
+Auto-archive runs automatically at the end of every daily search (`run_daily.sh`).
+
 ## Showing Stats
 
 When user asks "show job stats", "how many jobs", "top jobs":

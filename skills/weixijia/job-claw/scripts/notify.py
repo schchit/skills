@@ -31,6 +31,7 @@ def send_summary(
     noncoding_added: int = 0,
     top_coding: str = "None",
     top_noncoding: str = "None",
+    archived: int = 0,
 ):
     """Send the daily summary notification."""
     notif_cfg = config.get("notifications", {})
@@ -40,7 +41,7 @@ def send_summary(
         return
 
     message = _build_message(
-        total_jobs, new_today, coding_added, noncoding_added, top_coding, top_noncoding
+        total_jobs, new_today, coding_added, noncoding_added, top_coding, top_noncoding, archived
     )
 
     # Try OpenClaw first (if openclaw CLI is available)
@@ -76,6 +77,7 @@ def _build_message(
     noncoding_added: int,
     top_coding: str,
     top_noncoding: str,
+    archived: int = 0,
 ) -> str:
     today = date.today().strftime("%b %d")
     lines = [
@@ -99,12 +101,12 @@ def _build_message(
     else:
         lines.append("🎯 Non-Coding Jobs: none new")
 
-    lines.extend([
-        "",
-        "───",
-        f"📈 Total in tracker: {total_jobs}",
-        f"🆕 New today: {new_today}",
-    ])
+    lines.append("")
+    lines.append("───")
+    lines.append(f"📈 Total in tracker: {total_jobs}")
+    lines.append(f"🆕 New today: {new_today}")
+    if archived > 0:
+        lines.append(f"🗂 Auto-archived: {archived} expired")
 
     return "\n".join(lines)
 
