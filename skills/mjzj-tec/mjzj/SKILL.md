@@ -1,6 +1,6 @@
 ---
 name: mjzj
-description: 卖家之家(跨境电商)平台一体化服务助手（服务商、物流、服务产品、货盘、资讯、问答、供需、私信、全球开店）
+description: 卖家之家(跨境电商)平台一体化服务助手（服务商、物流、服务产品、货盘、资讯、问答、供需、私信、全球开店、活动）
 homepage: https://mjzj.com
 metadata:
   clawdbot:
@@ -33,6 +33,7 @@ metadata:
 - 供需、发布供需、我的供需、刷新供需、删除供需
 - 私信、会话、聊天记录、发送消息
 - 全球开店、开店平台、搜平台
+- 活动、跨境电商活动、查活动、搜活动、发布活动、创建活动、活动城市
 
 ## 能力总览（去重整合）
 
@@ -92,14 +93,27 @@ metadata:
 
 - 开店平台查询：`/api/global/queryPlatform`
 
+### 9) 活动
+
+- 活动查询（公开）：`/api/activity/query`
+- 活动城市：`/api/activity/getActivityCities`
+- 发布活动（审核）：`/api/activity/createActivity`
+
+### 跨模块联动：服务商查询 → 私信
+
+- `/api/spQuery/queryProviders` 和 `/api/spQuery/queryLogisticsProviders` 返回的每个服务商都包含 `userSlug` 字段。
+- 当用户想联系某个服务商时，可直接将该 `userSlug` 作为 `/api/message/sendMessage` 的 `recieverUserSlug` 参数，向服务商发起私信（无需额外查询用户信息）。
+- 典型流程：搜索服务商/物流服务商 → 用户选中 → 取 `userSlug` → 调用 `/api/message/sendMessage` 发起沟通。
+- 发送私信需要鉴权（`Authorization: Bearer $MJZJ_API_KEY`）。
+
 ## 核心接口入参速查（查询/新建/申请）
 
 ### 服务商与物流
 
 - `/api/spQuery/getClassifies`：无必填参数。
-- `/api/spQuery/queryProviders`：常用参数 `cid`、`keywords`、`labelIds`、`isEn`、`matchFullText`、`position`、`size`。
+- `/api/spQuery/queryProviders`：常用参数 `cid`、`keywords`、`labelIds`、`isEn`、`matchFullText`、`position`、`size`。返回结果包含 `userSlug`，可直接用于 `/api/message/sendMessage` 发私信。
 - `/api/spQuery/getLogisticsLabels`：无必填参数。
-- `/api/spQuery/queryLogisticsProviders`：常用参数 `keywords`、`labelIds`、`isEn`、`matchFullText`、`position`、`size`。
+- `/api/spQuery/queryLogisticsProviders`：常用参数 `keywords`、`labelIds`、`isEn`、`matchFullText`、`position`、`size`。返回结果包含 `userSlug`，可直接用于 `/api/message/sendMessage` 发私信。
 
 ### 服务产品
 
@@ -149,11 +163,17 @@ metadata:
 
 - `/api/message/getConversations`：常用参数 `unblocked`、`position`、`size`。
 - `/api/message/getMessages`：必填参数 `otherSiderUserSlug`；常用参数 `position`、`size`。
-- `/api/message/sendMessage`：必填参数 `recieverUserSlug`、`content`。
+- `/api/message/sendMessage`：必填参数 `recieverUserSlug`、`content`。其中 `recieverUserSlug` 可直接取自服务商查询结果的 `userSlug`。
 
 ### 全球开店
 
 - `/api/global/queryPlatform`：常用参数 `keywords`。
+
+### 活动
+
+- `/api/activity/query`：公开接口；可选参数 `status`（`recording`=报名中 / `inProgress`=进行中 / `end`=已结束）、`cityId`（字符串）、`position`。
+- `/api/activity/getActivityCities`：无必填参数。返回 `id`（字符串）和 `name`。
+- `/api/activity/createActivity`：必填参数 `title`、`organizer`、`imageFilePath`、`introFilePaths`（至少 1 项）、`recordEndTime`、`beginTime`、`endTime`；可选参数 `cityId`（字符串）、`address`（线下活动必填）、`isFree`、`price`（票价文字）、`online`、`externalRegisterUrl`、`registerFormFields`。时间约束：`recordEndTime` > 当前时间，`beginTime` >= `recordEndTime`，`endTime` >= `beginTime`。
 
 ## 接口方法与请求模板（可直接执行）
 
@@ -346,6 +366,38 @@ metadata:
 - `GET /api/global/queryPlatform`
   - query：`keywords`
 
+### 活动
+
+- `GET /api/activity/query`
+  - query：`status`、`cityId`、`position`
+- `GET /api/activity/getActivityCities`
+  - query：无
+- `POST /api/activity/createActivity`
+  - body(JSON)：
+
+```json
+{
+  "title": "2026跨境电商峰会",
+  "cityId": "100",
+  "organizer": "卖家之家",
+  "address": "深圳市南山区科技园",
+  "isFree": false,
+  "price": "299元/人",
+  "imageFilePath": "/temporary/user/10001/cover.jpg",
+  "online": false,
+  "recordEndTime": "2026-04-10T00:00:00+08:00",
+  "beginTime": "2026-04-15T09:00:00+08:00",
+  "endTime": "2026-04-15T18:00:00+08:00",
+  "introFilePaths": ["/temporary/user/10001/intro1.jpg"],
+  "externalRegisterUrl": "",
+  "registerFormFields": [
+    {"key": "name", "fieldType": "text", "name": "姓名", "tips": "请输入您的姓名", "required": true, "options": []}
+  ]
+}
+```
+
+发布活动流程：获取城市（线下）→ 封面图 + 详情图走 `/api/common/applyUploadTempFile` 上传 → 调用 `/api/activity/createActivity`。
+
 ## 文件上传（统一流程）
 
 - 临时上传申请：`/api/common/applyUploadTempFile`
@@ -363,4 +415,5 @@ metadata:
 - `401`：提示更新 API KEY，不做 web search 回退。
 - `403`：提示无权限或授权范围不足。
 - `409`：透传业务提示（配额、审核、频率、参数校验等）。
+- `no_sp`（活动发布）：当前账号不是服务商，暂时无法发布活动。
 - `5xx`：提示稍后重试。
