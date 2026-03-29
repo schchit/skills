@@ -3,11 +3,16 @@
   "slug": "kuaidi100-logistics",
   "displayName": "kuaidi100-logistics",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1773383582202,
-    "commit": "https://github.com/openclaw/skills/commit/28f0e79b59d105c886f6c7e9382dd19822124a08"
+    "version": "1.0.5",
+    "publishedAt": 1774316941514,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1773383582202,
+      "commit": "https://github.com/openclaw/skills/commit/28f0e79b59d105c886f6c7e9382dd19822124a08"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773317641516,
