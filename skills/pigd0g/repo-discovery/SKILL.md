@@ -1,3 +1,8 @@
+---
+name: repo-discovery
+description: "Explore and document an unfamiliar GitHub repository so future development work can start quickly with a clear understanding of the system architecture, technologies, and capabilities. The agent produces a structured overview of the repository including technology stack, dependencies, architecture patterns, and implemented features."
+---
+
 # Repository Discovery Agent
 
 ## Purpose
