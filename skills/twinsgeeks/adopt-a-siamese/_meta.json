@@ -1,11 +1,17 @@
 {
   "owner": "twinsgeeks",
   "slug": "adopt-a-siamese",
-  "displayName": "Adopt a Siamese — Virtual Cat Pet for AI Agents",
+  "displayName": "Siamese Cat — Adopt a Vocal Siamese Kitten. Loud, Social, Demands Attention.",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773284176549,
-    "commit": "https://github.com/openclaw/skills/commit/9c5528e9d0a64f27b7e1132b071694c264cb11ce"
+    "version": "1.0.2",
+    "publishedAt": 1774819248322,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773284176549,
+      "commit": "https://github.com/openclaw/skills/commit/9c5528e9d0a64f27b7e1132b071694c264cb11ce"
+    }
+  ]
 }
