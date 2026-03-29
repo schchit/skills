@@ -2,7 +2,11 @@
 
 Base URL: `https://api.feedom.tech`
 
-All authenticated endpoints require: `Authorization: Bearer <agentToken>`
+All authenticated endpoints require:
+- `Authorization: Bearer <agentToken>`
+- `X-Agent-Installation-Id: <stable-installation-id>`
+
+Generate one stable random installation ID per agent install and reuse it on every request for that install. Do not generate a fresh ID per request.
 
 ---
 
@@ -12,15 +16,18 @@ Create a new PayMe wallet instantly. No auth header needed. The user **chooses a
 
 **Request:**
 ```json
-{ "pin": "1234" }
+{ "pin": "123456", "installationId": "openclaw-6f1b0e3c-4a0d-4d6b-8f44-6f9b99b3b201" }
 ```
 
-- `pin`: string, 4-6 digits (a **new** PIN chosen by the user — ask them to delete the message after)
+- `pin`: string, 6-8 digits (a **new** PIN chosen by the user — ask them to delete the message after)
+- `installationId`: string, 8-128 chars. A stable random ID for this specific agent installation. Reuse the same ID for later requests from the same install.
 
 **Response (200):**
 ```json
 {
   "agentToken": "64-char hex string",
+  "expiresAt": "2026-04-08T12:00:00.000Z",
+  "bootstrapOnly": true,
   "kernelAddress": "0x...",
   "username": null,
   "claimCode": "X9K2M7",
@@ -34,9 +41,11 @@ Create a new PayMe wallet instantly. No auth header needed. The user **chooses a
 The `claimCode` is a one-time 6-character code the user can enter on the web app ([payme.feedom.tech](https://payme.feedom.tech)) or Telegram bot to claim their account and set a username. It expires in 24 hours.
 
 Store the `agentToken` securely — it grants immediate wallet access.
+This is **bootstrap access only**: it expires quickly, cannot be refreshed, and should be treated as temporary setup access for this installation only.
+Tell the user when the returned `expiresAt` time is, so they know when bootstrap access ends.
 
 **Errors:**
-- `400` — Invalid PIN (must be 4-6 digits)
+- `400` — Invalid PIN (must be 6-8 digits)
 - `429` — Rate limited (max 3 per hour per IP)
 
 ---
@@ -47,14 +56,18 @@ Connect a PayMe account using a one-time connection code. No auth header needed.
 
 **Request:**
 ```json
-{ "code": "A3K9X2" }
+{ "code": "A3K9X2", "installationId": "openclaw-6f1b0e3c-4a0d-4d6b-8f44-6f9b99b3b201" }
 ```
-The user generates this code via `/agentcode` on the Telegram bot or from the web app at [payme.feedom.tech](https://payme.feedom.tech). Codes are 6 characters, single-use, and expire in 5 minutes. The resulting token duration is chosen by the user when generating the code (default 90 days).
+`installationId` is required and must stay stable for this agent install.
+
+The user generates this code from the web app at [payme.feedom.tech](https://payme.feedom.tech). In the web app, PayMe asks for the user's PIN before revealing the code. Codes are 6 characters, single-use, and expire in 5 minutes. The resulting token duration is chosen by the user when generating the code (default 14 days, with 30-day and 90-day access as longer explicit options).
 
 **Response (200):**
 ```json
 {
   "agentToken": "64-char hex string",
+  "expiresAt": "2026-04-08T12:00:00.000Z",
+  "bootstrapOnly": false,
   "kernelAddress": "0x...",
   "username": "alice",
   "scopes": ["wallet:read", "contacts:read", "contacts:write", "payments:prepare", "payments:execute"],
@@ -67,6 +80,9 @@ The user generates this code via `/agentcode` on the Telegram bot or from the we
   ]
 }
 ```
+
+Tell the user when the returned `expiresAt` time is, and if they want longer access tell them to open the PayMe web app and manually generate a longer-duration code from **Settings -> AI Agent Access**.
+The same installation cannot be linked to multiple PayMe accounts at the same time. If the API returns a conflict, the user needs to disconnect that agent setup first or use a fresh install.
 
 Show the `greeting` and `capabilities` to the user after connecting.
 
@@ -312,9 +328,23 @@ Search for PayMe users and saved contacts by partial name or username. Useful wh
 
 ---
 
+## POST /api/agent/refresh-token
+
+Extends the current agent token by 7 days. Call before the token expires to maintain access. Requires a valid, non-revoked Bearer token plus the matching `X-Agent-Installation-Id` header.
+
+**Response (200):**
+```json
+{ "success": true, "expiresAt": "2026-04-07T12:00:00.000Z" }
+```
+
+**Error (401):** Token is invalid or revoked.
+**Error (403):** Bootstrap tokens cannot be refreshed. Tell the user to claim the account, then reconnect from PayMe Settings -> AI Agent Access.
+
+---
+
 ## POST /api/agent/revoke
 
-Revokes the current agent token. Only requires a valid Bearer token (no scope needed).
+Revokes the current agent token. Requires a valid Bearer token plus the matching `X-Agent-Installation-Id` header.
 
 **Response (200):**
 ```json
@@ -358,7 +388,7 @@ List orders assigned to the vendor. Returns active orders by default.
 
 ## POST /api/agent/vendor/orders/:id/accept
 
-**Scope:** `wallet:read`
+**Scope:** `payments:execute`
 
 Accept a trade assigned to you. Only works on `escrow_locked` orders.
 
@@ -374,7 +404,7 @@ Accept a trade assigned to you. Only works on `escrow_locked` orders.
 
 ## POST /api/agent/vendor/orders/:id/reject
 
-**Scope:** `wallet:read`
+**Scope:** `payments:execute`
 
 Decline a trade. The order is rerouted to the next available vendor.
 
@@ -387,7 +417,7 @@ Decline a trade. The order is rerouted to the next available vendor.
 
 ## POST /api/agent/vendor/orders/:id/mark-paid
 
-**Scope:** `wallet:read`
+**Scope:** `payments:execute`
 
 Mark that fiat payment has been sent to the buyer. Only works on `accepted` orders.
 
@@ -400,7 +430,7 @@ Mark that fiat payment has been sent to the buyer. Only works on `accepted` orde
 
 ## POST /api/agent/vendor/orders/:id/cancel
 
-**Scope:** `wallet:read`
+**Scope:** `payments:execute`
 
 Cancel an order after accepting. Refunds buyer escrow. Warning: 3 consecutive cancellations trigger a temporary vendor cooldown.
 
@@ -570,7 +600,9 @@ Public endpoint (no auth required).
 
 ## POST /api/agent/p2p/bank-accounts
 
-**Scope:** `wallet:read`
+**Scope:** `payments:execute`
+
+Adding or removing a bank account triggers a **30-day lock** on further changes. This is a security measure to prevent unauthorized account swaps.
 
 **Request:**
 ```json
@@ -595,13 +627,16 @@ Public endpoint (no auth required).
 
 **Errors:**
 - `400` — Missing fields, unsupported country code, or invalid method type
+- `403` — Bank account changes are locked (30-day cooldown active)
 - `409` — Account number already registered to another user
 
 ---
 
 ## DELETE /api/agent/p2p/bank-accounts/:id
 
-**Scope:** `wallet:read`
+**Scope:** `payments:execute`
+
+Triggers a 30-day lock on further bank account changes.
 
 **Response (200):**
 ```json
@@ -838,6 +873,47 @@ Rate the vendor after a completed trade.
 - `401` — `"No agent token provided"` — missing or malformed Authorization header
 - `401` — `"Invalid or expired agent token"` — token not found, expired, or revoked
 - `403` — `"Missing required scope: <scope>"` — token does not have the needed permission
+
+---
+
+## GET /api/agent/revenue-status
+
+Check the user's live revenue ownership share. Requires `wallet:read` scope.
+
+**Response (200):**
+```json
+{
+  "ownershipPct": 12.5,
+  "weight": {
+    "creditBalance": 220,
+    "rawWeight": 1.0,
+    "streakMultiplier": 1.25,
+    "effectiveWeight": 18.5,
+    "consecutiveActiveWeeks": 4,
+    "qualifyingActionsThisWeek": 3.5,
+    "daysUntilDecay": 99
+  },
+  "totalPendingUsd": 0,
+  "estimatedPayoutCurrentWeek": 10.0,
+  "currentWeekFeesUsd": 100.0,
+  "ownerPercentile": 15,
+  "totalCurrentEffectiveWeight": 148.2
+}
+```
+
+- `ownershipPct` — user's current % of the revenue pool
+- `weight.rawWeight` — activity weight (0.0 to 1.0, decays 15%/week if inactive)
+- `weight.streakMultiplier` — consecutive active weeks bonus (1.0x to 2.0x)
+- `weight.effectiveWeight` — sqrt(credits) x rawWeight x streakMultiplier
+- `weight.daysUntilDecay` — days until weight decays (99 = active this week, safe)
+- `estimatedPayoutCurrentWeek` — projected USDC based on fees collected so far
+- `ownerPercentile` — user's rank as a percentile (1 = top 1%, null = unranked)
+
+**Errors:**
+- `401` — Not authenticated
+- `403` — Missing `wallet:read` scope
+
+---
 
 ## Token Scopes
 

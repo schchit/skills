@@ -3,11 +3,16 @@
   "slug": "payme",
   "displayName": "PayMe - Crypto Payments",
   "latest": {
-    "version": "1.0.24",
-    "publishedAt": 1774220087871,
-    "commit": "https://github.com/openclaw/skills/commit/86c5926243b6c773c954d28febc0f91a5b3a3e46"
+    "version": "1.0.27",
+    "publishedAt": 1774432802572,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.24",
+      "publishedAt": 1774220087871,
+      "commit": "https://github.com/openclaw/skills/commit/86c5926243b6c773c954d28febc0f91a5b3a3e46"
+    },
     {
       "version": "1.0.23",
       "publishedAt": 1773797417431,
