@@ -55,20 +55,22 @@ Every growth loop has:
 ## Input
 
 Accepts:
-- Current growth metrics
-- User behavior data
-- Skill portfolio information
 - Target growth goals
-- Loop design parameters
+- Loop design parameters (type, target user, value proposition)
+- Skill portfolio context (optional, for portfolio-level analysis)
+
+**Note**: This skill generates simulated metrics and design templates. It does not ingest real user behavior data or live analytics. To analyze actual usage data, you would need to provide the data as input and extend the scripts accordingly.
 
 ## Output
 
 Produces:
-- Growth loop designs
-- Orchestration plans
-- Metric dashboards
-- Optimization recommendations
-- A/B test plans
+- Growth loop designs (markdown templates)
+- Orchestration plans (step-by-step guidance)
+- Simulated metric reports (for prototyping)
+- Optimization recommendations (based on loop patterns)
+- A/B test plans (template structure)
+
+**Note**: The "dashboards" and "metrics" produced are simulated examples for design purposes, not live data visualizations.
 
 ## Workflow
 
@@ -99,20 +101,20 @@ Produces:
    - Social proof
 
 5. **Measure and Optimize**
-   - Track loop metrics
-   - Identify bottlenecks
-   - Test improvements
+   - Define target metrics (simulation targets)
+   - Identify potential bottlenecks
+   - Test improvements in design
    - Scale what works
 
 ### Analyzing Existing Loops
 
 1. **Map Current State**
-   - Identify existing loops
-   - Measure current performance
+   - Identify existing loops (conceptual)
+   - Define expected performance
    - Find broken connections
 
 2. **Diagnose Issues**
-   - Where do users drop off?
+   - Where might users drop off?
    - What's blocking conversion?
    - Where is friction highest?
 
@@ -122,8 +124,8 @@ Produces:
    - Add amplification
 
 4. **Test and Validate**
-   - A/B test changes
-   - Measure impact
+   - A/B test plans (template)
+   - Measure impact (simulated)
    - Iterate quickly
 
 ## Commands
@@ -138,24 +140,14 @@ Produces:
 ./scripts/analyze-loops.sh [--skill <name>] [--portfolio]
 ```
 
-### Optimize Loop Performance
-```bash
-./scripts/optimize-loop.sh --loop-id <id> [--target metric] [--test]
-```
-
 ### Track Growth Metrics
 ```bash
-./scripts/track-metrics.sh [--skill <name>] [--dashboard] [--period 30d]
+./scripts/track-metrics.sh [--skill <name>] [--period 30d]
 ```
 
-### Generate Growth Report
+### Run Tests
 ```bash
-./scripts/generate-report.sh --type loops|funnel|portfolio [--output report.md]
-```
-
-### Simulate Loop
-```bash
-./scripts/simulate-loop.sh --design <file> [--cycles 10] [--users 1000]
+./scripts/test.sh
 ```
 
 ## Output Format
@@ -168,7 +160,6 @@ Produces:
 
 ## Loop Diagram
 
-```
 [New User] → [Use Skill] → [Create Output] → [Share] → [New User Sees] → [Try Skill] → [New User]
 ```
 
@@ -176,7 +167,7 @@ Produces:
 
 ### Input
 - Source: User creates content
-- Volume: ~50 outputs/day
+- Volume: ~50 outputs/day (example)
 - Quality: High (user-generated)
 
 ### Action
@@ -201,12 +192,12 @@ Produces:
 
 ## Metrics
 
-| Metric | Current | Target |
-|--------|---------|--------|
-| Cycle Time | 3 days | 1 day |
-| Conversion Rate | 15% | 25% |
-| Viral Coefficient | 0.2 | 0.5 |
-| Retention | 35% | 50% |
+| Metric | Example Target |
+|--------|---------------|
+| Cycle Time | < 1 day |
+| Conversion Rate | > 25% |
+| Viral Coefficient | > 0.5 |
+| Retention | > 50% |
 
 ## Optimization Plan
 
@@ -228,14 +219,13 @@ Produces:
 ## Success Criteria
 - Viral coefficient > 0.5
 - Cycle time < 24 hours
-- 1000 new users/month from loop
-```
+- 1,000 new users/month from loop
 
-### Loop Performance Dashboard
+### Loop Performance Dashboard (Example Template)
 ```json
 {
   "dashboard": "growth-loops",
-  "period": "2024-03-01 to 2024-03-31",
+  "period": "simulation",
   "loops": [
     {
       "id": "viral-share",
@@ -252,21 +242,6 @@ Produces:
       "health": "good",
       "bottleneck": "share_rate",
       "recommendation": "Add one-click sharing buttons"
-    },
-    {
-      "id": "content-seo",
-      "name": "Content SEO Loop",
-      "type": "content",
-      "metrics": {
-        "cycle_time_days": 30,
-        "conversion_rate": 0.05,
-        "content_velocity": 12,
-        "organic_growth": 1.08
-      },
-      "status": "active",
-      "health": "fair",
-      "bottleneck": "content_quality",
-      "recommendation": "Improve output shareability"
     }
   ],
   "portfolio_summary": {
@@ -333,12 +308,13 @@ Use → Feedback → Improve → Better Experience → Use
 
 ## Limitations
 
-- Requires usage data for meaningful analysis
+- **Simulated data only**: This skill generates simulated metrics for design/prototyping purposes. It does not connect to live analytics or ingest real user behavior data.
 - Growth loops take time to validate
 - Network effects need critical mass
 - Viral loops are hard to predict
 - Metrics can be gamed
 - Growth without value is unsustainable
+- Requires usage data (external) for meaningful real-world analysis
 
 ## Related Skills
 
@@ -351,13 +327,9 @@ Use → Feedback → Improve → Better Experience → Use
 
 ### scripts/
 - `design-loop.sh` - Design new growth loops
-- `analyze-loops.sh` - Analyze existing loops
-- `optimize-loop.sh` - Optimize loop performance
-- `track-metrics.sh` - Track growth metrics
-- `simulate-loop.sh` - Simulate loop behavior
+- `analyze-loops.sh` - Analyze existing loops (template-based)
+- `track-metrics.sh` - Generate simulated metric reports
+- `test.sh` - Run validation tests
 
-### references/
-- Growth loop patterns
-- Viral mechanics
-- Network effect theory
-- Engagement design principles
+### data/
+- Sample loop designs and metrics for reference
