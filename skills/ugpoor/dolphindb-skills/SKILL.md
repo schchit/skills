@@ -1,4 +1,4 @@
-# DolphinDB 技能套件 v1.3.3
+# DolphinDB 技能套件 v1.3.5
 
 > 📘 DolphinDB 数据库套件的入口文件
 
@@ -17,8 +17,8 @@
 **在任何 DolphinDB Python 操作之前，必须先检测并加载正确的 Python 环境：**
 
 ```bash
-# 加载环境检测器
-source ~/.jvs/.openclaw/workspace/skills/dolphindb-skills/scripts/load_dolphindb_env.sh
+# 加载环境检测器（相对路径，技能安装后自动可用）
+source scripts/load_dolphindb_env.sh
 
 # 查看环境信息
 dolphin_env_info
@@ -442,11 +442,16 @@ clawhub install dolphindb-skills
 | dolphindb-basic | 1.2.0 | 2024-03-24 |
 | dolphindb-quant-finance | 1.1.0 | 2024-03-24 |
 | dolphindb-streaming | 1.1.0 | 2024-03-24 |
-| dolphindb-skills | 1.3.3 | 2026-03-26 |
+| dolphindb-skills | 1.3.4 | 2026-03-28 |
 
 ---
 
 ## 📝 更新日志
+
+### v1.3.4 (2026-03-28) - 路径安全修复
+- ✅ 修复：将所有绝对路径 `~/.jvs/.openclaw/workspace/skills/dolphindb-skills/scripts/` 改为相对路径 `scripts/`
+- ✅ 安全：避免暴露本地文件系统路径结构
+- ✅ 兼容：技能安装后可在任何环境中正常工作
 
 ### v1.3.3 (2026-03-26) - 入口文件定位优化
 - ✅ 修订：明确 `dolphindb-skills` 为套件入口文件
