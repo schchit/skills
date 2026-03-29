@@ -1,276 +1,155 @@
 ---
 name: douyin-messager
-description: "Douyin private messaging via browser automation. 抖音私信发送，通过浏览器自动化发送私信、获取聊天记录。Use when user needs to send 抖音私信、回复消息、查看聊天记录。Requires browser login. Triggers: 抖音, douyin, Douyin, TikTok中国, 抖音私信, douyin dm, douyin message, 抖音消息, 抖音发消息, send douyin message, 抖音聊天, douyin chat, 抖音回复, reply douyin, 获取抖音聊天记录, get douyin chat history, 抖音私信发送, send douyin dm, 给抖音用户发消息, message douyin user, 抖音私信自动化, douyin dm automation, 抖音私信工具, douyin messaging tool."
+description: "Send Douyin DMs, reply, and check chat history through browser automation. 自动发送抖音私信、回复消息、查看聊天记录。"
 ---
 
-# 抖音私信发送 | Douyin Private Messaging
+# Douyin Private Messaging | 抖音私信发送
 
 通过浏览器自动化发送抖音私信、获取聊天记录。
 
-## ⚠️ 最大前提（必须满足）
+## ⚠️ 执行前必须确认
 
-**在执行任何操作之前，必须确认以下两点：**
+1. **用户已登录抖音账号**（通常已登录，可目测判断）
 
-1. **用户已登录抖音账号**
-2. **用户已关闭 xdg-open 弹窗**（如果有）
-
-### 标准执行流程
-
-```
-1. 打开抖音
-2. 等待 2-3 秒
-3. 【必须】询问用户："请确认：1) 已登录抖音账号  2) 已关闭 xdg-open 弹窗"
-4. 用户确认后，继续后续操作
-```
-
----
-
-## ⚠️ xdg-open 系统弹窗
-
-### 问题描述
-
-打开抖音主页时，会触发 Linux 系统级的 `xdg-open` 弹窗：
-
-```
-Open xdg-open?
-https://www.douyin.com wants to open this application.
-[✓] Always allow www.douyin.com to open links of this type in the associated app
-[Cancel] [Open]
-```
-
-### 关键点
-
-| 特性 | 说明 |
-|------|------|
-| 弹窗类型 | Linux 系统级，非浏览器内 |
-| AI 可见性 | ❌ 截图看不到 |
-| AI 可操作性 | ❌ 无法操作 |
-| 阻塞性 | ✅ 阻止所有浏览器操作 |
-| 永久关闭 | ❌ 目前无方法 |
-
-### 解决方案
-
-**必须由用户手动关闭**：点击 **Cancel**（不要点 Open）
-
-### AI 检测方法
-
-如果出现以下情况，询问用户是否有弹窗：
-- 操作突然无响应
-- 截图显示页面正常但操作不执行
-- 点击后没有反应
-
----
-
-## 核心要点
-
-1. **发送方式**：必须用 `type + submit`，不要用 JavaScript 操作 DOM
-2. **减少快照**：快照数据量大，容易超时或断网
-3. **输入框 ref**：每次页面加载都会变化，需要重新获取快照
-4. **连续执行**：不要中途停止
+**xdg-open 弹窗：只在 Linux 下存在，Windows/macOS 不需要检查。**
+- Windows：`shell=powershell` 或 `os=Windows_NT`，**跳过 xdg-open 检查**
+- Linux：`shell=bash`，**询问用户是否关闭了弹窗**
 
 ---
 
 ## 发送私信流程
 
-### 步骤 1：打开抖音首页
+### 步骤 1：打开抖音
 
 ```
 browser action=open profile=openclaw targetUrl=https://www.douyin.com/
-```
-
-### 步骤 2：等待页面加载
-
-```
 browser action=act request={"kind": "wait", "timeMs": 2000}
 ```
 
-### 步骤 3：【必须】确认用户状态
+### 步骤 2：打开私信面板
 
-**询问用户**："请确认：1) 已登录抖音账号  2) 已关闭 xdg-open 弹窗"
+**方式 A：置顶联系人（最快）**
+1. 获取快照找到私信按钮，点击打开私信面板
+2. 在私信列表中找目标用户名（注意：列表只显示最近联系人，不滚动看不到中间部分）
+3. 点击目标 → 打开聊天窗口
 
-用户确认后继续。
+**方式 B：搜索用户（普适）**
+1. 点击顶栏搜索框，输入用户名
+2. 在搜索结果中找到目标（优先选有"相互关注"标识的），点击进入主页
+3. 点击主页的"私信"按钮 → 私信面板自动打开
 
-### 步骤 4：获取快照，找到私信按钮和目标用户
+> **注意**：私信面板是动态浮层，每次快照后元素 ref 会变化。优先用 JS evaluate 定位元素，少用 ref 点击。
 
-```
-browser action=snapshot
-```
+### 步骤 3：用 JS 操作 Draft.js 输入框
 
-**私信按钮特征**：
-```
-- generic [cursor=pointer]:
-    - img
-    - paragraph: "私信"
-```
+**私信输入框是 Draft.js 富文本编辑器（`contenteditable`），不是普通 input，不能用 `type` 指令直接操作。**
 
-**用户列表特征**：
-```
-- generic [cursor=pointer]:  <- 用户项
-    - generic: "井媛"
-    - generic: "置顶"
+**第一步：找到编辑器**
+
+```javascript
+browser action=act request={"kind": "evaluate", "fn": "() => { const all = document.querySelectorAll('*'); let panel = null; for (const el of all) { const r = el.getBoundingClientRect(); if (r.width >= 300 && r.width <= 400 && r.height >= 400 && r.height <= 700 && r.left >= 870 && r.left <= 1010) { if (el.textContent.includes('<目标用户名>') && el.textContent.includes('发送消息')) { panel = el; break; } } } if (!panel) return 'panel not found'; const editor = panel.querySelector('.public-DraftEditor-content'); if (!editor) return 'editor not found'; return 'found'; }"}
 ```
 
-### 步骤 5：点击私信按钮
+如果返回 `panel not found`，说明私信面板未打开，重新执行步骤 2。
 
-```
-browser action=act request={"kind": "click", "ref": "<私信按钮ref>"}
-```
+**第二步：用剪贴板粘贴（绕过 Draft.js 事件拦截）**
 
-### 步骤 6：点击目标用户
-
-```
-browser action=act request={"kind": "click", "ref": "<用户项ref>"}
+```javascript
+browser action=act request={"kind": "evaluate", "fn": "() => { const editor = document.querySelector('.public-DraftEditor-content'); if (!editor) return 'editor not found'; (editor.parentElement || editor).focus(); navigator.clipboard.writeText('消息内容').then(() => document.execCommand('paste')); return 'ok'; }"}
+browser action=act request={"kind": "wait", "timeMs": 300}
 ```
 
-### 步骤 7：等待 + 获取快照
+**第三步：确认已写入**
 
-```
-browser action=act request={"kind": "wait", "timeMs": 500}
-browser action=snapshot
-```
-
-**输入框特征**：
-```
-textbox [active] [ref=e3963]
+```javascript
+browser action=act request={"kind": "evaluate", "fn": "() => { const editor = document.querySelector('.public-DraftEditor-content'); if (!editor) return 'editor not found'; return editor.textContent.includes('消息内容') ? 'ok' : 'not written'; }"}
 ```
 
-### 步骤 8：发送消息
+**第四步：发送（Enter 键）**
 
-**✅ 正确方法**：
-```
-browser action=act request={"kind": "type", "ref": "<输入框ref>", "text": "消息内容", "submit": true}
-```
-
-**❌ 错误方法**（会导致乱码）：
-```
-browser action=act request={"kind": "evaluate", "fn": "() => { document.querySelector('...')... }"}
+```javascript
+browser action=act request={"kind": "evaluate", "fn": "() => { const editor = document.querySelector('.public-DraftEditor-content'); if (!editor) return 'editor not found'; editor.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true})); return 'sent'; }"}
+browser action=act request={"kind": "wait", "timeMs": 1000}
 ```
 
-### 步骤 9：确认发送成功
+### 步骤 4：确认发送成功
 
-```
-browser action=screenshot
-```
-
-用 image 工具分析截图，确认消息出现在聊天记录中（蓝色气泡）。
+获取快照，检查私信列表中是否出现 `消息内容 · 刚刚`。
 
 ---
 
 ## 获取对方回复
 
-### 步骤 1：滚动聊天区域到底部
+### 滚动到底部
 
 ```javascript
-browser action=act request={"kind": "evaluate", "fn": "() => {
-  const containers = document.querySelectorAll('[class*=\"scroll\"]');
-  containers.forEach(c => { c.scrollTop = c.scrollHeight; });
-  return 'Scrolled';
-}"}
+browser action=act request={"kind": "evaluate", "fn": "() => { const panel = document.querySelector('[class*=\"w5duGc5Q\"], [class*=\"RoMuFUzT\"]'); if (!panel) return 'panel not found'; panel.scrollTop = panel.scrollHeight; return 'scrolled'; }"}
 ```
 
-### 步骤 2：截图或快照
+### 截图确认
 
 ```
 browser action=screenshot
 ```
 
-或
-
-```
-browser action=snapshot
-```
-
-### 消息特征
-
-| 类型 | 特征 |
-|------|------|
-| 自己发送 | 蓝色气泡，右侧，显示时间 |
-| 对方发送 | 白色/灰色气泡，左侧，显示头像和名字 |
+新消息气泡在可视区域底部之外，先滚动再截图。
 
 ---
 
-## 完整示例
+## 完整示例（方式 A：置顶联系人）
 
 ```
 # 1. 打开抖音
 browser action=open profile=openclaw targetUrl=https://www.douyin.com/
-
-# 2. 等待加载
 browser action=act request={"kind": "wait", "timeMs": 2000}
 
-# 3. 【必须】询问用户确认登录状态和弹窗
+# 2. 打开私信面板（JS 点击私信按钮）
+browser action=act request={"kind": "evaluate", "fn": "() => { const all = document.querySelectorAll('*'); for (const el of all) { if ((el.textContent || '').trim() === '私信' && el.getBoundingClientRect().width < 100) { el.click(); return 'clicked'; } } return 'not found'; }"}
+browser action=act request={"kind": "wait", "timeMs": 800}
 
-# 4. 获取快照
+# 3. 在私信列表中点击目标
+browser action=act request={"kind": "evaluate", "fn": "() => { const all = document.querySelectorAll('[class*=\"w5duGc5Q\"], [class*=\"RoMuFUzT\"]'); for (const p of all) { const r = p.getBoundingClientRect(); if (r.width === 500 && Math.abs(r.left - 1006) < 50) { const items = p.querySelectorAll('[class*=\"cursor-pointer\"]'); for (const item of items) { if ((item.textContent || '').includes('<目标用户名>')) { item.click(); return 'clicked target'; } } } } return 'not found'; }"}
+browser action=act request={"kind": "wait", "timeMs": 800}
+
+# 4. 粘贴消息
+browser action=act request={"kind": "evaluate", "fn": "() => { const editor = document.querySelector('.public-DraftEditor-content'); if (!editor) return 'editor not found'; (editor.parentElement || editor).focus(); navigator.clipboard.writeText('你好').then(() => document.execCommand('paste')); return 'ok'; }"}
+browser action=act request={"kind": "wait", "timeMs": 300}
+
+# 5. 发送
+browser action=act request={"kind": "evaluate", "fn": "() => { const editor = document.querySelector('.public-DraftEditor-content'); editor.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true})); return 'sent'; }"}
+browser action=act request={"kind": "wait", "timeMs": 1000}
+
+# 6. 确认
 browser action=snapshot
-
-# 5. 点击私信按钮
-browser action=act request={"kind": "click", "ref": "e255"}
-
-# 6. 点击目标用户
-browser action=act request={"kind": "click", "ref": "e2215"}
-
-# 7. 等待 + 获取快照
-browser action=act request={"kind": "wait", "timeMs": 500}
-browser action=snapshot
-
-# 8. 发送消息
-browser action=act request={"kind": "type", "ref": "e3963", "text": "你好！", "submit": true}
-
-# 9. 确认
-browser action=screenshot
 ```
 
 ---
 
-## 常见问题
+## 完整示例（方式 B：搜索用户）
 
-### Q: 消息发送后显示乱码？
+```
+# 1. 打开抖音
+browser action=open profile=openclaw targetUrl=https://www.douyin.com/
+browser action=act request={"kind": "wait", "timeMs": 2000}
 
-A: 不要用 JavaScript 操作 DOM。用 \`type + submit\`
+# 2. 搜索目标用户名
+browser action=act request={"kind": "evaluate", "fn": "() => { const input = document.querySelector('input[type=\"text\"]'); if (!input) return 'input not found'; input.focus(); input.value = '<目标用户名>'; input.dispatchEvent(new Event('input', {bubbles: true})); return 'typed'; }"}
+browser action=act request={"kind": "evaluate", "fn": "() => { const btns = document.querySelectorAll('button'); for (const b of btns) { if ((b.textContent || '').includes('搜索')) { b.click(); return 'search clicked'; } } return 'not found'; }"}
+browser action=act request={"kind": "wait", "timeMs": 2000}
 
-### Q: 看不到对方回复？
+# 3. 在结果中点击目标主页（选有"相互关注"标识的条目）
+browser action=snapshot
+# 找到目标条目后点击进入主页
 
-A: 新消息可能在可视区域外。**先滚动到底部**，再截图
+# 4. 点击主页"私信"按钮
+browser action=act request={"kind": "evaluate", "fn": "() => { const btns = document.querySelectorAll('button'); for (const b of btns) { if ((b.textContent || '').trim() === '私信') { b.click(); return 'clicked'; } } return 'not found'; }"}
+browser action=act request={"kind": "wait", "timeMs": 800}
 
-### Q: 输入框 ref 找不到或超时？
+# 5. 粘贴 + 发送（与方式 A 相同）
+browser action=act request={"kind": "evaluate", "fn": "() => { const editor = document.querySelector('.public-DraftEditor-content'); if (!editor) return 'editor not found'; (editor.parentElement || editor).focus(); navigator.clipboard.writeText('你好').then(() => document.execCommand('paste')); return 'ok'; }"}
+browser action=act request={"kind": "wait", "timeMs": 300}
+browser action=act request={"kind": "evaluate", "fn": "() => { const editor = document.querySelector('.public-DraftEditor-content'); editor.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true})); return 'sent'; }"}
+browser action=act request={"kind": "wait", "timeMs": 1000}
+```
 
-A: 输入框 ref 每次页面加载都会变化。重新获取快照查找 \`textbox [active]\`
 
-### Q: 私信面板找不到？
-
-A: 确保已登录抖音账号。未登录时私信按钮不会显示
-
-### Q: 操作无响应？
-
-A: 可能是 xdg-open 弹窗阻挡。询问用户是否有系统弹窗需要关闭
-
-### Q: 快照获取失败或断网？
-
-A: 快照数据量大，可能超时。减少快照次数，只在必要时获取
-
----
-
-## 注意事项
-
-- **消息长度限制**：500字符（超过需分段发送）
-- **发送频率限制**：避免刷屏
-- **私信面板是悬浮窗**：不会跳转页面
-- **不要硬编码 DOM class 哈希值**：它们会变化，用文本内容或相对位置判断
-
----
-
-## 经验总结
-
-| 问题 | 原因 | 解决方案 |
-|------|------|----------|
-| 消息乱码 | 用 JS 操作 DOM | 用 type + submit |
-| 看不到回复 | 新消息在可视区域外 | 先滚动到底部 |
-| 输入框超时 | ref 每次变化 | 重新获取快照 |
-| 操作无响应 | xdg-open 弹窗 | 用户手动关闭 |
-| 快照断网 | 数据量大 | 减少快照次数 |
-
----
-
-*抖音私信自动化 🎵*
-*版本：1.0.0*
-*最后更新：2026-03-02*
