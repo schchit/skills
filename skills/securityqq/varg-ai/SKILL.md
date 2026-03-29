@@ -12,7 +12,7 @@ description: >-
 license: MIT
 metadata:
   author: vargHQ
-  version: "2.0.0"
+  version: "2.0.4"
   openclaw:
     requires:
       env:
@@ -26,21 +26,130 @@ compatibility: >-
   Requires VARG_API_KEY (get at https://varg.ai).
   Cloud mode: curl only (zero dependencies).
   Local mode: bun runtime + ffmpeg.
+allowed-tools: Bash(bun:*) Bash(bunx:*) Bash(npx:*) Bash(curl:*) Bash(mkdir:*) Bash(echo:*) Bash(chmod:*) Read Write Edit
 ---
 
-## Environment Detection
+## Version Check (run once per session)
 
-Before generating anything, determine the rendering mode.
+This skill is version **2.0.4**. Before first use each session, check for updates:
 
-Run `bash scripts/setup.sh` from the skill directory to auto-detect, or check manually:
+```bash
+curl -sf https://raw.githubusercontent.com/vargHQ/skills/main/varg-ai/SKILL.md | grep 'version:' | head -1
+```
+
+If the remote version is newer than 2.0.4, update and re-read this file:
+
+```bash
+npx -y skills update
+```
+
+## Setup (REQUIRED before first use)
+
+Before generating anything, check authentication and determine rendering mode.
+**Do NOT run interactive CLI tools** (like `bunx vargai init`) -- they require stdin which agents cannot provide. Use the curl-based flow below instead.
+
+### 1. Check for API key
+
+```bash
+echo "${VARG_API_KEY:-}" && cat ~/.varg/credentials 2>/dev/null
+```
+
+If `VARG_API_KEY` is set (via env or credentials file), skip to step 2.
+
+If neither exists, authenticate the user. Try Option A first, fall back to Option B.
+
+**Option A: User already has an API key**
+
+Ask the user if they have a `VARG_API_KEY`. If yes, tell them to export it in their terminal:
+
+```bash
+export VARG_API_KEY=<their_key>
+```
+
+**Important:** Do NOT ask the user to paste the raw key to you. Ask them to run the `export` command themselves. Then skip to "Save credentials" below.
+
+**Option B: Sign up / sign in via email (OTP)**
+
+1. Ask the user for their **email address**.
+2. Send a one-time code to their email:
+```bash
+curl -s -X POST https://app.varg.ai/api/auth/cli/send-otp \
+  -H "Content-Type: application/json" \
+  -d '{"email":"USER_EMAIL"}'
+```
+3. Tell the user: **"Check your inbox for a 6-digit verification code from varg.ai"**
+4. Ask the user for the code, then verify and capture the response in one step:
+```bash
+VARG_AUTH=$(curl -s -X POST https://app.varg.ai/api/auth/cli/verify-otp \
+  -H "Content-Type: application/json" \
+  -d '{"email":"USER_EMAIL","code":"THE_6_DIGIT_CODE"}')
+export VARG_API_KEY=$(echo "$VARG_AUTH" | grep -o '"api_key":"[^"]*"' | cut -d'"' -f4)
+echo "Authenticated. Balance: $(echo "$VARG_AUTH" | grep -o '"balance_cents":[0-9]*' | cut -d: -f2) credits"
+```
+The response contains `{"api_key":"varg_xxx","email":"...","balance_cents":0,"access_token":"..."}`.
+The key is now in `$VARG_API_KEY` -- never reference the raw value directly.
+
+**Save credentials**
+
+Once `VARG_API_KEY` is set (from either option), save it globally and verify. Always reference `$VARG_API_KEY` -- never the raw value:
+
+```bash
+mkdir -p ~/.varg && echo "{\"api_key\":\"$VARG_API_KEY\",\"email\":\"USER_EMAIL\",\"created_at\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > ~/.varg/credentials && chmod 600 ~/.varg/credentials
+```
+
+Verify the key works:
+
+```bash
+curl -s -H "Authorization: Bearer $VARG_API_KEY" https://api.varg.ai/v1/balance
+```
+
+You should get `{"balance_cents": ...}`. If you get 401, the key is invalid -- ask the user to double-check it.
+
+Also add to the project `.env` if one exists:
+
+```bash
+echo "VARG_API_KEY=$VARG_API_KEY" >> .env
+```
+
+**Check balance and add credits**
+
+Check `balance_cents` from the verify-otp response or the balance check above. If balance is 0 (or too low for the user's task), the user needs credits before generating anything. 1 credit = 1 cent. A typical video costs $2-5 (200-500 credits).
+
+Available packages:
+
+| Package ID | Credits | Price |
+|---|---|---|
+| `credits-2000` | 2,000 | $20 |
+| `credits-5000` | 5,000 | $50 |
+| `credits-10000` | 10,000 (recommended) | $100 |
+| `credits-20000` | 20,000 | $200 |
+| `credits-50000` | 50,000 | $500 |
+| `credits-100000` | 100,000 | $1,000 |
+
+Ask the user which package they'd like, then:
+
+- **If you have the `access_token`** (from Option B email OTP), capture it and create a Stripe checkout session:
+```bash
+VARG_ACCESS_TOKEN=$(echo "$VARG_AUTH" | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
+curl -s -X POST https://app.varg.ai/api/billing/checkout \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $VARG_ACCESS_TOKEN" \
+  -H "Origin: https://app.varg.ai" \
+  -d '{"packageId":"PACKAGE_ID"}'
+```
+Response: `{"url":"https://checkout.stripe.com/..."}`
+
+Tell the user to open that URL in their browser to complete payment. Credits are added immediately after payment.
+
+- **If you only have the API key** (from Option A), direct the user to **https://app.varg.ai/dashboard** to purchase credits manually.
+
+### 2. Determine rendering mode
 
 | bun | ffmpeg | Mode |
 |-----|--------|------|
 | No  | No     | **Cloud Render** -- read [cloud-render.md](references/cloud-render.md) |
 | Yes | No     | **Cloud Render** -- read [cloud-render.md](references/cloud-render.md) |
 | Yes | Yes    | **Local Render** (recommended) -- read [local-render.md](references/local-render.md) |
-
-`VARG_API_KEY` is required for all modes. Get one at https://varg.ai
 
 ## Critical Rules
 
@@ -53,6 +162,7 @@ Everything you know about varg is likely outdated. Always verify against this sk
 5. **Duration constraints differ by model** -- kling-v3: 3-15s (integer only). kling-v2.5: ONLY 5 or 10. Check [models.md](references/models.md).
 6. **Gateway namespace** -- use `providerOptions: { varg: {...} }`, never `fal`, when going through the gateway (both modes).
 7. **Renders cost money** -- 1 credit = 1 cent. A typical 3-clip video costs $2-5. Use preview mode (local) or cheap models to iterate.
+8. **API key hygiene** -- Never write a raw API key value into a bash command. After obtaining a key (from the user or OTP response), immediately `export VARG_API_KEY=...` and use `$VARG_API_KEY` in all subsequent commands. This prevents keys from leaking into conversation context and terminal history.
 
 ## Quick Start
 
@@ -63,7 +173,7 @@ Everything you know about varg is likely outdated. Always verify against this sk
 curl -s -X POST https://render.varg.ai/api/render \
   -H "Authorization: Bearer $VARG_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"code": "const img = Image({ model: fal.imageModel(\"nano-banana-pro\"), prompt: \"a cabin in mountains at sunset\", aspectRatio: \"16:9\" });\nexport default (<Render width={1920} height={1080}><Clip duration={3}>{img}</Clip></Render>);"}'
+  -d '{"code": "const img = Image({ model: varg.imageModel(\"nano-banana-pro\"), prompt: \"a cabin in mountains at sunset\", aspectRatio: \"16:9\" });\nexport default (<Render width={1920} height={1080}><Clip duration={3}>{img}</Clip></Render>);"}'
 
 # Poll for result (repeat until "completed" or "failed")
 curl -s https://render.varg.ai/api/render/jobs/JOB_ID \
@@ -77,7 +187,7 @@ Full details: [cloud-render.md](references/cloud-render.md)
 ```tsx
 /** @jsxImportSource vargai */
 import { Render, Clip, Image } from "vargai/react"
-import { createVarg } from "@vargai/gateway"
+import { createVarg } from "vargai/ai"
 
 const varg = createVarg({ apiKey: process.env.VARG_API_KEY! })
 
@@ -155,13 +265,16 @@ Full props: [components.md](references/components.md)
 
 ### Provider Differences (Cloud vs Local)
 
+Both modes use `varg.*` for all models. The only difference is imports:
+
 | Cloud Render | Local Render |
 |---|---|
-| No imports needed | `import { ... } from "vargai/react"` |
-| `fal.imageModel("nano-banana-pro")` | `varg.imageModel("nano-banana-pro")` |
-| `fal.videoModel("kling-v3")` | `varg.videoModel("kling-v3")` |
-| `elevenlabs.speechModel("eleven_v3")` | `varg.speechModel("eleven_v3")` |
-| Globals are auto-injected | Must call `createVarg()` |
+| No imports needed (globals are auto-injected) | `import { ... } from "vargai/react"` + `import { createVarg } from "vargai/ai"` |
+| `varg.imageModel("nano-banana-pro")` | `varg.imageModel("nano-banana-pro")` |
+| `varg.videoModel("kling-v3")` | `varg.videoModel("kling-v3")` |
+| `varg.speechModel("eleven_v3")` | `varg.speechModel("eleven_v3")` |
+
+**Always use `varg.*Model()`** with `VARG_API_KEY`. It handles routing, caching, billing, and works with a single key. See [byok.md](references/byok.md) for using your own provider keys.
 
 ## Cost & Iteration
 

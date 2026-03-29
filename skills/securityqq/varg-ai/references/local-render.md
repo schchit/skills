@@ -4,6 +4,23 @@ Write a `.tsx` file and render locally via the varg CLI. Requires `bun` and `ffm
 
 Local rendering is faster than cloud rendering, supports custom npm packages, Remotion components, and gives you full control over the output.
 
+## Pre-Flight Checklist
+
+Run through this before your first render in any project:
+
+1. **Check runtime**: `bun --version` (>= 1.0) and `ffmpeg -version` (>= 6.0)
+2. **Check API key**: `grep VARG_API_KEY .env` -- must be set. Get one at https://varg.ai
+3. **Create directories**: `mkdir -p output .cache/ai`
+4. **JSX pragma**: First line of every `.tsx` file must be `/** @jsxImportSource vargai */`
+5. **Correct imports**:
+   ```tsx
+   import { Render, Clip, Image, Video, Speech, Music, Captions } from "vargai/react";
+   import { createVarg } from "vargai/ai";
+   const varg = createVarg({ apiKey: process.env.VARG_API_KEY! });
+   ```
+6. **Test structure first**: `bunx vargai render video.tsx --preview` validates composition for $0
+7. **Then full render**: `bunx vargai render video.tsx -o output/video.mp4`
+
 ## TSX Format
 
 Local mode requires imports and an explicit provider setup:
@@ -11,7 +28,7 @@ Local mode requires imports and an explicit provider setup:
 ```tsx
 /** @jsxImportSource vargai */
 import { Render, Clip, Music, Captions, Title, Image, Video, Speech } from "vargai/react"
-import { createVarg } from "@vargai/gateway"
+import { createVarg } from "vargai/ai"
 
 const varg = createVarg({ apiKey: process.env.VARG_API_KEY! })
 ```
@@ -23,7 +40,7 @@ Use `varg.imageModel(...)`, `varg.videoModel(...)`, `varg.speechModel(...)`, `va
 ```tsx
 /** @jsxImportSource vargai */
 import { Render, Clip, Image } from "vargai/react"
-import { createVarg } from "@vargai/gateway"
+import { createVarg } from "vargai/ai"
 
 const varg = createVarg({ apiKey: process.env.VARG_API_KEY! })
 
@@ -45,7 +62,7 @@ export default (
 ```tsx
 /** @jsxImportSource vargai */
 import { Render, Clip, Music, Captions, Title, Image, Video, Speech } from "vargai/react"
-import { createVarg } from "@vargai/gateway"
+import { createVarg } from "vargai/ai"
 
 const varg = createVarg({ apiKey: process.env.VARG_API_KEY! })
 
