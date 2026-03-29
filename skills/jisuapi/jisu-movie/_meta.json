@@ -3,11 +3,16 @@
   "slug": "jisu-movie",
   "displayName": "Movie & News Inquiry - 电影影讯查询",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1773721277594,
-    "commit": "https://github.com/openclaw/skills/commit/005373642ce5063ef84dd0ca32041b621da2e211"
+    "version": "1.0.4",
+    "publishedAt": 1774592758361,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1773721277594,
+      "commit": "https://github.com/openclaw/skills/commit/005373642ce5063ef84dd0ca32041b621da2e211"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1772533916735,
