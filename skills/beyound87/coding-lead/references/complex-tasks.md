@@ -67,6 +67,9 @@ Claude Code handles its own internal agent selection (OMC, project agents, etc.)
 
 ## Verification
 
+Verification is mandatory before declaring success. Validate against the stated task, acceptance criteria, explicit constraints, and obvious regressions. If any of these remain unclear, report the gap instead of claiming completion.
+
+
 | Level | What OpenClaw checks |
 |-------|---------------------|
 | Simple | No formal review |

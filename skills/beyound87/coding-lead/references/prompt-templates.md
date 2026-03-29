@@ -18,6 +18,10 @@ Write to `<project>/.openclaw/context-<task-id>.md` before spawning:
 - [From memory lessons] PlatformLink has 6 types — use enum not magic strings
 - [Known pitfall] common/ module auth: reuse CommonAuthTrait
 
+## Long-term Knowledge Boundary
+- Preserve only durable decisions, reusable lessons, and stable architecture facts
+- Do not promote transient debugging noise, temporary paths, or one-off guesses
+
 ## Relevant Code (from qmd)
 - app/Actions/UserAction.php — example of Action pattern
 - app/Models/User.php — existing user model
