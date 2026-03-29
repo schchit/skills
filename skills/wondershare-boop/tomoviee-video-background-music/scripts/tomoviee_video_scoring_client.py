@@ -6,8 +6,8 @@ from typing import Dict, Optional, Any
 import requests
 
 class TomovieeClient:
-    BASE_URL = "https://open-api.wondershare.cc/v1/open/capacity/application"
-    RESULT_ENDPOINT = "https://open-api.wondershare.cc/v1/open/pub/task"
+    BASE_URL = "https://openapi.wondershare.cc/v1/open/capacity/application"
+    RESULT_ENDPOINT = "https://openapi.wondershare.cc/v1/open/pub/task"
     ENDPOINT = "tm_video_scoring"
     
     def __init__(self, app_key: str, app_secret: str):

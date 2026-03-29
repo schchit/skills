@@ -8,7 +8,7 @@ Tomoviee provides four audio generation APIs covering music creation, sound effe
 ### 1. Text-to-Music (tm_text2music)
 **Generate background music from text description**
 
-**Endpoint**: `https://open-api.wondershare.cc/v1/open/capacity/application/tm_text2music`
+**Endpoint**: `https://openapi.wondershare.cc/v1/open/capacity/application/tm_text2music`
 
 **Parameters**:
 - `prompt` (required): Music description (subject + scene/atmosphere/style)
@@ -71,7 +71,7 @@ task_id = client.text_to_music(
 ### 2. Text-to-Sound-Effect (tm_text2sfx)
 **Generate sound effects from text description**
 
-**Endpoint**: `https://open-api.wondershare.cc/v1/open/capacity/application/tm_text2sfx`
+**Endpoint**: `https://openapi.wondershare.cc/v1/open/capacity/application/tm_text2sfx`
 
 **Parameters**:
 - `prompt` (required): Sound effect description
@@ -137,7 +137,7 @@ task_id = client.text_to_sound_effect(
 ### 3. Text-to-Speech (tm_text2speech)
 **Convert text to natural speech audio**
 
-**Endpoint**: `https://open-api.wondershare.cc/v1/open/capacity/application/tm_text2speech`
+**Endpoint**: `https://openapi.wondershare.cc/v1/open/capacity/application/tm_text2speech`
 
 **Parameters**:
 - `text` (required): Text to convert to speech (max 5000 characters)
@@ -205,7 +205,7 @@ Common voice IDs include:
 ### 4. Video Soundtrack (tm_video_scoring)
 **Generate soundtrack tailored to video content**
 
-**Endpoint**: `https://open-api.wondershare.cc/v1/open/capacity/application/tm_video_scoring`
+**Endpoint**: `https://openapi.wondershare.cc/v1/open/capacity/application/tm_video_scoring`
 
 **Parameters**:
 - `video` (required): Video URL (MP4 format, <200M)
@@ -312,7 +312,7 @@ All audio APIs are asynchronous:
    - `6` = Timeout
 4. **Get Result**: When status=3, extract audio URL from result JSON
 
-**Unified Result Endpoint**: `https://open-api.wondershare.cc/v1/open/pub/task`
+**Unified Result Endpoint**: `https://openapi.wondershare.cc/v1/open/pub/task`
 
 **Example Workflow**:
 ```python
