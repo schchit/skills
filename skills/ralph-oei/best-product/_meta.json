@@ -1,13 +1,18 @@
 {
   "owner": "ralph-oei",
   "slug": "best-product",
-  "displayName": "Best Product Recommender",
+  "displayName": "Best Product",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1773056932846,
-    "commit": "https://github.com/openclaw/skills/commit/d7b86e429b81916c3e3b140401998f23a68e69ac"
+    "version": "1.0.7",
+    "publishedAt": 1774716204716,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1773056932846,
+      "commit": "https://github.com/openclaw/skills/commit/d7b86e429b81916c3e3b140401998f23a68e69ac"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1772997774803,

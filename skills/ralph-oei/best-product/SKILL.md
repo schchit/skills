@@ -3,7 +3,7 @@ name: best-product
 description: Find the best products in any category with expert picks, value recommendations, and budget options across US, UK, and EU retailers.
 homepage: https://github.com/openclaw/skills
 metadata:
-  version: "1.0.2"
+  version: "1.0.4"
   clawdbot:
     emoji: "🛒"
     tags: ["product-recommendation", "shopping", "reviews", "comparison"]
@@ -146,25 +146,53 @@ Finds the best products in a category using authoritative review sources across 
 ## Workflow
 
 1. **Parse query** — extract product category from user input
-2. **Detect region** — default to US, allow override (e.g., `/best airfryer de` or `/best earbuds fr`)
-3. **Search sources** — query relevant aggregator for top-rated products
+2. **Detect region** — default to **NL** (Ralph is based in the Netherlands). Allow explicit override: `/best airfryer de`, `/best earbuds fr`, `/best earbuds uk`
+3. **Search sources** — query relevant aggregator for top-rated products via `web_search` (Brave Search API)
 4. **Filter by region** — keep products available in selected region
 5. **Categorize picks:**
    - **Top Pick** — best overall
    - **Best Value** — best performance per dollar/pound/euro
    - **Budget** — solid option under $50/£40/€50
 6. **Generate output** — 3 picks with summary + link
-7. **Price rule:** Show approximate price range from search snippets (e.g., "€120-150"). Use "v.a. €X" for lowest found.
-8. **Link rule:** Use direct Google search link with full product name: `https://www.google.[nl|de|co.uk]/search?q=[product-name]`. Default to user's region (detect from timezone or default to NL).
-9. **Summary rule:** Always include 1-2 sentence summary explaining why it's top pick, best value, or budget in English.
-10. **Language rule:** Always output in English (even for NL queries, translate summary)
-11. **Cache** — store results for 6 hours in `~/.openclaw/cache/best-products/`
+7. **Date rule:** Always use today's actual date (resolved from the system at runtime). Never copy dates from review pages or search results.
+8. **Price rule:** Show approximate price range from search snippets (e.g., "€120-150"). Use "v.a. €X" for lowest found.
+9. **Link rule:** Use direct Google search link with full product name: `https://www.google.[nl|de|co.uk]/search?q=[product-name]`. Region defaults to NL.
+10. **Summary rule:** Always include 1-2 sentence summary explaining why it's top pick, best value, or budget in English.
+11. **Language rule:** Always output in the user's language where possible. For NL/BE queries, summaries may be in Dutch or English. For all other regions, use English.
+12. **Cache** — store results for 6 hours in `~/.openclaw/cache/best-products/`
+
+### Price-Order Validation (MANDATORY — CHECK BEFORE OUTPUT)
+
+After generating picks, validate price ordering:
+- Budget ≤ Best Value ≤ Top Pick
+- If violated: reorder the categories to match price, or discard the mismatched pick
+- Never output a "Budget" pick that is more expensive than Best Value or Top Pick
+
+**Example of a price-order violation:**
+```
+Budget: Ninja Foodi AF300EU — €149  ← WRONG: more expensive than Top Pick
+Top Pick: Philips Airfryer XXL — €130  ← WRONG: cheaper than Budget
+```
+**Fix:** Either swap the category labels to match actual prices, or replace the Ninja with a genuinely cheaper option.
+
+### Price-Sanity Checks (MANDATORY — CHECK BEFORE OUTPUT)
+
+Before presenting any pick, verify:
+1. Budget is genuinely budget for the region (NL: ≤ €90, UK: ≤ £75, DE: ≤ €90)
+2. Best Value is cheaper than Top Pick
+3. Budget is cheaper than Best Value
+4. All three picks have real prices — never output "unknown" or leave price blank
+
+If any check fails: do not output that pick. Find a cheaper/different alternative or flag the draft as needing review.
+If prices cannot be verified: output with a note: *"⚠️ Prijzen niet live geverifieerd — check voor publicatie."*
 
 ## Region Detection
 
+**Default: NL** (Netherlands) — can be overridden per query.
+
 | Command | Region | Retailers Checked |
 |---------|--------|------------------|
-| `/best [product]` | US | amazon.com, Best Buy, Walmart |
+| `/best [product]` | **NL** (default) | amazon.nl, Coolblue, MediaMarkt |
 | `/best [product] uk` | UK | amazon.co.uk, Currys, John Lewis |
 | `/best [product] de` | Germany | amazon.de, MediaMarkt, Saturn, Otto |
 | `/best [product] fr` | France | amazon.fr, Fnac, Darty, Boulanger |
@@ -180,33 +208,35 @@ Finds the best products in a category using authoritative review sources across 
 ```
 🎯 /best [product]
 
-📍 [US/UK/DE/FR/IT/ES/NL/BE/PL] — [date]
+📍 [US/UK/DE/FR/IT/ES/NL/BE/PL] — [today's date, e.g. "maart 2026" or "March 2026"]
 
 🏆 TOP PICK
 [Product Name]
-€[price range]
+€[price range] • [Retailer]
 [1-sentence summary why]
-🔗 https://www.google.nl/search?q=product+name
+🔗 https://www.google.[nl|de|co.uk]/search?q=product+name
 
 💎 BEST VALUE
 [Product Name]
-€[price range]
+€[price range] • [Retailer]
 [1-sentence summary why]
-🔗 https://www.google.nl/search?q=product+name
+🔗 https://www.google.[nl|de|co.uk]/search?q=product+name
 
 💶 BUDGET
 [Product Name]
-€[price range]
+€[price range] • [Retailer]
 [1-sentence summary why]
-🔗 https://www.google.nl/search?q=product+name
+🔗 https://www.google.[nl|de|co.uk]/search?q=product+name
 ```
 
 ## Caching
 
-- Location: `~/.openclaw/cache/best-products/`
-- Format: `{product}-{region}.json` (e.g., `earbuds-us.json`)
-- TTL: 6 hours
-- Check cache first; if stale/missing, fetch fresh data
+- **Location:** `~/.openclaw/cache/best-products/`
+- **Format:** `{product}-{region}.json` (e.g., `earbuds-nl.json`)
+- **TTL:** 6 hours
+- **Check:** Always check cache first; if stale/missing, fetch fresh data
+- **To disable/clear:** `rm -rf ~/.openclaw/cache/best-products/` — cache is optional, not required
+- **Privacy note:** Cached data is only product names and prices, no personal information
 
 ## Link Verification (MANDATORY)
 
@@ -219,6 +249,7 @@ Finds the best products in a category using authoritative review sources across 
 | ✅ Region match | Use google.nl for NL, google.de for DE, google.co.uk for UK |
 | ❌ No direct retailer links | These often block; Google search always works |
 | ❌ No markdown links | Use raw URL format only: `🔗 https://www.google.nl/search?q=product` — never `[text](url)` |
+| ✅ Default to NL | Always use google.nl unless user explicitly specifies another region |
 
 **Verification workflow:**
 1. Search reviews → get exact product names
@@ -230,32 +261,24 @@ Finds the best products in a category using authoritative review sources across 
 
 | Endpoint | Data Sent | Purpose |
 |----------|-----------|---------|
-| Brave Search API | Search queries only | Find review pages from trusted sources |
-| Google Search URLs | Product names only | Generate price comparison links for user |
-| web_fetch (review sites) | None — read-only | Extract product recommendations |
+| Brave Search API (`web_search`) | Product search queries only (e.g. "best airfryer nl reviews") | Find review pages from trusted sources |
+| Google Search URLs | Product names only | Generate price comparison links for user (open in browser) |
+| Review aggregator sites | None — read-only via `web_fetch` | Extract named product recommendations |
 
-No personal data, credentials, or API keys are sent to external services.
+**No personal data, credentials, or API keys are sent to external services.**
 
 ## Privacy & System Access
 
-- **Timezone detection:** Reads system timezone to default to user's region (can be overridden via command)
-- **Cache:** Writes to `~/.openclaw/cache/best-products/` for 6 hours
-- **No credentials required:** Uses built-in web tools only
-
-## Security & Privacy
-
-- **Data leaving the machine:** 
-  - Product search terms → Brave Search API
-  - Product names → Google Search (for price links)
-- **Data at rest:** Results cached locally for 6 hours only
-- **No credentials required:** Uses OpenClaw's built-in web_search and web_fetch tools
-- **No PII:** No user identifiers, emails, or personal information processed
+- **Search queries:** Product search terms only → Brave Search API (via OpenClaw's built-in `web_search` tool). This is the same as typing a product query into a search engine.
+- **Google Search URLs:** Product names embedded in links → Google (opens search results in browser)
+- **Cache:** Writes to `~/.openclaw/cache/best-products/` for 6 hours. Optional — can be disabled by clearing that folder.
+- **Timezone detection:** Reads system timezone to default to NL. Can be overridden per query (e.g., `/best earbuds de`).
+- **No credentials required:** Uses OpenClaw's built-in `web_search` and `web_fetch` tools only.
+- **No PII:** No user identifiers, emails, or personal information processed.
 
 ## Trust Statement
 
 This skill uses publicly available review data from trusted sources (Wirecutter, RTINGS, Which?, Tweakers, Consumentenbond, etc.) and price data from major retailers (Amazon, Best Buy, MediaMarkt, Coolblue, etc.). No personal data is collected or sent to third parties beyond standard search queries.
-
-By using this skill, only product search terms are sent to the Brave Search API. All product data comes from publicly accessible web pages.
 
 ## Model Invocation Note
 

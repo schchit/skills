@@ -26,12 +26,12 @@ Or manually: Copy `SKILL.md` to your skills folder.
 ## Usage
 
 ```bash
-# US (default)
+# Netherlands (default — Ralph is based in NL)
 /best earbuds
 /best airfryer
 /best laptop
 
-# UK
+# Override per query — UK
 /best earbuds uk
 
 # Germany
@@ -41,9 +41,11 @@ Or manually: Copy `SKILL.md` to your skills folder.
 # France
 /best headphones fr
 
-# Netherlands
-/best oordopjes nl
-/best airfryer nl
+# Italy
+/best headphones it
+
+# Spain
+/best headphones es
 
 # Belgium
 /best headphones be
@@ -59,15 +61,15 @@ Or manually: Copy `SKILL.md` to your skills folder.
 
 | Region | Retailers |
 |--------|-----------|
-| US | Amazon, Best Buy, Walmart |
+| **NL (default)** | Amazon NL, Coolblue, MediaMarkt |
 | UK | Amazon UK, Currys, John Lewis |
 | DE | Amazon DE, MediaMarkt, Saturn, Otto, Coolblue |
 | FR | Amazon FR, Fnac, Darty, Boulanger |
 | IT | Amazon IT, MediaMarkt, Unieuro |
 | ES | Amazon ES, MediaMarkt, El Corte Inglés |
-| NL | Amazon NL, Coolblue, MediaMarkt |
 | BE | Amazon BE, MediaMarkt, Coolblue |
 | PL | Amazon PL, Media Expert, RTV Euro AGD |
+| US | Amazon, Best Buy, Walmart |
 | AT | Amazon AT, MediaMarkt AT |
 | SE | Amazon SE, MediaMarkt SE |
 | DK | Amazon DK |
@@ -120,18 +122,16 @@ All output URLs are Google search links — user clicks to see current prices at
 
 ## Security & Privacy
 
-- **Data leaving the machine:** 
-  - Product search terms → Brave Search API
-  - Product names → Google Search (for price links)
-- **Data at rest:** Results cached locally for 6 hours in `~/.openclaw/cache/best-products/`
-- **Timezone detection:** Reads system timezone for regional default (can be overridden)
+- **Data leaving the machine:** Product search terms → Brave Search API; product names → Google Search links (for price comparison)
+- **Data at rest:** Results cached locally for 6 hours in `~/.openclaw/cache/best-products/` (optional — can be cleared)
+- **Region default:** NL (Netherlands) — override with `/best earbuds de` etc.
 - **No credentials required:** Uses OpenClaw's built-in web_search and web_fetch
 - **No PII:** No user identifiers, emails, or personal information processed
 
 ## Technical Details
 
-- **Cache:** 6 hours in `~/.openclaw/cache/best-products/`
-- **Trigger:** `/best [product] [region]` — e.g., `/best airfryer de`
+- **Cache:** 6 hours in `~/.openclaw/cache/best-products/` (optional)
+- **Default region:** NL (can be overridden: `/best earbuds de`, `/best laptop uk`, etc.)
 - **No credentials required:** Uses OpenClaw's web_search and web_fetch
 
 ## License

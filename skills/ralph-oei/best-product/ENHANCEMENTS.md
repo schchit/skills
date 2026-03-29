@@ -2,6 +2,8 @@
 
 ## Implemented
 
+- v1.0.3 (2026-03-24): Updated sources list (Xataka ES, Benchmark.pl PL, Komputer Świat PL added), improved regional retailer tables, enhanced link verification workflow
+- v1.0.2 (2026-03-23): Fixed language rule (bilingual support for NL/BE), clarified output format (price • retailer), updated Google Search URL per region
 - v1.0.1 (2026-03-09): Added Link Verification rules, fixed markdown link format
 
 ---
@@ -17,9 +19,6 @@
 **Proposed Implementation:**
 
 ```
-Input: /best airfryer nl
-
-Output:
 🏆 TOP PICK
 Philips Airfryer XXL — €149
 [summary]
