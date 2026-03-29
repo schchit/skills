@@ -1,171 +1,153 @@
 ---
 name: gate-dex-trade
-description: "Gate DEX trading comprehensive skill. Supports MCP and OpenAPI dual modes: MCP mode calls through gate-wallet service (requires authentication), OpenAPI mode calls directly through AK/SK. Use when users mention swap, exchange, buy, sell, quote, trade. Automatically select the most suitable calling method based on environment."
+version: "2026.3.24-1"
+updated: "2026-03-24"
+description: "Gate DEX swap EXECUTION skill. For on-chain token exchange transactions that MODIFY blockchain state: swap, buy, sell, exchange, convert tokens, cross-chain bridge. Every operation here results in an on-chain transaction requiring signing. This skill EXECUTES trades — it does not provide read-only data lookups or manage wallet accounts."
 ---
 
 # Gate DEX Trade
 
-> **Trading Comprehensive Skill** — MCP + OpenAPI dual mode support, intelligent routing selects optimal trading method
 
-**Trigger Scenarios**: Use when users mention "swap", "exchange", "buy", "sell", "trade", "quote" and other related operations.
+> **Pure Routing Layer** — Swap EXECUTION only. Every operation produces an on-chain transaction. All specifications in `references/`.
 
----
+## General Rules
 
-## 🎯 Dual Mode Architecture
+⚠️ STOP — You MUST read and strictly follow the shared runtime rules before proceeding.
+Do NOT select or call any tool until all rules are read. These rules have the highest priority.
+→ Read [gate-runtime-rules.md](https://github.com/gate/gate-skills/blob/master/skills/gate-runtime-rules.md)
 
-| Mode | Connection Method | Advantages | Use Cases |
-|------|------------------|-----------|-----------|
-| 🔗 **MCP Mode** | gate-wallet MCP Server | Unified authentication, wallet ecosystem integration | Complete trading process, cross-Skill collaboration |
-| ⚡ **OpenAPI Mode** | AK/SK direct calls | Independent execution, complete lifecycle | Fast trading, full chain control |
+**Trigger Scenarios**: Use when the user wants to **execute a token exchange** that modifies blockchain state:
+- Swap: "swap ETH for USDT", "exchange 100 USDC to DAI", "convert my BNB"
+- Buy/Sell: "buy ETH", "sell my USDT", "purchase SOL"
+- Cross-chain: "bridge ETH from Arbitrum to Base", "cross-chain swap"
+- Swap quote: "how much USDT will I get for 1 ETH" (with intent to trade)
 
----
-
-## 📋 Smart Routing Rules
-
-System automatically selects calling mode based on following priorities:
-
-| Priority | Condition | Selected Mode | Routing Target |
-|----------|-----------|---------------|----------------|
-| **1** | Explicitly mentions "OpenAPI", "AK/SK" | ⚡ OpenAPI | `references/openapi.md` |
-| **2** | Exists `~/.gate-dex-openapi/config.json` | ⚡ OpenAPI | `references/openapi.md` |
-| **3** | From wallet Skills cross-Skill calls | 🔗 MCP | Current SKILL.md main process |
-| **4** | Default scenario | 🔗 MCP | Current SKILL.md main process |
-
-**User Preferences**:
-- Pursue complete ecosystem integration → MCP mode
-- Pursue independent fast execution → OpenAPI mode
 
 ---
 
-## MCP Server Connection Detection
+## MCP Dependencies
 
-### First Session Detection
+### Required MCP Servers
+| MCP Server | Status |
+|------------|--------|
+| Gate-Dex | ✅ Required |
 
-**Before first MCP tool call in session, perform one connection probe to confirm Gate Wallet MCP Server availability. No need to repeat detection for subsequent operations.**
+### MCP Tools Used
 
-```
-CallMcpTool(server="gate-wallet", toolName="chain.config", arguments={chain: "eth"})
-```
+**Query Operations (Read-only)**
 
-| Result | Handling |
-|--------|----------|
-| Success | MCP Server available, subsequent operations directly call business tools, no need to probe again |
-| Failure | Display configuration guidance based on error type (see error handling below) |
+- dex_chain_config
+- dex_tx_quote
 
-### Runtime Error Fallback
+**Execution Operations (Write)**
 
-If business tool calls fail during subsequent operations (returning connection errors, timeouts etc.), handle according to following rules:
+- dex_tx_swap
 
-| Error Type | Keywords | Handling |
-|------------|----------|----------|
-| MCP Server not configured | `server not found`, `unknown server` | Display MCP Server configuration guidance |
-| Remote service unreachable | `connection refused`, `timeout`, `DNS error` | Prompt to check server status and network connection |
-| Authentication failed | `401`, `unauthorized`, `x-api-key` | Prompt to contact administrator for API Key |
+### Authentication
+- API Key Required: Yes (see skill doc/runtime MCP deployment)
+- Permissions: Dex:Read
 
----
+### Installation Check
+- Required: Gate-Dex
+- Install: Run installer skill for your IDE
+  - Cursor: `gate-mcp-cursor-installer`
+  - Codex: `gate-mcp-codex-installer`
+  - Claude: `gate-mcp-claude-installer`
+  - OpenClaw: `gate-mcp-openclaw-installer`
 
-## Authentication Description
+## Project convention — MCP only (this workspace)
 
-All operations in MCP mode **require `mcp_token`**. Must confirm user is logged in before calling any tool.
-
-- If currently no `mcp_token` → Guide to `gate-dex-wallet/references/auth` to complete login then return
-- If `mcp_token` expired (MCP Server returns token expired error) → First try `auth.refresh_token` silent refresh, guide re-login if failed
-
----
-
-## MCP Tool Call Specification (Main Process)
-
-### 1. `tx.quote` — Get Swap Quote
-
-Get Swap quote from input token to output token.
-
-| Field | Description |
-|-------|-------------|
-| **Tool Name** | `tx.quote` |
-| **Parameters** | `{ chain_id_in: string, chain_id_out: string, token_in: string, token_out: string, amount: string, slippage?: number, user_wallet: string, native_in?: boolean, native_out?: boolean, mcp_token: string }` |
-| **Return** | Quote details including exchange rate, slippage, routing path, estimated Gas etc |
-
-### 2. `tx.swap` — Execute Swap
-
-One-shot Swap execution (Quote→Build→Sign→Submit single call).
-
-| Field | Description |
-|-------|-------------|
-| **Tool Name** | `tx.swap` |
-| **Parameters** | Same as `tx.quote` + `account_id` |
-| **Return** | Transaction result |
-
-### 3. `tx.swap_detail` — Query Swap Status
-
-(Other MCP tool specifications...)
+**Do not use OpenAPI** for swap unless user explicitly asks OpenAPI/AK/SK. MCP unavailable → [`references/setup.md`](./references/setup.md) only.
 
 ---
 
-## Sub-module Routing
-
-Route to specific implementation based on mode detection result and user intent:
-
-| Routing Condition | Target | Description |
-|-------------------|---------|-------------|
-| OpenAPI environment + related intent | references/openapi.md | Complete OpenAPI call specification |
-| MCP environment + trading intent | Current SKILL.md main process | MCP tool calls and three-step confirmation process |
+**NOT this skill** (common misroutes):
+- "what is the price of ETH" → `gate-dex-market` (read-only lookup, no trade intent)
+- "check my swap history" → `gate-dex-wallet` (account query)
+- "transfer ETH to 0xABC..." → `gate-dex-wallet` (direct transfer, not swap)
+- "approve contract" (outside swap context) → `gate-dex-wallet` (DApp interaction)
 
 ---
 
-## Operation Process
-
-### Process A: Smart Mode Selection
+## Routing Flow
 
 ```text
-First session detection (if needed)
+User triggers trading intent
   ↓
-Environment detection:
-  1. Check ~/.gate-dex-openapi/config.json
-  2. Check gate-wallet MCP Server
+Step 1: Has user explicitly specified a mode?
+  ├─ Explicitly mentions "OpenAPI" / "AK/SK" / "API Key" → OpenAPI mode
+  ├─ Otherwise → MCP only (Step 2)
+  └─ Not specified → Step 2
   ↓
-Select calling mode based on detection result:
-  → OpenAPI mode: references/openapi.md
-  → MCP mode: Current main process
-```
-
-### Process B: MCP Swap Execution (Main Process)
-
-```text
-Authentication check → Balance verification → Trading pair confirmation 
-  → tx.quote → Quote display → Signature authorization confirmation 
-    → tx.swap → tx.swap_detail
+Step 2: Is this a cross-chain swap?
+  ├─ Cross-chain → Must use MCP mode (OpenAPI doesn't support cross-chain), proceed to Step 3
+  └─ Same-chain / uncertain → Step 3
+  ↓
+Step 3: Gate Wallet MCP Server Discovery & Detection
+  a) Scan configured MCP Server list for Servers providing both `dex_tx_quote` and `dex_tx_swap` tools
+  b) If found → Record server identifier, verify with:
+     CallMcpTool(server="<identifier>", toolName="dex_chain_config", arguments={chain: "ETH"})
+     ├─ Success → MCP mode
+     └─ Failed → Step 4
+  c) No matching Server → Step 4
+  ↓
+Step 4: MCP unavailable → setup guide only ([`references/setup.md`](./references/setup.md)), no OpenAPI fallback
 ```
 
 ---
 
-## Cross-Skill Collaboration
+## Mode Dispatch
 
-| Caller | Scenario | Tool Used |
-|--------|----------|-----------|
-| `gate-dex-wallet` | User views balance then wants to exchange tokens | MCP mode call |
-| `gate-dex-market` | User views market then wants to buy certain token | MCP mode call |
+### MCP Mode
+
+**Read and strictly follow** [`references/mcp.md`](./references/mcp.md), execute according to its complete workflow.
+
+Includes: connection detection, authentication (mcp_token), MCP Resource/tool calls (dex_tx_quote / dex_tx_swap / dex_tx_swap_detail), token address resolution, native_in/native_out rules, three-step confirmation gateway (SOP), quote templates, risk warnings, cross-Skill collaboration, security rules.
+
+### OpenAPI Mode (Progressive Loading)
+
+**Default off in this workspace** — explicit OpenAPI request only.
+
+**Limitation: OpenAPI mode only supports same-chain Swap, does not support cross-chain exchanges.**
+
+Load files progressively — only load what the current step needs:
+
+1. **Always load first**: [`references/openapi/_shared.md`](./references/openapi/_shared.md) — env detection, credentials, API call method (via helper script)
+2. **Then load based on swap stage**:
+
+| Stage | Load File | When |
+|-------|-----------|------|
+| Query (chain/gas) | [`openapi/quote.md`](./references/openapi/quote.md) | User asks about chains or gas |
+| Swap: get quote | [`openapi/quote.md`](./references/openapi/quote.md) + [`openapi/sop.md`](./references/openapi/sop.md) | User initiates swap |
+| Swap: build tx | [`openapi/build.md`](./references/openapi/build.md) | After quote confirmed (SOP Step 2) |
+| Swap: sign tx | [`openapi/sign.md`](./references/openapi/sign.md) | After build confirmed (SOP Step 3) |
+| Swap: submit | [`openapi/submit.md`](./references/openapi/submit.md) | After signing complete |
+| History | [`openapi/submit.md`](./references/openapi/submit.md) | User asks for swap history |
+
+3. **On error**: [`openapi/errors.md`](./references/openapi/errors.md)
+
+> Legacy monolithic file preserved at [`references/openapi.md`](./references/openapi.md) for backward compatibility.
+
+### MCP Server Setup Guide
+
+When MCP detection fails and a setup guide is needed, **read and display** [`references/setup.md`](./references/setup.md). Show only the configuration for the user's current platform when identifiable. Display at most once per session.
 
 ---
 
 ## Supported Chains
 
-| Chain ID | Network Name | MCP Support | OpenAPI Support |
-|----------|--------------|-------------|-----------------|
-| `eth` / `1` | Ethereum | ✅ | ✅ |
-| `bsc` / `56` | BNB Smart Chain | ✅ | ✅ |
-| `polygon` / `137` | Polygon | ✅ | ✅ |
-| `arbitrum` / `42161` | Arbitrum One | ✅ | ✅ |
-| `optimism` / `10` | Optimism | ✅ | ✅ |
-| `avax` / `43114` | Avalanche | ✅ | ✅ |
-| `base` / `8453` | Base | ✅ | ✅ |
-| `sol` / `501` | Solana | ✅ | ✅ |
+Actual supported chains are determined by runtime API/Resource returns:
+- **MCP Mode**: `swap://supported_chains` Resource
+- **OpenAPI Mode**: `trade.swap.chain` interface
+
+For uncommon chains: MCP calls `dex_chain_config`, OpenAPI calls `trade.swap.chain`.
 
 ---
 
 ## Security Rules
 
-1. **Mode selection transparency**: Clearly inform users of current calling mode and reason
-2. **Authentication isolation**: MCP mode uses `mcp_token`, OpenAPI mode uses AK/SK
-3. **Three-step confirmation gating**: MCP mode includes trading pair confirmation → quote display → signature authorization confirmation
-4. **Balance verification**: Mandatory check asset sufficiency before trading
-5. **Risk alerts**: Mandatory warning when price difference > 5%, high slippage MEV risk alerts
+1. **Three-step confirmation gateway**: Trading pair confirmation → quote display → signature authorization — cannot be skipped
+2. **Balance pre-check**: Mandatory verification of asset and Gas token sufficiency before trading
+3. **Risk warnings**: Forced warning for exchange value difference > 5%, high slippage (> 5%) MEV attack warnings
+4. **Authentication & credentials**: Follow §3 of [gate-runtime-rules.md](https://github.com/gate/gate-skills/blob/master/skills/gate-runtime-rules.md); MCP uses `mcp_token`, OpenAPI uses AK/SK — never mix
+5. **No OpenAPI fallback** when MCP fails (this project)
