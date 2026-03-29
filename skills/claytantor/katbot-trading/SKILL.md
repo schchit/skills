@@ -1,6 +1,6 @@
 ---
 name: katbot-trading
-version: 0.2.25
+version: 0.3.1
 description: Live crypto trading on Hyperliquid via Katbot.ai. Includes BMI market analysis, token selection, and AI-powered trade execution.
 # Note: Homepage URL removed to avoid GitHub API rate limit errors during publish
 metadata:
@@ -19,18 +19,25 @@ metadata:
 
 This skill teaches the agent how to use the Katbot.ai API to manage a Hyperliquid trading portfolio.
 
+## Portfolio Types
+
+| Type | Description |
+|------|-------------|
+| `HL_PAPER` | Paper trading on Hyperliquid (no real funds). Formerly called `PAPER`. |
+| `HYPERLIQUID` | Live trading on Hyperliquid (agent key required, builder fee must be approved). |
+
 ## Capabilities
 
-1. **Subscription Monitoring**: Check subscription status, expiry, and feature usage limits at session start.
-2. **Market Analysis**: Check the BTC Momentum Index (BMI) and 24h gainers/losers.
+1. **Market Analysis**: Check the BTC Momentum Index (BMI) and 24h gainers/losers.
     - `btc_momentum.py`: Calculates the BMI (BTC Momentum Index) based on trend, MACD, body, volume, and RSI. Returns a signal (BULLISH, BEARISH, NEUTRAL).
     - `bmi_alert.py`: Runs `btc_momentum.py` and sends a Telegram alert if the market direction has changed. Uses `portfolio_tokens.json` for custom token tracking.
-3. **Token Selection**: Automatically pick the best tokens for the current market direction.
-4. **Recommendations**: Get AI-powered trade setups (Entry, TP, SL, Leverage).
-5. **Execution**: Execute and close trades on Hyperliquid with user confirmation.
-6. **Portfolio Tracking**: Monitor open positions, uPnL, and balances.
-7. **Performance Charts**: Generate cumulative PnL charts (24H/7D/30D) as PNG images for Telegram sharing.
-8. **Chat**: Send free-form messages to the portfolio agent and receive analysis.
+2. **Token Selection**: Automatically pick the best tokens for the current market direction.
+3. **Recommendations**: Get AI-powered trade setups (Entry, TP, SL, Leverage). **Requires a primary agent assigned to the portfolio.**
+4. **Execution**: Execute and close trades on Hyperliquid with user confirmation.
+5. **Portfolio Tracking**: Monitor open positions, uPnL, balances, timeseries, and chain info.
+6. **Agent Management**: Create, configure, and assign AI agents to portfolios.
+7. **Conversation History**: View and clear agent conversation history per portfolio.
+8. **Subscription & Plans**: Check feature usage limits and available plans.
 
 ## Tools
 
@@ -40,12 +47,11 @@ Dependencies are listed in `{baseDir}/requirements.txt`.
 
 - `ensure_env.sh`: **Run before any tool.** Checks if dependencies are installed for the current skill version and re-installs if needed. Safe to call every time — it exits immediately if already up to date.
 - `katbot_onboard.py`: **First-time setup wizard.** Authenticates via SIWE using your Wallet Key, creates/selects a portfolio, and saves credentials locally to the secure identity directory.
-- `katbot_client.py`: Core API client. Handles authentication, token refresh, portfolio management, recommendations, trade execution, chat, and subscription monitoring. Also usable as a CLI script.
+- `katbot_client.py`: Core API client. Handles authentication, token refresh, portfolio management, recommendations, trade execution, and chat. Also usable as a CLI script.
 - `katbot_workflow.py`: End-to-end trading workflow (BMI -> token selection -> recommendation). Imports `katbot_client` and `token_selector` — requires `PYTHONPATH={baseDir}/tools`.
 - `token_selector.py`: Momentum-based token selection via CoinGecko.
 - `btc_momentum.py`: Calculates BTC Momentum Index (BMI).
 - `bmi_alert.py`: Telegram alerting workflow for BMI changes.
-- `portfolio_chart.py`: Fetches portfolio trade history, reconstructs cumulative realized PnL using FIFO coin-level matching, and saves an 800×450px dark-theme PNG chart for Telegram sharing. Supports `--window 24H|7D|30D`, `--output PATH`, and `--json` flags.
 
 ### BMI Analysis Tool Usage
 
@@ -57,34 +63,6 @@ The BMI (BTC Momentum Index) is a proprietary indicator used to determine market
 - If `OPENCLAW_NOTIFY_CHANNEL` or `OPENCLAW_NOTIFY_TARGET` is not set, the `--send` flag and `bmi_alert.py` will print the message to stdout instead of sending it.
 
 The `bmi_alert.py` script reads `~/.openclaw/workspace/portfolio_tokens.json` to include specific token performance in the alert message.
-
-### Portfolio Charts Tool Usage
-
-`portfolio_chart.py` generates a cumulative PnL curve from raw trade history and saves a dark-theme PNG sized for Telegram (800×450px). Portfolio ID is loaded automatically from `katbot_config.json`.
-
-- **Generate 7-day chart (default)**:
-  ```bash
-  PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/portfolio_chart.py
-  ```
-- **Generate 24-hour chart**:
-  ```bash
-  PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/portfolio_chart.py --window 24H
-  ```
-- **Generate 30-day chart**:
-  ```bash
-  PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/portfolio_chart.py --window 30D
-  ```
-- **JSON output (for agent consumption)**:
-  ```bash
-  PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/portfolio_chart.py --window 7D --json
-  ```
-  JSON output includes: `chart_path`, `total_pnl_usd`, `total_pnl_pct`, `trade_fees_usd`, `trade_count`.
-- **Custom output path**:
-  ```bash
-  PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/portfolio_chart.py --output /tmp/chart.png
-  ```
-
-Default output: `~/.openclaw/workspace/portfolio_chart_{window}.png`
 
 > **Note for contributors**: The `scripts/` directory contains only publish tooling (`publish.sh`, `publish.py`, etc.). Do NOT add copies of tool scripts there — all trading logic lives solely in `{baseDir}/tools/`.
 
@@ -158,7 +136,7 @@ This skill transmits the **agent trading private key** (`KATBOT_HL_AGENT_PRIVATE
 
 | Credential | Sent to | On which calls | Why |
 |------------|---------|----------------|-----|
-| `KATBOT_HL_AGENT_PRIVATE_KEY` | `api.katbot.ai` | `request_recommendation`, `execute_recommendation` — in both the `X-Agent-Private-Key` header and the JSON request body | The Katbot API uses it to sign Hyperliquid on-chain transactions on your behalf |
+| `KATBOT_HL_AGENT_PRIVATE_KEY` | `api.katbot.ai` | `request_recommendation`, `execute_recommendation`, `close_position`, `get_portfolio_timeseries` — in the `X-Agent-Private-Key` header and/or the JSON request body | The Katbot API uses it to sign Hyperliquid on-chain transactions on your behalf |
 | `access_token` / `refresh_token` | `api.katbot.ai` | All authenticated API calls — in the `Authorization: Bearer` header | Session authentication |
 | `WALLET_PRIVATE_KEY` | Never sent remotely | Used only locally to sign the SIWE message during onboarding/re-auth | Signature is computed locally; only the resulting signature is sent |
 
@@ -179,105 +157,190 @@ All functions require a `token` argument obtained from `get_token()`.
 
 ### Authentication `[local only]`
 ```python
-token = get_token()          # Returns valid access token (refreshes automatically)
-config = get_config()        # Returns dict from katbot_config.json
+token  = get_token()    # Returns valid access token (refreshes automatically)
+config = get_config()   # Returns dict from katbot_config.json
 ```
 
-### User Account `[local only]`
-```python
-user_data = get_user(token)                       # Full user info: subscription, plan, feature_usage
-status    = check_subscription_status(user_data)  # Evaluates subscription health + returns warnings
-# status = {
-#   "is_active": bool,
-#   "is_expired": bool,
-#   "expires_soon": bool,
-#   "expires_very_soon": bool,
-#   "days_remaining": int | None,
-#   "hours_remaining": int | None,
-#   "plan_tier": str,
-#   "feature_usage": [{"feature_type": str, "usage_count": int,
-#                      "limit_count": int, "limit_pct": float, "near_limit": bool}],
-#   "warning_message": str | None,   # human-readable, None if healthy
-#   "warnings": [str],               # individual warning strings
-# }
-```
-
-### Portfolio `[local only]`
+### Portfolio `[local only unless noted]`
 ```python
 portfolios = list_portfolios(token)
-portfolio  = get_portfolio(token, portfolio_id, window="1d")  # window: "1h","1d","7d","30d"
-recs       = get_recommendations(token, portfolio_id)         # List existing recommendations
 
-# For charting/PnL reconstruction — passes all three query params:
-history = get_portfolio_history(
-    token, portfolio_id,
-    window="7D",       # "24H", "7D", or "30D"
-    granularity="4h",  # "1h", "4h", "1d"
-    limit=100,
+# Create a paper portfolio (HL_PAPER) or live portfolio (HYPERLIQUID)
+portfolio = create_portfolio(
+    token, name,
+    portfolio_type="HL_PAPER",  # "HL_PAPER" or "HYPERLIQUID" (was "PAPER")
+    is_testnet=True,             # Always True for safety; set False for mainnet
+    amount=10000.0,              # Initial USD balance (paper only, ignored for HYPERLIQUID)
+    primary_agent_id=None,       # Optional: assign an agent immediately on creation
+    arbitrum_rpc_url=None,       # Optional: custom Arbitrum RPC URL
 )
-# Returns: trades[], total_pnl_usd, total_pnl_pct, trade_fees_usd, etc.
+
+portfolio = get_portfolio(token, portfolio_id, require_agent=True)
+# Returns full PortfolioInfo: positions, PnL, risk metrics, active_agent, etc.
+# require_agent=False for paper portfolios that don't need the agent key.
+
+updated = update_portfolio(token, portfolio_id,
+    name=None, tokens_selected=["BTC","ETH","SOL"], max_history_messages=None)
+
+result  = delete_portfolio(token, portfolio_id)
+
+# Portfolio metadata
+tokens     = get_portfolio_tokens(token, portfolio_id)      # ["BTC","ETH","SOL",...]
+chain_info = get_portfolio_chain_info(token, portfolio_id)  # {chain_id, is_testnet, network_name}
+
+# Timeseries data [key→remote for HYPERLIQUID]
+ts = get_portfolio_timeseries(
+    token, portfolio_id,
+    granularity="1h",   # "1m","5m","15m","1h","4h","1d","1w","1M"
+    limit=100,
+    window="24H"        # "24H","7D","30D"
+)
+
+# Hyperliquid-specific
+result = validate_hyperliquid(token, agent_private_key=None, is_testnet=True)
+result = approve_builder_fee(token, portfolio_id, action, signature, nonce)
+# Note: approve_builder_fee is called after the frontend signs EIP-712; not a routine agent call.
 ```
 
 ### Recommendations `[key→remote]`
-> The agent private key is sent to `api.katbot.ai` in both the `X-Agent-Private-Key` header and the JSON body of `request_recommendation`. Confirm user consent before calling.
+> The agent private key is sent in the JSON body of `request_recommendation`.
+> A **primary agent must be assigned to the portfolio** before calling this — the API returns HTTP 422 otherwise.
+> Confirm user consent before calling.
 
 ```python
-ticket = request_recommendation(token, portfolio_id, message)  # [key→remote]
-# ticket = {"ticket_id": "..."}
+ticket = request_recommendation(
+    token, portfolio_id, message,
+    agent_id=None  # Optional: select a specific agent; uses portfolio primary if None
+)
+# ticket = {"ticket_id": "...", "status": "PENDING"}
 
-result = poll_recommendation(token, ticket["ticket_id"], max_wait=60)  # [local only]
-# result = {"status": "COMPLETED"|"FAILED", "recommendation": {...}}
+result = poll_recommendation(token, ticket["ticket_id"], max_wait=60)
+# result = {"ticket_id": "...", "status": "COMPLETED"|"FAILED", "done": True, "response": {...}, "error": None}
+
+recs = get_recommendations(token, portfolio_id)   # List saved recommendations
+```
+
+#### Foreign Recommendation Response (openclaw/katpack)
+```python
+# Submit another agent's recommendation for analysis
+ticket = submit_recommendation_response(
+    token, portfolio_id,
+    recommendation={
+        "agent_name": "...", "symbol": "ETH", "action": "BUY",
+        "confidence": 0.8, "entry_price": 3000.0,
+        "take_profit_pct": 5.0, "stop_loss_pct": 2.0,
+        "rationale": "...", "katbot_portfolio_id": portfolio_id
+    },
+    pack_goals=None,   # Optional katpack goals string
+)
+result = poll_recommendation_response(token, ticket["ticket_id"], max_wait=60)
 ```
 
 ### Trade Execution `[key→remote]`
-> The agent private key is sent to `api.katbot.ai` in both the `X-Agent-Private-Key` header and the JSON body of `execute_recommendation`. Always require explicit user confirmation before calling.
+> Always require explicit user confirmation before calling `execute_recommendation` or `close_position`.
 
 ```python
-# [key→remote] — requires user confirmation
+# Execute a saved recommendation [key→remote]
 result = execute_recommendation(
     token, portfolio_id, rec_id,
-    execute_onchain=False,        # True to submit directly to Hyperliquid
-    user_master_address=None      # Optional: override wallet address
+    execute_onchain=False,      # True to submit to Hyperliquid on-chain
+    user_master_address=None    # Optional: override wallet address
 )
 
-# [local only] — agent key sent only in header, not body
+# Close an open position [key→remote]
 result = close_position(
     token, portfolio_id, "ETH",
-    user_master_address=None      # Optional: override wallet address
+    reason="Manual close via agent",   # Optional reason string
+    execute_onchain=False,
+    user_master_address=None
 )
+
+# List trades and events [local only]
+trades = list_trades(token, portfolio_id)
+events = get_position_events(token, portfolio_id, limit=20, event_type=None)
+# event_type: "TP_HIT" | "SL_HIT" | "LIQUIDATED" | "MANUAL_CLOSE"
 ```
 
-### Chat `[local only]`
+### Agent Management `[local only]`
+> A portfolio **must have a primary agent assigned** before `request_recommendation` will succeed.
+
 ```python
-ticket = chat(token, portfolio_id, "What's the market looking like?")
-result = poll_chat(token, ticket["ticket_id"], max_wait=60)
-# result = {"status": "COMPLETED"|"FAILED", "response": "..."}
+# CRUD
+agents = list_agents(token)
+agent  = create_agent(token, name, max_history_messages=10)
+# name must be a slug: lowercase letters/numbers/hyphens; server appends a 6-char suffix
+agent  = get_agent(token, agent_id)
+agent  = update_agent(token, agent_id, name=None, max_history_messages=None, avatar_seed=None)
+result = delete_agent(token, agent_id)   # fails if agent is primary on any portfolio
+
+# Search (cross-user, for invite flow — min 3 chars)
+results = search_agents(token, q="my-agent", portfolio_id=None)
+
+# Portfolio assignments
+assignment = get_portfolio_agent(token, portfolio_id)       # Get active primary agent
+assignments = list_portfolio_agents(token, portfolio_id)    # All agents (primary + observers)
+assignment = assign_agent(token, portfolio_id, agent_id, role="primary")
+result     = unassign_agent(token, portfolio_id, agent_id)
+```
+
+### Agent Observer Invitations `[local only]`
+```python
+invite   = create_agent_invitation(token, portfolio_id, agent_id)
+invites  = list_portfolio_invitations(token, portfolio_id)
+pending  = list_pending_invitations(token)    # Invitations for agents you own
+result   = respond_to_invitation(token, agent_id, invitation_id, action="accepted")
+# action: "accepted" or "rejected"
+observed = list_observer_portfolios(token)   # Portfolios you observe via accepted invite
+```
+
+### Conversation History `[local only]`
+```python
+history = get_conversation(token, portfolio_id)
+# {"exists": True, "message_count": N, "conversation": [...], ...}
+
+result = delete_conversation(token, portfolio_id)  # Clear history, preserve portfolio state
+```
+
+### User & Subscription `[local only]`
+```python
+user  = get_user(token)   # {sub, id, is_whitelisted, subscription, plan, feature_usage}
+plans = get_plans()       # No auth required; list of subscription plans
 ```
 
 ### CLI Mode
 `katbot_client.py` can be run as a standalone script (reads `PORTFOLIO_ID` from `.env` or environment):
 
 ```bash
-PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/katbot_client.py subscription-status
 PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/katbot_client.py portfolio-state
 PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/katbot_client.py recommendations
 PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/katbot_client.py request-recommendation "Analyze and recommend"
 PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/katbot_client.py poll-recommendation <ticket_id>
 PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/katbot_client.py execute <rec_id>
 PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/katbot_client.py close-position ETH
+PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/katbot_client.py list-agents
+PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/katbot_client.py get-agent <agent_id>
+PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/katbot_client.py list-portfolio-agents
+PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/katbot_client.py assign-agent <agent_id> [--role primary|observer]
+PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/katbot_client.py conversation
+PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/katbot_client.py clear-conversation
+PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/katbot_client.py user
+PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/katbot_client.py plans
+PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/katbot_client.py tokens
+PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/katbot_client.py chain-info
+PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/katbot_client.py update-portfolio --tokens BTC,ETH,SOL [--name "New Name"]
 ```
 
 ## Usage Rules
 
-- **ALWAYS** check subscription status at the start of every session: call `get_user(token)` then `check_subscription_status(user_data)`. If `is_expired` is True, inform the user their subscription has expired and direct them to https://katbot.ai to renew. If `expires_very_soon` is True, warn the user urgently and direct them to https://katbot.ai. If `expires_soon` is True, warn the user and direct them to https://katbot.ai to extend or upgrade. Do not suppress these warnings even in automated sessions.
-- **ALWAYS** check `feature_usage` from the subscription status — if any feature's `near_limit` is True, warn the user: "You have used X/Y [feature]. Visit https://katbot.ai to upgrade your plan."
 - **ALWAYS** present the Credential Transmission Notice and obtain user acknowledgement before the first onboarding or trading operation in any session.
 - **ALWAYS** check the BMI before suggesting a new trade.
-- **To share portfolio performance on Telegram**, run `portfolio_chart.py --json` to get the chart PNG path, then send it with `openclaw message send --channel <channel> --target <target> --file <chart_path>`. Always prefer `--json` for agent consumption so the path is machine-readable. Example: `PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/portfolio_chart.py --window 7D --json`
 - **NEVER** execute a trade without explicit user confirmation (e.g., "Confirm execution of LONG AAVE?").
 - **NEVER** log, print, or reveal any private key or token value in the chat.
 - **ALWAYS** report the risk/reward ratio and leverage for any recommendation.
 - **ALWAYS** let `get_token()` handle token refresh automatically — do not manually manage tokens.
+- **ALWAYS** verify a primary agent is assigned to the portfolio before calling `request_recommendation`. If the API returns HTTP 422 ("No primary agent assigned"), guide the user to create an agent and call `assign_agent()` first.
+- **NEVER** use the old portfolio type `"PAPER"` — it has been renamed to `"HL_PAPER"`. Always use `"HL_PAPER"` for paper trading.
+- **NEVER** execute live trades on a mainnet HYPERLIQUID portfolio unless `builder_fee_approved` is `True` in the portfolio info. If it is `False`, inform the user they must complete the builder fee approval step.
 - **NEVER** pre-set `WALLET_PRIVATE_KEY` in the environment. It is an emergency re-auth key only. If the agent detects it already set in the environment outside of an active onboarding/re-auth session, warn the user and suggest unsetting it.
 - **NEVER** create a `katbot_client.env` file containing `WALLET_PRIVATE_KEY` or `KATBOT_HL_AGENT_PRIVATE_KEY`. The `.env` loader will not inject private keys into the process, but placing them in such a file is still a bad practice that stores secrets on disk unnecessarily.
 - **NEVER** suggest exporting any private key to a shell profile or persistent environment file.

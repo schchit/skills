@@ -42,29 +42,14 @@ _TOOLS_DIR = str(pathlib.Path(__file__).parent.resolve())
 # ─── Data Fetch ───────────────────────────────────────────────────────────────
 
 def fetch_candles() -> list[dict]:
-    """Fetch last 24 COMPLETED hourly candles from Kraken for BTC/USD.
-    
-    Important: We exclude the current incomplete hour to ensure consistent BMI values
-    regardless of when the check is run within an hour.
-    """
-    # Get the current time rounded DOWN to the last completed hour
-    now = int(time.time())
-    current_hour_start = (now // 3600) * 3600
-    
-    # Fetch from (LOOKBACK + 2) hours ago to the START of the current hour
-    since = current_hour_start - (LOOKBACK + 2) * 3600
-    
+    """Fetch last 24 hourly candles from Kraken for BTC/USD."""
+    since = int(time.time()) - (LOOKBACK + 2) * 3600
     resp = requests.get(KRAKEN_OHLC_URL, params={"pair": BTC_PAIR, "interval": INTERVAL, "since": since}, timeout=10)
     resp.raise_for_status()
     data = resp.json()
     if data.get("error"):
         raise ValueError(f"Kraken error: {data['error']}")
     raw = list(data["result"].values())[0]
-    
-    # Validate we got enough candles
-    if len(raw) < LOOKBACK:
-        raise ValueError(f"Expected {LOOKBACK} candles, got {len(raw)}")
-    
     candles = [
         {
             "time": int(c[0]),
@@ -76,13 +61,7 @@ def fetch_candles() -> list[dict]:
         }
         for c in raw
     ]
-    result = candles[-LOOKBACK:]  # last 24 completed candles
-    
-    # Debug: log the time range and candle count
-    if os.environ.get("DEBUG_BMI"):
-        print(f"DEBUG: Fetched {len(result)} completed candles from {result[0]['time']} to {result[-1]['time']}", file=sys.stderr)
-    
-    return result
+    return candles[-LOOKBACK:]  # last 24
 
 
 # ─── Indicators ───────────────────────────────────────────────────────────────

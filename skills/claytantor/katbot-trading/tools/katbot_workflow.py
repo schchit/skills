@@ -6,17 +6,12 @@ from token_selector import get_top_tokens
 _TOOLS_DIR = str(pathlib.Path(__file__).parent.resolve())
 
 def get_bmi():
-    """Fetch BMI by running btc_momentum.py --json with the current interpreter.
-    
-    Uses PYTHONDONTWRITEBYTECODE to prevent cached bytecode issues and ensure
-    the latest source code is always executed.
-    """
+    """Fetch BMI by running btc_momentum.py --json with the current interpreter."""
     script_path = os.path.join(_TOOLS_DIR, "btc_momentum.py")
-    env = {**os.environ, "PYTHONPATH": _TOOLS_DIR, "PYTHONDONTWRITEBYTECODE": "1"}
     result = subprocess.run(
         [sys.executable, script_path, "--json"],
         capture_output=True, text=True,
-        env=env,
+        env={**os.environ, "PYTHONPATH": _TOOLS_DIR},
     )
     if result.returncode != 0:
         raise RuntimeError(f"btc_momentum.py failed: {result.stderr.strip()}")
@@ -42,8 +37,8 @@ def main():
         sys.exit(1)
 
     bmi_data = get_bmi()
-    bullish = bmi_data['bmi'] >= 20
-    bearish = bmi_data['bmi'] <= -20
+    bullish = bmi_data['bmi'] >= 15
+    bearish = bmi_data['bmi'] <= -15
 
     if not bullish and not bearish:
         print("Market is neutral. Skipping.")
