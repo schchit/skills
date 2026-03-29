@@ -1,11 +1,17 @@
 {
   "owner": "asiridalugoda",
   "slug": "releaseguard",
-  "displayName": "ReleaseGuard",
+  "displayName": "Releaseguard",
   "latest": {
-    "version": "0.1.2",
-    "publishedAt": 1773212501010,
-    "commit": "https://github.com/openclaw/skills/commit/70ad1789b898dc1f006f3829403995afac37b112"
+    "version": "0.1.5",
+    "publishedAt": 1774412381985,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.2",
+      "publishedAt": 1773212501010,
+      "commit": "https://github.com/openclaw/skills/commit/70ad1789b898dc1f006f3829403995afac37b112"
+    }
+  ]
 }
