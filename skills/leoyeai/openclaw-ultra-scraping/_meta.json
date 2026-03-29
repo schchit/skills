@@ -1,13 +1,18 @@
 {
   "owner": "leoyeai",
   "slug": "openclaw-ultra-scraping",
-  "displayName": "OpenClaw Ultra Scraping",
+  "displayName": "openclaw-ultra-scraping",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1772685880554,
-    "commit": "https://github.com/openclaw/skills/commit/bbc1ddbc7d4e603c9f640ac0e43bb56152acf2d5"
+    "version": "2.0.0",
+    "publishedAt": 1774682006011,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1772685880554,
+      "commit": "https://github.com/openclaw/skills/commit/bbc1ddbc7d4e603c9f640ac0e43bb56152acf2d5"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1772683532523,
