@@ -3,11 +3,16 @@
   "slug": "gws-sheets-read",
   "displayName": "Gws Sheets Read",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1774300506461,
-    "commit": "https://github.com/openclaw/skills/commit/2c36c970be6d5bc693ed750b5af08bf708a488d2"
+    "version": "1.0.11",
+    "publishedAt": 1774551049076,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1774300506461,
+      "commit": "https://github.com/openclaw/skills/commit/2c36c970be6d5bc693ed750b5af08bf708a488d2"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1773393362028,
