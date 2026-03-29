@@ -3,11 +3,16 @@
   "slug": "proxyclaw",
   "displayName": "ProxyClaw",
   "latest": {
-    "version": "2.4.1",
-    "publishedAt": 1773252140152,
-    "commit": "https://github.com/openclaw/skills/commit/2c34546173f69da7e9842249d60798e942f3c074"
+    "version": "2.5.1",
+    "publishedAt": 1774792807943,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.4.1",
+      "publishedAt": 1773252140152,
+      "commit": "https://github.com/openclaw/skills/commit/2c34546173f69da7e9842249d60798e942f3c074"
+    },
     {
       "version": "2.4.0",
       "publishedAt": 1773249305204,

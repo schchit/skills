@@ -29,13 +29,8 @@ source ~/.bashrc
 
 Expected output:
 ```
-=== ProxyClaw Setup ===
 ✅ IPLOOP_API_KEY is set
-Testing proxy connectivity...
 ✅ Proxy connection successful
-ℹ️  node-html-markdown not installed (optional)
-   Install: npm install -g node-html-markdown
-
 ✅ ProxyClaw is ready
 ```
 
