@@ -49,6 +49,41 @@ openclaw config patch --json '{"skills": {"entries": {"dream-lipsync": {"env": {
 ### 1. Get Upload Policy (for local files)
 
 Upload your local files to OSS first (get upload policy, then upload).
+
+```
+POST https://api.newportai.com/api/file/v1/get_policy
+```
+
+**Request Body:**
+```json
+{
+  "scene": "Dream-CN"
+}
+```
+
+**Response:**
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "accessId": "LTAI5t...",
+    "policy": "eyJ...",
+    "signature": "G2...",
+    "dir": "tmp/dream/2026-03-17/xxxxxx/",
+    "host": "https://dreamapi-oss.oss-cn-hongkong.aliyuncs.com",
+    "expire": "1732005888",
+    "callback": "eyJ..."
+  }
+}
+```
+
+### 2. Upload File to OSS
+
+Upload to the `host` URL with form data (policy, OSSAccessKeyId, signature, key, callback, file).
+
+Uploaded file URL: `{host}/{dir}{filename}`
+
 ### 3. LipSync 2.0 API
 ```
 POST https://api.newportai.com/api/async/lipsync/2.0
