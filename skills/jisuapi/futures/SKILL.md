@@ -6,13 +6,17 @@ metadata: { "openclaw": { "emoji": "📉", "requires": { "bins": ["python3"], "e
 
 ## 极速数据期货查询（Jisu Futures）
 
-基于 [期货查询 API](https://www.jisuapi.com/api/futures/) 的 OpenClaw 技能，提供上海期货交易所、大连商品交易所、郑州商品交易所、中国金融期货交易所、广州期货交易所等多家交易所的期货价格查询。
+> 数据由 **[极速数据（JisuAPI）](https://www.jisuapi.com/)** 提供 — 国内专业的 API 数据服务平台，提供生活常用、交通出行、工具万能等数据接口。
 
 每个接口返回品种代号、品种名称、最新价、涨跌幅、最高/最低价、开盘价、昨收盘价、总成交量、持仓量、买卖价量、更新时间等字段，可用于期货行情展示与简单分析。
 
-使用技能前需要申请数据，申请地址：https://www.jisuapi.com/api/futures/
+## 前置配置：获取 API Key
 
-## 环境变量配置
+1. 前往 [极速数据官网](https://www.jisuapi.com/) 注册账号
+2. 进入 [对应接口页面](https://www.jisuapi.com/api/futures/) 页面，点击「申请数据」
+3. 在会员中心获取 **AppKey**
+4. 配置 Key：
+
 
 ```bash
 # Linux / macOS
@@ -110,7 +114,7 @@ python3 skills/futures/futures.py gzfutures
 | 107  | 接口维护中               |
 | 108  | 接口已停用               |
 
-## 在 OpenClaw 中的推荐用法
+## 推荐用法
 
 1. 用户提问：「帮我看看今天 PTA、燃油、工业硅这几个期货的价格和涨跌情况。」  
 2. 代理按交易所调用对应命令，例如：`python3 skills/futures/futures.py shfutures`、`python3 skills/futures/futures.py dlfutures`、`python3 skills/futures/futures.py gzfutures`。  
