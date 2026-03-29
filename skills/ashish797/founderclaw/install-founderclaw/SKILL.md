@@ -2,165 +2,181 @@
 name: install-founderclaw
 description: >
   Install FounderClaw — a complete multi-agent system for OpenClaw.
-  Adds 6 agents (CEO + 5 departments), 29 skills, structured workspace,
-  tool policies, and model configuration. This modifies openclaw.json and
-  restarts the gateway. Requires user permission.
-  Triggered by: "install founderclaw", "setup founderclaw", "get founderclaw",
-  "add founderclaw", "install the engineering team".
+  Adds 6 agents, 29 skills, creates communication channels, configures models.
+  Interactive setup. Requires user input for model selection and channel setup.
+  Triggered by: "install founderclaw", "setup founderclaw", "get founderclaw".
 ---
 
 # Install FounderClaw
 
-This is a SYSTEM install. It adds 6 agents to OpenClaw. Follow every step. Do not skip the config step — it is required.
+This is an INTERACTIVE system install. Guide the user through setup. One step at a time. Don't rush.
 
-## Step 1: Explain
+## Rules
+- Explain each step before doing it
+- Ask before modifying config
+- Batch your messages — don't send 20 rapid-fire updates
+- If something fails, say so clearly
+
+## Step 1: Install files
 
 Tell the user:
 
-> **FounderClaw** adds a 6-agent engineering team to your OpenClaw:
-> - 🎯 **CEO** — orchestrates everything, talks to you
-> - 📐 **Strategy** — product thinking, design, architecture
-> - 🚀 **Shipper** — code review, deployment, releases
-> - 🔍 **Tester** — QA, browser testing, bug detection
-> - 🛡️ **Safety** — security audits, guardrails
-> - 📊 **Observer** — debugging, retrospectives, second opinions
->
-> 29 skills. Structured workspace. Each agent has its own personality and tools.
->
-> **This will modify your OpenClaw config** and restart the gateway. Your existing agents are NOT affected.
-
-Wait for "yes" or "proceed".
-
-## Step 2: Clone and install files
+> Setting up FounderClaw. This takes about 30 seconds.
 
 Run:
 
 ```bash
-git clone --single-branch --depth 1 https://github.com/ashish797/FounderClaw.git ~/.agents/skills/founderclaw 2>&1 && cd ~/.agents/skills/founderclaw && INSTALLED=0 && for skill_dir in */; do [ ! -f "$skill_dir/SKILL.md" ] && continue; skill_name=$(basename "$skill_dir"); target=~/.agents/skills/"$skill_name"; [ -e "$target" ] && continue; ln -sf "$(pwd)/$skill_dir" "$target"; INSTALLED=$((INSTALLED + 1)); done && if [ ! -d ~/.openclaw/founderclaw ]; then cp -r workspace-template ~/.openclaw/founderclaw; echo "WORKSPACE_CREATED"; else echo "WORKSPACE_EXISTS"; fi && echo "FILES_DONE:$INSTALLED"
+# Clone if not exists, update if exists
+if [ -d ~/.agents/skills/founderclaw ]; then
+    cd ~/.agents/skills/founderclaw && git stash 2>/dev/null && git fetch origin && git reset --hard origin/main
+else
+    git clone --single-branch --depth 1 https://github.com/ashish797/FounderClaw.git ~/.agents/skills/founderclaw
+fi
+
+# Symlink skills
+cd ~/.agents/skills/founderclaw
+INSTALLED=0
+for skill_dir in */; do
+    [ ! -f "$skill_dir/SKILL.md" ] && continue
+    skill_name=$(basename "$skill_dir")
+    target=~/.agents/skills/"$skill_name"
+    [ -e "$target" ] && continue
+    ln -sf "$(pwd)/$skill_dir" "$target"
+    INSTALLED=$((INSTALLED + 1))
+done
+
+# Create workspace
+if [ ! -d ~/.openclaw/founderclaw ]; then
+    cp -r workspace-template ~/.openclaw/founderclaw
+fi
+
+echo "FILES_DONE:$INSTALLED"
 ```
 
-Report: "✅ X skills installed. ✅ Workspace created."
+Report: "✅ X skills installed. ✅ Workspace ready."
 
-## Step 3: Apply multi-agent config (REQUIRED — DO NOT SKIP)
+## Step 2: Ask for model selection
 
 Tell the user:
 
-> Now applying the multi-agent config. This adds 6 agents to your openclaw.json and restarts the gateway.
-
-Apply this config patch using `gateway config.patch`:
-
-```json
-{
-  "agents": {
-    "list": [
-      {
-        "id": "founderclaw-main",
-        "name": "FounderClaw CEO",
-        "workspace": "~/.openclaw/founderclaw/ceo"
-      },
-      {
-        "id": "fc-strategy",
-        "name": "Strategy",
-        "workspace": "~/.openclaw/founderclaw/strategy-dept",
-        "skills": ["office-hours", "plan-ceo-review", "plan-eng-review", "plan-design-review", "design-consultation", "design-review", "design-shotgun", "autoplan"]
-      },
-      {
-        "id": "fc-shipper",
-        "name": "Shipper",
-        "workspace": "~/.openclaw/founderclaw/shipping-dept",
-        "skills": ["review", "ship", "land-and-deploy", "canary", "benchmark", "document-release"]
-      },
-      {
-        "id": "fc-tester",
-        "name": "Tester",
-        "workspace": "~/.openclaw/founderclaw/testing-dept",
-        "skills": ["qa", "qa-only", "browse", "setup-browser-cookies", "connect-chrome"]
-      },
-      {
-        "id": "fc-safety",
-        "name": "Safety",
-        "workspace": "~/.openclaw/founderclaw/security-dept",
-        "skills": ["cso", "careful", "freeze", "guard", "unfreeze"]
-      },
-      {
-        "id": "fc-observer",
-        "name": "Observer",
-        "workspace": "~/.openclaw/founderclaw/history-dept",
-        "skills": ["investigate", "retro", "codex"]
-      }
-    ]
-  }
-}
-```
-
-If the config.patch fails (e.g., tool not available, permission denied), tell the user:
-
-> ⚠️ Config could not be applied automatically. You need to add the agents manually:
+> FounderClaw uses 3 model tiers:
+> - **Fast** — quick tasks (code review, safety checks)
+> - **Best** — deep thinking (strategy, architecture)
+> - **Vision** — image analysis
 >
-> Open `~/.openclaw/openclaw.json` and add these 6 entries to `agents.list`.
-> See the config template at `~/.agents/skills/founderclaw/install-founderclaw/agents-config.json`
+> Which models do you want? Pick one for each, or say "use defaults" to use your current primary model for all.
 
-Also write the config to a file for manual application:
+List available models from `agents.defaults.models` in config.
+
+Wait for user's choices. Record them.
+
+## Step 3: Ask for interaction setup
+
+Tell the user:
+
+> How do you want to interact with FounderClaw?
+>
+> **Option A: One chat** — Talk to the CEO. CEO handles everything internally. Simplest.
+>
+> **Option B: Multiple topics** — Separate topic for each department (CEO, Strategy, Shipper, Tester, Safety, Observer). More visibility.
+>
+> **Option C: Both** — CEO is main entry point, plus specialist topics available.
+
+Wait for user's choice.
+
+## Step 4: Create channels (platform-specific)
+
+Based on what platform the user is on (check current session — it shows the channel):
+
+### Telegram
+
+If user chose "one chat" or "both":
+- Create topic "🎯 FounderClaw CEO" in the group they're talking from
+- Bind `founderclaw-main` to that topic
+
+If user chose "multiple topics" or "both":
+- Create topics for each department
+- Bind each agent to its topic
 
 ```bash
-cat > ~/.agents/skills/founderclaw/install-founderclaw/agents-config.json << 'EOF'
-[
-  {"id":"founderclaw-main","name":"FounderClaw CEO","workspace":"~/.openclaw/founderclaw/ceo"},
-  {"id":"fc-strategy","name":"Strategy","workspace":"~/.openclaw/founderclaw/strategy-dept","skills":["office-hours","plan-ceo-review","plan-eng-review","plan-design-review","design-consultation","design-review","design-shotgun","autoplan"]},
-  {"id":"fc-shipper","name":"Shipper","workspace":"~/.openclaw/founderclaw/shipping-dept","skills":["review","ship","land-and-deploy","canary","benchmark","document-release"]},
-  {"id":"fc-tester","name":"Tester","workspace":"~/.openclaw/founderclaw/testing-dept","skills":["qa","qa-only","browse","setup-browser-cookies","connect-chrome"]},
-  {"id":"fc-safety","name":"Safety","workspace":"~/.openclaw/founderclaw/security-dept","skills":["cso","careful","freeze","guard","unfreeze"]},
-  {"id":"fc-observer","name":"Observer","workspace":"~/.openclaw/founderclaw/history-dept","skills":["investigate","retro","codex"]}
-]
-EOF
+# Topic IDs will be returned by the message tool
+# Record them for config binding
 ```
 
-## Step 4: VERIFY agents exist in config (MANDATORY CHECK)
+### WhatsApp
 
-After Step 3, verify the agents were actually added. Run `agents_list` to check:
+WhatsApp can't create groups or topics via API.
+- Bind `founderclaw-main` to the current WhatsApp account
+- CEO handles everything in one chat
+- Departments work internally, invisible to user
 
+### Discord
+
+If user has a Discord server:
+- Create channels for each department
+- Bind agents to channels
+
+### Slack
+
+Similar to Discord — create channels, bind agents.
+
+## Step 5: Apply config
+
+Build the config patch with:
+- 6 agents (with correct models from Step 2)
+- Bindings (from Step 4)
+
+Apply via `gateway config.patch`.
+
+## Step 6: Verify
+
+```bash
+# Check agents exist
+python3 -c "
+import json, re, os
+with open(os.path.expanduser('~/.openclaw/openclaw.json'), 'r') as f:
+    c = re.sub(r',\s*([}\]])', r'\1', re.sub(r'//.*$', '', f.read(), flags=2))
+config = json.loads(c)
+ids = [a['id'] for a in config.get('agents',{}).get('list',[])]
+fc = ['founderclaw-main','fc-strategy','fc-shipper','fc-tester','fc-safety','fc-observer']
+found = sum(1 for a in fc if a in ids)
+print(f'Agents: {found}/6')
+"
+
+# Check workspace
+[ -d ~/.openclaw/founderclaw/ceo ] && echo "Workspace: OK" || echo "Workspace: MISSING"
 ```
-Use the agents_list tool to check if founderclaw-main, fc-strategy, fc-shipper, fc-tester, fc-safety, fc-observer exist.
-```
 
-If any of the 6 agents are MISSING from the config:
-- The config.patch did NOT work
-- You MUST apply it again or provide manual instructions
-- Do NOT report "installed" until all 6 agents are confirmed
+## Step 7: Report
 
-If agents_list tool is not available:
-- Read the config file: check if the agents exist
-- If not, provide the manual instructions from Step 3
+Tell the user:
 
-**This check is mandatory. Do not skip it.**
-
-## Step 5: Report ONLY after verification
-
-Tell the user ONLY after confirming all 6 agents exist:
-
-> **FounderClaw installed!**
+> **FounderClaw is live!**
 >
-> ✅ 29 skills in ~/.agents/skills/
-> ✅ 6 agents configured (CEO + 5 departments)
-> ✅ Workspace at ~/.openclaw/founderclaw/
+> ✅ 29 skills installed
+> ✅ 6 agents configured
+> ✅ Workspace created
+> ✅ Channels set up
 >
-> **Gateway will restart to apply the new agents.**
-
-If agents were NOT added:
-
-> ⚠️ Skills installed but agents were NOT configured.
-> You need to add 6 agents to your openclaw.json manually.
-> Run: `cat ~/.agents/skills/founderclaw/install-founderclaw/agents-config.json`
-> Copy the contents into your `agents.list` array in openclaw.json.
+> **Go to [topic/group/channel name] to start.**
+>
+> Quick start:
+> - "I have an idea" — start office-hours
+> - "review my code" — code review
+> - "test this site" — QA testing
+>
+> Gateway will restart now.
 
 ## Uninstall
 
-When user says "uninstall founderclaw":
-
 ```bash
-for link in ~/.agents/skills/*; do [ -L "$link" ] || continue; target=$(readlink "$link"); echo "$target" | grep -q "founderclaw" && rm "$link"; done
+# Remove skills
+for link in ~/.agents/skills/*; do
+    [ -L "$link" ] || continue
+    target=$(readlink "$link")
+    echo "$target" | grep -q "founderclaw" && rm "$link"
+done
 rm -rf ~/.agents/skills/founderclaw
-echo "Skills removed. Workspace kept at ~/.openclaw/founderclaw/"
 ```
 
-Then remove the 6 agents from config via `gateway config.patch` (remove the founderclaw entries from agents.list).
+Then remove agents from config via `gateway config.patch`.

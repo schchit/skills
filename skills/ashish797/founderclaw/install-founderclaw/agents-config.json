@@ -6,3 +6,12 @@
   {"id":"fc-safety","name":"Safety","workspace":"~/.openclaw/founderclaw/security-dept","skills":["cso","careful","freeze","guard","unfreeze"]},
   {"id":"fc-observer","name":"Observer","workspace":"~/.openclaw/founderclaw/history-dept","skills":["investigate","retro","codex"]}
 ]
+
+# After adding agents, create these Telegram topics:
+# - Topic for founderclaw-main (CEO)
+# - Topic for fc-strategy  
+# - Topic for fc-shipper
+# - Topic for fc-tester
+# - Topic for fc-safety
+# - Topic for fc-observer
+# Then update the topic IDs in the config.
