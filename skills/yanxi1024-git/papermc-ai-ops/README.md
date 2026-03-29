@@ -160,7 +160,24 @@ Checks include:
 - Disk space
 - Memory usage
 
-## Version Management
+## 🏷️ Version Management
+
+### Version Strategy
+- **ClawHub**: Latest stable version only (currently v1.1.0)
+- **GitHub**: Full version history with tags and releases
+- **Recommendation**: Use ClawHub for latest, GitHub for historical versions
+
+### Version History
+
+#### ClawHub (Latest Only)
+- **v1.1.0** (Current): Version management strategy, weekly scoring system, automated assessment tools
+- Download: https://clawhub.com/skills/papermc-ai-ops
+
+#### GitHub (Full History)
+- **v1.1.0**: Latest features with version management strategy
+- **v1.0.0**: Initial release with basic server management
+- All versions: https://github.com/yanxi1024-git/PaperMC-Ai-Agent/releases
+- Tags: `v1.0.0`, `v1.1.0`
 
 ### Balanced Upgrade Strategy
 Adopt a balanced approach with 1-version lag for stability.

@@ -1,5 +1,6 @@
 ---
 name: papermc-ai-ops
+version: 2.0.1
 description: Manage PaperMC Minecraft servers through safe, controlled interfaces. Use for server lifecycle management, backups, plugin operations, and health monitoring with backup-first safety policy.
 license: MIT
 ---
