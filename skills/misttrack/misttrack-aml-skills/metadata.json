@@ -1,8 +1,10 @@
 {
-  "version": "1.0.0",
+  "version": "1.5.0",
   "organization": "SlowMist",
-  "date": "February 2026",
-  "abstract": "MistTrack OpenAPI 技能包 - 基于 MistTrack 反洗钱追踪系统的 AI Agent 工具，支持加密货币地址风险评分（AML/KYT/KYA）、地址标签查询、地址概览、地址画像、交易调查、行为分析和交易对手分析。支持 BTC、ETH、TRX、BNB、SOL 等20+条链上的200+代币。",
+  "homepage": "https://github.com/slowmist/misttrack-skills",
+  "source": "https://github.com/slowmist/misttrack-skills",
+  "date": "March 2026",
+  "abstract": "MistTrack OpenAPI Toolkit—an AI-powered agent toolkit driven by the MistTrack Anti-Money Laundering (AML) tracking system. It supports cryptocurrency address risk scoring (AML/KYT/KYA), address tag lookup, address overviews, address profiling, transaction investigation, behavioral analysis, and counterparty analysis. The toolkit also includes multi-signature (multisig) address identification and permission analysis—detecting Gnosis Safe wallets on ETH/EVM chains, TRON native permission multisig, and Bitcoin P2SH/P2WSH/P2TR address formats. The toolkit supports over 200 tokens across more than 20 blockchains, including BTC, ETH, TRX, BNB, and SOL.",
   "supported_apis": [
     "v1/status",
     "v1/address_labels",
@@ -20,5 +22,28 @@
     "https://docs.misttrack.io/",
     "https://docs.misttrack.io/openapi/overview",
     "https://dashboard.misttrack.io"
-  ]
+  ],
+  "environment_variables": [
+    {
+      "name": "MISTTRACK_API_KEY",
+      "required": false,
+      "sensitive": true,
+      "description": "MistTrack API key for authenticating all API requests (recommended). All scripts prioritize this variable. If absent, x402 pay-per-use via X402_PRIVATE_KEY is the only alternative. Obtain at https://dashboard.misttrack.io/apikeys"
+    },
+    {
+      "name": "X402_PRIVATE_KEY",
+      "required": false,
+      "sensitive": true,
+      "description": "Hex-encoded EVM/Solana private key for x402 pay-per-use payments. SECURITY WARNING: This key can sign and broadcast on-chain USDC transactions. A hard cap of $1.00 USDC per call is enforced in code, but supplying any private key to an agent grants it the ability to transfer value autonomously. Prefer passing the key via --private-key at invocation time rather than storing it permanently as an environment variable. Do not set this variable unless you understand and accept the risk."
+    }
+  ],
+  "python_dependencies": [
+    "requests>=2.28",
+    "eth-account>=0.8",
+    "eth-abi>=4.0",
+    "eth-utils>=2.0",
+    "solders>=0.18",
+    "base58>=2.1"
+  ],
+  "security_notes": "The core AML scripts (risk_check, address_investigation, transfer_security_check, multisig_analysis, batch_risk_check) are read-only and make only GET/POST requests to openapi.misttrack.io. The x402 payment script (pay.py) can sign and broadcast on-chain USDC transactions when X402_PRIVATE_KEY is set. The --auto flag bypasses per-call confirmation. To limit autonomous payment risk: (1) do not set X402_PRIVATE_KEY as a long-lived environment variable, (2) disable autonomous model calls for the payment sub-skill, (3) rely on MISTTRACK_API_KEY for normal usage."
 }

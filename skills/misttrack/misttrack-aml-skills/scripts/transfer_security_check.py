@@ -1,48 +1,61 @@
 #!/usr/bin/env python3
 """
-transfer_security_check.py — 转账地址 AML 安全检测（MistTrack 集成）
+transfer_security_check.py — AML security check for transfer recipient addresses (MistTrack integration)
 
-将 MistTrack 风险评分集成到以下技能的转账流程中：
-  - bitget-wallet-skill   (转账 / Swap 前检测收款方地址)
-  - Trust Wallet wallet-core  (构建含 toAddress 签名交易前检测)
-  - Trust Wallet trust-web3-provider (处理 eth_sendTransaction / ton_sendTransaction 前检测)
+Integrates MistTrack risk scoring into the transfer flow for the following skills:
+  - bitget-wallet-skill        (check recipient address before transfer / swap)
+  - Trust Wallet wallet-core  (check before building signed tx with toAddress)
+  - Trust Wallet trust-web3-provider (check before handling eth_sendTransaction / ton_sendTransaction)
+  - Binance spot              (check recipient address before withdrawal)
+  - Binance margin-trading    (check recipient address before withdrawal)
+  - Binance derivatives-trading-usds-futures (check recipient address before withdrawal)
+  - OKX Agent Skills          (OnchainOS: check recipient address before withdrawal)
 
-用法：
+Usage:
   python3 scripts/transfer_security_check.py --address <address> --chain <chain_code>
   python3 scripts/transfer_security_check.py --address <address> --chain eth --json
 
-支持的 chain 代码：
-  # bitget-wallet-skill 格式：
+Supported chain codes (case-insensitive):
+  # bitget-wallet-skill format:
   eth, sol, bnb, trx, base, arbitrum, optimism, matic, ton, suinet, avax, zksync, ltc, doge, bch
-  # Trust Wallet wallet-core CoinType 格式（别名）：
+  # Trust Wallet wallet-core CoinType format (aliases):
   bitcoin, btc, solana, tron, polygon, smartchain, bsc, tonchain
+  # Binance Skills network format (uppercase also accepted):
+  BSC, ARBI, OPT, POLYGON, AVAX, BASE, ZKSYNC, ETH, BTC, SOL, TRX, BNB, LTC, DOGE, BCH, TON
+  # OKX API v5 chain format (coin prefix stripped automatically, e.g. USDT-ERC20, BTC-Bitcoin):
+  erc20, trc20, bitcoin, solana, arbitrum one, optimism, avalanche c-chain, zksync era, bep20
 
-不支持的链（MistTrack 未收录，返回 exit 3）：
+Unsupported chains (not in MistTrack, returns exit 3):
   aptos, cosmos, atom
 
-Exit codes：
-  0  ALLOW  — 低风险，可以继续转账
-  1  WARN   — 中/高风险，需用户二次确认
-  2  BLOCK  — 严重风险，建议拒绝转账
-  3  ERROR  — API 不可用、参数错误或链不支持
+Exit codes:
+  0  ALLOW  — low risk, transfer may proceed
+  1  WARN   — moderate/high risk, requires explicit user confirmation
+  2  BLOCK  — severe risk, transfer should be rejected
+  3  ERROR  — API unavailable, invalid parameters, or unsupported chain
 
-环境变量：
-  MISTTRACK_API_KEY  — MistTrack API 密鑰（优先于 --api-key 参数）
+Environment variables:
+  MISTTRACK_API_KEY  — MistTrack API key (takes priority over --api-key)
 
-示例：
+Examples:
   export MISTTRACK_API_KEY=your_key
-  # Bitget Wallet 流程
+  # Bitget Wallet flow
   python3 scripts/transfer_security_check.py --address 0x... --chain eth
-  # Trust Wallet wallet-core 流程
+  # Trust Wallet wallet-core flow
   python3 scripts/transfer_security_check.py --address 1A... --chain bitcoin
   python3 scripts/transfer_security_check.py --address 0x... --chain polygon --json
+  # Binance Skills flow (network parameter, case-insensitive)
+  python3 scripts/transfer_security_check.py --address 0x... --chain BSC
+  python3 scripts/transfer_security_check.py --address 0x... --chain ARBI
+  python3 scripts/transfer_security_check.py --address 0x... --chain OPT --json
+  # OKX Agent Skills flow (full USDT-ERC20 format supported)
+  python3 scripts/transfer_security_check.py --address 0x... --chain USDT-ERC20 --json
 """
 
 import argparse
 import json
 import os
 import sys
-import time
 from typing import Optional
 
 import requests
@@ -53,7 +66,8 @@ BASE_URL = "https://openapi.misttrack.io"
 REQUEST_TIMEOUT = 30  # seconds
 
 # Map chain identifiers → MistTrack coin parameter
-# Covers both bitget-wallet-skill chain codes and Trust Wallet wallet-core CoinType names
+# Covers bitget-wallet-skill, Trust Wallet wallet-core, and Binance Skills network names.
+# All keys are lowercase; --chain input is lowercased automatically in parse_args.
 CHAIN_TO_COIN: dict[str, str] = {
     # ── bitget-wallet-skill chain codes ─────────────────────────────────────
     "eth": "ETH",
@@ -78,15 +92,33 @@ CHAIN_TO_COIN: dict[str, str] = {
     "tron": "TRX",              # CoinType.tron (alias for trx)
     "polygon": "POL-Polygon",   # CoinType.polygon (alias for matic)
     "smartchain": "BNB",        # CoinType.smartChain
-    "bsc": "BNB",               # common BSC abbreviation
+    "bsc": "BNB",               # BNB Chain / BEP20 — Binance Skills & common abbreviation
     "tonchain": "TON",          # alias distinguishing from bitget's 'ton'
+    # ── Binance Skills network identifiers ───────────────────────────────────
+    # (Binance withdrawal API `network` parameter; lowercased by parse_args)
+    # Chains already covered above via lowercase aliases (eth, sol, bnb, trx,
+    # btc, ltc, doge, bch, ton, avax, base, zksync, polygon/matic, bsc) need
+    # no duplicate entry — only Binance-specific shorthand names are added here.
+    "arbi": "ETH-Arbitrum",     # Binance network code for Arbitrum One
+    "opt": "ETH-Optimism",      # Binance network code for OP Mainnet
+    "op": "ETH-Optimism",       # short alias used by some Binance contexts
+    "azec": "ETH-zkSync",       # Binance alternate network code for zkSync Era
+    # ── OKX API v5 chain identifiers ─────────────────────────────────────────
+    # (OKX withdrawal API `chain` parameter; lowercased and stripped of "CCY-" prefix)
+    "erc20": "ETH",             # ETH
+    "trc20": "TRX",             # TRX
+    "bep20": "BNB",             # BSC
+    "arbitrum one": "ETH-Arbitrum",
+    "avalanche c-chain": "AVAX-Avalanche",
+    "zksync era": "ETH-zkSync",
+    "bitcoin cash": "BCH",
 }
 
 # Chains that are not yet supported by MistTrack — exit cleanly with an explanation
 UNSUPPORTED_CHAINS: dict[str, str] = {
-    "aptos": "MistTrack 暂不支持 Aptos (APT) 链地址查询。请人工核实收款方身份。",
-    "cosmos": "MistTrack 暂不支持 Cosmos Hub (ATOM) 原生代币地址查询。请人工核实收款方身份。",
-    "atom": "MistTrack 暂不支持 Cosmos Hub (ATOM) 原生代币地址查询。请人工核实收款方身份。",
+    "aptos": "MistTrack does not support Aptos (APT) chain address lookups. Please verify the recipient identity manually.",
+    "cosmos": "MistTrack does not support Cosmos Hub (ATOM) native token address lookups. Please verify the recipient identity manually.",
+    "atom": "MistTrack does not support Cosmos Hub (ATOM) native token address lookups. Please verify the recipient identity manually.",
 }
 
 # Risk level → decision mapping
@@ -218,34 +250,34 @@ def print_result(
 
     decision_icon = {"ALLOW": "✅", "WARN": "⚠️ ", "BLOCK": "❌"}.get(decision, "❓")
 
-    print(f"\n{c['bold']}收款地址安全检测报告{c['reset']}")
+    print(f"\n{c['bold']}Recipient Address Security Check Report{c['reset']}")
     print("─" * 50)
-    print(f"地址：      {address}")
-    print(f"链 / 代币：  {chain} ({coin})")
+    print(f"Address:       {address}")
+    print(f"Chain / Token: {chain} ({coin})")
 
     labels_str = ", ".join(label_list) if label_list else "—"
-    print(f"地址标签：  {labels_str} [{label_type or '未知'}]")
+    print(f"Labels:        {labels_str} [{label_type or 'unknown'}]")
     print(
-        f"风险评分：  {rc}{score} ({risk_level}){c['reset']}"
+        f"Risk score:    {rc}{score} ({risk_level}){c['reset']}"
     )
     if detail_list:
-        print(f"风险描述：  {', '.join(detail_list)}")
+        print(f"Risk details:  {', '.join(detail_list)}")
     if risk_report_url:
-        print(f"详细报告：  {risk_report_url}")
+        print(f"Full report:   {risk_report_url}")
     print("─" * 50)
-    print(f"决策：      {decision_icon} {decision}")
+    print(f"Decision:      {decision_icon} {decision}")
 
     if decision == "ALLOW":
-        print(f"{c['green']}该地址风险等级低，可以继续转账。{c['reset']}")
+        print(f"{c['green']}This address has a low risk level. Transfer may proceed.{c['reset']}")
     elif decision == "WARN":
         print(
-            f"{c['yellow']}该地址存在 {risk_level} 风险，请确认收款方身份后再继续。\n"
-            f"如需继续请明确回复确认。{c['reset']}"
+            f"{c['yellow']}This address has {risk_level} risk. Please confirm the recipient's identity before continuing.\n"
+            f"Explicitly confirm to proceed.{c['reset']}"
         )
     elif decision == "BLOCK":
         print(
-            f"{c['red']}该地址存在严重风险 (Severe)，强烈建议取消本次转账。\n"
-            f"请勿向此地址发送任何资产。{c['reset']}"
+            f"{c['red']}This address has Severe risk. It is strongly recommended to cancel this transfer.\n"
+            f"Do not send any assets to this address.{c['reset']}"
         )
     print()
 
@@ -254,8 +286,8 @@ def print_error(message: str, json_output: bool) -> None:
     if json_output:
         print(json.dumps({"decision": "ERROR", "error": message}, ensure_ascii=False, indent=2))
     else:
-        print(f"\n⚠️  地址安全检测失败\n错误原因：{message}", file=sys.stderr)
-        print("无法验证收款地址风险，请由用户决定是否继续转账。\n", file=sys.stderr)
+        print(f"\n⚠️  Address security check failed\nReason: {message}", file=sys.stderr)
+        print("Unable to verify recipient address risk. Let the user decide whether to proceed.\n", file=sys.stderr)
 
 
 # ─── Main ────────────────────────────────────────────────────────────────────
@@ -265,38 +297,62 @@ def parse_args() -> argparse.Namespace:
     all_supported = sorted(set(list(CHAIN_TO_COIN.keys()) + list(UNSUPPORTED_CHAINS.keys())))
     parser = argparse.ArgumentParser(
         description=(
-            "检测转账目标地址的 AML 风险\n"
-            "支持 Bitget Wallet Skill 和 Trust Wallet Skills (wallet-core / trust-web3-provider) 集成"
+            "Check AML risk for a transfer recipient address\n"
+            "Supports Bitget Wallet Skill, Trust Wallet Skills (wallet-core / trust-web3-provider)\n"
+            "and Binance and OKX Agent Skills integrations\n"
+            "--chain is case-insensitive (BSC == bsc), and handles OKX USDT-ERC20 format automatically"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
         "--address", "-a",
         required=True,
-        help="收款地址（转账目标地址）",
+        help="Recipient address (transfer target)",
     )
     parser.add_argument(
         "--chain", "-c",
         required=True,
-        choices=all_supported,
+        # choices validation happens after lowercasing in post-parse step
         help=(
-            f"链标识符（bitget-wallet-skill 或 Trust Wallet CoinType 格式）\n"
-            f"支持（有 MistTrack 数据）：{', '.join(sorted(CHAIN_TO_COIN.keys()))}\n"
-            f"不支持（exit 3）：{', '.join(sorted(UNSUPPORTED_CHAINS.keys()))}"
+            f"Chain identifier (case-insensitive)\n"
+            f"Supported (MistTrack data available): {', '.join(sorted(CHAIN_TO_COIN.keys()))}\n"
+            f"Unsupported (exit 3): {', '.join(sorted(UNSUPPORTED_CHAINS.keys()))}\n"
+            f"Binance format examples: BSC, ARBI, OPT\n"
+            f"OKX format examples: USDT-ERC20, BTC-Bitcoin (coin prefix stripped automatically)"
         ),
     )
     parser.add_argument(
         "--api-key",
         default=None,
-        help="MistTrack API Key（低于环境变量 MISTTRACK_API_KEY 优先级）",
+        help="MistTrack API Key (lower priority than MISTTRACK_API_KEY env var)",
     )
     parser.add_argument(
         "--json",
         action="store_true",
         dest="json_output",
-        help="以 JSON 格式输出结果（适合 Agent 机器解析）",
+        help="Output result in JSON format (suitable for machine parsing by agents)",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    # Normalize chain identifier to lowercase
+    args.chain = args.chain.strip().lower()
+
+    # OKX specific handling: strip "CCY-" prefix (e.g. "usdt-erc20" -> "erc20", "btc-bitcoin" -> "bitcoin")
+    if "-" in args.chain:
+        # Check if the right part maps to a valid chain, if so strip the left part
+        right_part = args.chain.split("-", 1)[1].strip()
+        if right_part in CHAIN_TO_COIN or right_part in UNSUPPORTED_CHAINS:
+            args.chain = right_part
+
+    # Validate after normalization (replaces argparse choices= validation)
+    if args.chain not in CHAIN_TO_COIN and args.chain not in UNSUPPORTED_CHAINS:
+        valid = sorted(set(list(CHAIN_TO_COIN.keys()) + list(UNSUPPORTED_CHAINS.keys())))
+        parser.error(
+            f"argument --chain/-c: invalid choice: '{args.chain}'\n"
+            f"Valid choices (case-insensitive): {', '.join(valid)}"
+        )
+
+    return args
 
 
 def main() -> None:
@@ -311,8 +367,8 @@ def main() -> None:
     api_key: Optional[str] = os.environ.get("MISTTRACK_API_KEY") or args.api_key
     if not api_key:
         print_error(
-            "未设置 MISTTRACK_API_KEY 环境变量，也未提供 --api-key 参数。\n"
-            "请先执行：export MISTTRACK_API_KEY=your_api_key",
+            "MISTTRACK_API_KEY env var is not set and --api-key was not provided.\n"
+            "Run: export MISTTRACK_API_KEY=your_api_key",
             args.json_output,
         )
         sys.exit(EXIT_ERROR)
@@ -327,8 +383,8 @@ def main() -> None:
         risk_resp = get_risk_score(coin, address, api_key)
 
         if not risk_resp.get("success"):
-            msg = risk_resp.get("msg", "未知错误")
-            print_error(f"MistTrack API 返回失败：{msg}", args.json_output)
+            msg = risk_resp.get("msg", "unknown error")
+            print_error(f"MistTrack API returned failure: {msg}", args.json_output)
             sys.exit(EXIT_ERROR)
 
         data = risk_resp.get("data", {})
@@ -353,19 +409,19 @@ def main() -> None:
     except requests.exceptions.HTTPError as e:
         status = e.response.status_code if e.response is not None else "?"
         if status == 402:
-            print_error("MistTrack 订阅已过期，请前往 https://dashboard.misttrack.io 续订。", args.json_output)
+            print_error("MistTrack subscription has expired. Please renew at https://dashboard.misttrack.io", args.json_output)
         elif status == 429:
-            print_error("已超过 MistTrack API 速率限制，请稍后重试。", args.json_output)
+            print_error("MistTrack API rate limit exceeded. Please retry later.", args.json_output)
         else:
-            print_error(f"HTTP 请求失败（状态码 {status}）：{e}", args.json_output)
+            print_error(f"HTTP request failed (status {status}): {e}", args.json_output)
         sys.exit(EXIT_ERROR)
 
     except requests.exceptions.Timeout:
-        print_error("MistTrack API 请求超时（30s），请检查网络连接后重试。", args.json_output)
+        print_error("MistTrack API request timed out (30s). Please check your network connection and retry.", args.json_output)
         sys.exit(EXIT_ERROR)
 
     except requests.exceptions.RequestException as e:
-        print_error(f"网络请求错误：{e}", args.json_output)
+        print_error(f"Network request error: {e}", args.json_output)
         sys.exit(EXIT_ERROR)
 
     # 4. Make decision
