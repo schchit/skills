@@ -89,6 +89,13 @@ async function main() {
         throw new Error("Passphrases do not match");
     }
 
+    const { referralCode } = await prompt<{ referralCode: string }>({
+        type: "input",
+        name: "referralCode",
+        message: "Enter a referral code (leave empty to skip)",
+        initial: ""
+    });
+
     const encryptedPrivateKey = await encrypt(
         wallet.privateKey,
         passphrase
@@ -96,17 +103,19 @@ async function main() {
 
     await fs.mkdir(STATE_DIR, { recursive: true });
 
+    const configData: Record<string, any> = {
+        address: wallet.address,
+        encryptedPrivateKey,
+        createdAt: new Date().toISOString()
+    };
+
+    if (referralCode.trim()) {
+        configData.referralCode = referralCode.trim();
+    }
+
     await fs.writeFile(
         CONFIG_PATH,
-        JSON.stringify(
-            {
-                address: wallet.address,
-                encryptedPrivateKey,
-                createdAt: new Date().toISOString()
-            },
-            null,
-            2
-        ),
+        JSON.stringify(configData, null, 2),
         { mode: 0o600 }
     );
 

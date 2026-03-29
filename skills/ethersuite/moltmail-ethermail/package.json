@@ -10,7 +10,9 @@
     "mark-read": "ts-node scripts/markAsRead.ts",
     "send-email": "ts-node scripts/sendEmail.ts",
     "reply-email": "ts-node scripts/replyToEmail.ts",
-    "list-aliases": "ts-node scripts/listAliases.ts"
+    "list-aliases": "ts-node scripts/listAliases.ts",
+    "get-referral-code": "ts-node scripts/getReferralCode.ts",
+    "get-earned-coins": "ts-node scripts/getEarnedCoins.ts"
   },
   "dependencies": {
     "axios": "^1.13.4",

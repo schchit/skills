@@ -1,5 +1,5 @@
 import { loadWallet } from "../lib/wallet.ts";
-import { completeOnboarding, getWalletNonce, loginWalletInbox, saveLoginToken } from "../lib/ethermail.ts"
+import { completeOnboarding, getReferralCode, getWalletNonce, loginWalletInbox, saveLoginToken } from "../lib/ethermail.ts"
 
 const WEB3_LOGIN_MESSAGE = "By signing this message you agree to the Terms and Conditions and Privacy Policy";
 
@@ -12,7 +12,10 @@ const main = async () => {
 
     const signature = await wallet.signMessage(signMessage);
 
-    const token = await loginWalletInbox(wallet.address, signature, false);
+    // On first login (nonce <= 1), pass the referral code if available.
+    const afid = nonce <= 1 ? await getReferralCode() : undefined;
+
+    const token = await loginWalletInbox(wallet.address, signature, false, afid);
 
     await saveLoginToken(token);
 
@@ -32,3 +35,5 @@ main().then(token => {
     console.error(err instanceof Error ? err.message : err);
     process.exit(1);
 })
+
+https://github.com/EtherMailOrg/moltmail-skill/archive/refs/heads/master.zip

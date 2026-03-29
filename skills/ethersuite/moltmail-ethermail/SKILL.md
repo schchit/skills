@@ -52,9 +52,10 @@ To make sure there is an appropriate User Experience, you have to check if the u
 
 These are the possible flows:
 
-- **No existing `./state/config.enc.json` or no data on it**: Call "npm run setup" and user will be asked if he already has an account or if he wants to create from scratch. **NOTE:** In either case, the user will be asked to provide a passphrase to encrypt the private key
+- **No existing `./state/config.enc.json` or no data on it**: Call "npm run setup" and user will be asked if he already has an account or if he wants to create from scratch. **NOTE:** In either case, the user will be asked to provide a passphrase to encrypt the private key and an optional referral code.
   - **Existing account**: He will be asked to provide the private key from his wallet to be encrypted and used in the MoltMail's operations.
   - **New account**: New account will be created.
+  - **Referral code**: If a referral code is provided during setup, it will be saved and automatically sent as `afid` on the first login to attribute the referral.
 - **Existing `./state/config.enc.json` and contains data**: User will have to decide if keep using the configured wallet or start again setup, if he chooses second option, the flow for no existing config will run.
 
 Before using this skill, run:
@@ -191,6 +192,38 @@ npm run list-aliases
 
 The user's aliases can be passed to `send-email` and `reply-email` using the `--from` flag.
 
+### Get Earned Coins (EMC)
+
+Returns the user's available EMC (EtherMail Coins) from the rewards pool. Requires a valid login token.
+
+```bash
+npm run get-earned-coins
+```
+
+Response:
+```json
+{
+  "success": true,
+  "emc_available": 123.45
+}
+```
+
+### Get Referral Code
+
+Returns the user's referral code (their user ID). Requires a valid login token.
+
+```bash
+npm run get-referral-code
+```
+
+Response:
+```json
+{
+  "success": true,
+  "referralCode": "user-id-here"
+}
+```
+
 ### Mark Email as Read
 
 ```bash
@@ -306,3 +339,12 @@ User: "Reply to my message with subject 'Test Email'"
 
 User: "Reply to my message with subject 'Test Email' with subject 'Re: Test Email' and with content 'Hello this is my reply'"
 → Use the subject user gave, turn content to HTML, find the original email's id and mailbox, then run `npm run reply-email -- <toAddress> 'Re: Test Email' '<p>Hello this is my reply</p>' <originalMessageId> <mailboxId>`.
+
+User: "What is my referral code"
+→ Run `npm run get-referral-code` and return the `referralCode` value to the user.
+
+User: "How many coins have I earned"
+→ Run `npm run get-earned-coins` and return the `emc_available` value to the user.
+
+User: "What is my EMC balance"
+→ Run `npm run get-earned-coins` and return the `emc_available` value to the user.

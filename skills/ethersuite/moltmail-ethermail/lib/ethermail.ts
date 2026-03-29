@@ -39,7 +39,7 @@ export const getWalletNonce = async (walletAddress: string) => {
     return response.data.nonce;
 }
 
-export const loginWalletInbox = async (walletAddress: string, signature: string, isMPC: boolean) => {
+export const loginWalletInbox = async (walletAddress: string, signature: string, isMPC: boolean, afid?: string) => {
     if (!ethers.isAddress(walletAddress)) {
         throw new Error(`Wallet ${walletAddress} is not a valid EVM address`);
     }
@@ -47,17 +47,23 @@ export const loginWalletInbox = async (walletAddress: string, signature: string,
     const web3Address = getEmailFromWallet(walletAddress);
     const headers = await getRequestHeaders();
 
+    const body: Record<string, any> = {
+        web3Address,
+        signature,
+        isMPC,
+        platformData: {
+          ai_agent: true,
+          platform: "openclaw"
+        }
+    };
+
+    if (afid) {
+        body.afid = afid;
+    }
+
     const response = await axios.post(
         `${ENDPOINT_URL}/authenticate`,
-        {
-            web3Address,
-            signature,
-            isMPC,
-            platformData: {
-              ai_agent: true,
-              platform: "openclaw"
-            }
-        },
+        body,
         {
             headers,
         }
@@ -160,6 +166,16 @@ export const getConfiguredAddress = async (): Promise<string> => {
     const config = JSON.parse(raw);
     if (!config.address) throw new Error("No address in config. Run `npm run setup` first.");
     return config.address;
+};
+
+export const getReferralCode = async (): Promise<string | undefined> => {
+    try {
+        const raw = await fs.readFile(CONFIG_PATH, "utf8");
+        const config = JSON.parse(raw);
+        return config.referralCode || undefined;
+    } catch {
+        return undefined;
+    }
 };
 
 export type EmailAddress = { name: string; address: string };
@@ -267,6 +283,15 @@ export const replyToEmail = async (userId: string, payload: ReplyEmailPayload) =
         { headers }
     );
     return response.data;
+};
+
+export const getEarnedCoins = async () => {
+    const headers = await getRequestHeaders();
+    const response = await axios.get(
+        `${ENDPOINT_URL}/users/rewards-pool`,
+        { headers }
+    );
+    return response.data?.current_pool?.emc_available ?? 0;
 };
 
 export const listAddreses = async () => {
