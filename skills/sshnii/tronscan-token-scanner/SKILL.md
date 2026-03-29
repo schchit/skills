@@ -171,19 +171,74 @@ metadata:
 - **Use when**: User asks for "TRX transfer history", "TRX in/out", or "TRX transaction records".
 - **Input**: `address` (required); optional `direction`, `startTimestamp`, `endTimestamp`, `start`, `limit`. Note: start+limit ≤ 10000.
 
-## Token Rating (level)
+## Token Risk Fields
 
-TronScan returns `level` as a string 0–4. Mapping:
+TronScan token APIs return several risk-related fields. **No single field is conclusive — always combine multiple signals before drawing a safety conclusion.**
 
-| Level | Rating | Description |
-|-------|--------|-------------|
-| 0 | Unknown | Cannot be determined |
-| 1 | Neutral | Neutral |
-| 2 | OK | Passes basic security checks |
-| 3 | Suspicious | Suspicious |
-| 4 | Unsafe | Unsafe |
+### tokenLevel
 
-When presenting to users, convert the numeric value to the rating label above.
+API field name: `tokenLevel` (string `"0"`–`"4"`).
+
+| Value | Rating | Meaning |
+|-------|--------|---------|
+| `"0"` | Unknown | Cannot be determined |
+| `"1"` | Neutral | Neutral |
+| `"2"` | OK | Passes basic security checks |
+| `"3"` | Suspicious | Suspicious |
+| `"4"` | Unsafe | Unsafe |
+
+Always convert to the rating label before presenting to users. Never show the raw numeric string (e.g. show `"OK"`, not `"2"`).
+
+`tokenLevel` is an **auxiliary signal only**. A token rated `"2"` (OK) may still be a counterfeit — always cross-verify with the fields below.
+
+### tokenCanShow
+
+Boolean. Indicates whether TronScan considers this token suitable for display. `false` means TronScan has flagged the token as unsuitable for general display (e.g. spam, extreme risk). **`tokenCanShow` is independent of `tokenLevel`** — do not infer one from the other.
+
+### blueTag
+
+String. The name of the recognized project this token officially belongs to (e.g. `"Tether"`, `"TRON Foundation"`). An empty string means no project association. A non-empty `blueTag` is a strong positive trust signal.
+
+### publicTag
+
+String. A public category label assigned to the token by TronScan (e.g. `"Stablecoin"`, `"DeFi"`). An empty string means no public tag. A non-empty value indicates the token is a known, categorized asset.
+
+### vip
+
+Boolean. Indicates whether the token or its project has VIP/premium status on TronScan. Treat as a secondary positive trust signal when `true`.
+
+### red_tag
+
+Returned by the `/api/security/account/data` endpoint. String enum:
+
+| Value | Meaning |
+|-------|---------|
+| `"Suspicious"` | The address or token has been flagged as suspicious / potentially fraudulent |
+| `""` (empty) | No fraud warning |
+
+If `red_tag` is `"Suspicious"`, treat it as the strongest negative signal and warn the user immediately.
+
+## Recommended Risk Judgment Order
+
+When assessing whether a token is safe or official, apply signals in this priority order:
+
+1. **red_tag** — Highest priority. If `"Suspicious"`, the address/token has been flagged for fraud or scam — warn the user immediately.
+2. **vip** — VIP/premium project indicator.
+4. **blueTag / publicTag** — Whether the token is affiliated with a known project or public category.
+5. **tokenLevel** — Auxiliary. Use for additional context, not as primary evidence.
+6. **Holder concentration** — Use `getTokenPositionDistribution`; a top-heavy distribution is a red flag.
+
+**Rule**: Never declare a token "safe" or "official" based on a single field.
+
+### Example: Counterfeit Token Scenario
+
+> User: "Is this USDT contract safe?"
+
+A malicious actor may deploy a token named "Tether USD" with symbol "USDT" that passes `tokenLevel = "2"` (OK). Correct check:
+1. `red_tag` — Not flagged (new token, not yet reported)
+2. `blueTag` — Empty string (no project affiliation)
+3. `publicTag` — Empty string
+4. **Conclusion**: Despite `tokenLevel = "2"`, this token is suspicious. The real USDT has `blueTag: "Tether"`. Advise the user to verify the contract address matches the known USDT address (`TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`).
 
 ## Workflow: Query Token Info
 
@@ -191,12 +246,12 @@ When presenting to users, convert the numeric value to the rating label above.
 
 1. **Resolve text to address** — If user provides name/symbol (e.g. "USDT", "BTT"), use **tronscan-search** `search` with `term` and `type: "token"` to get contract address (`token_id` in result). If user already provides contract address, skip this step.
 2. **tronscan-token-scanner** — Call `getTrc20TokenDetail` (or `getTrc10TokenDetail`) with the contract address / asset ID from step 1.
-3. **Convert level** — Map raw `level` (0–4) to rating text before presenting:
-   - 0 → Unknown | 1 → Neutral | 2 → OK | 3 → Suspicious | 4 → Unsafe
+3. **Convert tokenLevel** — Map raw `tokenLevel` (0–4) to rating text before presenting:
+   - `"0"` → Unknown | `"1"` → Neutral | `"2"` → OK | `"3"` → Suspicious | `"4"` → Unsafe
 4. **Optional** — `getTrc20TokenHolders` / `getTokenPositionDistribution` for holder list; `getTokenPrice` for USD conversion if values are in TRX.
 5. **Present to user** — Return name, symbol, supply, holders, price, market cap (prefer USD), and **rating** (converted text, not raw level).
 
-**Key**: Never show raw `level` (e.g. "2") to users; always convert to rating label (e.g. "OK").
+**Key**: Never show raw `tokenLevel` (e.g. `"2"`) to users; always convert to rating label (e.g. `"OK"`). Also check `tokenCanShow`, `blueTag`, and `red_tag` before drawing safety conclusions — see **Token Risk Fields** section.
 
 ## Workflow: Query TRX Info
 
