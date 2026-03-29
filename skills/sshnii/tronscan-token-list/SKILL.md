@@ -76,3 +76,4 @@ metadata:
 
 - For "quality projects", combine sort (volume, mcap, holders) with hot search and optional token detail for due diligence.
 - List tools support pagination; use limit/skip or page/size as per TronScan MCP API.
+- Token list items may include risk fields such as `tokenCanShow` and `tokenLevel`. If a token in the list has `tokenCanShow: false` or `tokenLevel` of `"3"` (Suspicious) / `"4"` (Unsafe), flag it to the user as potentially risky before recommending further analysis. See **tronscan-token-scanner** for full field semantics.
