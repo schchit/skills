@@ -3,11 +3,16 @@
   "slug": "timeplus-sql-guide",
   "displayName": "timeplus-sql-guide",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773354997321,
-    "commit": "https://github.com/openclaw/skills/commit/d780e5754741be001fb15d7e23c515fd2e3d33fe"
+    "version": "1.0.4",
+    "publishedAt": 1774631963810,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773354997321,
+      "commit": "https://github.com/openclaw/skills/commit/d780e5754741be001fb15d7e23c515fd2e3d33fe"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1772640364568,
