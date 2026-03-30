@@ -3,43 +3,34 @@
  * bgremove.js — Background Removal helper (zero neta-skills dependency)
  *
  * Commands:
- *   node bgremove.js remove <picture_uuid>              → {status, url, task_uuid}
- *   node bgremove.js gen-remove <prompt> [options]      → {status, url, task_uuid, source_uuid}
+ *   node bgremove.js remove <picture_uuid> --token YOUR_TOKEN
+ *   node bgremove.js gen-remove <prompt> [options] --token YOUR_TOKEN
  *
  * Options for gen-remove:
  *   --char <name>    Character name
  *   --pic  <uuid>    Character picture UUID
  *   --size portrait|landscape|square|tall  (default: portrait)
  *   --style <name>   Style element (repeatable)
- *
- * Token resolved from: NETA_TOKEN env → ~/.openclaw/workspace/.env → clawhouse .env
+ *   --token <tok>    Neta API token (or: --token "$NETA_TOKEN")
  */
-
-import { readFileSync } from 'node:fs';
-import { homedir }      from 'node:os';
-import { resolve }      from 'node:path';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
 const BASE = 'https://api.talesofai.cn';
 
-function getToken() {
-  if (process.env.NETA_TOKEN) return process.env.NETA_TOKEN;
-  const envFiles = [
-    resolve(homedir(), '.openclaw/workspace/.env'),
-    resolve(homedir(), 'developer/clawhouse/.env'),
-  ];
-  for (const p of envFiles) {
-    try {
-      const m = readFileSync(p, 'utf8').match(/NETA_TOKEN=(.+)/);
-      if (m) return m[1].trim();
-    } catch { /* try next */ }
-  }
-  throw new Error('API token not found. Add it to ~/.openclaw/workspace/.env');
+// Parse --token early (before HEADERS are built)
+const _argv = process.argv.slice(2);
+const _tidx  = _argv.indexOf('--token');
+const _token = _tidx >= 0 ? _argv[_tidx + 1] : null;
+
+if (!_token) {
+  console.error('\n✗ Token required. Pass via: --token YOUR_TOKEN');
+  console.error('  Get yours at: https://www.neta.art/open/');
+  process.exit(1);
 }
 
 const HEADERS = {
-  'x-token': getToken(),
+  'x-token': _token,
   'x-platform': 'nieta-app/web',
   'content-type': 'application/json',
 };
