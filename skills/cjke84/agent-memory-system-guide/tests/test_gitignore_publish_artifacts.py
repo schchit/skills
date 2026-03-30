@@ -8,8 +8,11 @@ def test_gitignore_covers_skillup_artifacts():
     for token in [
         '.skillup-artifacts/',
         '.skillup-check.json',
+        '.skillup-*-current.json',
         '.skillup-dryrun.json',
         '.skillup-publish.json',
+        '.skillup-*-sync.json',
+        '.skillup.local.toml',
         '.DS_Store',
     ]:
         assert token in gitignore_text

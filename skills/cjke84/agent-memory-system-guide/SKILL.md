@@ -1,11 +1,11 @@
 ---
-name: memory-system
-description: Use when setting up or improving an agent memory workflow for OpenClaw, Codex, or Obsidian with MEMORY.md, daily notes, session recovery, and optional OpenViking support.
+name: Agent Memory System Guide
+description: An agent memory workflow guide for OpenClaw and Codex with MEMORY.md, daily notes, SESSION-STATE, working-buffer, Obsidian archiving, and optional OpenViking support.
 ---
 
 # Agent 记忆系统搭建指南 Skill
 
-> 🧠 从零搭建 Agent 长期记忆系统。基于 OpenClaw 实战，覆盖 MEMORY.md 架构、每日笔记、SESSION-STATE、working-buffer、Obsidian 原生笔记与可选 OpenViking 增强全流程。
+> 🧠 从零搭建 Agent 长期记忆系统。基于 OpenClaw 实战，覆盖本地优先的 `MEMORY.md`、每日笔记、`SESSION-STATE.md`、`working-buffer.md`、Obsidian 原生笔记与可选召回后端全流程。
 
 ## 触发词
 
@@ -157,22 +157,41 @@ memory_search(query="相关关键词")
 
 **就这么简单。后续优化可以慢慢加。**
 
+## 实战工作流示例
+
+### 首次引导
+
+首次引导工作区就当是开箱即用：复制 `templates/SESSION-STATE.md`、`templates/working-buffer.md` 和 `templates/memory-capture.md`，再跑一遍 `python3 scripts/memory_capture.py bootstrap --workspace /path/to/workspace`（`bootstrap` 可以省略，默认行为一致），此时 `SESSION-STATE.md`、`working-buffer.md` 和 `memory-capture.md` 都已经齐活了。`MEMORY.md` 仍然建议手动建立和维护，因为它属于长期记忆主文件，不应该被脚本悄悄代写。
+
+### 任务结束记忆捕获
+
+在任务进行中写 `working-buffer.md` 的 `临时决策`/`新坑`/`待蒸馏`，任务结束前 30 秒用 `templates/memory-capture.md` 的 `候选决策`、`候选踩坑`、`候选长期记忆` 把最重要的内容整理出来，再决定哪些内容最终写入 `MEMORY.md`。这个环节让临时笔记和长期记忆的边界清晰且不会掉链子。
+
+### 每日笔记蒸馏
+
+每日笔记蒸馏指的是定期从 `memory/` 下最新的 Markdown 文件里抽取事实和决策转换到 `MEMORY.md`，同时保留原笔记供深度回溯。把这个行为设定为每日或每周结束时的步骤，能确保 `MEMORY.md` 只包含真正长期有用的内容。
+
+### 维护报告命令
+
+`report command` 用来检查工作区当前状态，**永远不会**写入记忆文件。运行 `python3 scripts/memory_capture.py report --workspace /path/to/workspace`，它会输出四节：**Supported files**（`MEMORY.md`、`SESSION-STATE.md`、`working-buffer.md`、`memory-capture.md`）、**Directories**（递归扫描 `memory/` 和 `attachments/`，在 memory/ 里只统计形如 `YYYY-MM-DD.md` 的 daily notes，在 attachments/ 里数所有文件）、**Latest daily note**（选取 `memory/` 下字典序最新的匹配 daily note 路径）、**Warnings**（比如某个文件缺失或者权限异常）。像 `memory/index.md` 这样的参考页不会被当成 latest daily note。报告命令只在工作区目录不存在或无法读取时退出非 0；其它情况下即便有警告也返回 0。supported files、directories、latest daily note 以及 warnings 是报告里每条节的标题，方便快速对照命令输出。
+
 ---
 
 ## 为什么需要记忆系统
 
 Agent 每次会话醒来都是空白的。没有记忆文件，你就等于每次失忆重启。记忆系统是 Agent 的“大脑持久化”方案。它不让你变聪明，但让你不犯重复的错误。
 
-## 核心架构（三层模型）
+这个 skill 的核心定位是本地优先的文件工作流和恢复约定，不是托管式 memory platform。外部检索或语义召回能力只能作为可选后端接在后面，不能替代本地恢复层。
+
+## 核心架构（本地优先分层）
 
 ```text
 workspace/
+├── SESSION-STATE.md
+├── working-buffer.md
 ├── MEMORY.md
-├── SOUL.md
-├── USER.md
-├── IDENTITY.md
-├── AGENTS.md
-├── TOOLS.md
+├── memory-capture.md
+├── attachments/
 ├── templates/
 │   ├── SESSION-STATE.md
 │   ├── working-buffer.md
@@ -183,7 +202,35 @@ workspace/
     └── ...
 ```
 
-### 第一层：核心记忆（`MEMORY.md`）
+### 第一层：恢复层（`SESSION-STATE.md`）
+
+**保存当前任务恢复所需的最小真相。**
+
+**该记什么：**
+- 当前任务和最近已完成项
+- 卡点、风险、下一步
+- 中断后恢复所需的上下文
+
+**不该记什么：**
+- 另一套项目管理 schema
+- 大段长期背景资料
+- 需要反复整理的毛坯草稿
+
+### 第二层：毛坯层（`working-buffer.md`）
+
+**临时决策、草稿和待蒸馏内容先落这里。**
+
+**该记什么：**
+- 临时判断
+- 新坑
+- 待蒸馏条目
+- 未完成但还没整理成稳定表达的内容
+
+**不该记什么：**
+- 第二份并行 buffer
+- 已经蒸馏好的长期事实
+
+### 第三层：长期记忆层（`MEMORY.md`）
 
 **只保留精炼后的长期信息**，不是流水账。
 
@@ -191,8 +238,8 @@ workspace/
 - 重大决策和原因
 - 踩过的坑和修复方式
 - 用户偏好和习惯
-- 项目状态和进度
-- 重要的人和关系
+- 稳定的命名约定、协作方式和项目画像
+- 需要跨会话保留的关键关系或背景
 
 **不该记什么：**
 - 每次对话摘要
@@ -201,7 +248,7 @@ workspace/
 
 **维护节奏：** 每隔几天回顾 daily notes，把值得保留的蒸馏到 `MEMORY.md`，删除过时内容。
 
-### 第二层：每日笔记（`memory/YYYY-MM-DD.md`）
+### 第四层：每日笔记层（`memory/YYYY-MM-DD.md`）
 
 **原始记录，不加工。** 每天发生了什么、做了什么决策、学了什么，直接写。
 
@@ -214,7 +261,7 @@ workspace/
 
 ## 决策
 - 记忆双写选 Obsidian 而非 symlink
-- embedding 用本地模型，增强层再接外部能力
+- embedding 用本地模型，可选召回后端再接外部能力
 
 ## 踩坑
 - InStreet 发帖字段名写错
@@ -224,9 +271,9 @@ workspace/
 - [ ] 明天继续补回顾
 ```
 
-### 第三层：归档与备份
+### 第五层：归档与可选召回层
 
-定期把旧笔记归档，保持核心记忆干净。推荐双写到 Obsidian 作为备份。
+定期把旧笔记归档，保持核心记忆干净。Obsidian 负责深度归档；`memory_search`、OpenViking 或未来其它服务负责可选召回，不替代本地恢复层。
 
 ## Obsidian 原生约定（frontmatter / Dataview / wikilink / backlinks / embeds / attachments）
 
@@ -259,11 +306,12 @@ SORT updated desc
 - 引用证据：用 block quote，或用 block embeds `![[note#^block-id]]` 复用证据段
 - attachments 建议放在 vault 内可管理的位置，例如 `attachments/`
 
-### OpenViking
+### 可选召回后端
 
 - OpenViking 只作为增强层使用，不是硬依赖
-- 它适合在记忆量变大后补强语义召回和摘要
-- 默认优先保证本地文件流程可运行，再按需接入
+- `memory_search` 是默认优先的轻量召回入口
+- OpenViking 或其他外部服务适合在记忆量变大后补强语义召回和摘要
+- 默认优先保证本地文件流程可运行，再按需接入可选后端
 
 ## 启动与结束顺序
 
@@ -278,9 +326,10 @@ SORT updated desc
 - `SESSION-STATE.md` 不扩展为详细版任务模板；兼容外部格式时，只做字段合并，不新增 schema
 - `working-buffer.md` 是唯一的短期毛坯区，负责临时决策、新坑、待蒸馏和未完成项
 - 如果其他 skill 也定义了 working buffer / WAL，直接复用 `working-buffer.md`
-- `MEMORY.md` 保存会影响后续协作方式的稳定事实，适合启动时快速参考
+- `MEMORY.md` 保存会影响后续协作方式的稳定事实，优先写稳定画像、约定、决策和 recurring pitfalls，适合启动时快速参考
 - `memory/` 保存 daily notes 和深度归档，按需进入，不要求每次启动都全量阅读
-- Obsidian / OpenViking 只做增强或归档层，不替代本地恢复层
+- 如果一个 workspace 同时服务多个项目，蒸馏进 `MEMORY.md` 时建议附带日期、repo 或项目标签，保持作用域清晰
+- Obsidian / OpenViking / `memory_search` 只做增强、归档或可选召回层，不替代本地恢复层
 
 ## 记忆维护策略
 
@@ -299,7 +348,7 @@ SORT updated desc
 - 保留短期会话真相：`SESSION-STATE.md`、`working-buffer.md`、最近 1-3 天 daily notes
 - 保留长期稳定事实：`MEMORY.md`
 - 需要长期查阅的完整材料：归档到 Obsidian
-- 检索优先级：`SESSION-STATE.md` → recent daily notes → `MEMORY.md` / `memory_search` → Obsidian → 网络搜索
+- 检索优先级：`SESSION-STATE.md` → recent daily notes → `MEMORY.md` / `memory_search` → Obsidian / 可选召回后端 → 网络搜索
 - 目标：`MEMORY.md` 保持精炼，超过约 200 行就蒸馏
 
 ### 蒸馏与归档
@@ -315,6 +364,28 @@ SORT updated desc
 - Dataview：查询和统计记忆内容
 - Templater：自动创建每日笔记模板
 - 其他插件按需启用，不要让 skill 依赖插件生态
+
+### Obsidian 配置
+
+- 建议把 `MEMORY.md`、`SESSION-STATE.md`、`working-buffer.md`、`memory-capture.md`、`memory/`、`attachments/` 放在同一个 vault 里
+- `attachments/` 作为统一附件目录，方便 embeds、迁移备份和跨设备同步
+- Dataview 只负责查询，不负责改写记忆内容
+- Templater 只负责建模板，不负责自动蒸馏长期记忆
+
+### 定时维护
+
+- 可以用 `crontab` 定时跑 `python3 scripts/memory_capture.py report --workspace /path/to/workspace --output /path/to/workspace-report.md`
+- 也可以用 `crontab` 定时跑导出备份命令
+- 自动化优先做检查、报告、备份
+- 不要自动写入 `MEMORY.md`
+
+### 同步取舍
+
+- `Obsidian Sync` 更省心，适合把 Obsidian 当主界面的用户
+- `iCloud` 之类网盘更轻便，但要注意冲突副本
+- `git` 更适合文本版本化，不适合单独承担附件备份
+- `Syncthing` 更适合本地控制和点对点同步
+- 不管选哪种同步方式，都保留导出备份 / 导入恢复作为兜底方案
 
 ## 任务结束 30 秒记录流程
 
@@ -370,6 +441,14 @@ python3 scripts/memory_capture.py import --workspace /path/to/new-workspace --in
 
 导入恢复默认采用保守策略：先做导入前备份，再覆盖写入。这样即使目标目录里已经有旧的记忆文件，也能回滚到导入前状态。
 
+如果你需要 clean restore，可以改用：
+
+```text
+python3 scripts/memory_capture.py import --clean --workspace /path/to/new-workspace --input /path/to/memory-backup.zip
+```
+
+`--clean` 只会清理受支持的记忆文件和目录：`MEMORY.md`、`SESSION-STATE.md`、`working-buffer.md`、`memory-capture.md`、`memory/`、`attachments/`，不会删除工作区里的其他内容。
+
 ### 什么时候用
 
 - 需要把 Agent 的记忆状态搬到新设备
@@ -423,7 +502,7 @@ memory_search(query="投资策略")
 ## OpenViking 可选增强
 
 - OpenViking 不是强依赖；没有它也能完成核心的断点续接流程
-- 有 OpenViking 时，优先把它作为语义召回和摘要补全层
+- 有 OpenViking 时，优先把它作为可选召回后端里的语义召回和摘要补全层
 - OpenViking 负责补充相关记忆，`SESSION-STATE.md` 负责保存当前任务真相
 - 如果 OpenViking 不可用，直接退回到 `SESSION-STATE.md` + `working-buffer.md` + daily notes 的本地流程
 
