@@ -3,11 +3,16 @@
   "slug": "iterative-code-review",
   "displayName": "Iterative Code Review",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773884867106,
-    "commit": "https://github.com/openclaw/skills/commit/ee8e18295132f0ec9b0a15a70bbd277f9cddd41d"
+    "version": "1.2.1",
+    "publishedAt": 1774706310459,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773884867106,
+      "commit": "https://github.com/openclaw/skills/commit/ee8e18295132f0ec9b0a15a70bbd277f9cddd41d"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773498503955,
