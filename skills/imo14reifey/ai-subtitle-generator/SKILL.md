@@ -1,31 +1,35 @@
 ---
 name: ai-subtitle-generator
-version: "1.0.0"
-displayName: "AI Subtitle Generator — Auto Generate Subtitles and Captions for Any Video"
+version: "10.0.1"
+displayName: "AI Subtitle Generator — Generate Accurate Subtitles and Closed Captions for Any Video"
 description: >
-  Generate subtitles and captions for any video using AI — automatic speech recognition in 50+ languages, word-level timing, speaker identification, multiple caption styles, and export as burned-in video or standalone subtitle files. NemoVideo watches your video, transcribes every word with precise timing, and produces: word-by-word animated captions for social media, sentence-level subtitles for YouTube, speaker-labeled captions for interviews and podcasts, translated subtitles for multilingual reach, and styled burned-in captions that match your brand. Subtitle generator online, auto caption video, AI captions free, video subtitle maker, speech to text video, add subtitles to video automatically.
-metadata: {"openclaw": {"emoji": "💬", "requires": {"env": [], "configPaths": ["~/.config/nemovideo/"]}, "primaryEnv": "NEMO_TOKEN"}}
+  You just finished a thirty-minute interview with a founder who switches between English and Mandarin mid-sentence. Your editor needs subtitles by morning. The freelancer you usually hire quoted three days and two hundred dollars. What if you could upload the raw footage right now, specify both languages, and have publishable subtitles waiting in your inbox before your next coffee? That is what AI Subtitle Generator does. It listens to every word regardless of accent or language switch, assigns each phrase to the correct speaker, timestamps at the syllable level so lips and text never drift apart, and outputs whatever format your editor or platform requires. No glossary needed — the model infers technical terms from context. No style sheet needed — pick a preset or define your own.
+metadata: {"openclaw": {"emoji": "📝", "requires": {"env": [], "configPaths": ["~/.config/nemovideo/"]}, "primaryEnv": "NEMO_TOKEN"}}
 ---
 
-# AI Subtitle Generator — Captions That Make Every Video Accessible and Engaging
+# AI Subtitle Generator — Professional Subtitles from Any Audio in Any Language
 
-Subtitles are no longer optional. On Facebook, 85% of video is watched without sound. On Instagram, 80%. On LinkedIn, 79%. On TikTok, even though sound is the default, 40% of users browse with sound off in public spaces. A video without captions loses the majority of its potential audience before the first word is heard. Beyond accessibility, captions measurably improve performance: videos with captions get 12% longer watch time on YouTube, 16% higher reach on Facebook, and 15% more shares across all platforms. The data is clear — captions are the single easiest improvement any creator can make to any video. The barrier has been production time. Manual captioning takes 5-10x the video length: a 10-minute video requires 50-100 minutes of transcription, timing, and formatting. Professional captioning services charge $1-3 per minute. Auto-generated captions from platforms (YouTube, TikTok) are 80-85% accurate — close enough to be dangerous, because viewers notice every error and associate caption mistakes with low production quality. NemoVideo generates captions with 98%+ accuracy using AI speech recognition trained on diverse accents, speaking styles, and audio conditions. Every word is timed to the millisecond, speakers are identified automatically, and captions are styled for the target platform — from minimal YouTube subtitles to bold animated TikTok captions.
+Subtitles have transcended their origin as an accessibility tool to become the dominant mode of video consumption globally. The numbers tell the story: 85% of social media video is watched without sound. 80% of Netflix viewers in non-English markets use subtitles. YouTube reports that videos with subtitles receive 7.3% more views than identical content without. The EU's European Accessibility Act (effective 2025) mandates subtitles for commercial video content. The US ADA increasingly requires captioning for public-facing digital content. Subtitles are simultaneously an accessibility requirement, an engagement multiplier, a global reach enabler, and an SEO tool. The quality spectrum of subtitling is vast. At one end: auto-generated platform captions with 80-85% accuracy, sentence-level timing, fixed styling, and no speaker differentiation. At the other: professional human subtitling at $3-8 per minute of video, 99%+ accuracy, word-level timing, custom styling, and full speaker identification — at 24-48 hour turnaround and costs that make library-wide subtitling prohibitive. NemoVideo occupies the sweet spot: 98%+ accuracy approaching professional human quality, word-level timing precision, fully customizable styling, multi-speaker differentiation, 50+ language translation, and instant turnaround — at a fraction of human subtitling cost. Professional subtitling quality at auto-caption speed and price.
 
 ## Use Cases
 
-1. **YouTube Video — Clean Professional Subtitles (any length)** — A 15-minute tutorial needs subtitles for accessibility and SEO. NemoVideo generates: 98%+ accurate transcription, sentence-level timing (each caption holds for 2-4 seconds matching natural speech rhythm), proper punctuation and capitalization, speaker identification for multi-person content, chapter-aligned caption breaks (new caption line at topic transitions), and export as both SRT file (for YouTube's closed caption system) and burned-in version (white text, semi-transparent dark background). YouTube indexes subtitle text for search — proper captions improve discoverability for every word spoken in the video.
-2. **TikTok/Reels — Word-by-Word Animated Captions (15-60s)** — A creator needs the trending caption style for a 45-second Reel. NemoVideo produces: word-by-word highlight animation (each word appears and highlights as spoken), large centered text (readable on mobile at arm's length), bold font with color accent on the active word (white text, yellow or green highlight), dark pill background for readability over any visual, and precise timing that matches the speaker's rhythm — not generic 0.5-second intervals. The caption style that TikTok and Reels audiences expect and that drives sound-off retention.
-3. **Podcast/Interview — Speaker-Labeled Captions (30-90 min)** — A 60-minute two-person podcast needs captions that identify who is speaking. NemoVideo: detects two distinct speakers using voice analysis, labels each caption with the speaker's name ("Host:" / "Dr. Chen:"), assigns different colors per speaker (host in blue, guest in green), handles overlapping speech (prioritizes the primary speaker), and times captions to speaker turns. The viewer always knows who is saying what — essential for interview and podcast content where visual distinction is limited.
-4. **Multilingual — Translated Subtitles (any length, 50+ languages)** — A company's product demo video in English needs subtitles in Spanish, French, German, Japanese, and Portuguese. NemoVideo: transcribes the English audio, translates to all 5 target languages with natural phrasing (not word-for-word machine translation), adjusts caption timing for each language (German sentences are longer than English, Japanese reads faster), generates separate SRT files per language, and optionally burns in dual-language captions (English + one other language). One video becomes accessible to a global audience.
-5. **Batch Captioning — Full Content Library (multiple videos)** — A course creator has 20 lecture videos without captions. NemoVideo batch-processes all 20: consistent caption style across the series (same font, size, position, timing), speaker identification maintained per lecturer, technical terminology handled correctly (the AI learns from the first few videos' vocabulary), and exports as both SRT files and burned-in versions. An entire content library made accessible in one batch.
+1. **Content Creator Subtitles — Styled for Engagement (any length)** — A creator's YouTube video, podcast episode, or course lesson needs subtitles that serve both accessibility and engagement. NemoVideo: transcribes with 98%+ accuracy (handling the creator's specific vocabulary, recurring phrases, and brand terminology after minimal training), applies the creator's branded subtitle style (specific font, colors matching channel branding, animation matching content energy), positions within platform-appropriate safe zones, generates word-level timing for animated display (each word appearing or highlighting as spoken), and exports both embedded-subtitle video (for social platforms where caption upload is limited) and standalone subtitle files (SRT for YouTube, VTT for web players). Subtitles that serve deaf viewers, muted scrollers, non-native speakers, and engagement metrics simultaneously.
+
+2. **Corporate Multi-Language Subtitling — Global Communications (any length)** — A multinational company produces a product launch video in English that needs subtitles in Spanish, French, German, Japanese, Mandarin, Portuguese, and Arabic for global distribution. NemoVideo: transcribes the English source, translates to all 7 languages using context-aware AI (understanding industry terminology, product names, and corporate language conventions), adjusts subtitle timing per language (accommodating character count differences — German subtitles need more display time than Japanese for equivalent content), handles right-to-left rendering for Arabic (proper RTL text display with correct line breaking), maintains consistent visual styling across all languages, and exports subtitle files compatible with the company's video hosting platform. One video accessible to a global workforce and customer base.
+
+3. **Film/Documentary Festival Subtitles — Broadcast Quality (any length)** — An independent filmmaker needs broadcast-quality subtitles for festival submission: specific formatting requirements, reading speed compliance, and professional styling. NemoVideo: generates subtitles meeting broadcast standards (maximum 2 lines, maximum 42 characters per line, minimum 1 second display, reading speed of 15-17 characters per second), applies professional positioning (centered at bottom, proper line breaks at grammatical boundaries — not mid-phrase), handles timing for complex audio (overlapping dialogue, background music, sound effects), and exports in the specific formats required by festival platforms and broadcast networks (SRT, STL, EBU-TT, TTML). Festival-ready subtitles that meet the technical specifications professional distributors require.
+
+4. **Educational Content Subtitles — Learning-Optimized Display (any length)** — An educational platform's video library needs subtitles optimized for learning: slower display speed for complex content, technical term highlighting, and multi-language versions for international students. NemoVideo: adjusts reading speed based on content complexity (slower for dense technical explanations, normal for conversational segments), optionally highlights key terms (displaying technical vocabulary in bold or a different color the first time it appears), creates synchronized subtitle files for the platform's LMS player (compatible with SCORM, Canvas, Moodle, Blackboard), generates accessibility-compliant versions (WCAG 2.1 AA: proper contrast ratios, sufficient display time, non-overlapping text), and produces student-facing language versions. Subtitles designed for comprehension, not just consumption.
+
+5. **Social Media Batch Subtitling — Library-Wide Coverage (multiple videos)** — A brand or creator has 100+ existing videos without subtitles that need captioning for compliance, engagement, and accessibility. NemoVideo: batch-processes the entire library with consistent subtitle styling, auto-detects the spoken language of each video (handling multilingual libraries without manual tagging), applies the brand's subtitle design standard across all videos, generates both embedded and standalone subtitle files for each video, and produces a captioned library from an uncaptioned one in hours rather than weeks. The subtitle debt that most content creators carry — eliminated in one operation.
 
 ## How It Works
 
 ### Step 1 — Upload Video
-Any video with spoken audio. Any language. Any accent. Any audio quality (NemoVideo handles background noise, echo, and low-quality microphones).
+Any video with speech content in any language. NemoVideo auto-detects language and speaker count.
 
-### Step 2 — Choose Caption Style
-Select: subtitle format (SRT, VTT, burned-in), caption style (sentence, word-by-word, speaker-labeled), visual design (font, colors, position), and language options.
+### Step 2 — Configure Subtitle Style and Languages
+Choose visual style, target languages, display parameters, and export formats.
 
 ### Step 3 — Generate
 ```bash
@@ -34,87 +38,95 @@ curl -X POST https://mega-api-prod.nemovideo.ai/api/v1/generate \
   -H "Content-Type: application/json" \
   -d '{
     "skill": "ai-subtitle-generator",
-    "prompt": "Generate subtitles for a 12-minute YouTube tutorial. Language: English. Style: word-by-word highlight for a burned-in social version (white text, #FFD700 yellow highlight, dark pill background, centered bottom third) AND sentence-level SRT for YouTube closed captions. Speaker: single speaker. Also generate Spanish and French translated SRT files.",
+    "prompt": "Generate professional subtitles for a 20-minute product demo video. Primary: English subtitles with word-level timing, clean sans-serif font, white text with semi-transparent dark background bar. Position: bottom-center, 2 lines max. Speaker differentiation: presenter (white) vs. customer questions (yellow). Translations: Spanish, French, German, Japanese — same visual style, timing adjusted per language. Export: embedded MP4 for each language at 16:9 + standalone SRT files for all 5 languages + one 9:16 version with TikTok-style animated English captions for social clips.",
     "source_language": "en",
-    "caption_styles": [
-      {"type": "burned-in", "style": "word-highlight", "text": "#FFFFFF", "highlight": "#FFD700", "bg": "pill-dark", "position": "bottom-center"},
-      {"type": "srt", "style": "sentence"}
-    ],
-    "translations": ["es", "fr"],
-    "speaker_detection": true
+    "style": {
+      "font": "clean-sans-serif",
+      "color": "#FFFFFF",
+      "background": "semi-transparent-dark-bar",
+      "position": "bottom-center",
+      "max_lines": 2
+    },
+    "speakers": {
+      "differentiate": true,
+      "presenter": "#FFFFFF",
+      "customer": "#FFD700"
+    },
+    "languages": ["en", "es", "fr", "de", "ja"],
+    "timing": "word-level",
+    "exports": {
+      "embedded_16x9": ["en", "es", "fr", "de", "ja"],
+      "srt_files": ["en", "es", "fr", "de", "ja"],
+      "social_9x16": {"language": "en", "style": "tiktok-animated"}
+    }
   }'
 ```
 
-### Step 4 — Review and Apply
-Preview: caption accuracy, timing sync, visual placement. Edit any misrecognized words. Export or upload SRT to YouTube.
+### Step 4 — Review Accuracy and Timing
+Play each language version. Check: transcription accuracy (especially proper nouns, technical terms, and numbers), timing synchronization (no early or late subtitles), line breaks at natural grammatical points (not splitting phrases awkwardly), and translation quality (natural phrasing, not machine-stiff). Correct and re-render.
 
 ## Parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|:--------:|-------------|
-| `prompt` | string | ✅ | Video description and caption requirements |
-| `source_language` | string | | "en", "es", "fr", "de", "ja", "ko", "zh", "ar", "auto" |
-| `caption_styles` | array | | [{type, style, text, highlight, bg, position}] |
-| `translations` | array | | Target languages for translated subtitles |
-| `speaker_detection` | boolean | | Identify and label speakers (default: true) |
-| `speaker_names` | array | | ["Host", "Guest"] — custom speaker labels |
-| `vocabulary` | array | | Technical terms, brand names, jargon for accuracy |
-| `max_chars_per_line` | integer | | Characters per caption line (default: 42) |
-| `batch` | array | | Multiple videos for batch captioning |
+| `prompt` | string | ✅ | Subtitle generation requirements |
+| `source_language` | string | | Source audio language (auto-detect if omitted) |
+| `style` | object | | {font, color, background, position, max_lines, animation} |
+| `speakers` | object | | {differentiate, colors_per_speaker} |
+| `languages` | array | | Target translation languages |
+| `timing` | string | | "word-level", "phrase-level", "sentence-level" |
+| `reading_speed` | string | | "slow" (12 cps), "standard" (15 cps), "fast" (18 cps) |
+| `broadcast_compliance` | boolean | | Apply broadcast subtitle standards |
+| `accessibility` | string | | "wcag-aa", "wcag-aaa", "custom" |
+| `exports` | object | | {embedded, srt_files, social} output configuration |
+| `batch` | boolean | | Process multiple videos |
 
 ## Output Example
 
 ```json
 {
-  "job_id": "asg-20260328-001",
+  "job_id": "aisub-20260329-001",
   "status": "completed",
-  "source_duration": "12:08",
   "source_language": "en",
-  "accuracy": "98.4%%",
+  "transcription_confidence": 0.984,
+  "word_count": 2840,
+  "speakers_detected": 2,
+  "languages_generated": 5,
   "outputs": {
-    "burned_in": {
-      "file": "tutorial-captioned.mp4",
-      "style": "word-highlight (white + #FFD700)",
-      "words_captioned": 1842
+    "embedded": {
+      "en": {"file": "demo-sub-en-16x9.mp4"},
+      "es": {"file": "demo-sub-es-16x9.mp4"},
+      "fr": {"file": "demo-sub-fr-16x9.mp4"},
+      "de": {"file": "demo-sub-de-16x9.mp4"},
+      "ja": {"file": "demo-sub-ja-16x9.mp4"}
     },
-    "srt_english": {
-      "file": "tutorial-en.srt",
-      "lines": 286,
-      "style": "sentence-level"
-    },
-    "srt_spanish": {
-      "file": "tutorial-es.srt",
-      "lines": 292
-    },
-    "srt_french": {
-      "file": "tutorial-fr.srt",
-      "lines": 288
-    }
-  },
-  "speakers_detected": 1
+    "srt_files": ["demo-en.srt", "demo-es.srt", "demo-fr.srt", "demo-de.srt", "demo-ja.srt"],
+    "social": {"file": "demo-tiktok-en-9x16.mp4", "style": "tiktok-animated"}
+  }
 }
 ```
 
 ## Tips
 
-1. **Word-by-word captions are mandatory for short-form social video** — TikTok, Reels, and Shorts audiences expect animated word-by-word highlighting. Sentence-level subtitles on short-form content feel like an afterthought. Match the caption style to the platform.
-2. **98% accuracy means 2 errors per 100 words — still review** — In a 10-minute video (~1,500 words), expect ~30 potential errors. Most are minor (capitalization, punctuation), but name misspellings and technical terms need manual review. Use the vocabulary parameter to pre-teach unusual words.
-3. **Translated subtitles multiply audience by 5-10x** — An English video with Spanish, French, German, and Japanese subtitles is accessible to 3 billion+ additional speakers. The translation cost is negligible compared to the audience expansion.
-4. **Speaker labels transform multi-person content** — Without labels, the viewer must figure out who said what from context. With color-coded speaker labels, the conversation becomes instantly parseable. Essential for podcasts, interviews, and panel discussions.
-5. **Caption position matters: bottom-center for landscape, top-third for vertical** — On landscape (16:9) video, captions sit at the bottom where viewers expect them. On vertical (9:16) video, captions in the upper third avoid being hidden by platform UI elements (like, comment, share buttons).
+1. **98% accuracy is the professional quality threshold** — Below 95%, errors are frequent enough that viewers notice and lose trust. At 98%+, errors are rare enough that the subtitle feels professionally produced. The difference between 85% (platform auto) and 98% (NemoVideo) is the difference between distracting and invisible.
+2. **Word-level timing creates the sync that holds attention** — Phrase-level subtitles (a full phrase appears at once) create a disconnect between what the viewer reads and what they hear. Word-level timing (each word appears as spoken) creates a synchronized experience where reading reinforces listening. The synchronization itself is engaging.
+3. **Speaker color differentiation prevents multi-person confusion** — In content with 2+ speakers, same-color subtitles force the viewer to constantly determine who is speaking. Different colors per speaker (white for host, yellow for guest) create instant visual identification that the brain processes before conscious thought. Color is faster than labels.
+4. **Translation timing must adjust, not just translate** — A 5-word English phrase might translate to an 8-word German phrase. If the subtitle display time stays the same, the German viewer cannot finish reading before it disappears. NemoVideo adjusts display duration per language to maintain comfortable reading speed regardless of translation length differences.
+5. **Batch subtitling eliminates subtitle debt permanently** — Most creators and organizations carry a growing library of uncaptioned content. Each new video adds to the debt. Batch processing the entire existing library in one operation eliminates the backlog and establishes the baseline for captioning all future content.
 
 ## Output Formats
 
-| Format | Content | Use Case |
-|--------|---------|----------|
-| SRT | Timed subtitle file | YouTube / Vimeo upload |
-| VTT | Web subtitle file | HTML5 video player |
-| MP4 | Video with burned-in captions | Social media / direct share |
-| TXT | Plain transcript | Blog / show notes |
-| JSON | Structured transcript with timing | API integration |
+| Format | Type | Use Case |
+|--------|------|----------|
+| MP4 (embedded) | Video | Social platforms, website, messaging |
+| SRT | Subtitle file | YouTube, Vimeo, most platforms |
+| VTT | Subtitle file | Web players, HTML5 |
+| TTML | Subtitle file | Broadcast, streaming services |
+| STL | Subtitle file | European broadcast standard |
 
 ## Related Skills
 
-- [auto-caption-video](/skills/auto-caption-video) — Auto captioning
-- [animated-video-maker](/skills/animated-video-maker) — Animated videos
-- [gaming-video-editor](/skills/gaming-video-editor) — Gaming video editing
+- [ai-video-caption-generator](/skills/ai-video-caption-generator) — Full caption workflow
+- [auto-caption-video](/skills/auto-caption-video) — Quick auto-captioning
+- [ai-video-text-overlay](/skills/ai-video-text-overlay) — Custom text graphics
+- [ai-video-highlight-maker](/skills/ai-video-highlight-maker) — Captioned highlight clips
