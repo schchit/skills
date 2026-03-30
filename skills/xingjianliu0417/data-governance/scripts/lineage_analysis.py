@@ -1,6 +1,24 @@
 #!/usr/bin/env python3
 """
 数据血缘分析脚本
+"""
+
+import sys
+import re
+import json
+from typing import Dict, List, Any, Set
+from collections import defaultdict
+
+def validate_table_name(table_name: str) -> bool:
+    pattern = r"^[a-zA-Z_][a-zA-Z0-9_]*$"
+    if not re.match(pattern, table_name):
+        print(f"Error: Invalid table name: {table_name}", file=sys.stderr)
+        return False
+    return True
+
+
+"""
+数据血缘分析脚本
 Supports: SQLite, MySQL, PostgreSQL
 Usage: 
   sqlite: python lineage_analysis.py --table users --db sqlite:///data.db
@@ -8,11 +26,7 @@ Usage:
   pg:     python lineage_analysis.py --table users --db postgresql://user:pass@localhost:5432/db
 """
 
-import argparse
-import json
-import re
 from typing import Dict, List, Set, Any
-from collections import defaultdict
 from urllib.parse import urlparse
 
 
@@ -179,7 +193,7 @@ def infer_lineage_from_foreign_keys(conn, table_name: str) -> List[Dict]:
     
     try:
         # SQLite
-        cursor.execute(f"PRAGMA foreign_key_list({table_name})")
+        cursor.execute(f"PRAGMA foreign_key_list(`{table_name}`)")
         for row in cursor.fetchall():
             lineage.append({
                 "source": [row[2]],  # 父表
@@ -277,11 +291,26 @@ def generate_mermaid_diagram(lineage: Dict) -> str:
     return "\n".join(lines)
 
 
+def build_lineage_example(table_name: str) -> LineageGraph:
+    """示例血缘数据（当无数据库时使用）"""
+    graph = LineageGraph(table_name)
+    
+    # 添加示例上游
+    graph.add_lineage(f"{table_name}_staging")
+    graph.add_lineage("raw_data")
+    
+    # 添加示例转换
+    graph.add_lineage(f"{table_name}_staging", "清洗")
+    graph.add_lineage("raw_data", "ETL")
+    
+    return graph
+
+
 def main():
     parser = argparse.ArgumentParser(description='数据血缘分析')
     parser.add_argument('--table', required=True, help='表名')
-    parser.add_argument('--db', '--connection', dest='db', 
-                       help='数据库连接字符串（可选，不提供则使用示例数据）')
+    parser.add_argument('--db-type', choices=['sqlite', 'mysql', 'postgresql'],
+                       help='数据库类型（配合环境变量使用）')
     parser.add_argument('--direction', choices=['upstream', 'downstream', 'both'], 
                        default='both', help='分析方向')
     parser.add_argument('--format', choices=['json', 'markdown', 'mermaid'], 
@@ -289,14 +318,37 @@ def main():
     parser.add_argument('--depth', type=int, default=-1, help='追溯深度')
     args = parser.parse_args()
     
-    if args.db:
+    # 验证表名
+    if not validate_table_name(args.table):
+        sys.exit(1)
+    
+    # 仅从环境变量获取连接
+    conn = None
+    if args.db_type:
+        import os
         try:
-            conn = get_connection(args.db)
-            print(f"✅ 已连接到数据库")
-            
-            graph = build_lineage_from_db(conn, args.table)
-            conn.close()
-            
+            if args.db_type == 'sqlite':
+                import sqlite3
+                conn = sqlite3.connect(os.getenv('DB_PATH', 'data.db'))
+            elif args.db_type == 'mysql':
+                import pymysql
+                conn = pymysql.connect(
+                    host=os.getenv('DB_HOST', 'localhost'),
+                    port=int(os.getenv('DB_PORT', 3306)),
+                    user=os.getenv('DB_USER', ''),
+                    password=os.getenv('DB_PASS', ''),
+                    database=os.getenv('DB_NAME', ''),
+                    cursorclass=pymysql.cursors.DictCursor
+                )
+            elif args.db_type in ('postgresql', 'postgres'):
+                import psycopg2
+                conn = psycopg2.connect(
+                    host=os.getenv('DB_HOST', 'localhost'),
+                    port=int(os.getenv('DB_PORT', 5432)),
+                    user=os.getenv('DB_USER', ''),
+                    password=os.getenv('DB_PASS', ''),
+                    database=os.getenv('DB_NAME', '')
+                )
         except ImportError as e:
             print(f"❌ 缺少依赖: {e}")
             print("请安装: pip install pymysql psycopg2-binary")
@@ -304,17 +356,13 @@ def main():
         except Exception as e:
             print(f"❌ 连接错误: {e}")
             return
+        
+        print(f"✅ 已连接到数据库")
+        graph = build_lineage_from_db(conn, args.table)
+        conn.close()
     else:
-        # 使用示例数据
-        example_etl = [
-            {"source": ["source_orders", "source_users"], "target": "staging_orders", "transformation": "清洗、脱敏"},
-            {"source": ["staging_orders", "source_products"], "target": "dwd_orders", "transformation": "Join、聚合"},
-            {"source": ["dwd_orders"], "target": "dws_daily_sales", "transformation": "日聚合"},
-        ]
-        graph = LineageGraph()
-        for config in example_etl:
-            for src in config['source']:
-                graph.add_lineage(src, config['target'], config['transformation'])
+        # 无数据库时使用示例数据
+        graph = build_lineage_example(args.table)
     
     lineage = graph.get_full_lineage(args.table)
     
@@ -326,13 +374,11 @@ def main():
         lineage['upstream_count'] = 0
     
     if args.format == 'json':
-        output = json.dumps(lineage, ensure_ascii=False, indent=2)
+        print(json.dumps(lineage, indent=2, ensure_ascii=False))
     elif args.format == 'mermaid':
-        output = generate_mermaid_diagram(lineage)
+        print(generate_mermaid_diagram(lineage))
     else:
-        output = generate_lineage_report(lineage)
-    
-    print(output)
+        print(generate_markdown_report(lineage))
 
 
 if __name__ == '__main__':

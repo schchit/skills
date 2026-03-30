@@ -2,17 +2,59 @@
 """
 数据质量检查脚本
 Supports: SQLite, MySQL, PostgreSQL
-Usage: 
-  sqlite: python data_quality_check.py --table users --db sqlite:///data.db
-  mysql:  python data_quality_check.py --table users --db mysql://user:pass@localhost:3306/db
-  pg:     python data_quality_check.py --table users --db postgresql://user:pass@localhost:5432/db
 """
 
 import argparse
 import json
+import os
+import re
+import sys
 from typing import Dict, List, Any, Optional
 from urllib.parse import urlparse
 
+
+# ============ 安全验证 ============
+
+def validate_table_name(table_name: str) -> bool:
+    """验证表名，防止 SQL 注入"""
+    # 只允许字母、数字、下划线，且以字母或下划线开头
+    pattern = r'^[a-zA-Z_][a-zA-Z0-9_]*$'
+    if not re.match(pattern, table_name):
+        print(f"❌ 错误：表名 '{table_name}' 包含非法字符", file=sys.stderr)
+        print("表名只能包含字母、数字和下划线，且不能以数字开头", file=sys.stderr)
+        return False
+    return True
+
+
+def get_connection_from_env(db_type: str) -> Optional[Any]:
+    """从环境变量获取数据库连接（安全方式）"""
+    if db_type == 'mysql':
+        import pymysql
+        return pymysql.connect(
+            host=os.getenv('DB_HOST', 'localhost'),
+            port=int(os.getenv('DB_PORT', 3306)),
+            user=os.getenv('DB_USER', ''),
+            password=os.getenv('DB_PASS', ''),
+            database=os.getenv('DB_NAME', ''),
+            cursorclass=pymysql.cursors.DictCursor
+        )
+    elif db_type in ('postgresql', 'postgres'):
+        import psycopg2
+        return psycopg2.connect(
+            host=os.getenv('DB_HOST', 'localhost'),
+            port=int(os.getenv('DB_PORT', 5432)),
+            user=os.getenv('DB_USER', ''),
+            password=os.getenv('DB_PASS', ''),
+            database=os.getenv('DB_NAME', '')
+        )
+    elif db_type == 'sqlite':
+        import sqlite3
+        db_path = os.getenv('DB_PATH', 'data.db')
+        return sqlite3.connect(db_path)
+    return None
+
+
+# ============ 连接解析 ============
 
 def parse_connection_string(conn_str: str) -> Dict[str, str]:
     """解析数据库连接字符串"""
@@ -63,13 +105,15 @@ def get_connection(conn_str: str):
         raise ValueError(f"Unsupported database: {config['type']}")
 
 
+# ============ 数据质量检查 ============
+
 def get_table_data(conn, table_name: str, limit: int = 10000) -> List[Dict]:
-    """获取表数据"""
+    """获取表数据（使用参数化查询）"""
     cursor = conn.cursor()
     
-    # 根据数据库类型调整
     try:
-        cursor.execute(f"SELECT * FROM {table_name} LIMIT {limit}")
+        # 使用参数化查询（虽然 LIMIT 不是用户输入，但这是好习惯）
+        cursor.execute(f"SELECT * FROM {table_name} LIMIT ?", (limit,))
         columns = [desc[0] for desc in cursor.description]
         rows = cursor.fetchall()
         return [dict(zip(columns, row)) for row in rows]
@@ -82,161 +126,112 @@ def get_table_data(conn, table_name: str, limit: int = 10000) -> List[Dict]:
 def get_table_schema(conn, table_name: str) -> List[Dict]:
     """获取表结构"""
     cursor = conn.cursor()
-    schema = []
     
     try:
-        # SQLite
-        cursor.execute(f"PRAGMA table_info({table_name})")
-        for row in cursor.fetchall():
-            schema.append({
-                'name': row[1],
-                'type': row[2],
-                'nullable': not row[3],
-                'primary_key': bool(row[5])
-            })
+        import pymysql
+        if isinstance(conn, pymysql.Connection):
+            cursor.execute(f"DESCRIBE `{table_name}`")
+            return cursor.fetchall()
     except:
         pass
     
-    cursor.close()
-    return schema
-
-
-def check_completeness(data: List[Dict], schema: List[Dict]) -> Dict[str, Any]:
-    """检查数据完整性"""
-    if not data:
-        return {"score": 0, "issues": ["无数据"]}
+    try:
+        cursor.execute(f"PRAGMA table_info(`{table_name}`)")
+        return cursor.fetchall()
+    except:
+        pass
     
-    required_fields = [s['name'] for s in schema if not s['nullable']]
-    total = len(data)
+    return []
+
+
+def check_data_quality(conn, table_name: str) -> Dict[str, Any]:
+    """检查数据质量"""
+    schema = get_table_schema(conn, table_name)
+    data = get_table_data(conn, table_name)
+    
     issues = []
     
-    for field in required_fields:
-        null_count = sum(1 for row in data if field not in row or row[field] is None)
-        null_ratio = null_count / total
-        if null_ratio > 0:
-            issues.append(f"字段 {field} 缺失率 {null_ratio:.1%}")
+    # 检查缺失值
+    for field in schema:
+        if isinstance(field, dict):
+            field_name = field.get('name', field.get('Field', ''))
+            null_count = sum(1 for row in data if row.get(field_name) is None)
+            if null_count > 0:
+                null_ratio = null_count / len(data) if data else 0
+                if null_ratio > 0.1:
+                    issues.append(f"字段 {field_name} 缺失率 {null_ratio:.1%}")
+    
+    # 检查重复
+    if data:
+        try:
+            first_field = list(data[0].keys())[0]
+            values = [row.get(first_field) for row in data]
+            from collections import Counter
+            duplicates = [k for k, v in Counter(values).items() if v > 1]
+            if duplicates:
+                issues.append(f"字段 {first_field} 存在 {len(duplicates)} 条重复")
+        except:
+            pass
+    
+    completeness = 1 - (len([i for i in issues if '缺失' in i]) / len(schema) if schema else 0)
     
     return {
-        "score": max(0, 100 - len(issues) * 20),
-        "issues": issues
+        'total_records': len(data),
+        'issues': issues,
+        'completeness': completeness,
+        'schema_fields': len(schema)
     }
 
 
-def check_uniqueness(data: List[Dict], schema: List[Dict]) -> Dict[str, Any]:
-    """检查数据唯一性"""
-    if not data:
-        return {"score": 100, "issues": []}
-    
-    primary_keys = [s['name'] for s in schema if s['primary_key']]
-    issues = []
-    
-    for pk in primary_keys:
-        values = [row.get(pk) for row in data if pk in row]
-        unique_values = set(values)
-        if len(values) != len(unique_values):
-            duplicate = len(values) - len(unique_values)
-            issues.append(f"主键 {pk} 存在 {duplicate} 条重复")
-    
-    return {
-        "score": 100 if not issues else 50,
-        "issues": issues
-    }
-
-
-def check_format(data: List[Dict], schema: List[Dict]) -> Dict[str, Any]:
-    """检查数据格式"""
-    if not data:
-        return {"score": 100, "issues": []}
-    
-    issues = []
-    for col in schema:
-        col_name = col['name']
-        col_type = col['type'].upper()
-        
-        # 检查日期格式
-        if 'DATE' in col_type or 'TIME' in col_type:
-            for i, row in enumerate(data[:100]):
-                if col_name in row and row[col_name]:
-                    val = str(row[col_name])
-                    # 简单校验
-                    if ' ' in val and ':' in val:
-                        pass  # 格式看起来像 datetime
-        
-        # 检查数值字段
-        elif 'INT' in col_type or 'REAL' in col_type or 'NUMERIC' in col_type:
-            for i, row in enumerate(data[:100]):
-                if col_name in row and row[col_name]:
-                    try:
-                        float(row[col_name])
-                    except:
-                        issues.append(f"字段 {col_name} 第{i+1}行不是有效数值")
-    
-    return {
-        "score": max(0, 100 - len(issues) * 5),
-        "issues": issues[:10]  # 只显示前10个
-    }
-
-
-def generate_report(table_name: str, results: Dict) -> str:
-    """生成数据质量报告"""
-    report = f"""## 数据质量报告 - {table_name}
-
-### 完整性
-- 评分: {results.get('completeness', {}).get('score', 'N/A')}%
-- 问题: {len(results.get('completeness', {}).get('issues', []))}
-
-### 唯一性  
-- 评分: {results.get('uniqueness', {}).get('score', 'N/A')}%
-- 问题: {len(results.get('uniqueness', {}).get('issues', []))}
-
-### 格式
-- 评分: {results.get('format', {}).get('score', 'N/A')}%
-- 问题: {len(results.get('format', {}).get('issues', []))}
-
-### 总体评分: {results.get('overall_score', 'N/A')}%
-"""
-    return report
-
+# ============ 主程序 ============
 
 def main():
     parser = argparse.ArgumentParser(description='数据质量检查')
     parser.add_argument('--table', required=True, help='表名')
-    parser.add_argument('--db', '--connection', dest='db', required=True, 
-                       help='数据库连接字符串')
-    parser.add_argument('--limit', type=int, default=10000, help='检查数据量')
+    parser.add_argument('--db-type', required=True, choices=['sqlite', 'mysql', 'postgresql'], 
+                       help='数据库类型（必须指定）')
+    parser.add_argument('--limit', type=int, default=10000, help='最大记录数')
+    
     args = parser.parse_args()
     
+    # 验证表名
+    if not validate_table_name(args.table):
+        sys.exit(1)
+    
+    # 获取连接 - 仅从环境变量
+    conn = None
     try:
-        conn = get_connection(args.db)
+        conn = get_connection_from_env(args.db_type)
+        if not conn:
+            print("❌ 请设置环境变量: DB_HOST, DB_USER, DB_PASS, DB_NAME", file=sys.stderr)
+            print("SQLite 需要: DB_PATH", file=sys.stderr)
+            sys.exit(1)
+        
         print(f"✅ 已连接到数据库")
         
-        # 获取数据
-        data = get_table_data(conn, args.table, args.limit)
-        print(f"✅ 已获取 {len(data)} 条数据")
+        # 检查质量
+        result = check_data_quality(conn, args.table)
         
-        # 获取结构
-        schema = get_table_schema(conn, args.table)
-        print(f"✅ 已获取 {len(schema)} 个字段")
+        print(f"\n📊 数据质量报告 - {args.table}")
+        print(f"  总记录数: {result['total_records']}")
+        print(f"  字段数量: {result['schema_fields']}")
+        print(f"  完整性: {result['completeness']:.1%}")
         
-        conn.close()
-        
-        # 检查
-        results = {
-            'completeness': check_completeness(data, schema),
-            'uniqueness': check_uniqueness(data, schema),
-            'format': check_format(data, schema)
-        }
-        
-        avg_score = sum(r['score'] for r in results.values()) / len(results)
-        results['overall_score'] = avg_score
-        
-        print(generate_report(args.table, results))
+        if result['issues']:
+            print(f"\n⚠️ 发现问题:")
+            for issue in result['issues']:
+                print(f"  - {issue}")
+        else:
+            print(f"\n✅ 未发现问题")
         
     except ImportError as e:
         print(f"❌ 缺少依赖: {e}")
         print("请安装: pip install pymysql psycopg2-binary")
     except Exception as e:
         print(f"❌ 错误: {e}")
+    finally:
+        if conn:
+            conn.close()
 
 
 if __name__ == '__main__':

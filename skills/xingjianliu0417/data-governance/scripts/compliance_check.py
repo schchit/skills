@@ -1,4 +1,16 @@
 #!/usr/bin/env python3
+
+import re
+import sys
+
+def validate_table_name(table_name: str) -> bool:
+    pattern = r"^[a-zA-Z_][a-zA-Z0-9_]*$"
+    if not re.match(pattern, table_name):
+        print(f"Error: Invalid table name: {table_name}", file=sys.stderr)
+        return False
+    return True
+
+
 """
 数据合规检查脚本
 支持敏感数据检测、隐私合规、访问控制检查
@@ -9,7 +21,6 @@ Usage:
 
 import argparse
 import json
-import re
 from typing import Dict, List, Any, Set
 from urllib.parse import urlparse
 
@@ -132,7 +143,7 @@ def get_table_schema(conn, table_name: str) -> List[Dict]:
     schema = []
     
     try:
-        cursor.execute(f"PRAGMA table_info({table_name})")
+        cursor.execute(f'PRAGMA table_info(`{table_name}`)')
         for row in cursor.fetchall():
             schema.append({
                 'name': row[1],
@@ -143,7 +154,7 @@ def get_table_schema(conn, table_name: str) -> List[Dict]:
     
     if not schema:
         try:
-            cursor.execute(f"DESCRIBE {table_name}")
+            cursor.execute(f'DESCRIBE `{table_name}`')
             for row in cursor.fetchall():
                 schema.append({
                     'name': row['Field'],
@@ -322,14 +333,47 @@ def generate_compliance_report(table_name: str, results: Dict) -> str:
 def main():
     parser = argparse.ArgumentParser(description='数据合规检查')
     parser.add_argument('--table', required=True, help='表名')
-    parser.add_argument('--db', '--connection', dest='db', required=True,
-                       help='数据库连接字符串')
+    parser.add_argument('--db-type', required=True, choices=['sqlite', 'mysql', 'postgresql'],
+                       help='数据库类型')
     parser.add_argument('--check-type', choices=['all', 'sensitive', 'encryption', 'gdpr'], 
                        default='all', help='检查类型')
     args = parser.parse_args()
     
+    # 验证表名
+    if not validate_table_name(args.table):
+        sys.exit(1)
+    
+    # 仅从环境变量获取连接
+    import os
+    conn = None
     try:
-        conn = get_connection(args.db)
+        if args.db_type == 'sqlite':
+            import sqlite3
+            conn = sqlite3.connect(os.getenv('DB_PATH', 'data.db'))
+        elif args.db_type == 'mysql':
+            import pymysql
+            conn = pymysql.connect(
+                host=os.getenv('DB_HOST', 'localhost'),
+                port=int(os.getenv('DB_PORT', 3306)),
+                user=os.getenv('DB_USER', ''),
+                password=os.getenv('DB_PASS', ''),
+                database=os.getenv('DB_NAME', ''),
+                cursorclass=pymysql.cursors.DictCursor
+            )
+        elif args.db_type in ('postgresql', 'postgres'):
+            import psycopg2
+            conn = psycopg2.connect(
+                host=os.getenv('DB_HOST', 'localhost'),
+                port=int(os.getenv('DB_PORT', 5432)),
+                user=os.getenv('DB_USER', ''),
+                password=os.getenv('DB_PASS', ''),
+                database=os.getenv('DB_NAME', '')
+            )
+        
+        if not conn:
+            print("❌ 请设置环境变量: DB_HOST, DB_USER, DB_PASS, DB_NAME", file=sys.stderr)
+            sys.exit(1)
+        
         print(f"✅ 已连接到数据库")
         
         schema = get_table_schema(conn, args.table)

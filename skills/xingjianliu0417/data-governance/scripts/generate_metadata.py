@@ -1,17 +1,24 @@
 #!/usr/bin/env python3
 """
 元数据生成脚本
-Supports: SQLite, MySQL, PostgreSQL
-Usage: 
-  sqlite: python generate_metadata.py --source users --db sqlite:///data.db
-  mysql:  python generate_metadata.py --source users --db mysql://user:pass@localhost:3306/db
-  pg:     python generate_metadata.py --source users --db postgresql://user:pass@localhost:5432/db
+支持 SQLite, MySQL, PostgreSQL
 """
 
+import sys
+import re
 import argparse
 import json
 from typing import Dict, List, Any
 from urllib.parse import urlparse
+
+
+def validate_table_name(table_name: str) -> bool:
+    """验证表名，防止 SQL 注入"""
+    pattern = r'^[a-zA-Z_][a-zA-Z0-9_]*$'
+    if not re.match(pattern, table_name):
+        print(f"Error: Invalid table name: {table_name}", file=sys.stderr)
+        return False
+    return True
 
 
 def parse_connection_string(conn_str: str) -> Dict[str, str]:
@@ -69,48 +76,22 @@ def get_table_schema(conn, table_name: str) -> List[Dict]:
     schema = []
     
     try:
-        # SQLite
-        cursor.execute(f"PRAGMA table_info({table_name})")
+        cursor.execute(f'PRAGMA table_info(`{table_name}`)')
         for row in cursor.fetchall():
             schema.append({
-                "name": row[1],
-                "type": row[2],
-                "nullable": not row[3],
-                "primary_key": bool(row[5]),
-                "default": row[4]
+                'name': row[1],
+                'type': row[2],
             })
     except:
         pass
     
-    # 尝试 MySQL/PostgreSQL
     if not schema:
         try:
-            cursor.execute(f"DESCRIBE {table_name}")
+            cursor.execute(f'DESCRIBE `{table_name}`')
             for row in cursor.fetchall():
                 schema.append({
-                    "name": row['Field'],
-                    "type": row['Type'],
-                    "nullable": row['Null'] == 'YES',
-                    "primary_key": row['Key'] == 'PRI',
-                    "default": row['Default']
-                })
-        except:
-            pass
-    
-    if not schema:
-        try:
-            cursor.execute(f"""
-                SELECT column_name, data_type, is_nullable, column_key, column_default
-                FROM information_schema.columns 
-                WHERE table_name = '{table_name}'
-            """)
-            for row in cursor.fetchall():
-                schema.append({
-                    "name": row['column_name'],
-                    "type": row['data_type'],
-                    "nullable": row['is_nullable'] == 'YES',
-                    "primary_key": row['column_key'] == 'PRI',
-                    "default": row['column_default']
+                    'name': row['Field'],
+                    'type': row['Type'],
                 })
         except:
             pass
@@ -119,18 +100,17 @@ def get_table_schema(conn, table_name: str) -> List[Dict]:
     return schema
 
 
-def get_table_indexes(conn, table_name: str) -> List[Dict]:
+def get_indexes(conn, table_name: str) -> List[Dict]:
     """获取索引信息"""
     cursor = conn.cursor()
     indexes = []
     
     try:
-        # SQLite
-        cursor.execute(f"PRAGMA index_list({table_name})")
+        cursor.execute(f"PRAGMA index_list(`{table_name}`)")
         for row in cursor.fetchall():
             indexes.append({
-                "name": row[1],
-                "unique": row[2] == 1
+                'name': row[1],
+                'unique': bool(row[2])
             })
     except:
         pass
@@ -145,12 +125,12 @@ def get_foreign_keys(conn, table_name: str) -> List[Dict]:
     fks = []
     
     try:
-        # SQLite
-        cursor.execute(f"PRAGMA foreign_key_list({table_name})")
+        cursor.execute(f"PRAGMA foreign_key_list(`{table_name}`)")
         for row in cursor.fetchall():
             fks.append({
-                "column": row[3],
-                "references": f"{row[2]}.{row[4]}"
+                'from': row[3],
+                'to': row[2],
+                'table': row[2]
             })
     except:
         pass
@@ -159,100 +139,41 @@ def get_foreign_keys(conn, table_name: str) -> List[Dict]:
     return fks
 
 
-def infer_description(field_name: str) -> str:
-    """根据字段名推断描述"""
-    field_lower = field_name.lower()
-    
-    mappings = {
-        'id': '唯一标识符',
-        'name': '名称',
-        'title': '标题',
-        'desc': '描述',
-        'description': '描述',
-        'status': '状态',
-        'type': '类型',
-        'code': '编码',
-        'date': '日期',
-        'time': '时间',
-        'created_at': '创建时间',
-        'updated_at': '更新时间',
-        'created_by': '创建人',
-        'updated_by': '更新人',
-        'amount': '金额',
-        'price': '价格',
-        'count': '数量',
-        'num': '数量',
-        'remark': '备注',
-        'note': '备注',
-        'phone': '电话',
-        'email': '邮箱',
-        'address': '地址',
-        'user_id': '用户ID',
-        'order_id': '订单ID',
-        'product_id': '商品ID',
-    }
-    
-    for key, desc in mappings.items():
-        if key in field_lower:
-            return desc
-    
-    return ""
-
-
-def generate_metadata(conn, table_name: str) -> Dict:
+def generate_metadata(conn, table_name: str) -> Dict[str, Any]:
     """生成元数据"""
     schema = get_table_schema(conn, table_name)
-    indexes = get_table_indexes(conn, table_name)
-    fks = get_foreign_keys(conn, table_name)
+    indexes = get_indexes(conn, table_name)
+    foreign_keys = get_foreign_keys(conn, table_name)
     
-    # 丰富字段信息
-    for col in schema:
-        if not col.get('description'):
-            col['description'] = infer_description(col['name'])
-    
-    metadata = {
-        "table_name": table_name,
-        "columns": schema,
-        "indexes": indexes,
-        "foreign_keys": fks,
-        "column_count": len(schema)
+    return {
+        'table_name': table_name,
+        'column_count': len(schema),
+        'columns': schema,
+        'indexes': indexes,
+        'foreign_keys': foreign_keys
     }
-    
-    return metadata
 
 
 def generate_data_dict(metadata: Dict) -> str:
-    """生成数据字典"""
-    md = f"""# 数据字典 - {metadata['table_name']}
-
-## 基本信息
-- 字段数量: {metadata['column_count']}
-- 索引数量: {len(metadata.get('indexes', []))}
-- 外键数量: {len(metadata.get('foreign_keys', []))}
-
-## 字段说明
-
-| 字段名 | 类型 | 必填 | 主键 | 说明 |
-|--------|------|------|------|------|
-"""
+    """生成 Markdown 数据字典"""
+    md = f"# {metadata['table_name']}\n\n"
+    md += f"字段数: {metadata['column_count']}\n\n"
+    md += "## 字段\n\n"
+    md += "| 字段名 | 类型 |\n"
+    md += "|--------|------|\n"
     
-    for col in metadata.get("columns", []):
-        md += f"| {col['name']} | {col['type']} | "
-        md += f"{'是' if not col.get('nullable') else '否'} | "
-        md += f"{'是' if col.get('primary_key') else '否'} | "
-        md += f"{col.get('description', '')} |\n"
+    for col in metadata.get('columns', []):
+        md += f"| {col['name']} | {col['type']} |\n"
     
-    # 索引
     if metadata.get('indexes'):
         md += "\n## 索引\n\n"
         for idx in metadata['indexes']:
-            md += f"- {idx['name']} ({'唯一' if idx.get('unique') else '普通'})\n"
+            md += f"- {idx['name']} {'(UNIQUE)' if idx.get('unique') else ''}\n"
     
-    # 外键
     if metadata.get('foreign_keys'):
         md += "\n## 外键\n\n"
         for fk in metadata['foreign_keys']:
-            md += f"- {fk['column']} → {fk['references']}\n"
+            md += f"- {fk['from']} -> {fk['table']}.{fk['to']}\n"
     
     return md
 
@@ -260,39 +181,76 @@ def generate_data_dict(metadata: Dict) -> str:
 def main():
     parser = argparse.ArgumentParser(description='生成元数据')
     parser.add_argument('--source', required=True, help='表名')
-    parser.add_argument('--db', '--connection', dest='db', required=True,
+    parser.add_argument('--db', '--connection', dest='db', 
                        help='数据库连接字符串')
+    parser.add_argument('--db-type', choices=['sqlite', 'mysql', 'postgresql'],
+                       help='数据库类型（配合环境变量使用）')
     parser.add_argument('--output', help='输出文件路径')
     parser.add_argument('--format', choices=['json', 'markdown'], default='json', 
                        help='输出格式')
     args = parser.parse_args()
     
+    # 验证表名
+    if not validate_table_name(args.source):
+        sys.exit(1)
+    
+    conn = None
     try:
-        conn = get_connection(args.db)
-        print(f"✅ 已连接到数据库")
+        if args.db:
+            conn = get_connection(args.db)
+        elif args.db_type:
+            import os
+            if args.db_type == 'sqlite':
+                import sqlite3
+                conn = sqlite3.connect(os.getenv('DB_PATH', 'data.db'))
+            elif args.db_type == 'mysql':
+                import pymysql
+                conn = pymysql.connect(
+                    host=os.getenv('DB_HOST', 'localhost'),
+                    port=int(os.getenv('DB_PORT', 3306)),
+                    user=os.getenv('DB_USER', ''),
+                    password=os.getenv('DB_PASS', ''),
+                    database=os.getenv('DB_NAME', ''),
+                    cursorclass=pymysql.cursors.DictCursor
+                )
+            elif args.db_type in ('postgresql', 'postgres'):
+                import psycopg2
+                conn = psycopg2.connect(
+                    host=os.getenv('DB_HOST', 'localhost'),
+                    port=int(os.getenv('DB_PORT', 5432)),
+                    user=os.getenv('DB_USER', ''),
+                    password=os.getenv('DB_PASS', ''),
+                    database=os.getenv('DB_NAME', '')
+                )
+        else:
+            print("Error: Please provide --db or --db-type", file=sys.stderr)
+            sys.exit(1)
+        
+        print(f"✅ Connected to database")
         
         metadata = generate_metadata(conn, args.source)
-        print(f"✅ 已生成元数据: {metadata['column_count']} 个字段")
+        print(f"✅ Generated metadata: {metadata['column_count']} columns")
         
         conn.close()
         
         if args.format == 'markdown':
             output = generate_data_dict(metadata)
         else:
-            output = json.dumps(metadata, ensure_ascii=False, indent=2)
+            output = json.dumps(metadata, indent=2, ensure_ascii=False)
         
         if args.output:
-            with open(args.output, 'w', encoding='utf-8') as f:
+            with open(args.output, 'w') as f:
                 f.write(output)
-            print(f"✅ 已保存到 {args.output}")
+            print(f"✅ Output saved to {args.output}")
         else:
             print(output)
-            
+        
     except ImportError as e:
-        print(f"❌ 缺少依赖: {e}")
-        print("请安装: pip install pymysql psycopg2-binary")
+        print(f"Error: Missing dependency: {e}")
+        print("Please install: pip install pymysql psycopg2-binary")
     except Exception as e:
-        print(f"❌ 错误: {e}")
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == '__main__':

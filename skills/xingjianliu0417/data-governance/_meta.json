@@ -3,11 +3,16 @@
   "slug": "data-governance",
   "displayName": "Data Governance",
   "latest": {
-    "version": "1.5.0",
-    "publishedAt": 1773999583416,
-    "commit": "https://github.com/openclaw/skills/commit/0fb32f5053ebb266886b40190b38c3cce0c0c762"
+    "version": "1.10.1",
+    "publishedAt": 1774508574254,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.5.0",
+      "publishedAt": 1773999583416,
+      "commit": "https://github.com/openclaw/skills/commit/0fb32f5053ebb266886b40190b38c3cce0c0c762"
+    },
     {
       "version": "1.4.0",
       "publishedAt": 1773727076771,
