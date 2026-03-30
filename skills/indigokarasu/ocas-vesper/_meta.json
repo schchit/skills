@@ -1,13 +1,18 @@
 {
   "owner": "indigokarasu",
   "slug": "ocas-vesper",
-  "displayName": "Ocas Vesper",
+  "displayName": "Vesper",
   "latest": {
-    "version": "2.0.0",
-    "publishedAt": 1773812048472,
-    "commit": "https://github.com/openclaw/skills/commit/bee53dc566cc7771cf5aa3f431c3470464a2c463"
+    "version": "2.3.0",
+    "publishedAt": 1774683421908,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.0.0",
+      "publishedAt": 1773812048472,
+      "commit": "https://github.com/openclaw/skills/commit/bee53dc566cc7771cf5aa3f431c3470464a2c463"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773729003443,

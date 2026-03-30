@@ -1,7 +1,18 @@
 {
   "name": "ocas-vesper",
-  "version": "2.0.0",
-  "description": "Daily briefing generator. Aggregates signals from across the system into concise morning and evening briefings. Surfaces outcomes, opportunities, and decisions in natural language without exposing internal processes. Use for morning/evening briefings, on-demand briefings, or pending decision review. Do not use for deep research (Sift), pattern analysis (Corvus), or message drafting (Dispatch).",
+  "version": "2.3.0",
+  "description": "Vesper: daily briefing generator. Aggregates signals from across the system into concise morning and evening briefings. Surfaces outcomes, opportunities, and decisions in natural language without exposing internal processes. Trigger phrases: 'morning briefing', 'evening briefing', 'what's happening', 'daily brief', 'pending decisions', 'catch me up', 'update vesper'. Do not use for deep research (use Sift), pattern analysis (use Corvus), or message drafting (use Dispatch).",
   "author": "Indigo Karasu",
-  "email": "mx.indigo.karasu@gmail.com"
+  "email": "mx.indigo.karasu@gmail.com",
+  "filesystem": {
+    "read": [
+      "~/openclaw/data/ocas-vesper/",
+      "~/openclaw/journals/ocas-vesper/",
+      "~/openclaw/data/*/intake/"
+    ],
+    "write": [
+      "~/openclaw/data/ocas-vesper/",
+      "~/openclaw/journals/ocas-vesper/"
+    ]
+  }
 }
