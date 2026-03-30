@@ -1,103 +1,60 @@
 ---
-name: "rsi"
-version: "1.0.0"
-description: "Rsi reference tool. Use when working with rsi in finance contexts."
+name: "RSI — Relative Strength Index Calculator"
+description: "Calculate RSI for any asset. Use when checking overbought/oversold conditions, spotting divergence signals, comparing multi-timeframe RSI, or setting trading entry/exit alerts."
+version: "2.0.0"
 author: "BytesAgain"
-homepage: "https://bytesagain.com"
-source: "https://github.com/bytesagain/ai-skills"
-tags: [rsi, finance, finance, reference, cli]
-category: "finance"
+homepage: https://bytesagain.com
+source: https://github.com/bytesagain/ai-skills
+tags: ["rsi", "trading", "crypto", "stocks", "technical-analysis", "finance"]
 ---
 
-# Rsi
+# RSI — Relative Strength Index Calculator
 
-Rsi reference tool. Use when working with rsi in finance contexts.
-
-## When to Use
-
-- Working with rsi and need quick reference
-- Looking up finance standards or best practices for rsi
-- Troubleshooting rsi issues
-- Need a checklist or guide for rsi tasks
+Calculate and interpret RSI for any crypto or stock asset. Identify overbought/oversold zones, divergence signals, and optimal entry/exit points.
 
 ## Commands
 
-### `intro`
-
+### calculate
+Calculate RSI from price data.
 ```bash
-scripts/script.sh intro
+bash scripts/script.sh calculate 14
 ```
 
-Overview and fundamentals
-
-### `formulas`
-
+### interpret
+Interpret an RSI value with trading signals.
 ```bash
-scripts/script.sh formulas
+bash scripts/script.sh interpret 72.5
 ```
 
-Key formulas and calculations
-
-### `regulations`
-
+### zones
+Show RSI zone definitions and trading rules.
 ```bash
-scripts/script.sh regulations
+bash scripts/script.sh zones
 ```
 
-Regulatory framework and compliance
-
-### `risks`
-
+### divergence
+Explain RSI divergence patterns.
 ```bash
-scripts/script.sh risks
+bash scripts/script.sh divergence
 ```
 
-Risk factors and mitigation
-
-### `instruments`
-
+### strategies
+Common RSI trading strategies.
 ```bash
-scripts/script.sh instruments
+bash scripts/script.sh strategies
 ```
 
-Instruments and tools overview
-
-### `strategies`
-
+### help
+Show all commands.
 ```bash
-scripts/script.sh strategies
+bash scripts/script.sh help
 ```
 
-Common strategies and approaches
+## Output
+- RSI values with zone classification
+- Trading signals (buy/sell/hold)
+- Divergence pattern descriptions
 
-### `glossary`
-
-```bash
-scripts/script.sh glossary
-```
-
-Key terms and definitions
-
-### `checklist`
-
-```bash
-scripts/script.sh checklist
-```
-
-Due diligence checklist
-
-### `help`
-
-```bash
-scripts/script.sh help
-```
-
-### `version`
-
-```bash
-scripts/script.sh version
-```
-
----
-
-*Powered by BytesAgain | bytesagain.com | hello@bytesagain.com*
+## Feedback
+https://bytesagain.com/feedback/
+Powered by BytesAgain | bytesagain.com

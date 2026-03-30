@@ -3,9 +3,15 @@
   "slug": "rsi",
   "displayName": "Rsi",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774189126704,
-    "commit": "https://github.com/openclaw/skills/commit/02ebe532e61991d079d4d7bea7d89f531c7e4ee1"
+    "version": "2.0.1",
+    "publishedAt": 1774536907988,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774189126704,
+      "commit": "https://github.com/openclaw/skills/commit/02ebe532e61991d079d4d7bea7d89f531c7e4ee1"
+    }
+  ]
 }
