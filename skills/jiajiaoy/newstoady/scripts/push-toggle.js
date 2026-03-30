@@ -18,24 +18,62 @@ const path = require('path');
 
 const USERS_DIR = path.join(__dirname, '../data/users');
 
+// 只允许字母、数字、连字符、下划线，最长 128 字符
+function sanitizeId(value, label) {
+  if (typeof value !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(value)) {
+    console.error(`❌ 无效的 ${label}：只允许字母、数字、- 和 _，长度 1-128`);
+    process.exit(1);
+  }
+  return value;
+}
+
+// 校验 HH:MM 格式，返回 { h, m } 整数
+function sanitizeTime(value, label) {
+  if (typeof value !== 'string' || !/^\d{1,2}:\d{2}$/.test(value)) {
+    console.error(`❌ 无效的 ${label}：格式应为 HH:MM，如 08:00`);
+    process.exit(1);
+  }
+  const [h, m] = value.split(':').map(Number);
+  if (h < 0 || h > 23 || m < 0 || m > 59) {
+    console.error(`❌ 无效的 ${label}：小时 0-23，分钟 0-59`);
+    process.exit(1);
+  }
+  return { h, m };
+}
+
+// 验证文件路径确实在 USERS_DIR 内（防路径穿越）
+function safeUserPath(userId) {
+  const resolved = path.resolve(USERS_DIR, `${userId}.json`);
+  if (!resolved.startsWith(path.resolve(USERS_DIR) + path.sep)) {
+    console.error('❌ 非法路径');
+    process.exit(1);
+  }
+  return resolved;
+}
+
 function loadUser(userId) {
-  const f = path.join(USERS_DIR, `${userId}.json`);
+  const f = safeUserPath(userId);
   if (!fs.existsSync(f)) return null;
   return JSON.parse(fs.readFileSync(f, 'utf8'));
 }
 
 function saveUser(userId, data) {
   fs.mkdirSync(USERS_DIR, { recursive: true });
-  fs.writeFileSync(path.join(USERS_DIR, `${userId}.json`), JSON.stringify(data, null, 2), 'utf8');
+  fs.writeFileSync(safeUserPath(userId), JSON.stringify(data, null, 2), 'utf8');
 }
 
-function enablePush(userId, opts = {}) {
-  const morning = opts.morning || '08:00';
-  const evening = opts.evening || '20:00';
-  const channel = opts.channel || 'telegram';
+const ALLOWED_CHANNELS = new Set(['telegram', 'feishu', 'slack', 'discord']);
 
-  const [mh, mm] = morning.split(':');
-  const [eh, em] = evening.split(':');
+function enablePush(userId, opts = {}) {
+  userId = sanitizeId(userId, 'userId');
+  const { h: mh, m: mm } = sanitizeTime(opts.morning || '08:00', 'morning');
+  const { h: eh, m: em } = sanitizeTime(opts.evening || '20:00', 'evening');
+  const rawChannel = opts.channel || 'telegram';
+  if (!ALLOWED_CHANNELS.has(rawChannel)) {
+    console.error(`❌ 不支持的渠道：${rawChannel}。支持：${[...ALLOWED_CHANNELS].join(', ')}`);
+    process.exit(1);
+  }
+  const channel = rawChannel;
 
   const morningCron = `${mm} ${mh} * * *`;
   const eveningCron = `${em} ${eh} * * *`;
@@ -72,11 +110,14 @@ function enablePush(userId, opts = {}) {
   };
   console.log(`__OPENCLAW_CRON_ADD__:${JSON.stringify(eveningConfig)}`);
 
-  // 保存用户推送设置
+  const morningDisplay = `${String(mh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+  const eveningDisplay = `${String(eh).padStart(2,'0')}:${String(em).padStart(2,'0')}`;
+
+  // 保存用户推送设置（存已校验的整数重建字符串，非原始输入）
   saveUser(userId, {
     pushEnabled: true,
-    morningTime: morning,
-    eveningTime: evening,
+    morningTime: morningDisplay,
+    eveningTime: eveningDisplay,
     channel,
     enabledAt: new Date().toISOString()
   });
@@ -84,14 +125,15 @@ function enablePush(userId, opts = {}) {
   console.log(`
 ✅ 每日推送已开启
 
-⏰ 早报：每天 ${morning}（今日要闻10条）
-🌙 晚报：每天 ${evening}（收官+明日预告）
+⏰ 早报：每天 ${morningDisplay}（今日要闻10条）
+🌙 晚报：每天 ${eveningDisplay}（收官+明日预告）
 📡 渠道：${channel}
 
 关闭推送：node push-toggle.js off ${userId}`);
 }
 
 function disablePush(userId) {
+  userId = sanitizeId(userId, 'userId');
   const user = loadUser(userId);
   if (!user) {
     console.log(`❌ 未找到用户 ${userId} 的推送记录`);
@@ -106,6 +148,7 @@ function disablePush(userId) {
 }
 
 function showStatus(userId) {
+  userId = sanitizeId(userId, 'userId');
   const user = loadUser(userId);
   if (!user) {
     console.log(`❌ 未找到用户 ${userId} 的推送记录`);
@@ -132,7 +175,7 @@ const userId = args[1];
 
 if (!command || !userId) {
   console.log(`用法:
-  node push-toggle.js on <userId> [--morning 08:00] [--evening 20:00] [--channel telegram] [--no-breaking]
+  node push-toggle.js on <userId> [--morning 08:00] [--evening 20:00] [--channel telegram]
   node push-toggle.js off <userId>
   node push-toggle.js status <userId>`);
   process.exit(1);
@@ -145,7 +188,6 @@ const ei = args.indexOf('--evening');
 if (ei !== -1) opts.evening = args[ei + 1];
 const ci = args.indexOf('--channel');
 if (ci !== -1) opts.channel = args[ci + 1];
-if (args.includes('--no-breaking')) opts.breaking = false;
 
 switch (command) {
   case 'on':     enablePush(userId, opts); break;

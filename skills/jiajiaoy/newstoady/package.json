@@ -26,9 +26,6 @@
   ],
   "author": "jiajiaoy",
   "license": "MIT",
-  "engines": {
-    "node": ">=18.0.0"
-  },
   "scripts": {
     "push-on": "node scripts/push-toggle.js on",
     "push-off": "node scripts/push-toggle.js off",
