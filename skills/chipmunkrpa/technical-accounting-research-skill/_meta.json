@@ -1,13 +1,18 @@
 {
   "owner": "chipmunkrpa",
   "slug": "technical-accounting-research-skill",
-  "displayName": "Technical Accounting Research Skill",
+  "displayName": "technical-accounting-research-skill",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1774828183311,
-    "commit": "https://github.com/openclaw/skills/commit/cd9524fa3c848372921b8415aa231aec02946cdc"
+    "version": "1.0.5",
+    "publishedAt": 1774911207199,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1774828183311,
+      "commit": "https://github.com/openclaw/skills/commit/cd9524fa3c848372921b8415aa231aec02946cdc"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773434019689,
