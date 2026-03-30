@@ -88,6 +88,36 @@ REPORTS_DIR = PROJECT_ROOT / 'reports'
 REPORTS_DIR.mkdir(exist_ok=True)
 sys.path.insert(0, str(SCRIPT_DIR))
 
+
+def load_project_env_file():
+    """Load project-local config/.env without overriding already exported variables."""
+    env_path = CONFIG_DIR / '.env'
+    if not env_path.exists():
+        return
+
+    try:
+        for raw_line in env_path.read_text(encoding='utf-8').splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith('#'):
+                continue
+            if line.startswith('export '):
+                line = line[7:].strip()
+            if '=' not in line:
+                continue
+            key, value = line.split('=', 1)
+            key = key.strip()
+            if not key or key in os.environ:
+                continue
+            value = value.strip()
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+                value = value[1:-1]
+            os.environ[key] = value
+    except OSError:
+        return
+
+
+load_project_env_file()
+
 from constants import DEFAULT_PORTIONS, FOOD_CALORIES, FOOD_NAME_ALIASES
 from i18n import (
     CALORIE_BURN_ALIASES,
@@ -336,27 +366,6 @@ def clone_ai_generation_defaults():
     }
 
 
-def build_scoring_modules_from_legacy(config, locale):
-    modules = []
-    legacy_weights = config.get('scoring_weights', {}) if isinstance(config, dict) else {}
-    legacy_map = {
-        "diet": safe_float(legacy_weights.get('diet', 0), 0),
-        "water": safe_float(legacy_weights.get('water', 0), 0),
-        "weight": safe_float(legacy_weights.get('weight', 0), 0),
-        "exercise": safe_float(legacy_weights.get('exercise', legacy_weights.get('exercise_bonus', 0)), 0),
-        "symptom": safe_float(legacy_weights.get('symptom', 0), 0),
-        "adherence": safe_float(legacy_weights.get('adherence', 0), 0),
-        "medication": safe_float(legacy_weights.get('medication', 0), 0),
-    }
-    for module in build_default_scoring_modules(locale):
-        normalized = dict(module)
-        normalized["weight"] = legacy_map.get(module["id"], normalized.get("weight", 0))
-        if module["id"] == "medication" and "medication" not in legacy_weights:
-            normalized["enabled"] = False
-        modules.append(normalized)
-    return modules
-
-
 def normalize_scoring_module(module, locale):
     if not isinstance(module, dict):
         return None
@@ -415,7 +424,7 @@ def normalize_scoring_modules(raw_config, locale):
                 normalized_modules.append(default_module)
         return normalized_modules
 
-    return build_scoring_modules_from_legacy(raw_config, locale)
+    return build_default_scoring_modules(locale)
 
 
 def normalize_user_config(raw_config):
@@ -457,14 +466,20 @@ def normalize_user_config(raw_config):
         existing = normalized_condition_standards.get(canonical_key, {})
         normalized_condition_standards[canonical_key] = deep_merge_dict(existing, value)
     merged["condition_standards"] = deep_merge_dict(base.get("condition_standards", {}), normalized_condition_standards)
-    merged["_version"] = "1.5.0"
-    merged["config_version"] = "1.5.0"
+    merged["_version"] = "1.5.3"
+    merged["config_version"] = "1.5.3"
     merged["ai_generation"] = deep_merge_dict(clone_ai_generation_defaults(), raw_config.get("ai_generation", {}))
     merged["scoring"] = {"modules": normalize_scoring_modules(raw_config, locale)}
     merged.setdefault("integrations", {"tavily_api_key": ""})
     merged["integrations"] = deep_merge_dict({"tavily_api_key": ""}, merged.get("integrations", {}))
-    merged.setdefault("report_preferences", {"append_custom_sections": True})
-    merged["report_preferences"] = deep_merge_dict({"append_custom_sections": True}, merged.get("report_preferences", {}))
+    merged.setdefault("report_preferences", {"append_custom_sections": True, "population_branch": "lifestyle"})
+    merged["report_preferences"] = deep_merge_dict(
+        {"append_custom_sections": True, "population_branch": "lifestyle"},
+        merged.get("report_preferences", {}),
+    )
+    merged["report_preferences"]["population_branch"] = normalize_population_branch(
+        merged.get("report_preferences", {}).get("population_branch")
+    ) or infer_population_branch(primary_condition)
     return merged
 
 
@@ -688,8 +703,8 @@ def prepare_font_compatible_memory(requested_locale, source_dir, default_memory_
 def _get_default_config():
     locale = "zh-CN"
     return {
-        "_version": "1.5.0",
-        "config_version": "1.5.0",
+        "_version": "1.5.3",
+        "config_version": "1.5.3",
         "language": "zh-CN",
         "user_profile": {
             "name": "Demo User",
@@ -727,11 +742,10 @@ def _get_default_config():
         "scoring": {
             "modules": build_default_scoring_modules(locale),
         },
-        "scoring_weights": {"diet": 0.45, "water": 0.35, "weight": 0.20, "exercise_bonus": 0.10},
         "exercise_standards": {"weekly_target_minutes": 150},
         "ai_generation": clone_ai_generation_defaults(),
         "integrations": {"tavily_api_key": ""},
-        "report_preferences": {"append_custom_sections": True},
+        "report_preferences": {"append_custom_sections": True, "population_branch": "lifestyle"},
     }
 
 def get_profile_conditions(user_profile):
@@ -750,6 +764,34 @@ def get_primary_condition(user_profile):
     conditions = get_profile_conditions(user_profile)
     primary = condition_key((user_profile or {}).get("primary_condition", conditions[0])) or conditions[0]
     return primary if primary in conditions else conditions[0]
+
+
+def normalize_population_branch(value):
+    normalized = str(value or "").strip().lower().replace("-", "_")
+    if normalized in {"lifestyle", "health", "healthy", "balanced", "fat_loss", "wellness"}:
+        return "lifestyle"
+    if normalized in {"disease", "medical", "condition", "illness"}:
+        return "disease"
+    return ""
+
+
+def infer_population_branch(primary_condition=None):
+    return "lifestyle" if condition_key(primary_condition) in {"balanced", "fat_loss"} else "disease"
+
+
+def get_population_branch(config=None, user_profile=None, primary_condition=None):
+    runtime_config = config if isinstance(config, dict) else {}
+    explicit = normalize_population_branch(runtime_config.get("report_preferences", {}).get("population_branch"))
+    if explicit:
+        return explicit
+
+    profile = user_profile if isinstance(user_profile, dict) else runtime_config.get("user_profile", {})
+    resolved_primary = condition_key(primary_condition) or get_primary_condition(profile)
+    return infer_population_branch(resolved_primary)
+
+
+def is_lifestyle_branch(config=None, user_profile=None, primary_condition=None):
+    return get_population_branch(config=config, user_profile=user_profile, primary_condition=primary_condition) == "lifestyle"
 
 
 def get_conditions_display_name(locale, conditions):
@@ -1445,6 +1487,86 @@ def resolve_openclaw_binary():
     return None
 
 
+LOCAL_LLM_LOG_PREFIXES = ("[plugins]", "[adp-", "[qqbot-", "[openclaw")
+LOCAL_LLM_LOG_PHRASES = (
+    "register() called - starting plugin registration",
+    "registering tool factory:",
+    "tool adp_upload_file registered successfully",
+    "plugin registration complete",
+    "no qqbot accounts configured, skipping",
+    "registered qqbot remind tool",
+)
+LOCAL_LLM_INLINE_LOG_PATTERNS = (
+    r"\[adp-openclaw\]\s*register\(\)\s*called\s*-\s*starting plugin registration",
+    r"\[adp-openclaw\]\s*registering tool factory:\s*adp_upload_file",
+    r"\[adp-openclaw\]\s*tool adp_upload_file registered successfully",
+    r"\[adp-openclaw\]\s*plugin registration complete",
+    r"\[qqbot-channel-api\]\s*no qqbot accounts configured,\s*skipping",
+    r"\[qqbot-remind\]\s*registered qqbot remind tool",
+)
+LOCAL_LLM_SECTION_MARKERS = (
+    "【做得很好的地方】",
+    "【需要关注的隐患】",
+    "【核心发现】",
+    "【体态与习惯预警】",
+    "【次月高阶干预清单】",
+    "【下周调整】",
+    "【下周干预方案】",
+    "【主要な発見】",
+    "【注意点】",
+    "【次月アクションチェックリスト】",
+    "[What Went Well]",
+    "[Watchouts]",
+    "[Core Findings]",
+    "[Body & Habit Alerts]",
+    "[Advanced Next-Month Checklist]",
+)
+
+
+def sanitize_local_llm_output(text):
+    raw = str(text or "")
+    if not raw:
+        return ""
+
+    cleaned = raw.replace("\r\n", "\n").replace("\r", "\n")
+    cleaned = re.sub(r"\x1b\[[0-9;?]*[A-Za-z]", "", cleaned)
+
+    for pattern in LOCAL_LLM_INLINE_LOG_PATTERNS:
+        cleaned = re.sub(pattern, " ", cleaned, flags=re.IGNORECASE)
+
+    cleaned = re.sub(
+        r"(?<!\n)(\[(?:plugins|adp-[^\]]+|qqbot-[^\]]+|openclaw[^\]]*)\])",
+        r"\n\1",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    for marker in LOCAL_LLM_SECTION_MARKERS:
+        cleaned = cleaned.replace(marker, f"\n{marker}")
+    cleaned = re.sub(r"([】\]])\s*-\s*", r"\1\n- ", cleaned)
+    cleaned = re.sub(
+        r"(?<!\n)\s+-\s+(?=(?:\d+[.)]\s*)?[A-Za-z\u4e00-\u9fff])",
+        "\n- ",
+        cleaned,
+    )
+
+    lines = []
+    for raw_line in cleaned.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        lowered = line.lower()
+        if lowered.startswith(LOCAL_LLM_LOG_PREFIXES):
+            continue
+        if any(phrase in lowered for phrase in LOCAL_LLM_LOG_PHRASES):
+            continue
+        lines.append(line)
+
+    cleaned = "\n".join(lines)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    cleaned = re.sub(r"[ \t]{2,}", " ", cleaned).strip()
+    return cleaned
+
+
 def run_local_llm(prompt, system_prompt, settings, locale, timeout_key, failure_key):
     mode = str(settings.get("mode", "hybrid")).strip().lower()
     if mode == "local_only":
@@ -1467,14 +1589,9 @@ def run_local_llm(prompt, system_prompt, settings, locale, timeout_key, failure_
                 env={**os.environ, 'SYSTEM_PROMPT': system_prompt},
             )
             if result.returncode == 0 and result.stdout.strip():
-                output = result.stdout.strip()
-                if '[plugins]' in output:
-                    lines = output.split('\n')
-                    output = '\n'.join(
-                        line for line in lines
-                        if not line.startswith('[plugins]') and not line.startswith('[adp-')
-                    ).strip()
-                return output
+                output = sanitize_local_llm_output(result.stdout)
+                if output:
+                    return output
         except subprocess.TimeoutExpired:
             print(t(locale, timeout_key, attempt=attempt + 1), file=sys.stderr)
         except Exception as e:
