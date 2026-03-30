@@ -1,7 +1,7 @@
 ---
 name: privateclaw-plugin-setup
 description: Install, enable, verify, pair, and manage PrivateClaw OpenClaw sessions, preferring same-conversation /privateclaw QR replies and falling back to the local CLI when needed.
-version: 1.1.1
+version: 1.1.2
 metadata:
   openclaw:
     requires:
@@ -40,11 +40,11 @@ This skill is especially relevant for requests like:
 ## Core facts
 
 - The production plugin package is `@privateclaw/privateclaw`.
-- The production install path is `openclaw plugins install @privateclaw/privateclaw@latest`.
+- The reliable manual production install path is `npm pack @privateclaw/privateclaw@latest` followed by `openclaw plugins install ./privateclaw-privateclaw-*.tgz`.
 - The plugin id is `privateclaw`.
 - The standalone npm binary is `privateclaw-provider`.
 - The default public relay is `https://relay.privateclaw.us`.
-- The iOS public beta is available at `https://testflight.apple.com/join/XvgJ9c33`.
+- The iOS App Store release (YourClaw) is available at `https://apps.apple.com/us/app/yourclaw/id6760531637`.
 - The Android closed alpha lives at `https://play.google.com/store/apps/details?id=gg.ai.privateclaw`, but Google Play only grants access after the tester joins `https://groups.google.com/g/gg-studio-ai-products`.
 - If the user is happy with the default public relay, do **not** set `relayBaseUrl`.
 - PrivateClaw is an **OpenClaw plugin**, not an OpenClaw channel. Do **not** run `openclaw channels add privateclaw`.
@@ -82,11 +82,11 @@ If there is no suitable active OpenClaw chat channel available, fall back to the
 
 If the user does not have the OpenClaw alias available but does have the standalone npm binary installed, use the equivalent `privateclaw-provider ...` commands.
 
-## Mobile beta app access
+## Mobile app access
 
 When a user asks where to get the mobile client builds, point them at:
 
-- iOS public beta (TestFlight): `https://testflight.apple.com/join/XvgJ9c33`
+- iOS App Store (YourClaw): `https://apps.apple.com/us/app/yourclaw/id6760531637`
 - Android closed alpha tester group: `https://groups.google.com/g/gg-studio-ai-products`
 - Android closed alpha (Google Play): `https://play.google.com/store/apps/details?id=gg.ai.privateclaw`
 
@@ -106,10 +106,11 @@ If `openclaw` is missing, stop and tell the user that OpenClaw itself must be in
 
 ### 2. Install and enable the plugin
 
-Use the production npm package by default:
+Use the published npm package by default, but install it through a locally packed archive so OpenClaw does not get diverted to ClawHub first:
 
 ```bash
-openclaw plugins install @privateclaw/privateclaw@latest
+npm pack @privateclaw/privateclaw@latest
+openclaw plugins install ./privateclaw-privateclaw-*.tgz
 openclaw plugins enable privateclaw
 ```
 
@@ -194,6 +195,8 @@ The same public subcommands also exist on the standalone npm binary:
 ```bash
 privateclaw-provider pair --group --foreground
 privateclaw-provider sessions
+privateclaw-provider sessions killall
+privateclaw-provider killall
 privateclaw-provider kick <sessionId> <appId>
 ```
 
@@ -293,10 +296,11 @@ Use:
 
 ```bash
 openclaw privateclaw sessions
+openclaw privateclaw sessions killall
 openclaw privateclaw kick <sessionId> <appId>
 ```
 
-Use the standalone `privateclaw-provider sessions` / `privateclaw-provider kick ...` forms when the user is working outside the OpenClaw alias.
+Use the standalone `privateclaw-provider sessions` / `privateclaw-provider kick ...` forms when the user is working outside the OpenClaw alias. If they need to clear all background daemon sessions at once, use `openclaw privateclaw sessions killall` or `privateclaw-provider killall`.
 
 ## Completion checklist
 
