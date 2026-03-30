@@ -3,11 +3,16 @@
   "slug": "military-bidding-fetcher",
   "displayName": "military bidding fetcher",
   "latest": {
-    "version": "0.1.4",
-    "publishedAt": 1774244701075,
-    "commit": "https://github.com/openclaw/skills/commit/285c7b3a331ea38d1a1fbf68f42e9556520ae148"
+    "version": "0.2.4",
+    "publishedAt": 1774696766489,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.1.4",
+      "publishedAt": 1774244701075,
+      "commit": "https://github.com/openclaw/skills/commit/285c7b3a331ea38d1a1fbf68f42e9556520ae148"
+    },
     {
       "version": "0.1.3",
       "publishedAt": 1774070359230,
