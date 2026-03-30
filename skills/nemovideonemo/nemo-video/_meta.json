@@ -1,13 +1,18 @@
 {
   "owner": "nemovideonemo",
   "slug": "nemo-video",
-  "displayName": "NemoVideo - AI Video Editor: Create, Edit, Export Videos in Chat",
+  "displayName": "Nemo Video",
   "latest": {
-    "version": "1.9.2",
-    "publishedAt": 1774147151743,
-    "commit": "https://github.com/openclaw/skills/commit/eadfa9544c113621db73d50e2c8fc3b91dca4c88"
+    "version": "1.9.5",
+    "publishedAt": 1774839578940,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.9.2",
+      "publishedAt": 1774147151743,
+      "commit": "https://github.com/openclaw/skills/commit/eadfa9544c113621db73d50e2c8fc3b91dca4c88"
+    },
     {
       "version": "1.9.1",
       "publishedAt": 1773921810978,
