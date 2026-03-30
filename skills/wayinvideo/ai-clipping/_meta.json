@@ -1,11 +1,17 @@
 {
   "owner": "wayinvideo",
   "slug": "ai-clipping",
-  "displayName": "AI Clipping",
+  "displayName": "WayinVideo - AI Clipping",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1774014859384,
-    "commit": "https://github.com/openclaw/skills/commit/209ab9b10ca69fd010b1f957952b838900a720cc"
+    "version": "1.0.5",
+    "publishedAt": 1774615791021,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1774014859384,
+      "commit": "https://github.com/openclaw/skills/commit/209ab9b10ca69fd010b1f957952b838900a720cc"
+    }
+  ]
 }

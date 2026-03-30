@@ -93,7 +93,7 @@ def main():
     parser.add_argument("--name", default=None)
     parser.add_argument("--export", action="store_true", default=False)
     parser.add_argument("--ratio", choices=["RATIO_16_9", "RATIO_1_1", "RATIO_4_5", "RATIO_9_16"], default="RATIO_9_16")
-    parser.add_argument("--resolution", choices=["SD_480", "HD_720", "FHD_1080"], default="HD_720")
+    parser.add_argument("--resolution", choices=["SD_480", "HD_720", "FHD_1080"], default="FHD_1080")
     parser.add_argument("--caption-display", choices=["none", "both", "original", "translation"], default=None)
     parser.add_argument("--cc-style-tpl", default=None)
     parser.add_argument("--duration", choices=["DURATION_0_30", "DURATION_0_90", "DURATION_30_60", "DURATION_60_90", "DURATION_90_180", "DURATION_180_300"], default=None, dest="target_duration")
