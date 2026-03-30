@@ -9,15 +9,31 @@ ftdata() {
   PAIR=${1:-"BTC/USDT"}
   DAYS=${2:-30}
   TIMEFRAME=${3:-"5m"}
-  ERASE=${4:-}
+  
+  # Validate PAIR (alphanumeric + /)
+  if [[ ! "$PAIR" =~ ^[A-Za-z0-9/]+$ ]]; then
+    echo "Error: invalid pair format. Use alphanumeric and / only (e.g., BTC/USDT)"; return 1
+  fi
+  
+  # Validate TIMEFRAME (alphanumeric + m/h/d)
+  if [[ ! "$TIMEFRAME" =~ ^[0-9]+(m|h|d)$ ]]; then
+    echo "Error: invalid timeframe format. Use format like 5m, 1h, 1d"; return 1
+  fi
+  
+  # Handle --erase flag safely
+  ERASE_FLAG=""
+  if [[ "$4" == "--erase" ]]; then
+    ERASE_FLAG="--erase"
+  fi
+  
   START_DATE=$(date -d "$DAYS days ago" +%Y%m%d 2>/dev/null || \
     date -v-${DAYS}d +%Y%m%d)
   docker-compose run --rm freqtrade download-data \
     --exchange kraken \
     --pairs "$PAIR" \
-    --timerange ${START_DATE}- \
-    --timeframe $TIMEFRAME \
-    $ERASE
+    --timerange "${START_DATE}-" \
+    --timeframe "$TIMEFRAME" \
+    $ERASE_FLAG
 }
 ```
 
@@ -41,20 +57,36 @@ ftback() {
   DAYS=${2:-30}
   TIMEFRAME=${3:-"5m"}
   PAIRS=${4:-}
+  
+  # Validate STRATEGY (alphanumeric, underscore, hyphen only)
+  if [[ ! "$STRATEGY" =~ ^[A-Za-z0-9_-]+$ ]]; then
+    echo "Error: invalid strategy name. Use alphanumeric, underscore, or hyphen only"; return 1
+  fi
+  
+  # Validate TIMEFRAME (alphanumeric + m/h/d)
+  if [[ ! "$TIMEFRAME" =~ ^[0-9]+(m|h|d)$ ]]; then
+    echo "Error: invalid timeframe format. Use format like 5m, 1h, 1d"; return 1
+  fi
+  
+  # Validate PAIRS if provided (alphanumeric + /)
+  if [[ -n "$PAIRS" ]] && [[ ! "$PAIRS" =~ ^[A-Za-z0-9/,]+$ ]]; then
+    echo "Error: invalid pairs format. Use alphanumeric, /, and comma only"; return 1
+  fi
+  
   START_DATE=$(date -d "$DAYS days ago" +%Y%m%d 2>/dev/null || \
     date -v-${DAYS}d +%Y%m%d)
   if [ -z "$PAIRS" ]; then
     docker-compose run --rm freqtrade backtesting \
-      --strategy $STRATEGY \
-      --timerange ${START_DATE}- \
-      --timeframe $TIMEFRAME \
+      --strategy "$STRATEGY" \
+      --timerange "${START_DATE}-" \
+      --timeframe "$TIMEFRAME" \
       --breakdown day
   else
     docker-compose run --rm freqtrade backtesting \
-      --strategy $STRATEGY \
-      --timerange ${START_DATE}- \
-      --timeframe $TIMEFRAME \
-      --pairs $PAIRS \
+      --strategy "$STRATEGY" \
+      --timerange "${START_DATE}-" \
+      --timeframe "$TIMEFRAME" \
+      --pairs "$PAIRS" \
       --breakdown day
   fi
 }

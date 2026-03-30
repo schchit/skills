@@ -14,13 +14,32 @@ function ftdata {
     [string]$Timeframe = "5m",
     [string]$Erase = ""
   )
+  
+  # Validate Pair (alphanumeric + / only)
+  if ($Pair -notmatch '^[A-Za-z0-9/]+$') {
+    Write-Host "Error: invalid pair format. Use alphanumeric and / only (e.g., BTC/USDT)"
+    return
+  }
+  
+  # Validate Timeframe (digits + m/h/d)
+  if ($Timeframe -notmatch '^\d+(m|h|d)$') {
+    Write-Host "Error: invalid timeframe format. Use format like 5m, 1h, 1d"
+    return
+  }
+  
+  # Handle --erase flag safely
+  $EraseFlag = ""
+  if ($Erase -eq "--erase") {
+    $EraseFlag = "--erase"
+  }
+  
   $StartDate = (Get-Date).AddDays(-$Days).ToString("yyyyMMdd")
   docker-compose run --rm freqtrade download-data `
     --exchange kraken `
-    --pairs $Pair `
+    --pairs "$Pair" `
     --timerange "${StartDate}-" `
-    --timeframe $Timeframe `
-    $Erase
+    --timeframe "$Timeframe" `
+    $EraseFlag
 }
 ```
 
@@ -46,19 +65,38 @@ function ftback {
     [string]$Timeframe = "5m",
     [string]$Pairs = ""
   )
+  
+  # Validate Strategy (alphanumeric, underscore, hyphen only)
+  if ($Strategy -notmatch '^[A-Za-z0-9_-]+$') {
+    Write-Host "Error: invalid strategy name. Use alphanumeric, underscore, or hyphen only"
+    return
+  }
+  
+  # Validate Timeframe (digits + m/h/d)
+  if ($Timeframe -notmatch '^\d+(m|h|d)$') {
+    Write-Host "Error: invalid timeframe format. Use format like 5m, 1h, 1d"
+    return
+  }
+  
+  # Validate Pairs if provided (alphanumeric + / and comma)
+  if (-not [string]::IsNullOrEmpty($Pairs) -and $Pairs -notmatch '^[A-Za-z0-9/,]+$') {
+    Write-Host "Error: invalid pairs format. Use alphanumeric, /, and comma only"
+    return
+  }
+  
   $StartDate = (Get-Date).AddDays(-$Days).ToString("yyyyMMdd")
   if ([string]::IsNullOrEmpty($Pairs)) {
     docker-compose run --rm freqtrade backtesting `
-      --strategy $Strategy `
+      --strategy "$Strategy" `
       --timerange "${StartDate}-" `
-      --timeframe $Timeframe `
+      --timeframe "$Timeframe" `
       --breakdown day
   } else {
     docker-compose run --rm freqtrade backtesting `
-      --strategy $Strategy `
+      --strategy "$Strategy" `
       --timerange "${StartDate}-" `
-      --timeframe $Timeframe `
-      --pairs $Pairs `
+      --timeframe "$Timeframe" `
+      --pairs "$Pairs" `
       --breakdown day
   }
 }
@@ -114,17 +152,26 @@ set TIMEFRAME=%~3
 if "%TIMEFRAME%"=="" set TIMEFRAME=5m
 set ERASE=%~4
 
+REM NOTE: Windows cmd/PowerShell lack bash regex. Validate in PowerShell before calling batch,
+REM or add whitelist checks: verify PAIR contains only alphanumeric/slash,
+REM TIMEFRAME matches ^\d+(m|h|d)$, and ERASE is empty or "--erase".
+REM To prevent injection, always quote variables: "%PAIR%", "%TIMEFRAME%", etc.
+
 REM Calculate start date (DAYS ago)
 for /f %%A in ('powershell -Command "(Get-Date).AddDays(-!DAYS!).ToString('yyyyMMdd')"') do (
   set START_DATE=%%A
 )
 
+REM Handle --erase flag safely
+set ERASE_FLAG=
+if "%ERASE%"=="--erase" set ERASE_FLAG=--erase
+
 docker-compose run --rm freqtrade download-data ^
   --exchange kraken ^
   --pairs "%PAIR%" ^
   --timerange !START_DATE!- ^
-  --timeframe %TIMEFRAME% ^
-  %ERASE%
+  --timeframe "%TIMEFRAME%" ^
+  %ERASE_FLAG%
 
 endlocal
 ```
@@ -152,22 +199,27 @@ set TIMEFRAME=%~3
 if "%TIMEFRAME%"=="" set TIMEFRAME=5m
 set PAIRS=%~4
 
+REM NOTE: Windows cmd/PowerShell lack bash regex. Validate in PowerShell before calling batch,
+REM or add whitelist checks: verify STRATEGY contains only alphanumeric/hyphen/underscore,
+REM TIMEFRAME matches ^\d+(m|h|d)$, and PAIRS (if present) contains only alphanumeric/slash/comma.
+REM To prevent injection, always quote variables: "%STRATEGY%", "%TIMEFRAME%", "%PAIRS%", etc.
+
 for /f %%A in ('powershell -Command "(Get-Date).AddDays(-!DAYS!).ToString('yyyyMMdd')"') do (
   set START_DATE=%%A
 )
 
 if "%PAIRS%"=="" (
   docker-compose run --rm freqtrade backtesting ^
-    --strategy %STRATEGY% ^
+    --strategy "%STRATEGY%" ^
     --timerange !START_DATE!- ^
-    --timeframe %TIMEFRAME% ^
+    --timeframe "%TIMEFRAME%" ^
     --breakdown day
 ) else (
   docker-compose run --rm freqtrade backtesting ^
-    --strategy %STRATEGY% ^
+    --strategy "%STRATEGY%" ^
     --timerange !START_DATE!- ^
-    --timeframe %TIMEFRAME% ^
-    --pairs %PAIRS% ^
+    --timeframe "%TIMEFRAME%" ^
+    --pairs "%PAIRS%" ^
     --breakdown day
 )
 
