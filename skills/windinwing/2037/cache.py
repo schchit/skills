@@ -41,6 +41,36 @@ def _get_token():
     return ""
 
 
+def _auth_401_hint(token):
+    t = (token or "").strip()
+    if t.upper().startswith("SK-"):
+        return "「SK-」开头的是注册/绑定用 key，不能当 Bearer。请执行 2037.py login 用户名 密码，或 curl POST /auth/token，使用返回的 token。"
+    return "请检查 EARTH2037_TOKEN：应用 2037.py login 或 POST /auth/token、/auth/apply 返回的长 token（32 位十六进制），不是 SK- key。"
+
+
+def _post_bootstrap(api_base, token):
+    """POST /game/bootstrap，返回合并后的 data 对象"""
+    import urllib.request
+    import urllib.error
+    url = f"{api_base}/game/bootstrap"
+    body = json.dumps({}).encode("utf-8")
+    req = urllib.request.Request(url, data=body, method="POST")
+    req.add_header("Content-Type", "application/json")
+    req.add_header("Authorization", f"Bearer {token}")
+    req.add_header("Accept", "application/json")
+    try:
+        resp = urllib.request.urlopen(req, timeout=120)
+    except urllib.error.HTTPError as e:
+        if e.code == 401:
+            raise RuntimeError("HTTP 401 Unauthorized。 " + _auth_401_hint(token)) from e
+        raise
+    with resp:
+        r = json.loads(resp.read().decode("utf-8"))
+    if not r.get("ok"):
+        raise RuntimeError(r.get("err", "bootstrap failed"))
+    return r.get("data")
+
+
 def _game_command(api_base, token, cmd, args=""):
     """POST /game/command，返回 data 字符串（如 /svr citylist {...}）"""
     import urllib.request
@@ -51,7 +81,13 @@ def _game_command(api_base, token, cmd, args=""):
     req.add_header("Content-Type", "application/json")
     req.add_header("Authorization", f"Bearer {token}")
     req.add_header("Accept", "application/json")
-    with urllib.request.urlopen(req, timeout=30) as resp:
+    try:
+        resp = urllib.request.urlopen(req, timeout=30)
+    except urllib.error.HTTPError as e:
+        if e.code == 401:
+            raise RuntimeError("HTTP 401 Unauthorized。 " + _auth_401_hint(token)) from e
+        raise
+    with resp:
         r = json.loads(resp.read().decode("utf-8"))
     if not r.get("ok"):
         raise RuntimeError(r.get("err", "unknown error"))
@@ -119,6 +155,144 @@ def sync(api_base=None, token=None):
     return userinfo, citys
 
 
+def bootstrap(api_base=None, token=None):
+    """
+    登录后一次性拉取多路数据（等价 TCP 连续多条命令），写入 session_cache.json。
+    仍会从 data 中提取 userinfo、citylist 写入 userinfo.json、citys.json（若存在）。
+    """
+    api_base = api_base or _load_config()
+    token = token or _get_token()
+    if not token:
+        raise ValueError("需要 token：设置环境变量 EARTH2037_TOKEN 或在 config.json 中配置 token/apiKey")
+
+    data = _post_bootstrap(api_base, token)
+    cache_dir = _cache_dir()
+    path = os.path.join(cache_dir, "session_cache.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+    ui = None
+    cs = None
+    if isinstance(data, dict):
+        ui_raw = data.get("userinfo")
+        if isinstance(ui_raw, dict):
+            ui = ui_raw
+        elif isinstance(ui_raw, str):
+            try:
+                ui = json.loads(ui_raw)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        cl_raw = data.get("citylist")
+        if isinstance(cl_raw, list):
+            cs = cl_raw
+        elif isinstance(cl_raw, str):
+            try:
+                cs = json.loads(cl_raw)
+            except (json.JSONDecodeError, TypeError):
+                pass
+    if ui:
+        with open(os.path.join(cache_dir, "userinfo.json"), "w", encoding="utf-8") as f:
+            json.dump(ui, f, ensure_ascii=False, indent=2)
+    if cs is not None:
+        if not isinstance(cs, list):
+            cs = [cs] if cs else []
+        with open(os.path.join(cache_dir, "citys.json"), "w", encoding="utf-8") as f:
+            json.dump(cs, f, ensure_ascii=False, indent=2)
+
+    return data
+
+
+def load_session_cache():
+    """读取 session_cache.json，无则 None"""
+    path = os.path.join(_cache_dir(), "session_cache.json")
+    if not os.path.exists(path):
+        return None
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+# bootstrap 键顺序与 SessionBootstrapService 一致，供 show 打印
+_CACHE_SECTIONS = [
+    ("userinfo", "【账号】"),
+    ("citylist", "【城市】"),
+    ("citybuildlist", "【各城建筑】"),
+    ("buildlist", "【建筑类型】"),
+    ("getbuildcosts2", "【建造消耗】"),
+    ("getuserbuildqueue", "【建造队列】"),
+    ("getcitytroops", "【城内驻军】"),
+    ("gettasklist", "【任务】"),
+    ("getconscriptionqueue", "【征兵队列】"),
+    ("usertroopssciencequeue", "【兵种科技队列】"),
+    ("armies", "【兵种】"),
+    ("usercitymilitarysciences", "【城市军事科技】"),
+    ("getoutput", "【产出】"),
+    ("userheros", "【英雄】"),
+    ("goodslist", "【物品目录】"),
+    ("usergoodslist", "【背包】"),
+    ("combatqueue", "【出征队列】"),
+    ("nm", "【nm】"),
+    ("airinfo", "【空袭信息】"),
+]
+
+# show 子集：python3 cache.py show city | build | troops | task | queue | hero | goods
+_CACHE_FOCUS = {
+    "city": {"citylist"},
+    "cities": {"citylist"},
+    "build": {"citybuildlist", "buildlist", "getbuildcosts2", "getuserbuildqueue"},
+    "troops": {"armies", "getcitytroops", "usercitymilitarysciences"},
+    "military": {"armies", "getcitytroops", "usercitymilitarysciences"},
+    "task": {"gettasklist"},
+    "queue": {"getuserbuildqueue", "getconscriptionqueue", "combatqueue", "usertroopssciencequeue"},
+    "hero": {"userheros"},
+    "goods": {"goodslist", "usergoodslist"},
+}
+
+
+def show_cache(focus=None):
+    """
+    将 session_cache.json 按块打印到 stdout，便于终端阅读。
+    focus: None / all / city / build / troops / task / queue / hero / goods
+    返回 0 成功，1 无缓存或未知 focus。
+    """
+    data = load_session_cache()
+    if not data:
+        print("无 session_cache.json。请先执行: python3 2037.py bootstrap", file=sys.stderr)
+        return 1
+
+    fkey = (focus or "all").strip().lower()
+    allowed = None
+    if fkey not in ("", "all", "a"):
+        allowed = _CACHE_FOCUS.get(fkey)
+        if allowed is None:
+            print(
+                "未知分类。可用: all city build troops task queue hero goods",
+                file=sys.stderr,
+            )
+            return 1
+
+    printed = False
+    for key, title in _CACHE_SECTIONS:
+        if key not in data:
+            continue
+        if allowed is not None and key not in allowed:
+            continue
+        printed = True
+        print(title)
+        print(json.dumps(data[key], ensure_ascii=False, indent=2))
+        print()
+
+    for mk in ("_meta", "_errors"):
+        if mk in data and (allowed is None or mk == "_meta"):
+            print(f"【{mk}】")
+            print(json.dumps(data[mk], ensure_ascii=False, indent=2))
+            print()
+
+    if not printed and allowed is not None:
+        print("(所选分类在当前缓存中无数据)", file=sys.stderr)
+        return 1
+    return 0
+
+
 def load_userinfo():
     """读取本地 userinfo.json"""
     path = os.path.join(_cache_dir(), "userinfo.json")
@@ -173,6 +347,22 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"❌ 同步失败: {e}")
             sys.exit(1)
+    elif len(sys.argv) > 1 and sys.argv[1] == "bootstrap":
+        try:
+            data = bootstrap()
+            keys = list(data.keys()) if isinstance(data, dict) else []
+            print("✅ session_cache.json 已写入（含多路游戏数据）")
+            print(f"  键: {', '.join(keys[:12])}{'...' if len(keys) > 12 else ''}")
+        except Exception as e:
+            print(f"❌ bootstrap 失败: {e}")
+            sys.exit(1)
+    elif len(sys.argv) > 1 and sys.argv[1] == "show":
+        focus = sys.argv[2] if len(sys.argv) > 2 else None
+        sys.exit(show_cache(focus))
     else:
-        print("用法: python3 cache.py sync")
-        print("  需配置 token (EARTH2037_TOKEN 或 config.json)")
+        print("用法: python3 cache.py sync | bootstrap | show [分类]")
+        print("  sync: 仅 USERINFO + CITYLIST")
+        print("  bootstrap: 登录后整包缓存 → session_cache.json（推荐）")
+        print("  show: 按块打印 session_cache.json（查城市/建筑/军队等，不连网）")
+        print("  show 分类: city | build | troops | task | queue | hero | goods | all")
+        print("  需 token: sync/bootstrap；show 只读本地文件")

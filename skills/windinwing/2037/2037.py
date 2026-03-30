@@ -73,12 +73,59 @@ def cmd_key(api_base):
         sys.exit(1)
 
 
+def _resolve_tribe_id(t):
+    """解析种族；无法识别时返回 None。"""
+    if t is None:
+        return None
+    s = str(t).strip()
+    if not s:
+        return None
+    m = {
+        "1": 1,
+        "2": 2,
+        "3": 3,
+        "人类联邦": 1,
+        "人类联盟": 1,
+        "旭日帝国": 2,
+        "鹰之神界": 3,
+    }
+    if s in m:
+        return m[s]
+    if s.isdigit():
+        v = int(s)
+        return v if v in (1, 2, 3) else None
+    return None
+
+
 def _parse_tribe_id(t):
-    """解析 tribe_id：1|2|3 或 人类联邦|旭日帝国|鹰之神界"""
-    if t is None or t == "":
+    """解析 tribe_id：1|2|3 或中文种族名；缺省或无法识别时默认 1（兼容旧用法）。"""
+    if t is None or str(t).strip() == "":
         return 1
-    m = {"1": 1, "2": 2, "3": 3, "人类联邦": 1, "旭日帝国": 2, "鹰之神界": 3}
-    return m.get(str(t).strip(), int(t) if str(t).isdigit() else 1)
+    r = _resolve_tribe_id(t)
+    return r if r is not None else 1
+
+
+def _prompt_tribe_interactive():
+    """终端交互选择种族；非 TTY 时退出并提示带参调用。"""
+    if not sys.stdin.isatty():
+        print("❌ 当前为非交互环境，请一次性指定种族，例如：")
+        print("   python3 skills/earth2037-game/2037.py register <用户名> <密码> 1")
+        print("   1=人类联盟  2=旭日帝国  3=鹰之神界")
+        sys.exit(1)
+    print("")
+    print("请选择种族（输入 1 / 2 / 3，或完整名称）：")
+    print("  1 — 人类联盟")
+    print("  2 — 旭日帝国")
+    print("  3 — 鹰之神界")
+    while True:
+        try:
+            line = input("> ").strip()
+        except EOFError:
+            sys.exit(1)
+        tid = _resolve_tribe_id(line)
+        if tid is not None:
+            return tid
+        print("无效输入，请输入 1、2、3 或「人类联盟」「旭日帝国」「鹰之神界」。")
 
 
 def cmd_register(api_base, username, password, tribe_id=None):
@@ -90,6 +137,25 @@ def cmd_register(api_base, username, password, tribe_id=None):
         if r.get("ok") and r.get("token"):
             print(json.dumps(r, ensure_ascii=False, indent=2))
             print(f"\n✅ 注册成功。请将 token 填入 OpenClaw 的 2037 API Key 配置。")
+        else:
+            print(json.dumps(r, ensure_ascii=False))
+            sys.exit(1)
+    except urllib.error.HTTPError as e:
+        print(f"❌ HTTP {e.code}: {e.read().decode('utf-8', errors='replace')}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"❌ 请求失败: {e}")
+        sys.exit(1)
+
+
+def cmd_recover(api_base, username, password):
+    """POST /auth/recover-key — 有账号密码但无 SK-key 时，凭密码找回 API key（skill token）"""
+    url = f"{api_base}/auth/recover-key"
+    try:
+        r = http_post(url, {"username": username, "password": password, "skill_id": "2037"})
+        if r.get("ok") and r.get("token"):
+            print(json.dumps(r, ensure_ascii=False, indent=2))
+            print(f"\n✅ 已凭密码找回 key（即 token）。请填入 OpenClaw 的 2037 API Key 配置。")
         else:
             print(json.dumps(r, ensure_ascii=False))
             sys.exit(1)
@@ -209,6 +275,26 @@ def cmd_sync(api_base):
         sys.exit(1)
 
 
+def cmd_bootstrap(api_base):
+    """一次请求拉取多路游戏数据，写入 session_cache.json（等价 TCP 登录后连续多条命令）"""
+    try:
+        from cache import bootstrap as cache_bootstrap
+        data = cache_bootstrap(api_base=api_base)
+        keys = list(data.keys()) if isinstance(data, dict) else []
+        print("✅ 已写入 session_cache.json（整包会话缓存）")
+        print(f"  数据键: {', '.join(keys[:15])}{'...' if len(keys) > 15 else ''}")
+    except Exception as e:
+        print(f"❌ bootstrap 失败: {e}")
+        sys.exit(1)
+
+
+def cmd_show(focus=None):
+    """按块打印本地 session_cache.json（不连网）"""
+    from cache import show_cache
+
+    sys.exit(show_cache(focus))
+
+
 def main():
     args = sys.argv[1:]
     api_base_override = None
@@ -224,12 +310,17 @@ def main():
             args = args[1:]
 
     if len(args) < 1:
-        print("用法: 2037.py [--api-base URL] [--lang zh|en] key | newkey | register ... | login ... | apply ... | sync")
+        print("用法: 2037.py [--api-base URL] [--lang zh|en] key | ... | sync | bootstrap | show [分类]")
         print("  --api-base: 指定 API 地址，覆盖 config.json")
         print("  --lang zh|en: 按语言选默认服务器（需 config.json 中 apiBaseByLang）")
-        print("  tribe_id: 1=人类联邦 2=旭日帝国 3=鹰之神界，默认1")
+        print("  register: 可先只输入用户名、密码，再在终端选择种族；或一行写完：register 用户 密码 [1|2|3|种族名]")
+        print("  种族: 1=人类联盟 2=旭日帝国 3=鹰之神界（OpenClaw 上应先问用户选族再执行 register）")
+        print("  recover: 有用户名密码但无 SK-key 时，凭密码找回 API key（skill token）")
         print("  newkey: 换新 key（需 token，旧 key 作废）")
-        print("  sync: 拉取 userinfo、citys 到本地 userinfo.json、citys.json（需 token）")
+        print("  sync: 仅 USERINFO+CITYLIST → userinfo.json / citys.json（需 token）")
+        print("  bootstrap: 服务端一次合并多路命令 → session_cache.json（需 token，推荐）")
+        print("  show: 读本地缓存，打印城市/建筑/军队等（不连网）；分类: city build troops task queue hero goods")
+        print("  另见: build_ops.py（GETBUILDCOST/ADDBUILDQUEUE/取消队列） march_ops.py chat_ops.py，需 token")
         sys.exit(1)
 
     api_base = load_config(api_base_override=api_base_override, lang=lang)
@@ -237,27 +328,42 @@ def main():
 
     if cmd == "sync":
         cmd_sync(api_base)
+    elif cmd == "show":
+        focus = args[1] if len(args) > 1 else None
+        cmd_show(focus)
+    elif cmd == "bootstrap":
+        cmd_bootstrap(api_base)
     elif cmd == "newkey":
         cmd_newkey(api_base)
     elif cmd == "key":
         cmd_key(api_base)
     elif cmd == "register":
-        if len(args) < 4:
-            print("用法: 2037.py register <用户名> <密码> [tribe_id]")
+        if len(args) < 3:
+            print("用法: 2037.py register <用户名> <密码> [种族]")
+            print("  种族: 1 / 2 / 3 或 人类联盟 / 旭日帝国 / 鹰之神界；省略时在终端交互选择（OpenClaw 应先问族别再带参执行）")
             sys.exit(1)
-        tribe_id = args[4] if len(args) > 4 else None
-        cmd_register(api_base, args[2], args[3], tribe_id)
+        u, pw = args[1], args[2]
+        if len(args) >= 4:
+            tribe_token = args[3]
+        else:
+            tribe_token = _prompt_tribe_interactive()
+        cmd_register(api_base, u, pw, tribe_token)
+    elif cmd == "recover":
+        if len(args) < 3:
+            print("用法: 2037.py recover <用户名> <密码>")
+            sys.exit(1)
+        cmd_recover(api_base, args[1], args[2])
     elif cmd == "login":
-        if len(args) < 4:
+        if len(args) < 3:
             print("用法: 2037.py login <用户名> <密码>")
             sys.exit(1)
-        cmd_login(api_base, args[2], args[3])
+        cmd_login(api_base, args[1], args[2])
     elif cmd == "apply":
-        if len(args) < 5:
-            print("用法: 2037.py apply <用户名> <密码> <key> [tribe_id]")
+        if len(args) < 4:
+            print("用法: 2037.py apply <用户名> <密码> <key> [种族]")
             sys.exit(1)
-        tribe_id = args[5] if len(args) > 5 else None
-        cmd_apply(api_base, args[2], args[3], args[4], tribe_id=tribe_id)
+        tribe_id = args[4] if len(args) > 4 else None
+        cmd_apply(api_base, args[1], args[2], args[3], tribe_id=tribe_id)
     else:
         print(f"未知命令: {cmd}")
         sys.exit(1)
