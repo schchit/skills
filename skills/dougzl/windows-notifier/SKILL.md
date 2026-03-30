@@ -34,6 +34,7 @@ Behavior summary:
 - **Windows + WPF available** → prefer the built-in WPF modern card path in `send-notification.js`
 - **Windows fallback** → if WPF is unavailable or launch fails, automatically fall back to `node-notifier`
 - **Linux / macOS** → use the existing `node-notifier` path
+- Current modern card behavior: auto-close after about 60 seconds; click the card itself to dismiss
 
 Optional flags:
 

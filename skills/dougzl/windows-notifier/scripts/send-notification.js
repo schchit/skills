@@ -80,7 +80,7 @@ $Title = '${escapePsSingleQuoted(title)}'
 $Message = '${escapePsSingleQuoted(message)}'
 $AppName = '${escapePsSingleQuoted(appName)}'
 $PlaySound = ${sound ? '$true' : '$false'}
-$DurationSeconds = 0
+$DurationSeconds = 60
 
 Add-Type -AssemblyName PresentationCore
 Add-Type -AssemblyName PresentationFramework
@@ -139,11 +139,6 @@ $bg = New-Brush '#FF1C1C1C'
 $border = New-Brush '#FF525252'
 $headerText = New-Brush '#F3F3F3'
 $bodyText = New-Brush '#EAEAEA'
-$closeText = New-Brush '#FFF8F8F8'
-$closeButtonBg = New-Brush '#FF3A3B40'
-$closeButtonBorder = New-Brush '#FFB2B5BB'
-$closeHover = New-Brush '#FF45464C'
-$closePressed = New-Brush '#FF2C2D31'
 $avatarBg = New-Brush '#FF3E332C'
 $avatarBorder = New-Brush '#D8C8A06A'
 $avatarText = New-Brush '#F5E8D2'
@@ -195,53 +190,6 @@ $appNameBlock.Foreground = $headerText
 [System.Windows.Controls.Canvas]::SetTop($appNameBlock, 6)
 $canvas.Children.Add($appNameBlock) | Out-Null
 
-$closeHitArea = New-Object System.Windows.Controls.Border
-$closeHitArea.Width = 16
-$closeHitArea.Height = 16
-$closeHitArea.Background = $closeButtonBg
-$closeHitArea.BorderBrush = $closeButtonBorder
-$closeHitArea.BorderThickness = [System.Windows.Thickness]::new(1)
-$closeHitArea.CornerRadius = [System.Windows.CornerRadius]::new(8)
-$closeHitArea.Cursor = [System.Windows.Input.Cursors]::Hand
-$closeHitArea.Opacity = 0.96
-$closeHitArea.Visibility = [System.Windows.Visibility]::Collapsed
-[System.Windows.Controls.Canvas]::SetLeft($closeHitArea, 336)
-[System.Windows.Controls.Canvas]::SetTop($closeHitArea, 5)
-
-$closeGrid = New-Object System.Windows.Controls.Grid
-$closeGrid.Width = 16
-$closeGrid.Height = 16
-$closeGrid.HorizontalAlignment = [System.Windows.HorizontalAlignment]::Center
-$closeGrid.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
-
-$closeGlyph1 = New-Object System.Windows.Shapes.Line
-$closeGlyph1.X1 = 5.2
-$closeGlyph1.Y1 = 5.2
-$closeGlyph1.X2 = 10.8
-$closeGlyph1.Y2 = 10.8
-$closeGlyph1.Stroke = $closeText
-$closeGlyph1.StrokeThickness = 0.9
-$closeGlyph1.StrokeStartLineCap = [System.Windows.Media.PenLineCap]::Round
-$closeGlyph1.StrokeEndLineCap = [System.Windows.Media.PenLineCap]::Round
-$closeGlyph1.HorizontalAlignment = [System.Windows.HorizontalAlignment]::Stretch
-$closeGlyph1.VerticalAlignment = [System.Windows.VerticalAlignment]::Stretch
-
-$closeGlyph2 = New-Object System.Windows.Shapes.Line
-$closeGlyph2.X1 = 10.8
-$closeGlyph2.Y1 = 5.2
-$closeGlyph2.X2 = 5.2
-$closeGlyph2.Y2 = 10.8
-$closeGlyph2.Stroke = $closeText
-$closeGlyph2.StrokeThickness = 0.9
-$closeGlyph2.StrokeStartLineCap = [System.Windows.Media.PenLineCap]::Round
-$closeGlyph2.StrokeEndLineCap = [System.Windows.Media.PenLineCap]::Round
-$closeGlyph2.HorizontalAlignment = [System.Windows.HorizontalAlignment]::Stretch
-$closeGlyph2.VerticalAlignment = [System.Windows.VerticalAlignment]::Stretch
-
-$closeGrid.Children.Add($closeGlyph1) | Out-Null
-$closeGrid.Children.Add($closeGlyph2) | Out-Null
-$closeHitArea.Child = $closeGrid
-$canvas.Children.Add($closeHitArea) | Out-Null
 
 $avatarBox = New-Object System.Windows.Controls.Border
 $avatarBox.Width = 35
@@ -298,29 +246,8 @@ $window.Add_SourceInitialized({
   }
 })
 
-$outerBorder.Add_MouseEnter({
-  $closeHitArea.Visibility = [System.Windows.Visibility]::Visible
-})
-$outerBorder.Add_MouseLeave({
-  if (-not $closeHitArea.IsMouseOver) {
-    $closeHitArea.Visibility = [System.Windows.Visibility]::Collapsed
-    $closeHitArea.Background = $closeButtonBg
-  }
-})
-$closeHitArea.Add_MouseEnter({
-  $closeHitArea.Visibility = [System.Windows.Visibility]::Visible
-  $closeHitArea.Background = $closeHover
-})
-$closeHitArea.Add_MouseLeave({
-  if (-not $outerBorder.IsMouseOver) {
-    $closeHitArea.Visibility = [System.Windows.Visibility]::Collapsed
-  }
-  $closeHitArea.Background = $closeButtonBg
-})
-$closeHitArea.Add_MouseLeftButtonDown({
-  $closeHitArea.Background = $closePressed
-})
-$closeHitArea.Add_MouseLeftButtonUp({
+$outerBorder.Cursor = [System.Windows.Input.Cursors]::Hand
+$outerBorder.Add_MouseLeftButtonUp({
   $window.Close()
 })
 
