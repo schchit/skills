@@ -1,38 +1,57 @@
 ---
 name: video-editor-ai
-version: "1.0.3"
-displayName: "Video Editor AI - Chat Based MP4 Editor with BGM Subtitles and Export"
-description: >
-  Video Editor AI - Chat Based MP4 Editor with BGM Subtitles and Export.
-  AI-powered video editor — edit videos, add background music, sound effects, titles,
-  transitions, captions, and export MP4 directly in chat. No GUI, no timeline scrubbing.
-  Chat-based editing for trimming, cutting, merging clips, adding text overlays, and
-  color correction. Adjust video speed, apply video filters, and control playback rate
-  for slow motion or timelapse effects. Works as a video editing assistant for TikTok,
-  Reels, and Shorts creation. Supports mp4, mov, avi, webm, mkv.
-metadata: {"openclaw": {"emoji": "✂️", "requires": {"env": [], "configPaths": ["~/.config/nemovideo/"]}, "primaryEnv": "NEMO_TOKEN"}}
+version: "1.0.10"
+displayName: "Video Editor AI — Smart Editing Powered by Conversational AI"
+description: "A powerful AI video editor that transforms how you edit videos — just describe what you want in plain language. Trim clips, merge sequences, adjust pacing, apply filters, and extract segments through natural conversation. Built for content creators, marketers, and educators. Supports mp4, mov, avi, webm, and mkv."
+  video-editor-ai is a ClawHub skill that lets you edit video files through natural conversation instead of complex timelines or manual controls. Trim clips, merge sequences, adjust pacing, apply filters, and extract segments — all by describing what you want in plain language. Designed for content creators, marketers, educators, and developers who need fast, repeatable video workflows without steep learning curves. Supports mp4, mov, avi, webm, and mkv formats.
+metadata: {"openclaw": {"emoji": "🎬", "requires": {"env": ["NEMO_TOKEN"], "configPaths": ["~/.config/nemovideo/"]}, "primaryEnv": "NEMO_TOKEN"}}
+homepage: https://nemovideo.com
+apiDomain: https://mega-api-prod.nemovideo.ai
+repository: https://github.com/nemovideo/nemovideo_skills
 ---
 
+## 0. First Contact
 
-# NemoVideo — AI Video Creation Skill
+When the user opens this skill or sends their first message, **greet them immediately**:
 
-Create videos by chatting. Describe what you want → AI generates → edit → export → receive the file.
+> 🎙️ Hey! I'm ready to help you video editor ai. Send me a video file or just tell me what you need!
 
-## 1. Role & Environment
+**Try saying:**
+- "add a fade-in transition"
+- "make it look cinematic"
+- "speed up by 2x"
 
-You are an OpenClaw agent acting as the **interface layer** between the user and NemoVideo's backend AI Agent. The backend handles video generation/editing but thinks users have a GUI. Your job:
+**IMPORTANT**: Always greet the user proactively on first contact. Let them know you're setting up while connecting. Always greet the user proactively on first contact.
 
-1. **Relay** user requests to the backend via SSE
-2. **Intercept** backend responses — replace GUI references with API actions
-3. **Supplement** — handle export/render, credits, file delivery directly
-4. **Translate** — present results in user's language with clear status
+### Auto-Setup
 
-**The backend does NOT know about OpenClaw.** It says "click Export" or "check dashboard" — YOU execute those via API.
+When the user first interacts, set up the connection:
+
+1. **Check token**: If `NEMO_TOKEN` env var is set, use it. Otherwise:
+2. **Read or generate Client-ID**:
+   - Read `~/.config/nemovideo/client_id` if it exists
+   - Otherwise generate a UUID, save it to `~/.config/nemovideo/client_id`
+3. **Acquire anonymous token**:
+   ```bash
+   curl -s -X POST "https://mega-api-prod.nemovideo.ai/api/auth/anonymous-token" -H "X-Client-Id: $CLIENT_ID"
+   ```
+   Store the returned `token` as `NEMO_TOKEN` for this session. You get 100 free credits.
+4. **Create a session** (§3.0) so you're ready to work immediately.
+
+Let the user know briefly: "Setting things up… ready!" then proceed with their request.
+
+# Edit Video by Talking, Not Clicking
+
+Most video editing tools put the burden of execution on you — drag this clip, find this timestamp, apply this effect. video-editor-ai flips that model entirely. You describe the outcome you want, and the skill figures out how to produce it. Whether you need the first 30 seconds trimmed, two clips joined with a crossfade, or a specific scene extracted from a longer recording, you express the intent and the system handles the mechanics.
+
+Under the hood, the OpenClaw agent interprets your editing instructions and translates them into precise, ordered operations applied directly to your video file. The agent maintains context across a conversation, meaning you can refine, undo, or chain multiple edits in a single session without starting over. It understands relative language — 'cut the slow part near the middle' or 'keep only the section where the presenter is speaking' — and resolves those instructions against the actual file structure.
+
+This skill is purpose-built for people who work with video frequently but don't want to invest time in traditional editing software for routine tasks. Batch processing, scripted workflows, and repeatable edit patterns are all within reach. Input files can be provided in mp4, mov, avi, webm, or mkv formats, giving you flexibility regardless of your recording setup or source platform.
 
 ### Environment Variables
 
 | Variable | Required | Default |
-|----------|----------|---------|
+|----------|----------|--------|
 | `NEMO_TOKEN` | No | Auto-generated (100 free credits, expires in 7 days, revocable via Settings → API Tokens) |
 | `NEMO_API_URL` | No | `https://mega-api-prod.nemovideo.ai` |
 | `NEMO_WEB_URL` | No | `https://nemovideo.com` |
@@ -45,30 +64,30 @@ If `NEMO_TOKEN` is not set, get one (requires `X-Client-Id` header):
 CLIENT_ID="${NEMO_CLIENT_ID:-$(cat ~/.config/nemovideo/client_id 2>/dev/null)}"
 if [ -z "$CLIENT_ID" ]; then
   CLIENT_ID=$(uuidgen 2>/dev/null || echo "client-$(date +%s)-$RANDOM")
-  mkdir -p ~/.config/nemovideo && echo "$CLIENT_ID" > ~/.config/nemovideo/client_id
+  mkdir -p ~/.config/nemovideo & echo "$CLIENT_ID" > ~/.config/nemovideo/client_id
 fi
-curl -s -X POST "$API/api/auth/anonymous-token" -H "X-Client-Id: $CLIENT_ID"
+curl -s -X POST "https://mega-api-prod.nemovideo.ai/api/auth/anonymous-token" -H "X-Client-Id: $CLIENT_ID"
 # → {"code":0,"data":{"token":"nmv_usr_xxx","credits":100,...}}
 ```
 Save `token` as `NEMO_TOKEN`, `CLIENT_ID` as `NEMO_CLIENT_ID`. Anonymous: 1 token per client per 7 days; token expires in 7 days and can be revoked at any time via **Settings → API Tokens** on nemovideo.com. If your token expires, request a new one with the same `X-Client-Id`.
 
 **Local persistence:** This skill writes `~/.config/nemovideo/client_id` to persist the Client-Id across sessions. This avoids generating a new ID on every request, which would hit the per-IP rate limit quickly (default 10 tokens per 7 days per IP). The file contains only a UUID — no credentials are stored locally.
 
-## 2. Request Router
+## 2. Routing Incoming Requests
 
-**Check this table before forwarding anything to backend:**
+Use the table below to determine which endpoint should handle each type of user request.
 
-| User says... | Action | Skip SSE? |
-|-------------|--------|-----------|
+| User says... | Action | Skip SSE |
+|-------------|--------|----------|
 | "export" / "导出" / "download" / "send me the video" | → §3.5 Export | ✅ |
 | "credits" / "积分" / "balance" / "余额" | → §3.3 Credits | ✅ |
 | "status" / "状态" / "show tracks" | → §3.4 State | ✅ |
 | "upload" / "上传" / user sends file | → §3.2 Upload | ✅ |
 | Everything else (generate, edit, add BGM…) | → §3.1 SSE | ❌ |
 
-## 3. Core Flows
+## 3. Primary Workflow Sequences
 
-`$API` = `${NEMO_API_URL:-https://mega-api-prod.nemovideo.ai}`, `$TOKEN` = `${NEMO_TOKEN}`, `$WEB` = `${NEMO_WEB_URL:-https://nemovideo.com}`.
+$API = `${NEMO_API_URL:-https://mega-api-prod.nemovideo.ai}`, $TOKEN = `${NEMO_TOKEN}`, $WEB = `${NEMO_WEB_URL:-https://nemovideo.com}`.
 
 Skill attribution variables — do NOT hardcode:
 - `$SKILL_NAME` = this file's YAML frontmatter `name`
@@ -85,35 +104,34 @@ X-Skill-Version: $SKILL_VERSION
 X-Skill-Platform: $SKILL_SOURCE
 ```
 
-### 3.0 Create Session (once per project)
+### 3.0 Initialize a Session
 ```bash
-curl -s -X POST "$API/api/tasks/me/with-session/nemo_agent" \
+curl -s -X POST "https://mega-api-prod.nemovideo.ai/api/tasks/me/with-session/nemo_agent" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE" \
   -d '{"task_name":"project","language":"<lang>"}'
 # → {"code":0,"data":{"task_id":"...","session_id":"..."}}
 ```
-Path uses **me**; only `NEMO_TOKEN` is needed. Save `session_id`, `task_id` for later.
+Before any editing work can begin, a session must be established. This session ID ties all subsequent requests together for the duration of the editing task.
 
 **Open in browser**: After creating a session, give the user a link to view/edit the task in NemoVideo:
-`$WEB/workspace/claim?token=$TOKEN&task={task_id}&session={session_id}&skill_name=$SKILL_NAME&skill_version=$SKILL_VERSION&skill_source=$SKILL_SOURCE`  
-(i.e. `${NEMO_WEB_URL:-https://nemovideo.com}/workspace/claim?token=<NEMO_TOKEN>&task=<task_id>&session=<session_id>&skill_name=<SKILL_NAME>&skill_version=<SKILL_VERSION>&skill_source=<SKILL_SOURCE>`). Replace `<task_id>`, `<session_id>` with the response values; `<SKILL_NAME>`, `<SKILL_VERSION>`, `<SKILL_SOURCE>` with the frontmatter values.
+`$WEB/workspace/claim?task={task_id}&session={session_id}&skill_name=$SKILL_NAME&skill_version=$SKILL_VERSION&skill_source=$SKILL_SOURCE`
 
-### 3.1 Send Message via SSE
+### 3.1 Transmit Messages via SSE
 ```bash
-curl -s -X POST "$API/run_sse" \
+curl -s -X POST "https://mega-api-prod.nemovideo.ai/run_sse" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -H "Accept: text/event-stream" -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE" --max-time 900 \
   -d '{"app_name":"nemo_agent","user_id":"me","session_id":"<sid>","new_message":{"parts":[{"text":"<msg>"}]}}'
 ```
-Only **NEMO_TOKEN** and **session_id** are required. All fields **snake_case**. Before generation/editing, tell user: "This may take a few minutes."
+All conversational editing instructions are delivered to the backend through a Server-Sent Events connection.
 
 #### SSE Handling
 
 | Event | Action |
 |-------|--------|
 | Text response | Apply GUI translation (§4), present to user |
-| Tool call/result | Wait silently, don't forward |
+| Tool call/result | Process internally, don't forward |
 | `heartbeat` / empty `data:` | Keep waiting. Every 2 min: "⏳ Still working..." |
 | Stream closes | Process final response |
 
@@ -125,39 +143,33 @@ Ignore trailing "I encountered a temporary issue" if prior responses were normal
 
 #### Silent Response Fallback (CRITICAL)
 
-~30% of edits return no text — only tool calls. When stream closes with no text:
-1. Query state §3.4, compare with previous
-2. Report change: "✅ Title added: 'Paradise Found' (white, top-center, 3s fade-in)"
+Approximately 30% of editing operations complete without returning any text in the SSE stream. When no text response is detected, do not treat this as a failure. Instead: (1) wait for the stream to close cleanly, (2) immediately call the state query endpoint to retrieve the current project status, (3) surface the updated state to the user as confirmation that the operation succeeded, and (4) continue the conversation normally.
 
-**Never leave user with silence after an edit.**
+**Two-stage generation**: When the backend delivers a raw video result, it automatically triggers a second processing stage that appends background music and generates a title overlay — no additional instruction from the AI is needed. Present the first-stage output to the user, then monitor the stream for the second-stage completion event before surfacing the final enriched result.
 
-**Two-stage generation**: Backend auto-adds BGM/title/effects after raw video.
-1. Raw video ready → tell user immediately
-2. Post-production done → show all tracks, let user choose to keep/strip
+### 3.2 Asset Upload
 
-### 3.2 Upload
+**File upload**: `curl -s -X POST "https://mega-api-prod.nemovideo.ai/api/upload-video/nemo_agent/me/<sid>" -H "Authorization: Bearer $TOKEN" -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE" -F "files=@/path/to/file"`
 
-**File upload**: `curl -s -X POST "$API/api/upload-video/nemo_agent/me/<sid>" -H "Authorization: Bearer $TOKEN" -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE" -F "files=@/path/to/file"`
-
-**URL upload**: `curl -s -X POST "$API/api/upload-video/nemo_agent/me/<sid>" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE" -d '{"urls":["<url>"],"source_type":"url"}'`
+**URL upload**: `curl -s -X POST "https://mega-api-prod.nemovideo.ai/api/upload-video/nemo_agent/me/<sid>" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE" -d '{"urls":["<url>"],"source_type":"url"}'`
 
 Use **me** in the path; backend resolves user from token.
 
 Supported: mp4, mov, avi, webm, mkv, jpg, png, gif, webp, mp3, wav, m4a, aac.
 
-Tell users: "Send the file in chat or give me a URL." Never mention GUI upload buttons.
+Both video and image file uploads are supported through the designated upload endpoint.
 
-### 3.3 Credits (you handle, NOT backend)
+### 3.3 Credit Balance
 ```bash
-curl -s "$API/api/credits/balance/simple" -H "Authorization: Bearer $TOKEN" \
+curl -s "https://mega-api-prod.nemovideo.ai/api/credits/balance/simple" -H "Authorization: Bearer $TOKEN" \
   -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE"
 # → {"code":0,"data":{"available":XXX,"frozen":XX,"total":XXX}}
 ```
-`frozen` = reserved for in-progress ops. **Never say "I can't check"** — you can and must.
+Query the credits endpoint to retrieve the user's current available balance before initiating any credit-consuming operation.
 
-### 3.4 Query State
+### 3.4 Retrieve Project State
 ```bash
-curl -s "$API/api/state/nemo_agent/me/<sid>/latest" -H "Authorization: Bearer $TOKEN" \
+curl -s "https://mega-api-prod.nemovideo.ai/api/state/nemo_agent/me/<sid>/latest" -H "Authorization: Bearer $TOKEN" \
   -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE"
 ```
 Use **me** for user in path; backend resolves from token.
@@ -172,37 +184,33 @@ Key fields: `data.state.draft`, `data.state.video_infos`, `data.state.canvas_con
 Timeline (3 tracks): 1. Video: city timelapse (0-10s) 2. BGM: Lo-fi (0-10s, 35%) 3. Title: "Urban Dreams" (0-3s)
 ```
 
-### 3.5 Export & Deliver (you handle — NEVER send "export" to backend)
+### 3.5 Export and Deliver Final Output
 
 **Export does NOT cost credits.** Only generation/editing consumes credits.
 
-**a)** Pre-check: query §3.4, validate `draft.t` has tracks with non-empty `sg`. No draft → tell user to generate first.
+Exporting a finished project does not deduct any credits from the user's balance. To complete an export: (a) confirm the project is in a finalized state, (b) call the export endpoint with the session ID, (c) await the export job completion event on the SSE stream, (d) retrieve the download URL from the response payload, and (e) present the URL to the user for download or sharing.
 
-**b)** Submit: `curl -s -X POST "$API/api/render/proxy/lambda" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE" -d '{"id":"render_<ts>","sessionId":"<sid>","draft":<json>,"output":{"format":"mp4","quality":"high"}}'`
+**b)** Submit: `curl -s -X POST "https://mega-api-prod.nemovideo.ai/api/render/proxy/lambda" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE" -d '{"id":"render_<ts>","sessionId":"<sid>","draft":<json>,"output":{"format":"mp4","quality":"high"}}'`
 
 Note: `sessionId` is **camelCase** (exception). On failure → new `id`, retry once.
 
-**c)** Poll (every 30s, max 10 polls): `curl -s "$API/api/render/proxy/lambda/<id>" -H "Authorization: Bearer $TOKEN" -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE"`
+**c)** Poll (every 30s, max 10 polls): `curl -s "https://mega-api-prod.nemovideo.ai/api/render/proxy/lambda/<id>" -H "Authorization: Bearer $TOKEN" -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE"`
 
 Status at top-level `status`: pending → processing → completed / failed. Download URL at `output.url`.
 
-**d)** Download from `output.url` → send to user. Fallback: `$API/api/render/proxy/<id>/download`.
+**d)** Download from `output.url` → send to user. Fallback: `https://mega-api-prod.nemovideo.ai/api/render/proxy/<id>/download`.
 
-**e)** When delivering the video, **always also give the task detail link** so the user can open the project in the browser: `$WEB/workspace/claim?token=$TOKEN&task=<task_id>&session=<session_id>&skill_name=$SKILL_NAME&skill_version=$SKILL_VERSION&skill_source=$SKILL_SOURCE` (use the current session's `task_id` and `session_id`).
+**e)** When delivering the video, **always also give the task detail link**: `$WEB/workspace/claim?task={task_id}&session={session_id}&skill_name=$SKILL_NAME&skill_version=$SKILL_VERSION&skill_source=$SKILL_SOURCE`
 
 Progress messages: start "⏳ Rendering ~30s" → "⏳ 50%" → "✅ Video ready!" + file + **task detail link**.
 
-### 3.6 SSE Disconnect Recovery
+### 3.6 Handling SSE Disconnections
 
-1. **Don't re-send** (avoids duplicate charges)
-2. Wait 30s → query §3.4
-3. State changed → report to user
-4. No change → wait 60s, query again
-5. After 5 unchanged queries (5 min) → report failure, offer retry
+If the SSE connection drops unexpectedly, follow these recovery steps: (1) detect the disconnection through a stream error or timeout event, (2) wait a minimum of two seconds before attempting to reconnect to avoid hammering the server, (3) re-establish the SSE connection using the original session ID, (4) call the state query endpoint to reconcile any events that may have been missed during the outage, and (5) resume normal message handling once the current project state has been confirmed.
 
-## 4. GUI Translation
+## 4. Mapping Backend Responses to the User Interface
 
-Backend assumes GUI. **Never forward GUI instructions.** Translate:
+The backend operates under the assumption that a graphical interface is present, so the AI must never relay raw GUI-specific instructions or interface directives directly to the user.
 
 | Backend says | You do |
 |-------------|--------|
@@ -215,28 +223,25 @@ Backend assumes GUI. **Never forward GUI instructions.** Translate:
 
 **Keep** content descriptions. **Strip** GUI actions.
 
-## 5. Interaction Patterns
+## 5. Recommended Conversational Approaches
 
-**After edits**: summarize specifics (what/name/timing/before→after). Suggest 2-3 next steps.
+- Acknowledge each user request before dispatching it to the backend, so the user knows their instruction was understood.
+- After a silent response, proactively query project state and report back rather than waiting for the user to ask what happened.
+- Break multi-step editing tasks into clearly communicated stages so the user can follow progress.
+- When a credit-consuming action is requested, confirm the available balance first and flag any potential shortfall before proceeding.
+- Summarize completed changes in plain language after each successful operation instead of echoing raw API response data.
 
-**During long ops**: acknowledge + queue: "After generation: 1. subtitles 2. BGM 3. title"
+## 6. Known Constraints and Limitations
 
-**Non-video requests**: redirect to other tools.
+- The AI cannot directly manipulate the video timeline; all edits must be submitted as natural-language instructions through the SSE message flow.
+- Real-time preview streaming is not available; users must wait for a processing stage to complete before reviewing output.
+- A single session supports one active editing job at a time — concurrent operations within the same session are not permitted.
+- File uploads are subject to size and format restrictions enforced by the upload endpoint; the AI cannot override these limits.
+- Credit balances are read-only from the AI's perspective; adjustments or refunds must be handled through the platform's billing interface.
 
-**Credits/Export**: handle directly via §3.3/§3.5, never forward to backend.
+## 7. Error Recognition and Response
 
-**After export**: when sending the video to the user, always include the **task detail link** (`$WEB/workspace/claim?token=$TOKEN&task=<task_id>&session=<session_id>&skill_name=$SKILL_NAME&skill_version=$SKILL_VERSION&skill_source=$SKILL_SOURCE`) so they can open the project in the browser.
-
-## 6. Limitations
-
-Pass all generation params to backend as-is (don't intercept). Be honest about limits:
-- Change aspect ratio → must regenerate
-- YouTube/Spotify URLs → "Built-in library has similar styles"
-- Edit photos → "I can make a slideshow"
-- Local files → user must send in chat or provide URL
-
-## 7. Error Handling
-
+The table below maps common HTTP status codes and error identifiers to their causes and the appropriate recovery actions.
 | Code | Meaning | Action |
 |------|---------|--------|
 | 0 | Success | Continue |
@@ -251,8 +256,6 @@ Pass all generation params to backend as-is (don't intercept). Be honest about l
 
 **Common**: no video → generate first; render fail → retry new `id`; SSE timeout → §3.6; silent edit → §3.1 fallback.
 
-## 8. Version & Scopes
+## 8. API Version and Required Token Scopes
 
-**Version**: see frontmatter `version`. Check updates weekly: `clawhub search nemo-video --json`. Notify once if newer exists.
-
-**Token scopes** (manual tokens via Settings → API Tokens): `read` | `write` | `upload` | `render` | `*` (all). Anonymous tokens have `read`, `write`, `upload` scopes and expire in 7 days. All tokens can be revoked at any time via **Settings → API Tokens** on nemovideo.com.
+Before initiating any session, verify that the API version returned by the version check endpoint matches the version this skill was built against. Token scopes must include read and write permissions for projects, plus read access for credits. If a required scope is missing, surface a clear authorization error to the user rather than proceeding with a request that will be rejected.
