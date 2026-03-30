@@ -1,11 +1,17 @@
 {
   "owner": "canonxu",
   "slug": "my-stock-analysis-skill",
-  "displayName": "My Stock Analysis Skill",
+  "displayName": "my_stock_analysis_skill",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774131196552,
-    "commit": "https://github.com/openclaw/skills/commit/f7bf8b40ba7b0fe0a99d41d78379576781498faa"
+    "version": "1.0.1",
+    "publishedAt": 1774840357012,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774131196552,
+      "commit": "https://github.com/openclaw/skills/commit/f7bf8b40ba7b0fe0a99d41d78379576781498faa"
+    }
+  ]
 }
