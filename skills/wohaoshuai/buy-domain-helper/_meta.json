@@ -3,9 +3,15 @@
   "slug": "buy-domain-helper",
   "displayName": "Buy Domain Helper",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773649141700,
-    "commit": "https://github.com/openclaw/skills/commit/04567ebc18ecff8a9c00a54f85d9a65e0dc06ee2"
+    "version": "1.5.0",
+    "publishedAt": 1774573223741,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773649141700,
+      "commit": "https://github.com/openclaw/skills/commit/04567ebc18ecff8a9c00a54f85d9a65e0dc06ee2"
+    }
+  ]
 }
