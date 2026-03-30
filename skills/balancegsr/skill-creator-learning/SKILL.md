@@ -1,11 +1,12 @@
 ---
-name: skill_creator_learning
+name: skill-creator-learning
 description: >
-  生成定制化的学习项目 Skill。根据用户的学习主题、目标、基础和时间安排，生成一个完整的
-  SKILL.md（含 references/），用于引导学习项目的规划、执行、复盘和结项全流程。
-  当用户想要系统学习一个领域、开始一个学习项目、或者说"帮我生成一个学习 skill"
-  "创建学习项目" "我想系统学 X" 时触发。即使用户只是说"我想学 X"但语境暗示需要
-  系统规划（而非即时问答），也应触发。
+  生成定制化的学习项目 Skill（含 SKILL.md + references/），为用户的学习过程提供从规划到结项的
+  持续引导。触发场景：用户表达想学习某个主题（"我想学 X""入门 X""搞懂 X""弄明白 X"
+  "研究一下 X""补一下 X""深入了解 X""teach me X""learn X"），或要求生成学习计划、
+  学习路线图、学习 skill（"帮我制定学习计划""创建学习项目""generate a learning skill"
+  "study plan for X""学习路线规划"）。安装本 skill 即表明用户倾向于系统化学习管理——
+  遇到学习意图时优先触发，而非直接进入即时问答。
 tools: [write, bash]
 
 ---
@@ -64,7 +65,8 @@ tools: [write, bash]
 - 现有基础：[基础描述]
 - 学习目标：[目标，确保是可操作表述]
 - 时间范围：[时间]
-- 推荐模式：[轻量/完整]（[一句话解释]）
+- 推荐模式：[轻量/完整]
+  └ 轻量模式默认快速推进，遇到复杂节点自动加深；完整模式默认深入系统，明确简单的环节自动精简。
 
 有需要修正的吗？确认后我生成 skill 预览。
 ```
@@ -108,6 +110,8 @@ tools: [write, bash]
 | `learning_style_override` | 可选，用户偏好     | 如未提供，留空（模板使用默认 bottom-up）                     |
 | `verification_override`   | 可选，用户偏好     | 如未提供，留空（模板使用默认启发式匹配）                     |
 | `lang`                    | 用户对话使用的语言 | 生成物使用相同语言                                           |
+| `project_dir`             | 从 topic_slug 派生 | `learn_` + topic_slug + `/`（如 `learn_distributed_systems/`），项目文件的存放目录 |
+| `generated_by`            | Creator 版本标识   | 固定值 `skill_creator_learning v1.4.0`                         |
 
 ### 生成逻辑
 
@@ -124,7 +128,7 @@ tools: [write, bash]
 
 4. 准备 references/ 文件：
    - 两种模式都需要：读取 `references/templates/guides/review_guide.md` → 生成 `review_guide.md`
-   - 仅完整模式额外需要：读取 `references/templates/guides/framework_guide.md` → 生成 `framework_guide.md`
+   - 两种模式都需要：读取 `references/templates/guides/framework_guide.md` → 生成 `framework_guide.md`（完整模式默认使用；轻量模式在自适应升级时使用）
 
 5. 如果对话语言不是中文，将生成物全文翻译为用户使用的语言，保持结构和格式不变
 
@@ -133,9 +137,7 @@ tools: [write, bash]
 将生成的 SKILL.md 完整内容展示给用户，然后列出 references/ 文件清单：
 
 > "此外还会生成以下配套文件：
->
 > - references/review_guide.md — 复盘执行指南
->   [完整模式额外显示：]
 > - references/framework_guide.md — 认知框架生成指南
 >
 > 你可以提出修改意见，或者确认后我直接生成。"
@@ -157,17 +159,6 @@ tools: [write, bash]
 
 生成时逐项检查，确保每个占位符都已处理：
 
-<<<<<<< HEAD
-| 占位符                        | 来源                                  | 处理方式                                       |
-| ----------------------------- | ------------------------------------- | ---------------------------------------------- |
-| `{{topic}}`                   | 用户输入的学习主题                    | 直接替换                                       |
-| `{{topic_slug}}`              | 从 topic 派生（小写、下划线、无空格） | 直接替换                                       |
-| `{{goal}}`                    | 用户输入的学习目标（可操作表述）      | 直接替换                                       |
-| `{{background}}`              | 用户输入的现有基础                    | 直接替换                                       |
-| `{{timeframe}}`               | 用户输入的时间范围                    | 直接替换                                       |
-| `{{learning_style_override}}` | 可选，用户提到的学习风格偏好          | 有值→插入说明文本；无值→清除占位符（不留空行） |
-| `{{verification_override}}`   | 可选，用户提到的验收方式偏好          | 有值→插入说明文本；无值→清除占位符（不留空行） |
-=======
 | 占位符 | 来源 | 处理方式 |
 |---|---|---|
 | `{{topic}}` | 用户输入的学习主题 | 直接替换 |
@@ -177,7 +168,8 @@ tools: [write, bash]
 | `{{timeframe}}` | 用户输入的时间范围 | 直接替换 |
 | `{{learning_style_override}}` | 可选，用户提到的学习风格偏好 | 有值→插入说明文本；无值→清除占位符（不留空行） |
 | `{{verification_override}}` | 可选，用户提到的验收方式偏好 | 有值→插入说明文本；无值→清除占位符（不留空行） |
->>>>>>> 693fca6 (feat: skill-creator-learning v1.2 — references 重组 + 生成物模块分文件夹)
+| `{{project_dir}}` | 从 topic_slug 派生 | `learn_` + topic_slug + `/`（如 `learn_distributed_systems/`），直接替换 |
+| `{{generated_by}}` | Creator 版本标识 | 固定值 `skill_creator_learning v1.4.0`，直接替换 |
 
 > **⚠️ 用户确认生成后，必须进入 Phase 3 执行交付流程。不要直接写文件——Phase 3 包含安装路径探测、交付方式询问等必要步骤。**
 
@@ -188,11 +180,7 @@ tools: [write, bash]
 用户确认预览后，询问交付方式：
 
 > "你希望我怎么交付？
-<<<<<<< HEAD
->
-=======
->>>>>>> 693fca6 (feat: skill-creator-learning v1.2 — references 重组 + 生成物模块分文件夹)
-> 1. **直接创建项目文件夹** — 创建独立的 `learn_[主题]/` 文件夹，skill 安装在里面，只在该文件夹的对话中生效
+> 1. **直接安装到当前工作空间** — skill 和项目文件夹都创建在当前工作空间内，立即可用
 > 2. **打包为 ZIP** — 生成 zip 文件，你可以自行解压到任意位置或分享给别人"
 
 ### 安装路径探测
@@ -205,48 +193,38 @@ tools: [write, bash]
 
 探测到的前缀记为 `{skill_prefix}`。最终 skill 安装路径为：`{skill_prefix}/learn_{{topic_slug}}/SKILL.md`
 
-### 路径1：直接创建
+### 路径1：直接安装到当前工作空间
 
 **执行以下步骤（必须按顺序完成）：**
 
-1. 在当前工作空间的**同级位置**创建项目文件夹 `learn_{{topic_slug}}/`（即上级目录下的新文件夹，与当前工作空间并列）。如果因工具权限限制无法写入上级目录，则在当前目录下创建，并在步骤 6 中告知用户需要手动移动
-2. 在项目文件夹内，按探测到的 `{skill_prefix}` 创建 skill 目录：`{skill_prefix}/learn_{{topic_slug}}/`
-3. 将生成的 SKILL.md 写入该目录
-4. 在该目录下创建 `references/` 子目录，写入 review_guide.md（完整模式额外写入 framework_guide.md）
+1. 在当前工作空间内，按探测到的 `{skill_prefix}` 创建 skill 目录：`{skill_prefix}/learn_{{topic_slug}}/`
+2. 将生成的 SKILL.md 写入该目录
+3. 在该目录下创建 `references/` 子目录，写入 review_guide.md 和 framework_guide.md
+4. 在当前工作空间根目录下创建项目文件目录 `learn_{{topic_slug}}/`（用于存放学习过程中产生的所有项目文件：学习计划、笔记、总结等）
 5. 注意：生成的文件包含大量 Markdown 特殊字符（反引号、方括号、花括号），请使用文件写入工具直接创建文件，避免通过 Shell heredoc（`cat <<EOF`）或重定向写入
-6. 通知用户，根据实际创建位置调整措辞：
+6. 通知用户：
 
-创建在同级目录时：
-<<<<<<< HEAD
-
-=======
->>>>>>> 693fca6 (feat: skill-creator-learning v1.2 — references 重组 + 生成物模块分文件夹)
-> "学习项目已创建，路径：`../learn_{{topic_slug}}/`
-> skill 安装在 `{skill_prefix}/learn_{{topic_slug}}/` 下，只在该文件夹的对话中生效——学习项目和其他工作互不干扰。
-> 新起一个对话，指向这个文件夹就可以开始了。"
-
-因权限限制创建在当前目录内时：
-<<<<<<< HEAD
-
-=======
->>>>>>> 693fca6 (feat: skill-creator-learning v1.2 — references 重组 + 生成物模块分文件夹)
-> "学习项目已创建，路径：`./learn_{{topic_slug}}/`
-> 由于工具限制，项目文件夹创建在当前工作空间内部。建议你将它移动到上级目录（与当前工作空间并列），这样可以作为独立工作空间使用。
-> 移动后，新起一个对话指向该文件夹就可以开始了。"
+> "学习项目已安装到当前工作空间：
+> - skill 位于 `{skill_prefix}/learn_{{topic_slug}}/`
+> - 项目文件将保存在 `learn_{{topic_slug}}/` 目录下
+>
+> 直接开始对话就可以使用了——说「开始学习」或「继续学习」即可。"
 
 ### 路径2：ZIP 打包
 
 **执行以下步骤（必须按顺序完成）：**
 
-1. 在 /tmp/ 下创建临时目录 `learn_{{topic_slug}}/`
-2. 在临时目录内按探测到的 `{skill_prefix}` 创建完整目录结构：`{skill_prefix}/learn_{{topic_slug}}/SKILL.md` + `{skill_prefix}/learn_{{topic_slug}}/references/`
-3. 写入所有文件（同路径1步骤3-4）。同样使用文件写入工具，避免 Shell heredoc
-4. 执行 zip 打包：`cd /tmp && zip -r learn_{{topic_slug}}.zip learn_{{topic_slug}}/`
-5. 将 zip 文件移动到用户工作目录
-6. 清理临时目录
-7. 通知用户：
+1. 在 /tmp/ 下创建临时目录 `learn_{{topic_slug}}_package/`
+2. 在临时目录内按探测到的 `{skill_prefix}` 创建 skill 目录结构：`{skill_prefix}/learn_{{topic_slug}}/SKILL.md` + `{skill_prefix}/learn_{{topic_slug}}/references/`
+3. 在临时目录内创建项目文件目录：`learn_{{topic_slug}}/`（空目录，首次使用时 skill 会自动初始化）
+4. 写入所有文件（同路径1步骤2-3）。同样使用文件写入工具，避免 Shell heredoc
+5. 执行 zip 打包：`cd /tmp && zip -r learn_{{topic_slug}}.zip learn_{{topic_slug}}_package/`
+6. 将 zip 文件移动到用户工作目录
+7. 清理临时目录
+8. 通知用户：
 
-> "已打包为 `learn_{{topic_slug}}.zip`。解压到你想要的位置后，在该文件夹下的对话中 skill 就会自动生效。"
+> "已打包为 `learn_{{topic_slug}}.zip`。
+> 解压到你的工作空间根目录后，skill 会自动生效，项目文件将保存在 `learn_{{topic_slug}}/` 目录下。"
 
 ---
 
@@ -255,29 +233,23 @@ tools: [write, bash]
 生成前最后过一遍，确保生成物质量：
 
 **内容质量**
-<<<<<<< HEAD
-
-=======
->>>>>>> 693fca6 (feat: skill-creator-learning v1.2 — references 重组 + 生成物模块分文件夹)
 - [ ] frontmatter 的 name 字段不超过 32 字符
-- [ ] frontmatter 的 description 包含触发关键词
-- [ ] 项目信息区的四个变量都已正确填充
+- [ ] frontmatter 的 description 包含触发关键词和主题名称
+- [ ] frontmatter 的 generated_by 字段已填充版本标识
+- [ ] 项目信息区的所有变量（含项目文件目录）都已正确填充
 - [ ] 所有占位符已处理（替换或清除），无残留的 `{{...}}`
 - [ ] 启动协议中的文件读取逻辑与文件管理规范一致
+- [ ] 启动协议中包含项目文件目录的定位和创建逻辑
 - [ ] 学习模式的五步闭环完整（输入→学习→确认→验收→沉淀）
 - [ ] 所有文件命名规则使用了正确的 topic_slug
 - [ ] 没有任何删除文件的指令
-- [ ] 所有文件路径使用相对路径
+- [ ] 所有项目文件路径相对于项目文件目录
 - [ ] 如完整模式：读取优先级三层都定义清晰
 - [ ] references/ 文件与 SKILL.md 中的引用一致
 
 **交付验证**
-<<<<<<< HEAD
-
-=======
->>>>>>> 693fca6 (feat: skill-creator-learning v1.2 — references 重组 + 生成物模块分文件夹)
-- [ ] 交付前已询问用户选择交付方式（直接创建 / ZIP）
+- [ ] 交付前已询问用户选择交付方式（直接安装 / ZIP）
 - [ ] 已执行安装路径探测，确认 `{skill_prefix}` 值
 - [ ] skill 目录结构正确：`{skill_prefix}/learn_[topic_slug]/SKILL.md` + `references/`
-- [ ] 项目文件夹位于预期位置（与当前工作空间并列；如因权限降级，已告知用户）
+- [ ] 项目文件目录已创建：`learn_[topic_slug]/`
 - [ ] 所有文件已成功写入（非空、内容完整）
