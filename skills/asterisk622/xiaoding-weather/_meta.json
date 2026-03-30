@@ -1,11 +1,17 @@
 {
   "owner": "asterisk622",
   "slug": "xiaoding-weather",
-  "displayName": "Weather",
+  "displayName": "Weather (XiaoDing)",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773903883732,
-    "commit": "https://github.com/openclaw/skills/commit/dccebb77fee436a9fc0f8b0b322644e55cca6097"
+    "version": "1.0.2",
+    "publishedAt": 1774249446145,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773903883732,
+      "commit": "https://github.com/openclaw/skills/commit/dccebb77fee436a9fc0f8b0b322644e55cca6097"
+    }
+  ]
 }
