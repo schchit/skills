@@ -3,11 +3,16 @@
   "slug": "vision",
   "displayName": "Vision",
   "latest": {
-    "version": "3.4.2",
-    "publishedAt": 1773774836323,
-    "commit": "https://github.com/openclaw/skills/commit/c028b1169c93ff3db09bb936dc52edbe113aa35e"
+    "version": "3.5.0",
+    "publishedAt": 1774614216943,
+    "commit": null
   },
   "history": [
+    {
+      "version": "3.4.2",
+      "publishedAt": 1773774836323,
+      "commit": "https://github.com/openclaw/skills/commit/c028b1169c93ff3db09bb936dc52edbe113aa35e"
+    },
     {
       "version": "3.2.1",
       "publishedAt": 1773717644230,
