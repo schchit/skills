@@ -1,14 +1,17 @@
 ---
 name: smart-search
-description: 智能搜索引擎切换。优先使用 SearX 1.1.0（免费无限），失败自动降级 Tavily。
+description: 免费无限搜索！Exa MCP（主力·零配置）+ SearX（隐私）+ Tavily（AI 摘要），面向大众，无需 API Key。
 author: 李洋
-version: 2.0.0
+version: 4.0.0
 tags:
   - search
+  - exa
+  - mcp
   - searx
   - tavily
   - web-search
   - chinese
+  - free
 triggers:
   - "搜索"
   - "查查"
@@ -17,6 +20,7 @@ triggers:
   - "写文案"
   - "小红书"
   - "公众号"
+  - "深度"
 metadata: {
   "emoji": "🔍",
   "requires": {
@@ -26,9 +30,32 @@ metadata: {
 }
 ---
 
-# Smart Search - 智能搜索引擎切换 v2
+# Smart Search v4.0 - 免费无限搜索
 
-**优先使用 SearX 1.1.0（免费无限），失败自动降级 Tavily**
+**Exa MCP（主力·零配置·免费无限）+ SearX（隐私）+ Tavily（AI 摘要）**
+
+---
+
+## 🎉 核心优势
+
+### v4.0 重大升级
+
+- ✅ **零配置** - 无需任何 API Key，开箱即用
+- ✅ **免费无限** - Exa MCP 官方免费提供，无次数限制
+- ✅ **三引擎** - Exa MCP + SearX + Tavily，智能切换
+- ✅ **隐私保护** - 敏感查询自动使用 SearX
+- ✅ **AI 摘要** - 可选 Tavily 支持内容创作
+
+### 为什么选择 v4.0？
+
+| 特性 | v3.0 | v4.0 |
+|------|------|------|
+| **配置要求** | Exa API Key | 零配置 ✅ |
+| **免费额度** | 1000 次（一次性） | 无限 ✅ |
+| **长期使用** | 用完付费 | 永远免费 ✅ |
+| **面向大众** | ❌ 需要 API Key | ✅ 开箱即用 |
+
+---
 
 ## 决策逻辑
 
@@ -36,173 +63,291 @@ metadata: {
 
 | 场景类型 | 关键词 | 推荐引擎 | 原因 |
 |---------|--------|---------|------|
-| **AI 内容生成** | 小红书、文案、公众号、生成、总结、摘要 | Tavily | 带 AI 摘要，辅助创作 |
-| **日常查询** | 查询、是什么、怎么用、教程 | SearX | 免费无限，响应快 |
-| **新闻资讯** | 新闻、资讯、最新、动态 | SearX | 多引擎聚合，全面 |
-| **深度调研** | 调研、研究、了解、学习 | SearX | 结果全面，可定制 |
-| **用户指定** | 用 tavily、用 searx | 按用户 | 尊重选择 |
+| **日常查询** | 是什么、怎么用、教程、新闻、资讯 | Exa MCP | 免费无限，快速全面 |
+| **技术文档** | API、GitHub、代码、technical、docs | Exa MCP | 结构化数据，精准 |
+| **深度研究** ✨ | 深度挖掘、深度分析、详细调研、行业分析、竞品分析、市场调研、报告、白皮书 | Tavily | AI 摘要，深度洞察 |
+| **摘要总结** 📝 | 摘要、总结、提炼、归纳、梳理、解读 | Tavily | AI 辅助，高效整理 |
+| **隐私敏感** 🔒 | 密码、隐私、疾病、医疗、成人、性健康、财务、法律、本地、安全、token、配置、个人数据 | SearX | 无追踪，隐私保护 |
+| **AI 创作** | 小红书、文案、公众号、生成、创作、爆款标题 | Tavily | AI 摘要辅助创作 |
+| **用户指定** | 用 exa、用 searx、用 tavily | 按用户 | 尊重选择 |
 
 ### 优先级
 
-| 优先级 | 引擎 | 使用场景 |
-|--------|------|---------|
-| 1️⃣ | **SearX 1.1.0** | 日常搜索、新闻资讯、深度调研（90%） |
-| 2️⃣ | **Tavily** | AI 内容生成、紧急备用（10%） |
+| 优先级 | 引擎 | 使用场景 | 触发关键词 | 占比 | 成本 |
+|--------|------|---------|-----------|------|------|
+| 1️⃣ | **Exa MCP** | 日常查询、技术文档 | 默认 | 60% | **免费无限** ✅ |
+| 2️⃣ | **Tavily** | 深度研究、摘要总结、AI 创作 | 深度、详细、挖掘、摘要、总结、报告 | 25% | 免费 1000 次/月 |
+| 3️⃣ | **SearX** | 隐私敏感、安全配置 | 密码、隐私、本地、安全、token、配置 | 15% | 免费无限 |
 
 **降级策略：**
 ```
-SearX 1.1.0 → Tavily（兜底）
+Exa MCP → SearX → Tavily（三级兜底）
 ```
+
+---
+
+## 隐私保护关键词列表
+
+### 🔒 使用 SearX 的敏感场景
+
+**账号安全类**
+```
+密码、账户、账号、登录、注册、认证、授权、token、密钥、api key、secret
+```
+
+**个人隐私类**
+```
+隐私、个人数据、个人信息、住址、电话、邮箱、身份证、银行卡、信用卡
+支付宝、微信、聊天记录、浏览历史、照片、监控、跟踪、窃听
+```
+
+**本地/内网类**
+```
+本地、内网、私人、敏感、保密、内部、配置、设置、local、private
+```
+
+**成人/性健康类**
+```
+成人、色情、性、sex、生殖、阴茎、阴道、避孕、怀孕、流产
+```
+
+**医疗健康类**
+```
+疾病、症状、治疗、诊断、医院、医生、癌症、肿瘤、糖尿病、高血压
+心脏病、药物、处方、用药、副作用、心理健康、抑郁、焦虑、自杀
+性病、艾滋病、hiv、梅毒、淋病
+```
+
+**财务/法律类**
+```
+贷款、债务、破产、税务、发票、报销、工资、犯罪、律师、诉讼、监狱
+护照、签证、社保
+```
+
+**为什么这些查询使用 SearX？**
+- ✅ **无追踪** - 不记录搜索历史
+- ✅ **本地部署** - 数据不出内网（如果配置了本地 SearX）
+- ✅ **隐私保护** - 避免敏感信息泄露给第三方 API
+- ✅ **安全可靠** - 适合查询个人敏感话题
+
+---
 
 ## 配置
 
-### 必需配置
+### 🎉 零配置！开箱即用
+
+**v4.0 最大优势：无需任何 API Key！**
+
+```bash
+# ~/.openclaw/.env
+# 什么都不用配！直接用！
+```
+
+### 可选配置（增强功能）
+
 ```bash
 # ~/.openclaw/.env
 
-# SearX 1.1.0（主力引擎，必须部署）
+# SearX（隐私保护，可选）
 SEARXNG_URL=http://localhost:8080
+
+# Tavily（AI 摘要，可选）
+TAVILY_API_KEY=your_tavily_key_here
 ```
 
-### 可选配置（AI 内容生成）
-```bash
-# Tavily API Key（推荐配置，免费 1000 次/月）
-TAVILY_API_KEY=your_api_key_here  # 从 https://tavily.com 获取
-```
+### 配置方案对比
 
-**配置说明：**
-- ✅ **不配置 Tavily**：日常搜索用 SearX（免费无限），AI 内容生成时降级 SearX
-- ✅ **配置 Tavily**：AI 内容生成用 Tavily（带 AI 摘要），日常搜索用 SearX
-- 💡 **推荐配置**：两者都配置，体验最佳
+| 方案 | Exa MCP | SearX | Tavily | 适用场景 |
+|------|---------|-------|--------|---------|
+| **零配置** ✅ | ✅ | ❌ | ❌ | 个人用户，快速上手 |
+| **隐私保护** | ✅ | ✅ | ❌ | 注重隐私的用户 |
+| **完整体验** | ✅ | ✅ | ✅ | 需要 AI 摘要创作 |
+| **纯本地** | ❌ | ✅ | ❌ | 完全离线环境 |
 
-**获取 Tavily API Key（2 分钟）：**
-1. 访问 https://tavily.com
-2. 注册免费账号（1000 次/月免费额度）
-3. 获取 API Key
-4. 添加到 `~/.openclaw/.env`
-
-### 可选（多 API Key 轮换）
-```bash
-TAVILY_API_KEY_2=your_backup_key_1
-TAVILY_API_KEY_3=your_backup_key_2
-```
-
-## 部署 SearX 1.1.0
-
-### 方式 A：一键部署脚本（推荐）
+**部署 SearX（可选）：**
 ```bash
 cd /home/admin/.openclaw/workspace/skills/smart-search
 chmod +x deploy-searx.sh
 ./deploy-searx.sh
 ```
 
-### 方式 B：Docker 命令
-```bash
-docker run -d --name searx \
-  -p 8080:8080 \
-  -e SEARX_SECRET='your_secret_here' \
-  --restart unless-stopped \
-  searx/searx:1.1.0-69-75b859d2
-```
+**获取 Tavily API Key（可选）：**
+1. 访问 https://tavily.com
+2. 注册免费账号（1000 次/月）
+3. 获取 API Key
 
-### 方式 C：Docker Compose
-```bash
-# 创建 docker-compose.yml
-cat > docker-compose.yml << 'EOF'
-version: '3'
-services:
-  searx:
-    image: searx/searx:1.1.0-69-75b859d2
-    ports:
-      - "8080:8080"
-    environment:
-      - SEARX_SECRET=your_secret_here
-    restart: unless-stopped
-EOF
-
-docker compose up -d
-```
-
-**为什么用旧版？**
-- SearXNG 2026.x 启用了严格的 bot 检测，JSON API 返回 403
-- SearX 1.1.0 无 bot 检测，API 完全可用
-- 免费无限搜索，适合晨间简报等高频场景
-
-**详细文档：** 参考 `README.searx.md`
+---
 
 ## 使用示例
 
 **日常搜索**
 ```bash
-./search.sh "AI 新闻"
+./search.sh "AI 最新新闻"
+# → Exa MCP（免费无限）
 ```
 
-**指定结果数**
+**技术查询**
 ```bash
-./search.sh "AI 新闻" 10
+./search.sh "Python async 教程"
+# → Exa MCP（技术文档精准）
 ```
 
-## 工具调用
-
-### SearX 搜索（优先）
+**隐私查询**
 ```bash
-curl -s "http://localhost:8080/search?q=查询&format=json"
+./search.sh "本地隐私配置"
+# → SearX（隐私保护）
 ```
 
-### Tavily 搜索（降级备用）
+**AI 创作**（需配置 Tavily）
 ```bash
-curl -X POST https://api.tavily.com/search \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TAVILY_API_KEY" \
-  -d '{"query": "查询内容", "max_results": 5, "include_answer": true}'
+./search.sh "小红书文案怎么写"
+# → Tavily（带 AI 摘要）
 ```
 
-## 成本对比
-
-| 引擎 | 费用 | 额度 | 使用场景 | 占比 |
-|------|------|------|----------|------|
-| SearX 1.1.0 | 免费 | ♾️ 无限 | 日常搜索、晨间简报 | 90% |
-| Tavily | 免费 | 1000 次/月 | AI 内容生成、备用 | 10% |
-
-**晨间科技简报成本：**
-- 每天 1 次 × 30 天 = 30 次/月
-- 使用 SearX：**0 成本** ✅
-- Tavily 额度保留：970 次/月备用
-
-**月度搜索预算（按 600 次/月）：**
-```
-SearX:   540 次 × ¥0 = ¥0
-Tavily:   60 次 × ¥0 = ¥0（免费额度内）
-────────────────────────────────
-总计：   600 次 = ¥0 ✅
-```
-
-## 架构优势
-
-1. **免费优先** - SearX 1.1.0 承担主要流量
-2. **稳定兜底** - Tavily 保证服务可用性
-3. **智能降级** - 失败自动切换，用户无感知
-4. **成本优化** - 90% 搜索 0 成本
-
-## 故障排查
-
-**SearX 不可用时：**
+**指定引擎**
 ```bash
-# 检查容器状态
-docker ps | grep searx
-
-# 查看日志
-docker logs searx --tail 20
-
-# 重启容器
-docker restart searx
+./search.sh "用 searx 搜索 XXX"
+# → SearX（尊重用户选择）
 ```
-
-**降级到 Tavily：**
-- 自动触发，无需手动干预
-- 日志显示：`⚠️  SearX 不可用，降级到 Tavily...`
 
 ---
 
-**最后更新：** 2026-03-26  
-**版本：** 2.0.0（SearX 1.1.0 + Tavily 双引擎）
+## 成本对比
+
+### v3.0 vs v4.0
+
+**v3.0（Exa API）：**
+```
+免费额度：1000 次（一次性赠送）
+用完后：$7/1000 次（约 ¥50/1000 次）
+月度成本（1000 次/月）：约 ¥50/月
+```
+
+**v4.0（Exa MCP）：**
+```
+免费额度：♾️ 无限
+用完后：¥0（永远免费）
+月度成本（1000 次/月）：¥0 ✅
+```
+
+**年度节省：**
+```
+v3.0: ¥50 × 12 = ¥600/年
+v4.0: ¥0/年
+节省：¥600/年 ✅
+```
+
+---
+
+## 架构优势
+
+### 为什么选择 Exa MCP？
+
+| 特性 | Exa MCP | Exa API | SearX |
+|------|---------|---------|-------|
+| **费用** | 免费无限 | $7/1000 次 | 免费无限 |
+| **配置** | 零配置 | 需要 API Key | 需要部署 |
+| **响应速度** | ~1s | ~500ms | ~2s |
+| **结果质量** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
+| **隐私保护** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+
+**Exa MCP 核心优势：**
+- 🎯 **官方免费** - Exa 官方提供的免费服务
+- 🔌 **零配置** - 无需注册，无需 API Key
+- ♾️ **无限使用** - 没有次数限制
+- 📊 **高质量** - 1B+ 页面索引，精准搜索
+- 🚀 **快速响应** - 通常 1 秒内返回结果
+
+---
+
+## 故障排查
+
+### Exa MCP 不可用时
+```bash
+# 测试 Exa MCP
+curl -X POST https://mcp.exa.ai/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}'
+```
+
+### SearX 不可用时
+```bash
+# 检查容器状态
+docker ps | grep searx
+docker logs searx --tail 20
+docker restart searx
+```
+
+### 降级逻辑
+- **自动触发**，无需手动干预
+- **日志提示**：`⚠️  Exa MCP 暂时不可用，降级到 SearX...`
+- **三级兜底**：Exa MCP → SearX → Tavily
+
+---
+
+## 技术细节
+
+### Exa MCP 调用格式
+
+```bash
+curl -X POST https://mcp.exa.ai/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "web_search_exa",
+      "arguments": {
+        "query": "搜索内容",
+        "numResults": 5
+      }
+    }
+  }'
+```
+
+### 返回格式
+
+Exa MCP 返回结构化数据：
+- Title: 标题
+- URL: 链接
+- Published: 发布日期
+- Author: 作者
+- Highlights: 内容摘要
+
+---
+
+## 常见问题
+
+### Q: Exa MCP 真的完全免费吗？
+A: 是的！Exa 官方免费提供的 MCP 服务，没有次数限制。
+
+### Q: 为什么还要配置 SearX 和 Tavily？
+A: 
+- SearX：隐私保护场景（本地部署，无外部请求）
+- Tavily：AI 内容生成（带 AI 摘要，辅助创作）
+
+### Q: Exa MCP 和 Exa API 有什么区别？
+A:
+- MCP：免费无限，零配置，基础搜索功能
+- API：付费（有免费赠额），完整功能，可自定义参数
+
+### Q: 适合什么场景使用？
+A: 
+- ✅ 个人日常搜索
+- ✅ 技术文档查询
+- ✅ 新闻资讯获取
+- ✅ 学术研究
+- ✅ 商业调研
+
+---
+
+**最后更新：** 2026-03-30  
+**版本：** 4.0.0（Exa MCP 免费无限）
+
+**变更日志：**
+- v4.0 - 使用 Exa MCP，零配置，免费无限
+- v3.0.4 - Exa API + SearX + Tavily 三引擎
+- v2.0 - SearX + Tavily 双引擎
