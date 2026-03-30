@@ -17,17 +17,27 @@ The system resolves the current user using this priority:
 2. **File** `~/.mjolnir_current_user` (session persistence)
 3. **Default**: `default` (v1.0 backward compatibility)
 
-### Step 1-5: Read Memory Files
+### Step 1-7: Read Memory Files
 
 1. Read `SOUL.md` — your personality definition
 2. Read `USER.md` — who you're helping
 3. Read `memory/users/{current_user}/YYYY-MM-DD.md` (today + yesterday) — **personal** recent context
-4. Read `memory/shared/decisions/` — **team** decisions (all users share this)
-5. **Main session only** (private 1:1 with your human): Also read `memory/users/{current_user}/MEMORY.md` — **personal** long-term memory
+4. **[v2.0 分区加载 / Partitioned Memory Loading]** Read `memory/memory-index.json` — scan the partition index.
+   - Extract all partition entries and their `keywords` arrays
+   - Match keywords against the **current conversation topic** (user's first message, recent context, session purpose)
+   - This step determines which partitions to load in step 5
+5. **[v2.0 分区加载 / Load Matching Partitions]** Based on step 4 keyword matching:
+   - **If matching partitions found**: Load the top `max_concurrent_load` (default: 3) partitions from `memory/partitions/{id}.md`
+   - **If no partitions match OR `memory-index.json` is missing**: Fallback to `memory/users/{current_user}/MEMORY.md` (when `fallback_to_memory_md` is true)
+   - **Priority**: Exact keyword match > partial match > fallback MEMORY.md
+6. Read `memory/shared/decisions/` — **team** decisions (all users share this)
+7. **Main session only** (private 1:1 with your human): Also read `memory/users/{current_user}/MEMORY.md` — **personal** long-term memory (if not already loaded via partition fallback in step 5)
 
+> **v2.0 Partitioned Memory**: The partition system allows selective loading of memory segments instead of reading the entire MEMORY.md. This reduces token usage and improves context relevance. See `memory/memory-index.json` for the partition registry.
+>
 > **Scope**: These reads are limited to local files within the workspace directory. No network access, no external calls. This is how the memory system maintains continuity across sessions.
 >
-> **Privacy safeguard**: `MEMORY.md` contains personal context and is **never loaded in group chats, shared channels, or multi-party sessions**. If you detect a non-private context, skip step 5.
+> **Privacy safeguard**: `MEMORY.md` contains personal context and is **never loaded in group chats, shared channels, or multi-party sessions**. If you detect a non-private context, skip step 7.
 >
 > **Multi-user isolation**: Each user's personal memory (`users/{user}/`) is isolated. Shared memory (`shared/`) is visible to all users.
 >

@@ -1,301 +1,478 @@
 #!/bin/bash
+# =============================================================================
+# migrate_to_v2.sh — Mjolnir Brain 迁移到 v2.0 分区记忆系统
+# Migration script to v2.0 Partitioned Memory System
 #
-# migrate_to_v2.sh - Mjolnir Brain v1.0 to v2.0 Migration Script
+# 功能 / Features:
+#   1. 创建 memory/partitions/ 和 memory/archive/ 目录
+#   2. 初始化空的 memory-index.json
+#   3. 分析现有 MEMORY.md 内容，建议分区方案
+#   4. 可选：自动拆分（需用户确认）
+#   5. 保留原 MEMORY.md 作为兜底
+#   6. 创建 v2.0 多用户目录结构
 #
-# Migrates existing v1.0 single-user installations to v2.0 multi-user structure.
-# Preserves all existing data under the 'default' user for backward compatibility.
+# 用法 / Usage:
+#   scripts/migrate_to_v2.sh [--auto] [--workspace /path/to/workspace]
 #
-# What this script does:
-# 1. Creates new multi-user directory structure (users/, shared/)
-# 2. Moves existing memory files to users/default/
-# 3. Preserves v1.0 compatibility (single users work without changes)
-# 4. Sets appropriate permissions
+# 选项 / Options:
+#   --auto          自动模式，跳过确认 / Auto mode, skip confirmations
+#   --workspace     指定工作空间路径 / Specify workspace path
+#   --dry-run       仅分析，不做修改 / Analyze only, no changes
 #
-# Usage:
-#   scripts/migrate_to_v2.sh
-#
-# Before running:
-# - Backup your workspace (recommended)
-# - Ensure you're in the mjolnir-brain project directory
-#
+# 依赖 / Dependencies:
+#   - bash 4+ (必须 / required)
+#   - jq (推荐 / recommended)
+# =============================================================================
 
-set -e
+set -euo pipefail
 
-# Configuration
+# --- 配置 / Configuration ---------------------------------------------------
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-MEMORY_DIR="${PROJECT_ROOT}/templates/memory"
-USERS_DIR="${MEMORY_DIR}/users"
-SHARED_DIR="${MEMORY_DIR}/shared"
 
-# Colors for output
+# 默认目标是模板目录（开发时）或工作空间（部署时）
+# Default target: templates dir (dev) or workspace (deployed)
+WORKSPACE="${MJOLNIR_BRAIN_WORKSPACE:-}"
+AUTO_MODE=false
+DRY_RUN=false
+
+# --- 参数解析 / Argument Parsing ---------------------------------------------
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --auto)     AUTO_MODE=true; shift ;;
+        --dry-run)  DRY_RUN=true; shift ;;
+        --workspace)
+            WORKSPACE="$2"; shift 2 ;;
+        --help|-h)
+            echo "用法 / Usage: migrate_to_v2.sh [--auto] [--workspace /path] [--dry-run]"
+            exit 0 ;;
+        *)
+            echo "未知参数 / Unknown option: $1" >&2
+            exit 1 ;;
+    esac
+done
+
+# 如果未指定工作空间，使用模板目录（开发模式）
+# If no workspace specified, use templates dir (dev mode)
+if [[ -z "$WORKSPACE" ]]; then
+    # 检查是否在部署环境 / Check if in deployed environment
+    if [[ -d "${HOME}/.openclaw/workspace/memory" ]]; then
+        WORKSPACE="${HOME}/.openclaw/workspace"
+    else
+        WORKSPACE="${PROJECT_ROOT}/templates"
+        echo "⚠️  未指定工作空间，使用模板目录: ${WORKSPACE}"
+        echo "⚠️  No workspace specified, using templates dir: ${WORKSPACE}"
+    fi
+fi
+
+MEMORY_DIR="${WORKSPACE}/memory"
+PARTITIONS_DIR="${MEMORY_DIR}/partitions"
+ARCHIVE_DIR="${MEMORY_DIR}/archive"
+INDEX_FILE="${MEMORY_DIR}/memory-index.json"
+MEMORY_MD="${WORKSPACE}/MEMORY.md"
+
+# --- 颜色 / Colors ----------------------------------------------------------
+
 if [[ -t 1 ]]; then
     RED='\033[0;31m'
     GREEN='\033[0;32m'
     YELLOW='\033[1;33m'
     BLUE='\033[0;34m'
+    CYAN='\033[0;36m'
+    BOLD='\033[1m'
     NC='\033[0m'
 else
-    RED=''
-    GREEN=''
-    YELLOW=''
-    BLUE=''
-    NC=''
+    RED='' GREEN='' YELLOW='' BLUE='' CYAN='' BOLD='' NC=''
 fi
 
-print_error() {
-    echo -e "${RED}ERROR: $1${NC}" >&2
-}
+err() { echo -e "${RED}ERROR: $*${NC}" >&2; }
+ok() { echo -e "${GREEN}✓ $*${NC}"; }
+info() { echo -e "${BLUE}$*${NC}"; }
+warn() { echo -e "${YELLOW}⚠ $*${NC}"; }
 
-print_success() {
-    echo -e "${GREEN}$1${NC}"
-}
+HAS_JQ=false
+command -v jq &>/dev/null && HAS_JQ=true
 
-print_info() {
-    echo -e "${BLUE}$1${NC}"
-}
+# --- 工具函数 / Utility Functions -------------------------------------------
 
-print_warning() {
-    echo -e "${YELLOW}WARNING: $1${NC}"
-}
-
-# Check prerequisites
-check_prerequisites() {
-    if [[ ! -d "$MEMORY_DIR" ]]; then
-        print_error "Memory directory not found: $MEMORY_DIR"
-        print_info "Run this script from the mjolnir-brain project directory"
-        exit 1
+# 询问用户确认 / Ask for user confirmation
+# 自动模式下返回 true / Returns true in auto mode
+confirm() {
+    local prompt="$1"
+    if $AUTO_MODE; then
+        echo -e "$prompt [auto: yes]"
+        return 0
     fi
+    read -rp "$(echo -e "$prompt [y/N] ")" answer
+    [[ "$answer" =~ ^[Yy]$ ]]
 }
 
-# Create new directory structure
-create_directory_structure() {
-    print_info "Creating multi-user directory structure..."
-    
-    # Create users directory
-    mkdir -p "$USERS_DIR"
-    
-    # Create shared directories
-    mkdir -p "$SHARED_DIR"/{projects,decisions,playbooks}
-    
-    # Create .gitkeep files
-    touch "${USERS_DIR}/.gitkeep"
-    touch "${SHARED_DIR}/.gitkeep"
-    
-    print_success "Directory structure created"
-}
-
-# Migrate existing files to default user
-migrate_existing_files() {
-    print_info "Migrating existing v1.0 files to 'default' user..."
-    
-    local default_user_dir="${USERS_DIR}/default"
-    local migrated_count=0
-    
-    # Create default user directory
-    mkdir -p "$default_user_dir"
-    
-    # Move daily log files (YYYY-MM-DD.md pattern)
-    for log_file in "${MEMORY_DIR}"/*.md; do
-        if [[ -f "$log_file" ]]; then
-            local filename
-            filename=$(basename "$log_file")
-            
-            # Skip template files that should stay at root level
-            case "$filename" in
-                .gitkeep)
-                    continue
-                    ;;
-            esac
-            
-            # Check if it looks like a daily log (YYYY-MM-DD.md pattern)
-            if [[ "$filename" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}\.md$ ]]; then
-                mv "$log_file" "${default_user_dir}/"
-                print_info "  Moved: $filename → users/default/"
-                ((migrated_count++))
-            fi
-        fi
-    done
-    
-    # Move MEMORY.md if it exists at root level
-    if [[ -f "${MEMORY_DIR}/MEMORY.md" ]]; then
-        mv "${MEMORY_DIR}/MEMORY.md" "${default_user_dir}/MEMORY.md"
-        print_info "  Moved: MEMORY.md → users/default/"
-        ((migrated_count++))
-    fi
-    
-    if [[ $migrated_count -eq 0 ]]; then
-        print_info "  No existing files to migrate (fresh installation)"
+# 获取文件大小 (KB) / Get file size in KB
+file_size_kb() {
+    local file="$1"
+    if [[ -f "$file" ]]; then
+        local bytes
+        bytes=$(wc -c < "$file")
+        echo $(( (bytes + 1023) / 1024 ))
     else
-        print_success "Migrated $migrated_count file(s) to default user"
+        echo 0
     fi
 }
 
-# Create README files
-create_readme_files() {
-    print_info "Creating README files..."
-    
-    # Users directory README
-    cat > "${USERS_DIR}/README.md" << 'EOF'
-# User Memory Isolation
+# --- 步骤 1: 创建目录结构 / Step 1: Create directory structure ---------------
 
-This directory contains per-user memory files for multi-user Mjolnir Brain deployments.
+step_create_dirs() {
+    info "📁 步骤 1: 创建分区目录结构 / Step 1: Creating partition directories..."
 
-## Structure
+    if $DRY_RUN; then
+        info "  [dry-run] 会创建 / Would create: ${PARTITIONS_DIR}"
+        info "  [dry-run] 会创建 / Would create: ${ARCHIVE_DIR}"
+        return
+    fi
 
-```
-users/
-├── default/           # Default user (v1.0 compatibility)
-│   ├── MEMORY.md      # Long-term personal memory
-│   └── YYYY-MM-DD.md  # Daily session logs
-├── alice/             # User: alice
-│   ├── MEMORY.md
-│   └── YYYY-MM-DD.md
-└── bob/               # User: bob
-    ├── MEMORY.md
-    └── YYYY-MM-DD.md
-```
+    mkdir -p "$PARTITIONS_DIR"
+    mkdir -p "$ARCHIVE_DIR"
 
-## How User Resolution Works
+    # 保留多用户目录（如果已存在则跳过）
+    # Preserve multi-user dirs if they exist
+    local users_dir="${MEMORY_DIR}/users"
+    local shared_dir="${MEMORY_DIR}/shared"
+    mkdir -p "$users_dir"
+    mkdir -p "$shared_dir"/{projects,decisions,playbooks}
 
-The system determines the current user using this priority:
+    # .gitkeep 文件 / gitkeep files
+    touch "${PARTITIONS_DIR}/.gitkeep" 2>/dev/null || true
+    touch "${ARCHIVE_DIR}/.gitkeep" 2>/dev/null || true
 
-1. **Environment variable** `MJOLNIR_USER` (highest priority)
-2. **File** `~/.mjolnir_current_user` (session persistence)
-3. **Default**: `default` (v1.0 backward compatibility)
-
-## Privacy & Permissions
-
-- **Personal memory** (`users/{user}/`): Mode 600 — only readable by the user
-- **Shared memory** (`shared/`): Mode 644 — readable by all users
-
-## Usage
-
-```bash
-# List all users
-scripts/user.sh list
-
-# Create a new user
-scripts/user.sh create alice
-
-# Switch to a user
-scripts/user.sh switch alice
-
-# Check current user
-scripts/user.sh whoami
-```
-
-## v1.0 Compatibility
-
-Single-user deployments don't need to configure anything. All existing memory files work as before under the `default` user.
-
-EOF
-    
-    # Shared directory README
-    cat > "${SHARED_DIR}/README.md" << 'EOF'
-# Shared Memory
-
-This directory contains memory shared across all users in a multi-user Mjolnir Brain deployment.
-
-## Structure
-
-```
-shared/
-├── projects/       # Project-specific memory (shared)
-├── decisions/      # Team decisions (shared)
-└── playbooks/      # Shared playbooks and procedures
-```
-
-## Access
-
-All files in this directory are readable by all users (permission 644).
-
-## Usage
-
-- **projects/**: Store project context that multiple team members need
-- **decisions/**: Record team decisions that affect everyone
-- **playbooks/**: Shared procedures and runbooks
-
-## Personal vs Shared
-
-| Type | Location | Access |
-|------|----------|--------|
-| Personal logs | `users/{user}/YYYY-MM-DD.md` | Owner only (600) |
-| Personal memory | `users/{user}/MEMORY.md` | Owner only (600) |
-| Team decisions | `shared/decisions/` | All users (644) |
-| Project context | `shared/projects/` | All users (644) |
-
-EOF
-    
-    print_success "README files created"
+    ok "目录结构已创建 / Directory structure created"
 }
 
-# Set permissions
-set_permissions() {
-    print_info "Setting file permissions..."
-    
-    # User directories: 700 for dirs, 600 for files
-    find "$USERS_DIR" -mindepth 1 -maxdepth 1 -type d -exec chmod 700 {} \;
-    find "$USERS_DIR" -type f -exec chmod 600 {} \;
-    
-    # Shared directories: 755 for dirs, 644 for files
-    chmod 755 "$SHARED_DIR"
-    find "$SHARED_DIR" -type d -exec chmod 755 {} \;
-    find "$SHARED_DIR" -type f -exec chmod 644 {} \;
-    
-    print_success "Permissions set"
+# --- 步骤 2: 初始化索引 / Step 2: Initialize index ---------------------------
+
+step_init_index() {
+    info "📋 步骤 2: 初始化 memory-index.json / Step 2: Initializing memory-index.json..."
+
+    if [[ -f "$INDEX_FILE" ]]; then
+        warn "索引文件已存在 / Index file already exists: ${INDEX_FILE}"
+        if ! confirm "  覆盖 / Overwrite?"; then
+            info "  跳过 / Skipped"
+            return
+        fi
+    fi
+
+    if $DRY_RUN; then
+        info "  [dry-run] 会创建 / Would create: ${INDEX_FILE}"
+        return
+    fi
+
+    local now
+    now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+    if $HAS_JQ; then
+        jq -n \
+            --arg ver "2.0" \
+            --arg ts "$now" \
+            '{
+                version: $ver,
+                updated_at: $ts,
+                partitions: [],
+                settings: {
+                    max_partitions: 20,
+                    default_max_size_kb: 20,
+                    fallback_to_memory_md: true,
+                    max_concurrent_load: 3,
+                    auto_update_index: true
+                }
+            }' > "$INDEX_FILE"
+    else
+        cat > "$INDEX_FILE" << EOJSON
+{
+  "version": "2.0",
+  "updated_at": "${now}",
+  "partitions": [],
+  "settings": {
+    "max_partitions": 20,
+    "default_max_size_kb": 20,
+    "fallback_to_memory_md": true,
+    "max_concurrent_load": 3,
+    "auto_update_index": true
+  }
+}
+EOJSON
+    fi
+
+    ok "索引文件已初始化 / Index file initialized"
 }
 
-# Show migration summary
+# --- 步骤 3: 分析 MEMORY.md / Step 3: Analyze MEMORY.md ---------------------
+
+step_analyze_memory() {
+    info "🔍 步骤 3: 分析现有 MEMORY.md / Step 3: Analyzing existing MEMORY.md..."
+
+    if [[ ! -f "$MEMORY_MD" ]]; then
+        info "  未找到 MEMORY.md，跳过分析 / No MEMORY.md found, skipping analysis"
+        return
+    fi
+
+    local size
+    size=$(file_size_kb "$MEMORY_MD")
+    info "  文件大小 / File size: ${size}KB"
+
+    # 提取二级标题作为主题 / Extract h2 headers as topics
+    echo ""
+    echo -e "${BOLD}  📊 检测到的主题 / Detected Topics:${NC}"
+
+    local topic_count=0
+    local -a topics=()
+    local -a topic_lines=()
+
+    while IFS= read -r line; do
+        local topic
+        topic=$(echo "$line" | sed 's/^## //')
+        topics+=("$topic")
+        ((topic_count++))
+    done < <(grep '^## ' "$MEMORY_MD" 2>/dev/null || true)
+
+    if [[ $topic_count -eq 0 ]]; then
+        info "  未检测到二级标题 / No h2 headers detected"
+        info "  建议：手动查看 MEMORY.md 并规划分区"
+        info "  Suggestion: Review MEMORY.md manually and plan partitions"
+        return
+    fi
+
+    # 计算每个主题的大致行数 / Estimate lines per topic
+    local total_lines
+    total_lines=$(wc -l < "$MEMORY_MD")
+
+    for i in "${!topics[@]}"; do
+        local topic="${topics[$i]}"
+        # 估算主题下的行数 / Estimate lines under this topic
+        local start_line end_line lines_count
+        start_line=$(grep -n "^## ${topic}$" "$MEMORY_MD" | head -1 | cut -d: -f1)
+        
+        if [[ $((i + 1)) -lt $topic_count ]]; then
+            local next_topic="${topics[$((i + 1))]}"
+            end_line=$(grep -n "^## ${next_topic}$" "$MEMORY_MD" | head -1 | cut -d: -f1)
+            lines_count=$(( end_line - start_line ))
+        else
+            lines_count=$(( total_lines - start_line + 1 ))
+        fi
+
+        printf "    ${CYAN}%2d.${NC} %-40s (~%d 行/lines)\n" "$((i + 1))" "$topic" "$lines_count"
+    done
+
+    echo ""
+    echo -e "${BOLD}  💡 建议分区方案 / Suggested Partition Plan:${NC}"
+    echo ""
+
+    # 根据主题生成建议 / Generate suggestions based on topics
+    local -A category_map
+    category_map=(
+        ["创作"]="creative"
+        ["故事"]="creative"
+        ["IP"]="creative"
+        ["角色"]="creative"
+        ["运维"]="ops"
+        ["服务器"]="ops"
+        ["部署"]="ops"
+        ["SSH"]="ops"
+        ["Docker"]="ops"
+        ["项目"]="project"
+        ["决策"]="project"
+        ["架构"]="project"
+        ["计划"]="project"
+        ["工具"]="tools"
+        ["配置"]="tools"
+        ["错误"]="troubleshooting"
+        ["教训"]="troubleshooting"
+    )
+
+    local suggested_count=0
+    for topic in "${topics[@]}"; do
+        local category="general"
+        for keyword in "${!category_map[@]}"; do
+            if echo "$topic" | grep -qi "$keyword"; then
+                category="${category_map[$keyword]}"
+                break
+            fi
+        done
+
+        local safe_id
+        safe_id=$(echo "$topic" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')
+        [[ -z "$safe_id" ]] && safe_id="partition-${suggested_count}"
+
+        printf "    建议 / Suggest: ${GREEN}partition_manager.sh create \"%s\" \"%s\" \"%s,%s\"${NC}\n" \
+            "$safe_id" "$topic" "$topic" "$category"
+        ((suggested_count++))
+    done
+
+    echo ""
+    info "  共检测到 ${topic_count} 个主题，建议创建 ${suggested_count} 个分区"
+    info "  Found ${topic_count} topics, suggesting ${suggested_count} partitions"
+}
+
+# --- 步骤 4: 可选自动拆分 / Step 4: Optional auto-split ---------------------
+
+step_auto_split() {
+    if [[ ! -f "$MEMORY_MD" ]]; then
+        return
+    fi
+
+    if $DRY_RUN; then
+        info "  [dry-run] 跳过自动拆分 / Skipping auto-split in dry-run mode"
+        return
+    fi
+
+    echo ""
+    if ! confirm "🔪 是否尝试自动拆分 MEMORY.md 到分区？/ Auto-split MEMORY.md into partitions?"; then
+        info "  跳过自动拆分 / Skipping auto-split"
+        info "  你可以稍后手动使用 partition_manager.sh create 创建分区"
+        info "  You can manually create partitions later with partition_manager.sh create"
+        return
+    fi
+
+    info "📦 开始自动拆分 / Starting auto-split..."
+
+    local current_topic=""
+    local current_id=""
+    local current_content=""
+    local split_count=0
+    local partition_mgr="${SCRIPT_DIR}/partition_manager.sh"
+
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^##[[:space:]] ]]; then
+            # 保存上一个分区 / Save previous partition
+            if [[ -n "$current_id" && -n "$current_content" ]]; then
+                local partition_file="${PARTITIONS_DIR}/${current_id}.md"
+                echo "$current_content" > "$partition_file"
+                ((split_count++))
+                ok "  拆分 / Split: ${current_id} ← ${current_topic}"
+            fi
+
+            # 开始新分区 / Start new partition
+            current_topic=$(echo "$line" | sed 's/^## //')
+            current_id=$(echo "$current_topic" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')
+            [[ -z "$current_id" ]] && current_id="partition-${split_count}"
+            current_content="# ${current_topic}"$'\n'"<!-- Partition: ${current_id} -->"$'\n'"<!-- Keywords: ${current_topic} -->"$'\n'"<!-- Max Size: 20KB -->"$'\n'
+        else
+            current_content+="$line"$'\n'
+        fi
+    done < "$MEMORY_MD"
+
+    # 保存最后一个分区 / Save last partition
+    if [[ -n "$current_id" && -n "$current_content" ]]; then
+        local partition_file="${PARTITIONS_DIR}/${current_id}.md"
+        echo "$current_content" > "$partition_file"
+        ((split_count++))
+        ok "  拆分 / Split: ${current_id} ← ${current_topic}"
+    fi
+
+    ok "自动拆分完成，共 ${split_count} 个分区 / Auto-split done: ${split_count} partitions"
+    info "  请运行 partition_manager.sh update-index 更新索引"
+    info "  Run partition_manager.sh update-index to refresh the index"
+}
+
+# --- 步骤 5: 保留原始 MEMORY.md / Step 5: Preserve original MEMORY.md ------
+
+step_preserve_memory() {
+    if [[ ! -f "$MEMORY_MD" ]]; then
+        return
+    fi
+
+    info "💾 步骤 5: 保留原始 MEMORY.md / Step 5: Preserving original MEMORY.md..."
+
+    if $DRY_RUN; then
+        info "  [dry-run] MEMORY.md 将被保留为兜底 / MEMORY.md would be preserved as fallback"
+        return
+    fi
+
+    # 创建备份 / Create backup
+    local backup_file="${MEMORY_DIR}/MEMORY.md.v1-backup.$(date +%Y%m%d)"
+    if [[ ! -f "$backup_file" ]]; then
+        cp "$MEMORY_MD" "$backup_file"
+        ok "备份已创建 / Backup created: ${backup_file}"
+    else
+        info "  备份已存在 / Backup already exists: ${backup_file}"
+    fi
+
+    # MEMORY.md 保留原位，作为 fallback
+    info "  MEMORY.md 保留在原位作为兜底 / MEMORY.md kept in place as fallback"
+    info "  当 fallback_to_memory_md=true 时，找不到匹配分区会读取 MEMORY.md"
+    info "  When fallback_to_memory_md=true, MEMORY.md is read if no partition matches"
+}
+
+# --- 总结 / Summary ---------------------------------------------------------
+
 show_summary() {
     echo ""
-    print_success "=========================================="
-    print_success "Migration to v2.0 Complete!"
-    print_success "=========================================="
+    echo -e "${BOLD}${GREEN}========================================${NC}"
+    echo -e "${BOLD}${GREEN}  ✅ 迁移到 v2.0 完成! / Migration to v2.0 Complete!${NC}"
+    echo -e "${BOLD}${GREEN}========================================${NC}"
     echo ""
-    print_info "What changed:"
-    print_info "  ✓ Created multi-user directory structure"
-    print_info "  ✓ Migrated existing files to 'default' user"
-    print_info "  ✓ Set appropriate file permissions"
-    print_info "  ✓ Created README documentation"
+    info "📂 新目录结构 / New directory structure:"
+    info "  ${MEMORY_DIR}/"
+    info "  ├── memory-index.json    ← 分区索引 / Partition index"
+    info "  ├── partitions/          ← 分区文件 / Partition files"
+    info "  │   └── *.md"
+    info "  ├── archive/             ← 已归档分区 / Archived partitions"
+    info "  ├── users/               ← 多用户目录 / Multi-user dirs"
+    info "  └── shared/              ← 共享记忆 / Shared memory"
     echo ""
-    print_info "Your existing data is now in:"
-    print_info "  ${USERS_DIR}/default/"
+    info "📋 下一步 / Next steps:"
+    info "  1. 查看索引: cat ${INDEX_FILE}"
+    info "     View index: cat ${INDEX_FILE}"
+    info "  2. 创建分区: scripts/partition_manager.sh create <id> <name> <keywords>"
+    info "     Create partition: scripts/partition_manager.sh create <id> <name> <keywords>"
+    info "  3. 列出分区: scripts/partition_manager.sh list"
+    info "     List partitions: scripts/partition_manager.sh list"
+    info "  4. 更新 AGENTS.md 中的会话启动步骤"
+    info "     Update session startup steps in AGENTS.md"
     echo ""
-    print_info "Next steps:"
-    print_info "  1. Test that everything works: scripts/user.sh whoami"
-    print_info "  2. Create additional users: scripts/user.sh create <name>"
-    print_info "  3. Read the docs: docs/multi-user.md"
+    if [[ -f "$MEMORY_MD" ]]; then
+        warn "MEMORY.md 已保留作为兜底。当分区系统稳定后，可考虑精简或移除。"
+        warn "MEMORY.md preserved as fallback. Consider trimming after partition system is stable."
+    fi
     echo ""
-    print_warning "Note: v1.0 compatibility is preserved. Single-user setups"
-    print_warning "      continue to work without any configuration changes."
 }
 
-# Main function
+# --- 主入口 / Main Entry Point -----------------------------------------------
+
 main() {
-    print_info "Mjolnir Brain v1.0 → v2.0 Migration"
-    print_info "===================================="
     echo ""
-    
-    check_prerequisites
-    
-    print_warning "This script will reorganize your memory directory structure."
-    print_warning "Your data will be preserved under the 'default' user."
+    echo -e "${BOLD}🧠 Mjolnir Brain — 迁移到 v2.0 分区记忆系统${NC}"
+    echo -e "${BOLD}   Migration to v2.0 Partitioned Memory System${NC}"
+    echo -e "${BOLD}$(printf '%.0s═' {1..50})${NC}"
     echo ""
-    read -p "Continue? [y/N] " confirm
-    
-    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-        print_info "Migration cancelled."
-        exit 0
+    info "工作空间 / Workspace: ${WORKSPACE}"
+    info "记忆目录 / Memory dir: ${MEMORY_DIR}"
+    $DRY_RUN && warn "DRY-RUN 模式：仅分析，不做修改 / DRY-RUN: analysis only, no changes"
+    echo ""
+
+    if ! $AUTO_MODE && ! $DRY_RUN; then
+        if ! confirm "开始迁移？/ Start migration?"; then
+            info "迁移已取消 / Migration cancelled"
+            exit 0
+        fi
+        echo ""
     fi
-    
+
+    step_create_dirs
     echo ""
-    create_directory_structure
-    migrate_existing_files
-    create_readme_files
-    set_permissions
+    step_init_index
+    echo ""
+    step_analyze_memory
+    step_auto_split
+    echo ""
+    step_preserve_memory
     
-    show_summary
+    if ! $DRY_RUN; then
+        show_summary
+    else
+        echo ""
+        ok "[dry-run] 分析完成，未做任何修改 / Analysis complete, no changes made"
+    fi
 }
 
 main "$@"

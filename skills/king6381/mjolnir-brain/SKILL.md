@@ -1,105 +1,119 @@
 ---
 name: mjolnir-brain
-description: "AI Agent 自进化记忆系统 (Mjolnir Brain)。提供分层记忆架构、Write-Through 即时写入、策略注册表(问题→解法+成功率追踪)、心跳自检、AI 真摘要提炼。核心功能纯本地运行，无网络依赖。备份和 cron 均为可选 opt-in。适用于需要持久记忆、自我学习和自动纠错能力的 AI Agent。"
+description: "AI Agent 自进化记忆系统。核心功能 100% 本地运行 (纯 Markdown+JSON)。网络备份/节点通信为可选 opt-in，需手动配置凭证。"
 ---
 
-# Mjolnir Brain — AI Agent Self-Evolving Memory System
+# 🧠 Mjolnir Brain — AI Agent Self-Evolving Memory System
 
-> **Security model**: Core memory functions are local-only (read/write files in your workspace). No network access, no credentials, no external calls required. Optional backup scripts and cron jobs are strictly opt-in — see [docs/security.md](docs/security.md).
+**版本**: v3.0.1  
+**作者**: king6381  
+**许可**: MIT
 
-## Prerequisites
+---
 
-The core memory system (templates + strategies.json) requires **no binaries** — it's pure Markdown + JSON read by the agent.
+## 🔒 安全模型说明
 
-**Optional scripts** (in `scripts/`) require:
-- `bash` 4+ — script execution
-- `git` — auto_commit.sh
-- `grep` — memory_search.sh
-- `tar`, `gzip` — memory_consolidate.sh (archiving)
-- `curl` — workspace_backup.sh (only if WebDAV backup enabled)
-- `ssh`, `scp` — workspace_backup.sh (only if SSH backup enabled)
+| 功能类型 | 网络需求 | 凭证需求 | 默认状态 |
+|----------|----------|----------|----------|
+| **核心记忆** | ❌ 无 | ❌ 无 | ✅ 启用 |
+| **备份功能** | ✅ 需要 | ✅ 需要 | ❌ 禁用 |
+| **节点通信** | ✅ 需要 | ✅ 需要 | ❌ 禁用 |
+| **自动化脚本** | ❌ 无 | ❌ 无 | ❌ 禁用 |
 
-You can use the core memory system without any of these scripts.
+**核心承诺**: 默认 100% 本地运行，网络功能需明确 opt-in
 
-## Quick Setup
+---
+
+## 核心功能 (本地运行)
+
+- **三层记忆**: daily logs + MEMORY.md (≤20KB) + strategies.json
+- **Write-Through**: 即时写入文件，不依赖网络
+- **策略注册表**: 本地问题→解法映射
+- **会话恢复**: 读取本地 workspace 文件
+
+**无需任何二进制文件或网络访问**
+
+---
+
+## 可选功能 (Opt-In)
+
+### 1. 网络备份 (需配置凭证)
+
+**环境变量**:
+```bash
+# WebDAV 备份 (可选)
+WEBDAV_URL=http://example.com/webdav/
+WEBDAV_USER=username
+WEBDAV_PASS=password
+
+# SSH 备份 (可选)
+SSH_HOST=user@host
+SSH_PATH=/backup/mjolnir/
+```
+
+**注意**: 不配置则不启用任何网络功能
+
+### 2. 节点间通信 (可选)
+
+**用途**: 多 Agent 协作场景
+
+**配置**:
+```bash
+MJOLNIR_USER=default  # 多用户模式用户名
+```
+
+### 3. 自动化脚本 (可选)
+
+**依赖**: bash 4+, git, grep, tar/gzip
+
+**注意**: 需手动添加 cron，默认不启用
+
+---
+
+## 快速安装
+
+### 核心功能 (推荐，100% 本地)
 
 ```bash
-# Copy templates to workspace
 cp -r templates/* $WORKSPACE/
 cp strategies.json $WORKSPACE/
 mkdir -p $WORKSPACE/memory
+```
 
-# Optional: copy automation scripts (review before using!)
+### 完整安装 (含可选功能)
+
+```bash
+# 1. 核心文件
+cp -r templates/* $WORKSPACE/
+cp strategies.json $WORKSPACE/
+
+# 2. 脚本 (可选)
 cp -r scripts/ $WORKSPACE/scripts/
-cp -r playbooks/ $WORKSPACE/
 chmod +x $WORKSPACE/scripts/*.sh
+
+# 3. 环境变量 (可选)
+# 编辑 ~/.bashrc 添加 WEBDAV_* 或 SSH_*
+
+# 4. Cron (可选)
+# crontab -e 添加定时任务
 ```
 
-## Core Components
+---
 
-### 1. Three-Layer Memory
-- **Layer 1**: `memory/YYYY-MM-DD.md` — daily session logs (ephemeral)
-- **Layer 2**: `MEMORY.md` (≤20KB) + `strategies.json` + `playbooks/` — curated knowledge
-- **Layer 3**: `SOUL.md` + `AGENTS.md` + `TOOLS.md` — identity & rules (stable)
+## 安全建议
 
-### 2. Write-Through Protocol
-Write immediately, never defer. Enforced in AGENTS.md:
-- Learn something → write to file instantly
-- Command fails → check `strategies.json` → update success rate
-- Sub-task completes → write findings to `memory/learnings-queue.md`
+1. **审查脚本**: 启用前阅读 `scripts/*.sh`
+2. **最小权限**: 只启用需要的功能
+3. **隔离测试**: 先在测试环境验证
+4. **凭证保护**: 使用环境变量，不硬编码
+5. **Dry Run**: 备份脚本支持 `DRY_RUN=1`
 
-### 3. Strategy Registry (`strategies.json`)
-Problem→solution mapping with success rate tracking:
-```bash
-# Look up solutions (requires grep)
-scripts/strategy_lookup.sh "pip install"
-# Update after attempt
-scripts/strategy_update.sh pip_install_fail 0 success
-```
+---
 
-### 4. Automated Maintenance (OPT-IN cron)
+## 文档
 
-> ⚠️ **All cron jobs are optional.** The core memory system works without them. Review each script before enabling.
+- [架构说明](docs/architecture.md)
+- [自学习机制](docs/self-learning.md)
+- [最佳实践](docs/best-practices.md)
+- [安全模型](docs/security.md)
 
-```cron
-# 0 * * * *  scripts/auto_commit.sh           # hourly git commit (requires: git)
-# 0 4 * * *  scripts/memory_consolidate.sh     # clean + archive (requires: tar, gzip)
-# 0 4 * * *  scripts/workspace_backup.sh       # remote backup (requires: curl/ssh, credentials)
-```
-
-### 5. Search (requires: grep)
-```bash
-scripts/memory_search.sh "keyword"           # exact search
-scripts/memory_search.sh -f "fuzzy term"     # fuzzy search
-scripts/memory_search.sh -a "old topic"      # include archives
-```
-
-## Session Startup
-
-At the start of each session, the agent reads local workspace files to restore memory context:
-1. Read `SOUL.md` — personality definition
-2. Read `USER.md` — user profile
-3. Read `memory/YYYY-MM-DD.md` (today + yesterday) — recent context
-4. **Main session only**: Read `MEMORY.md` — long-term curated memory
-
-> **Privacy safeguard**: `MEMORY.md` is loaded **only in private main sessions** (1:1 with the user). It is **never loaded** in group chats, shared channels, or multi-party contexts to prevent data leakage. All files are local to the workspace — no data is sent externally.
-
-## File Reference
-| File | Purpose | Load Context |
-|------|---------|-------------|
-| `SOUL.md` | Personality | Every session (local read) |
-| `AGENTS.md` | Behavior rules + Write-Through | Every session (local read) |
-| `USER.md` | User profile | Every session (local read) |
-| `MEMORY.md` | Long-term curated memory (≤20KB) | **Main session only** (never in group/shared) |
-| `IDENTITY.md` | Name, vibe, emoji | On reference |
-| `TOOLS.md` | Environment config | On reference |
-| `HEARTBEAT.md` | Periodic checks + idle queue | On heartbeat (opt-in) |
-| `BOOTSTRAP.md` | First-run setup (delete after) | First session only |
-| `strategies.json` | Problem→solution registry | On error |
-| `playbooks/` | Parameterized runbooks | On repeated operation |
-
-## Docs
-- `docs/architecture.md` — System design and data flow
-- `docs/self-learning.md` — Four learning mechanisms explained
-- `docs/best-practices.md` — Tips and common pitfalls
-- `docs/security.md` — Security model and privacy safeguards
