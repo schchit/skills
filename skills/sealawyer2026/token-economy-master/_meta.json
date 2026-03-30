@@ -3,9 +3,15 @@
   "slug": "token-economy-master",
   "displayName": "Token经济大师",
   "latest": {
-    "version": "2.10.1",
-    "publishedAt": 1774102970345,
-    "commit": "https://github.com/openclaw/skills/commit/90882c8a3a32415b4df17670afb36b61f1db0c58"
+    "version": "3.6.0",
+    "publishedAt": 1774780637458,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "2.10.1",
+      "publishedAt": 1774102970345,
+      "commit": "https://github.com/openclaw/skills/commit/90882c8a3a32415b4df17670afb36b61f1db0c58"
+    }
+  ]
 }
