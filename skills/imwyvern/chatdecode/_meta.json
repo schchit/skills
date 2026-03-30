@@ -3,11 +3,16 @@
   "slug": "chatdecode",
   "displayName": "Chatdecode Skill",
   "latest": {
-    "version": "1.1.1",
-    "publishedAt": 1774319644575,
-    "commit": "https://github.com/openclaw/skills/commit/9b957efb5a14c732db69c4216d04e5ec81c78558"
+    "version": "1.2.1",
+    "publishedAt": 1774893557606,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.1.1",
+      "publishedAt": 1774319644575,
+      "commit": "https://github.com/openclaw/skills/commit/9b957efb5a14c732db69c4216d04e5ec81c78558"
+    },
     {
       "version": "1.1.0",
       "publishedAt": 1774164639029,
