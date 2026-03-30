@@ -1,11 +1,14 @@
 ---
-name: web-slides
-description: Generate premium browser-based HTML slide decks with predesigned themes and mobile-friendly layouts. Use when the user wants PPT, slides, pitch decks, keynote-style demos, or presentation HTML without API keys. Prefer this skill when quality, low token usage, visual polish, and single-file HTML output matter.
-version: 2.0.1
+name: web-pptx-generator
+description: 专业单页面HTML PPT生成器。Use when user needs to create beautiful HTML presentations. Supports multiple themes, mobile-friendly, export to PDF. 单页PPT、HTML演示文稿、PPT生成。
+version: 2.0.4
 license: MIT-0
 metadata:
   openclaw:
     emoji: "🎯"
+    requires:
+      bins: ["node"]
+dependencies: "npm install -g @aspect-ratio/preview-renderer"
 ---
 
 # Web Slides
