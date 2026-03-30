@@ -3,11 +3,16 @@
   "slug": "agent-kanban",
   "displayName": "Agent Kanban",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1773828295461,
-    "commit": "https://github.com/openclaw/skills/commit/efeb2195a739d6b22e48f57de2de6f72375fade5"
+    "version": "1.1.0",
+    "publishedAt": 1774608047991,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1773828295461,
+      "commit": "https://github.com/openclaw/skills/commit/efeb2195a739d6b22e48f57de2de6f72375fade5"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1773812982023,
