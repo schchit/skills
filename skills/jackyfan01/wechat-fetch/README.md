@@ -1,166 +1,60 @@
-# wechat-fetch v2.0.0 - 微信文章抓取工具
+# WeChat Fetch v3.0
 
-## 🚀 使用方法
+微信公众号文章抓取工具 v3.0，在 v2.0 基础上新增：**Lite 轻量版**、**免登录模式**、**批量抓取**、**图片下载**、**多格式输出**。
 
-### 方式 1: bb-browser 模式（最稳定）⭐⭐⭐⭐⭐
+## 快速开始
 
-**适用场景**：
-- ✅ 本地安装 OpenClaw
-- ✅ 云服务器 + 有人配合扫码登录
-- ✅ 可以保持浏览器开启
+### Lite 版（推荐，低资源）
 
-**优势**：
-- ✅ 使用真实浏览器登录态
-- ✅ 不会被微信反爬拦截
-- ✅ 最稳定可靠
-
-**前置条件**：
-1. 已安装 bb-browser: `npm install -g bb-browser`
-2. 已打开微信网页版并扫码登录
-3. 保持浏览器开启（不关闭）
-
-**使用命令**：
 ```bash
-python3 ~/.openclaw/workspace/skills/wechat-fetch/scripts/wechat_fetch_bb.py \
-  "https://mp.weixin.qq.com/s/xxxxx" \
-  -o ./article.md
+# 安装依赖
+pip install beautifulsoup4 requests
+
+# 单篇抓取
+python3 scripts/wechat_fetch_lite.py "https://mp.weixin.qq.com/s/xxxxx"
+
+# 指定格式
+python3 scripts/wechat_fetch_lite.py "https://mp.weixin.qq.com/s/xxxxx" --format json
+
+# 批量抓取
+python3 scripts/wechat_fetch_lite.py --batch urls.txt --output ./articles --delay 3
 ```
 
-**注意事项**：
-- ⚠️ 关闭浏览器 → Cookie 丢失 → 需要重新登录
-- ⚠️ Cookie 有效期：几小时到几天
-- ⚠️ 云服务器需要用户配合扫码登录
+### Playwright 版（需浏览器）
 
----
-
-### 方式 2: Playwright 模式（云服务器备选）⭐⭐⭐
-
-**适用场景**：
-- ✅ 云服务器安装 OpenClaw
-- ✅ 无人值守环境
-- ✅ 单篇或少量文章抓取
-
-**优势**：
-- ✅ 不需要用户扫码登录
-- ✅ 无头模式运行（headless）
-- ✅ 适合自动化脚本
-
-**劣势**：
-- ⚠️ 可能被微信反爬检测到
-- ⚠️ 需要安装 Playwright（约 110MB）
-
-**前置条件**：
 ```bash
-# 安装 Playwright
-pip install playwright
+# 安装依赖
+pip install playwright beautifulsoup4 requests
 playwright install chromium
+
+# 单篇抓取（免登录模式）
+python3 scripts/wechat_fetch_v3.py "https://mp.weixin.qq.com/s/xxxxx" --no-login
+
+# 批量抓取（带重试）
+python3 scripts/wechat_fetch_v3.py --batch urls.txt --output ./articles \
+  --no-login --max-retries 3 --retry-delay 5
 ```
 
-**使用命令**：
-```bash
-python3 ~/.openclaw/workspace/skills/wechat-fetch/scripts/wechat_fetch.py \
-  "https://mp.weixin.qq.com/s/xxxxx" \
-  -o ./article.md
-```
+## 特性
 
----
+- ✅ **Lite 轻量版** - 无需浏览器，低资源消耗
+- ✅ **免登录模式** - 无需扫码，直接抓取
+- ✅ **批量抓取** - 支持多 URL 批量下载（双版本）
+- ✅ **图片下载** - 自动下载文章图片
+- ✅ **多格式输出** - Markdown/HTML/JSON/TXT
+- ✅ **重试机制** - Playwright 版支持自动重试
 
-### 方式 3: 官方工具（批量抓取）⭐⭐⭐⭐
+## 版本选择
 
-**适用场景**：
-- ✅ 批量导出文章
-- ✅ 任何环境
+| 版本 | 适用场景 | 资源需求 | 批量抓取 |
+|------|----------|----------|----------|
+| **Lite** | 快速抓取、低内存环境 | 低 | ✅ |
+| **Playwright** | 需要 Cookie、复杂页面 | 高 | ✅ |
 
-**使用方法**：
-1. 访问 https://down.mptext.top/
-2. 扫码登录微信公众号
-3. 添加公众号，同步文章
-4. 批量导出为 Markdown/HTML/Word
+## 详细文档
 
----
+见 [SKILL.md](SKILL.md)
 
-### 方式 4: 手动复制（最简单）⭐⭐⭐⭐
+## 许可证
 
-**适用场景**：
-- ✅ 单篇文章
-- ✅ 任何环境
-
-**使用方法**：
-1. 微信打开文章
-2. 复制全文
-3. 粘贴给我
-
----
-
-## 📊 方案对比
-
-| 方案 | 本地用户 | 云服务器 | 稳定性 | 推荐度 |
-|------|----------|----------|--------|--------|
-| **bb-browser** | ✅ 可用 | ✅ 可用 (需扫码) | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **Playwright** | ✅ 可用 | ✅ 可用 | ⭐⭐⭐ | ⭐⭐⭐ |
-| **官方工具** | ✅ 可用 | ✅ 可用 | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
-| **手动复制** | ✅ 可用 | ✅ 可用 | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
-
----
-
-## ⚠️ 注意事项
-
-### bb-browser 模式
-
-1. **必须保持浏览器开启**
-   - ❌ 关闭浏览器 → Cookie 丢失 → 抓取失败
-   - ✅ 保持浏览器开启 → Cookie 有效 → 抓取成功
-
-2. **云服务器需要用户配合**
-   - ✅ 有人扫码登录 → 可用
-   - ❌ 无人值守 → 不可用（无法自动登录）
-
-3. **Cookie 有效期**
-   - 通常几小时到几天
-   - Cookie 过期后需要重新登录微信
-
-### Playwright 模式
-
-1. **可能被反爬检测**
-   - ⚠️ 微信可能检测到无头浏览器
-   - ⚠️ 可能显示验证码
-
-2. **安装较大**
-   - Playwright + Chromium 约 110MB
-
-3. **适合场景**
-   - ✅ 云服务器用户
-   - ✅ 无人值守环境
-   - ✅ 单篇或少量文章
-
----
-
-## 🎯 最佳实践
-
-### 本地用户
-1. 优先使用 bb-browser 模式
-2. 需要抓取时，打开微信网页版并登录
-3. 保持浏览器不关闭
-4. 随时可以抓取
-
-### 云服务器用户
-1. **有人配合**：使用 bb-browser 模式
-2. **无人值守**：使用 Playwright 模式
-3. **批量抓取**：使用官方工具
-4. **单篇文章**：手动复制
-
----
-
-## 📝 更新日志
-
-### v2.0.0 (2026-03-20)
-- ✅ 新增 bb-browser 模式
-- ✅ 支持使用真实浏览器登录态
-- ✅ 绕过微信反爬机制
-- ✅ 云服务器 + 有人配合也可用
-- ⚠️ 无人值守环境请使用 Playwright 模式
-
-### v1.0.0
-- ✅ 初始版本
-- ✅ 使用 Playwright 抓取
-- ⚠️ 容易被反爬拦截
+MIT-0
