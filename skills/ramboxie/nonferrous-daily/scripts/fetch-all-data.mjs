@@ -33,7 +33,7 @@ async function fetchCcmnPrices() {
         'X-Requested-With': 'XMLHttpRequest',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       },
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(12000),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
@@ -73,6 +73,83 @@ async function fetchCcmnPrices() {
     return result;
   } catch (err) {
     process.stderr.write(`[fetch-all-data] CCMN 錯誤: ${err.message}\n`);
+    return null;
+  }
+}
+
+// ────────────────────────────────────────────
+// 1b. OmetalCN 長江現貨（GBK 頁面，備用源）
+// URL: http://app.ometal.cn/data/mlist.asp
+// 品種：Cu / Al / Pb / Zn / Ni / Sn + 升貼水
+// 優勢：有 A00鋁（CCMN 常缺）、解析穩定、響應快
+// ────────────────────────────────────────────
+
+async function fetchOmetal() {
+  try {
+    const res = await fetch('http://app.ometal.cn/data/mlist.asp', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'text/html',
+        'Referer': 'http://app.ometal.cn/',
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const buf = await res.arrayBuffer();
+    const text = new TextDecoder('gbk').decode(buf);
+
+    // 提取純文字（去除HTML標籤）
+    const plain = text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+
+    // 解析價格表格：格式為「品名 高-低 均價 ↑↓變動 更多」
+    function parseRow(name) {
+      // 匹配：品名後面跟數字區間、均價、漲跌
+      const re = new RegExp(
+        name.replace(/[#()]/g, c => '\\' + c) +
+        '\\s+([\\d,]+-[\\d,-]+)\\s+([\\d,]+)\\s+[↑↓]([\\-\\d,]+)'
+      );
+      const m = plain.match(re);
+      if (!m) return null;
+      const range = m[1].split('-');
+      const avg = parseFloat(m[2].replace(/,/g, ''));
+      const change = parseFloat(m[3].replace(/,/g, ''));
+      // range: 有時是「22850-22950」也有負數「-130--90」
+      let low = null, high = null;
+      if (range.length === 2) {
+        low  = parseFloat(range[0].replace(/,/g, ''));
+        high = parseFloat(range[1].replace(/,/g, ''));
+      }
+      if (isNaN(avg)) return null;
+      return { price: avg, high: isNaN(high) ? null : high, low: isNaN(low) ? null : low, change: isNaN(change) ? null : change };
+    }
+
+    // 提取日期（格式：日期: 3/26）
+    const dateMatch = plain.match(/日期[：:]\s*(\d+)\/(\d+)/);
+    let dataDate = null;
+    if (dateMatch) {
+      const year = new Date().getFullYear();
+      dataDate = `${year}-${String(parseInt(dateMatch[1])).padStart(2,'0')}-${String(parseInt(dateMatch[2])).padStart(2,'0')}`;
+    }
+
+    const result = {
+      copper:          parseRow('1#铜'),
+      aluminum:        parseRow('A00铝'),
+      lead:            parseRow('1#铅'),
+      zinc:            parseRow('0#锌'),
+      nickel:          parseRow('1#镍板'),
+      tin:             parseRow('1#锡'),
+      copperPremium:   parseRow('铜升贴水'),
+      aluminumPremium: parseRow('铝升贴水'),
+      dataDate,
+      source: 'OmetalCN/app.ometal.cn',
+    };
+
+    process.stderr.write(
+      `[fetch-all-data] OmetalCN: Cu=¥${result.copper?.price} Al=¥${result.aluminum?.price} Zn=¥${result.zinc?.price} Ni=¥${result.nickel?.price} Sn=¥${result.tin?.price}\n`
+    );
+    return result;
+  } catch (err) {
+    process.stderr.write(`[fetch-all-data] OmetalCN 失敗: ${err.message}\n`);
     return null;
   }
 }
@@ -278,10 +355,10 @@ async function fetchSmmCrossCheck() {
     return items;
   }
 
-  async function fetchSmm(slug, targetName) {
+  async function fetchSmm(slug, targetName, attempt = 1) {
     try {
       const res = await fetch(`https://hq.smm.cn/h5/${slug}`, {
-        headers: SMM_HEADERS, signal: AbortSignal.timeout(8000),
+        headers: SMM_HEADERS, signal: AbortSignal.timeout(12000),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const html = await res.text();
@@ -303,7 +380,12 @@ async function fetchSmmCrossCheck() {
         source: `SMM/${slug}`,
       };
     } catch(err) {
-      process.stderr.write(`[fetch-all-data] SMM cross-check ${slug} 失敗: ${err.message}\n`);
+      if (attempt === 1) {
+        process.stderr.write(`[fetch-all-data] SMM cross-check ${slug} 第一次失敗 (${err.message})，1.5秒後重試...\n`);
+        await new Promise(r => setTimeout(r, 1500));
+        return fetchSmm(slug, targetName, 2);
+      }
+      process.stderr.write(`[fetch-all-data] SMM cross-check ${slug} 最終失敗: ${err.message}\n`);
       return null;
     }
   }
@@ -331,7 +413,7 @@ async function fetchSmmMetal(slug, targetName) {
   };
   try {
     const res = await fetch(`https://hq.smm.cn/h5/${slug}`, {
-      headers, signal: AbortSignal.timeout(8000),
+      headers, signal: AbortSignal.timeout(12000),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const html = await res.text();
@@ -382,44 +464,131 @@ function buildCrossCheckNote(ccmnPrice, smmPrice, smmLabel) {
 }
 
 // ────────────────────────────────────────────
-// 4. LME 庫存（三個方案，盡力而為）
+// 4a. Westmetall.com — LME 庫存 + USD 現貨價格
+// ────────────────────────────────────────────
+// URL: https://www.westmetall.com/en/markdaten.php?action=table&field=LME_XX_stock
+// 返回: { tonnes, change, cashUsd, threeMonthUsd, dataDate }
+// 覆蓋品種: Cu / Zn / Ni（Westmetall 不提供 Co 數據）
+// ────────────────────────────────────────────
+
+const WESTMETALL_MONTHS = {
+  January:1, February:2, March:3, April:4, May:5, June:6,
+  July:7, August:8, September:9, October:10, November:11, December:12
+};
+
+function parseWestmetallDate(str) {
+  const m = str.match(/(\d{1,2})\.\s+(\w+)\s+(\d{4})/);
+  if (!m) return null;
+  const d = String(parseInt(m[1])).padStart(2, '0');
+  const mon = String(WESTMETALL_MONTHS[m[2]] || 0).padStart(2, '0');
+  return `${m[3]}-${mon}-${d}`;
+}
+
+async function fetchWestmetallMetal(fieldName, attempt = 1) {
+  // fieldName: 'LME_Cu_stock' | 'LME_Zn_stock' | 'LME_Ni_stock'
+  const url = `https://www.westmetall.com/en/markdaten.php?action=table&field=${fieldName}`;
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'text/html',
+        'Referer': 'https://www.westmetall.com/en/markdaten.php',
+      },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const html = await res.text();
+
+    // 取 <tbody> 第一個 <tr>（最新一行）
+    const tbodyMatch = html.match(/<tbody>([\s\S]*?)<\/tbody>/);
+    if (!tbodyMatch) throw new Error('No <tbody> found');
+    const tbody = tbodyMatch[1];
+    const trMatch = tbody.match(/<tr>([\s\S]*?)<\/tr>/);
+    if (!trMatch) throw new Error('No <tr> in tbody');
+    const tr = trMatch[1];
+
+    // 提取所有 <td> 文本
+    const tdValues = [...tr.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)]
+      .map(m => m[1].replace(/<[^>]+>/g, '').trim());
+
+    if (tdValues.length < 4) throw new Error(`Expected ≥4 td, got ${tdValues.length}`);
+
+    const [dateStr, stockStr, cashStr, threeMonthStr] = tdValues;
+    const dataDate = parseWestmetallDate(dateStr);
+
+    // 解析下一行的庫存變化
+    const rows = [...tbody.matchAll(/<tr>([\s\S]*?)<\/tr>/g)];
+    let change = null;
+    if (rows.length >= 2) {
+      const prevTd = [...rows[1][1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)]
+        .map(m => m[1].replace(/<[^>]+>/g, '').trim());
+      if (prevTd.length >= 2) {
+        const curr = parseFloat(stockStr.replace(/,/g, ''));
+        const prev = parseFloat(prevTd[1].replace(/,/g, ''));
+        if (!isNaN(curr) && !isNaN(prev)) change = curr - prev;
+      }
+    }
+
+    return {
+      tonnes: parseFloat(stockStr.replace(/,/g, '')) || null,
+      change,
+      cashUsd: parseFloat(cashStr.replace(/,/g, '')) || null,
+      threeMonthUsd: parseFloat(threeMonthStr.replace(/,/g, '')) || null,
+      dataDate,
+      source: `Westmetall/${fieldName}`,
+    };
+  } catch (err) {
+    if (attempt === 1) {
+      process.stderr.write(`[fetch-all-data] Westmetall ${fieldName} 第一次失敗 (${err.message})，2秒後重試...\n`);
+      await new Promise(r => setTimeout(r, 2000));
+      return fetchWestmetallMetal(fieldName, 2);
+    }
+    process.stderr.write(`[fetch-all-data] Westmetall ${fieldName} 最終失敗: ${err.message}\n`);
+    return null;
+  }
+}
+
+async function fetchWestmetallAll() {
+  const [cu, zn, ni] = await Promise.all([
+    fetchWestmetallMetal('LME_Cu_stock'),
+    fetchWestmetallMetal('LME_Zn_stock'),
+    fetchWestmetallMetal('LME_Ni_stock'),
+  ]);
+  process.stderr.write(`[fetch-all-data] Westmetall: Cu=${cu?.cashUsd} Zn=${zn?.cashUsd} Ni=${ni?.cashUsd} | stocks: Cu=${cu?.tonnes} Zn=${zn?.tonnes} Ni=${ni?.tonnes}\n`);
+  return { copper: cu, zinc: zn, nickel: ni };
+}
+
+// ────────────────────────────────────────────
+// 4. LME 庫存（主函數 — 優先用 Westmetall）
 // ────────────────────────────────────────────
 
 async function fetchLmeInventory() {
   const errors = [];
 
-  // 方案A：LME 官方 API（5s 快速超時，失敗立即轉方案B）
+  // 方案A：Westmetall.com（Cu/Zn/Ni LME 庫存，可靠免費源）
+  // 同時緩存 cashUsd 供 main() 直接使用，避免重複請求
   try {
-    const res = await fetch(
-      'https://www.lme.com/api/Reports/WarehouseStockByMetalReportDownload?fileName=&isInternal=false',
-      {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept': 'application/json',
-          'Referer': 'https://www.lme.com/',
-        },
-        signal: AbortSignal.timeout(5000),
-      }
-    );
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const ct = res.headers.get('content-type') || '';
-    if (!ct.includes('json')) throw new Error(`Non-JSON response: ${ct}`);
-    const data = await res.json();
-    if (!Array.isArray(data)) throw new Error('Not array');
-
-    const metalMap = { Copper: 'copper', Nickel: 'nickel', Zinc: 'zinc', Cobalt: 'cobalt' };
-    const result = { copper: null, zinc: null, nickel: null, cobalt: null, note: null };
-    for (const row of data) {
-      const key = metalMap[row.Metal];
-      if (key && row.Total != null) {
-        result[key] = { tonnes: parseFloat(row.Total) || null, change: null, source: 'LME', unit: 'tonnes' };
+    const wm = await fetchWestmetallAll();
+    const result = { copper: null, zinc: null, nickel: null, cobalt: null, note: null, _wmPrices: wm };
+    for (const [metal, data] of [['copper', wm.copper], ['zinc', wm.zinc], ['nickel', wm.nickel]]) {
+      if (data && data.tonnes != null) {
+        result[metal] = {
+          tonnes: data.tonnes,
+          change: data.change,
+          cashUsd: data.cashUsd,
+          source: data.source,
+          unit: 'tonnes',
+          dataDate: data.dataDate,
+        };
       }
     }
-    process.stderr.write('[fetch-all-data] LME 方案A 成功\n');
+    const hasData = Object.entries(result).some(([k, v]) => k !== 'note' && k !== 'cobalt' && k !== '_wmPrices' && v != null);
+    if (!hasData) throw new Error('Westmetall 返回空數據');
+    process.stderr.write('[fetch-all-data] LME 方案A (Westmetall) 成功\n');
     return result;
   } catch (err) {
     errors.push(`方案A: ${err.message}`);
-    process.stderr.write(`[fetch-all-data] LME 方案A 失敗: ${err.message}\n`);
+    process.stderr.write(`[fetch-all-data] LME 方案A (Westmetall) 失敗: ${err.message}\n`);
   }
 
   // 方案B：LME 倉庫統計頁面 HTML
@@ -759,6 +928,115 @@ function buildForumSentiment(smmItems, redditItems) {
 }
 
 // ────────────────────────────────────────────
+// 3d. 鈷（Co）USD 現貨價格
+// 主源：tradingeconomics.com（meta description 嵌入，穩定可靠）
+// 備用：dailymetalprice.com（JSON 數組，USD/lb → USD/t）
+// 測試日期：2026-03-17
+// ────────────────────────────────────────────
+
+async function fetchCobaltUsd() {
+  // === 方案A：tradingeconomics.com meta description ===
+  // 格式："Cobalt traded flat at 56,290 USD/T on March 12, 2026."
+  try {
+    const res = await fetch('https://tradingeconomics.com/commodity/cobalt', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'text/html,*/*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cache-Control': 'no-cache',
+      },
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const html = await res.text();
+
+    const metaDesc = html.match(/<meta[^>]+name="description"[^>]+content="([^"]+)"/);
+    if (!metaDesc) throw new Error('meta description not found');
+
+    const priceMatch = metaDesc[1].match(/at\s+([\d,]+)\s*USD\/T/i);
+    if (!priceMatch) throw new Error(`price pattern not found in: ${metaDesc[1].slice(0, 80)}`);
+
+    const price = parseFloat(priceMatch[1].replace(/,/g, ''));
+    if (isNaN(price) || price <= 0) throw new Error(`invalid price: ${priceMatch[1]}`);
+
+    // 提取日期
+    const dateMatch = metaDesc[1].match(/on\s+(\w+)\s+(\d+),\s+(\d{4})/i);
+    let dataDate = null;
+    if (dateMatch) {
+      const monthNames = { January:1,February:2,March:3,April:4,May:5,June:6,
+                           July:7,August:8,September:9,October:10,November:11,December:12 };
+      const m = monthNames[dateMatch[1]];
+      if (m) {
+        dataDate = `${dateMatch[3]}-${String(m).padStart(2,'0')}-${String(parseInt(dateMatch[2])).padStart(2,'0')}`;
+      }
+    }
+
+    process.stderr.write(`[fetch-all-data] 鈷 USD 方案A (TradingEconomics): $${price}/t, date=${dataDate}\n`);
+    return { price, unit: 'USD/t', dataDate, source: 'TradingEconomics' };
+  } catch(err) {
+    process.stderr.write(`[fetch-all-data] 鈷 USD 方案A (TradingEconomics) 失敗: ${err.message}\n`);
+  }
+
+  // === 方案B：dailymetalprice.com JSON array（USD/lb）===
+  // 格式：data = [[timestamp_ms, price_usd_per_lb], ...]
+  try {
+    const res = await fetch('https://www.dailymetalprice.com/metalpricecharts.php?c=co&u=usd&d=5', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'text/html,*/*',
+        'Referer': 'https://www.dailymetalprice.com/',
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+
+    // Extract data array: [[timestamp, price], ...]
+    const arrMatch = text.match(/data\s*[=:]\s*(\[\[[\s\S]*?\]\])/);
+    if (!arrMatch) throw new Error('data array not found');
+
+    const arr = JSON.parse(arrMatch[1]);
+    if (!Array.isArray(arr) || arr.length === 0) throw new Error('empty data array');
+
+    // Take the most recent entry (first = latest)
+    const [ts, pricePerLb] = arr[0];
+    if (typeof pricePerLb !== 'number' || pricePerLb <= 0) throw new Error(`invalid price: ${pricePerLb}`);
+
+    // Convert USD/lb → USD/t (1 short ton = 2000 lb, but metal convention uses metric ton = 2204.623 lb)
+    const pricePerTon = Math.round(pricePerLb * 2204.623);
+    const dataDate = new Date(ts).toISOString().slice(0, 10);
+
+    process.stderr.write(`[fetch-all-data] 鈷 USD 方案B (DailyMetalPrice): ${pricePerLb} USD/lb → $${pricePerTon}/t, date=${dataDate}\n`);
+    return { price: pricePerTon, pricePerLb, unit: 'USD/t', dataDate, source: 'DailyMetalPrice' };
+  } catch(err) {
+    process.stderr.write(`[fetch-all-data] 鈷 USD 方案B (DailyMetalPrice) 失敗: ${err.message}\n`);
+  }
+
+  // === 方案C：SMM CNY ÷ USD/CNY 匯率估算 ===
+  // 使用 CCMN 鈷 CNY 價格 + Yahoo Finance USD/CNY 匯率反推
+  try {
+    const fxRes = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/USDCNY=X?interval=1d&range=2d', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json',
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!fxRes.ok) throw new Error(`Yahoo FX HTTP ${fxRes.status}`);
+    const fxData = await fxRes.json();
+    const usdcny = fxData?.chart?.result?.[0]?.meta?.regularMarketPrice;
+    if (!usdcny || usdcny <= 0) throw new Error(`invalid USD/CNY: ${usdcny}`);
+    // Will be combined with CCMN cobalt CNY price in main()
+    process.stderr.write(`[fetch-all-data] 鈷 USD 方案C 準備: USD/CNY=${usdcny}\n`);
+    return { price: null, usdcny, unit: 'USD/t', source: 'SMM-CNY/FX-estimate', needsCny: true };
+  } catch(err) {
+    process.stderr.write(`[fetch-all-data] 鈷 USD 方案C (SMM CNY/FX) 失敗: ${err.message}\n`);
+  }
+
+  return null;
+}
+
+// ────────────────────────────────────────────
 // 主函數
 // ────────────────────────────────────────────
 
@@ -778,9 +1056,10 @@ async function main() {
 
   process.stderr.write(`[fetch-all-data] 遠期合約: 近月=${sym2}, 遠月=${sym6}\n`);
 
-  // 並行抓取所有數據（v8 新增 smmLead/smmTin + CCMN 鋁）
+  // 並行抓取所有數據（v10: 新增 fetchCobaltUsd）
   const [
     ccmn,
+    ometal,
     copperSpot,
     zincSpot,
     alumSpot,
@@ -791,6 +1070,7 @@ async function main() {
     smmLead,
     smmTin,
     inventory,
+    cobaltUsdData,
     news,
     ibNews,
     smmNews,
@@ -798,22 +1078,27 @@ async function main() {
     metalIndices,
   ] = await Promise.all([
     fetchCcmnPrices(),
+    fetchOmetal(),                 // v11 新增：OmetalCN 備用源（Cu/Al/Pb/Zn/Ni/Sn）
     fetchYahoo('HG=F'),
     fetchYahoo('ZNC=F'),
-    fetchYahoo('ALI=F'),          // 鋁現貨 USD/t（CNY 嘗試從 CCMN A00鋁獲取）
+    fetchYahoo('ALI=F'),          // 鋁現貨 USD/t
     fetchYahoo(sym2),
     fetchYahoo(sym6),
     fetchSmmBismuth(),             // 鉍：SMM h5 __NEXT_DATA__（含 CNY + CIF USD）
     fetchSmmCrossCheck(),          // SMM 長江報價交叉驗證（Cu/Zn/Ni）
-    fetchSmmMetal('pb-price', '长江现货铅锭价格'),   // v8 新增：鉛 CNY
-    fetchSmmMetal('sn-price', '长江锡锭价格'),       // v8 新增：錫 CNY
-    fetchLmeInventory(),
+    fetchSmmMetal('pb-price', '长江现货铅锭价格'),   // 鉛 CNY
+    fetchSmmMetal('sn-price', '长江锡锭价格'),       // 錫 CNY
+    fetchLmeInventory(),           // Westmetall LME 庫存 + Zn/Ni USD
+    fetchCobaltUsd(),              // 鈷 USD 現貨（TradingEconomics / DailyMetalPrice）
     fetchNews(),
     fetchIbNews(),
     fetchSmmNews(),
     fetchRedditCommodities(),
     fetchMetalIndices(),
   ]);
+  // v9: 從 inventory._wmPrices 提取 Westmetall 現貨 USD 數據（從輸出中清理內部字段）
+  const westmetall = inventory?._wmPrices ?? { copper: null, zinc: null, nickel: null };
+  if (inventory) delete inventory._wmPrices;
 
   // 升級一：dataDate / isMarketOpen / marketNote
   const dataDate = ccmn?.dataDate ?? null;
@@ -838,8 +1123,9 @@ async function main() {
       crossCheckNote: buildCrossCheckNote(ccmn?.copper?.price, smmCross?.copper?.average, 'SMM長江銅'),
     },
     zinc: {
-      usd: null,  // ZNC=F 已廢棄（2019舊數據），SMM 無 LME USD 頁面 → 保持 null
-      usdChangePct: null,
+      // v9: 從 Westmetall LME Cash-Settlement 獲取 USD 現貨
+      usd: westmetall?.zinc?.cashUsd ?? null,
+      usdChangePct: null,  // Westmetall 不提供日漲跌%，保持 null
       usdUnit: 'USD/t',
       cny: ccmn?.zinc?.price ?? null,
       cnyChange: ccmn?.zinc?.updown ?? null,
@@ -851,13 +1137,15 @@ async function main() {
       usd: alumSpot.ok ? alumSpot.price : null,
       usdChangePct: alumSpot.ok ? alumSpot.changePct : null,
       usdUnit: 'USD/t',
-      // v8：嘗試從 CCMN 獲取 A00鋁（nameMap 已更新）；SMM 無鋁 h5 頁面（al-price 404）
-      cny: ccmn?.aluminum?.price ?? null,
-      cnyChange: ccmn?.aluminum?.updown ?? null,
+      // v11: 優先 CCMN A00鋁 → 備用 OmetalCN A00鋁（SMM 無鋁 h5 頁面）
+      cny: ccmn?.aluminum?.price ?? ometal?.aluminum?.price ?? null,
+      cnyChange: ccmn?.aluminum?.updown ?? ometal?.aluminum?.change ?? null,
+      cnySource: ccmn?.aluminum?.price != null ? 'CCMN' : (ometal?.aluminum?.price != null ? 'OmetalCN' : null),
     },
     nickel: {
-      usd: null,  // SMM 無 LME 鎳 USD 頁面 → 保持 null
-      usdChangePct: null,
+      // v9: 從 Westmetall LME Cash-Settlement 獲取 USD 現貨
+      usd: westmetall?.nickel?.cashUsd ?? null,
+      usdChangePct: null,  // Westmetall 不提供日漲跌%，保持 null
       usdUnit: 'USD/t',
       cny: ccmn?.nickel?.price ?? null,
       cnyChange: ccmn?.nickel?.updown ?? null,
@@ -865,13 +1153,35 @@ async function main() {
       smmCny: smmCross?.nickel?.average ?? null,
       crossCheckNote: buildCrossCheckNote(ccmn?.nickel?.price, smmCross?.nickel?.average, 'SMM電解鎳'),
     },
-    cobalt: {
-      usd: null,  // SMM 無鈷 h5 頁面（co-price 404）→ 保持 null
-      usdChangePct: null,
-      usdUnit: 'USD/t',
-      cny: ccmn?.cobalt?.price ?? null,
-      cnyChange: ccmn?.cobalt?.updown ?? null,
-    },
+    cobalt: (() => {
+      // v10: 解析 fetchCobaltUsd() 返回值
+      let cobaltUsd = null;
+      let cobaltUsdSource = null;
+      let cobaltUsdDate = null;
+      if (cobaltUsdData) {
+        if (cobaltUsdData.needsCny && cobaltUsdData.usdcny) {
+          // 方案C：SMM CNY ÷ FX 估算
+          const cnyCobalt = ccmn?.cobalt?.price;
+          if (cnyCobalt && cnyCobalt > 0) {
+            cobaltUsd = Math.round(cnyCobalt / cobaltUsdData.usdcny);
+            cobaltUsdSource = 'SMM-CNY/FX-estimate';
+          }
+        } else if (cobaltUsdData.price) {
+          cobaltUsd = cobaltUsdData.price;
+          cobaltUsdSource = cobaltUsdData.source;
+          cobaltUsdDate = cobaltUsdData.dataDate;
+        }
+      }
+      return {
+        usd: cobaltUsd,
+        usdChangePct: null,
+        usdUnit: 'USD/t',
+        usdDataDate: cobaltUsdDate,
+        usdSource: cobaltUsdSource,
+        cny: ccmn?.cobalt?.price ?? null,
+        cnyChange: ccmn?.cobalt?.updown ?? null,
+      };
+    })(),
     // 鉍（Bi）— SMM 上海有色網實時數據
     bismuth: bismuth ? {
       cny: bismuth.cny?.average ?? null,
@@ -999,17 +1309,24 @@ async function main() {
         note: smmCross.nickel.productName,
       } : null,
     },
-    // 數據可用性說明（v8 更新：鋁CNY已從CCMN補齊；新增鉛/錫）
+    // 數據可用性說明（v9 更新：新增 Westmetall LME庫存+Zn/Ni USD現貨）
     dataAvailability: {
       copper:  { usd: 'Yahoo HG=F ✅', cny: 'CCMN ✅ / SMM長江✅（交叉驗證）' },
-      zinc:    { usd: '❌ 無免費源（ZNC=F廢棄；SMM無LME USD頁面）', cny: 'CCMN ✅ / SMM上海0#✅（交叉驗證）' },
-      aluminum:{ usd: 'Yahoo ALI=F ✅', cny: ccmn?.aluminum?.price ? 'CCMN A00鋁 ✅' : '❌ CCMN無A00鋁數據（可能休市）' },
-      nickel:  { usd: '❌ 無免費源（SMM無LME USD頁面；LME被Cloudflare封）', cny: 'CCMN ✅ / SMM電解鎳✅（交叉驗證）' },
-      cobalt:  { usd: '❌ 無免費源（SMM cobalt-price 404；鈷非標準LME合約）', cny: 'CCMN ✅' },
+      zinc:    { usd: westmetall?.zinc?.cashUsd ? `Westmetall LME Cash ✅ $${westmetall.zinc.cashUsd}/t` : '❌ Westmetall抓取失敗', cny: 'CCMN ✅ / SMM上海0#✅（交叉驗證）' },
+      aluminum:{ usd: 'Yahoo ALI=F ✅', cny: ccmn?.aluminum?.price ? 'CCMN A00鋁 ✅' : (ometal?.aluminum?.price ? 'OmetalCN A00鋁 ✅（備用）' : '❌ 無鋁CNY數據') },
+      nickel:  { usd: westmetall?.nickel?.cashUsd ? `Westmetall LME Cash ✅ $${westmetall.nickel.cashUsd}/t` : '❌ Westmetall抓取失敗', cny: 'CCMN ✅ / SMM電解鎳✅（交叉驗證）' },
+      cobalt:  {
+        usd: cobaltUsdData?.price
+          ? `${cobaltUsdData.source} ✅ $${cobaltUsdData.price}/t (${cobaltUsdData.dataDate})`
+          : cobaltUsdData?.needsCny
+            ? `SMM-CNY/FX-estimate ✅（估算）`
+            : '❌ 所有源失敗',
+        cny: 'CCMN ✅',
+      },
       bismuth: { usd: 'SMM CIF ✅（精鉍USD/kg×1000）', cny: 'SMM精鉍 ✅' },
       lead:    { usd: '❌ 無免費源', cny: smmLead ? 'SMM長江鉛錠 ✅（v8新增）' : '❌ SMM抓取失敗' },
       tin:     { usd: '❌ 無免費源', cny: smmTin  ? 'SMM長江錫錠 ✅（v8新增）' : '❌ SMM抓取失敗' },
-      lmeInventory: '❌ Cloudflare全面封鎖（全部HTTP 403）',
+      lmeInventory: westmetall?.copper?.tonnes ? `Westmetall ✅（Cu=${westmetall.copper.tonnes}t, Zn=${westmetall.zinc?.tonnes}t, Ni=${westmetall.nickel?.tonnes}t）` : '❌ Westmetall抓取失敗',
     },
     news,
     ibNews,

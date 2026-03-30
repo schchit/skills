@@ -1,11 +1,17 @@
 {
   "owner": "ramboxie",
   "slug": "nonferrous-daily",
-  "displayName": "有色小钻风 Metal Price Daily",
+  "displayName": "Metal Price",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773720511224,
-    "commit": "https://github.com/openclaw/skills/commit/68f696c6821400137b9ab2e985679d50a6658b2d"
+    "version": "1.1.1",
+    "publishedAt": 1774506600115,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773720511224,
+      "commit": "https://github.com/openclaw/skills/commit/68f696c6821400137b9ab2e985679d50a6658b2d"
+    }
+  ]
 }
