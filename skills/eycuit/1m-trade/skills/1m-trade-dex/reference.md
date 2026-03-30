@@ -1,6 +1,6 @@
 # hl1m Reference
 
-`hl1m` is the CLI entrypoint installed from the `1m-trade` package. It combines Hyperliquid queries, trading, wallet initialization, and Relay bridging workflows.
+`hl1m` is the CLI entrypoint installed from the `1m-trade` package. It covers Hyperliquid queries, trading, and local wallet binding via `init-wallet`. For **wallet creation and account management in the browser**, use **[https://www.1m-trade.com](https://www.1m-trade.com)**.
 
 ---
 
@@ -39,11 +39,8 @@ hl1m --help
 - `market-close`: close with market order
 - `update-isolated-margin`: transfer margin into isolated position
 
-### 3.3 Wallet & funding commands
-- `create-wallet`: create a wallet
-- `init-wallet`: initialize wallet config with user-provided private key (proxy wallet supported)
-- `send-private-key`: securely deliver private key to current user through secure channel
-- `start-listener`: after deposit arrives, execute bridge flow
+### 3.3 Wallet (CLI)
+- `init-wallet`: bind local encrypted config from user-supplied address + proxy (API) private key — see section 6
 
 ---
 
@@ -137,50 +134,23 @@ hl1m update-isolated-margin --coin BTC --amount 100
 
 ## 6. Wallet command details
 
-### 6.1 `create-wallet`
-Generate a new wallet and write the private key to `.env` using the unified encryption scheme.
+### 6.1 `init-wallet` / `init_wallet`
 
-```bash
-hl1m create-wallet --target <openclaw_target> --lang <zh_or_en>
-```
-
-- `--target` required, current OpenClaw session user ID
-- `--lang` user language, `zh` or `en`, default `en`
-- Optional positional arg `openclaw_target`: if provided, Stage 3 (send private key via `openclaw`) is triggered automatically
-- Protection logic: if `.env` already contains any wallet-related fields, overwrite is rejected
-
-### 6.2 `init-wallet` / `init_wallet`
-Initialize `.env` using a user-provided private key (optional address).
+Create and manage the wallet in the browser at **[https://www.1m-trade.com](https://www.1m-trade.com)**. Use `init-wallet` only to **bind** this CLI to your account using **wallet public address** + **proxy (API) private key** — **not** the main wallet private key.
 
 ```bash
 hl1m init-wallet --pri_key 0x...
 hl1m init-wallet --address 0x... --pri_key 0x...
 ```
 
+**Security**: Prefer **`--address`** + **`--pri_key`** (proxy / API signing key). **Do not** use the wallet’s **main (EOA) private key** for initialization.
+
+**Natural-language (non-English OK)**: If the user asks to configure or bind the account and labels the public wallet address vs. the proxy private key (in any language), map those to `--address` and `--pri_key`, extract `0x` + 40 hex (address) and `0x` + 64 hex (proxy key), then run `hl1m init-wallet --address … --pri_key …`. See `SKILL.md` in this skill for full parsing rules.
+
 - `--pri_key` required
 - `--address` optional; if omitted, derived from private key
 - If `--address` is provided, current behavior uses it directly (to support proxy-private-key scenarios, no strict matching check)
 - Protection logic: if `.env` already has address/encrypted key/encryption password, overwrite is rejected
-
-### 6.3 `send-private-key`
-Send private key through `openclaw` secure channel (does not pass through LLM output).
-
-```bash
-hl1m send-private-key --target <openclaw_target> --lang <zh_or_en>
-```
-
-- `--target` required, current OpenClaw session user ID
-- `--lang` user language, `zh` or `en`, default `en`
-
-### 6.4 `start-listener`
-Run the funding pipeline:
-1) check Arbitrum USDC balance  
-2) request Relay quote and execute steps (including approve handling)  
-3) set Hyperliquid referrer to activate trading channel
-
-```bash
-hl1m start-listener
-```
 
 ---
 
@@ -188,6 +158,5 @@ hl1m start-listener
 
 - Most commands print JSON or human-readable logs
 - Failures usually exit with `SystemExit(1)` or print `❌ ...` error messages
-- `start-listener` failures return non-zero (CLI normalizes to exit code 1)
 
 ---

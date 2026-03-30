@@ -1,7 +1,7 @@
 ---
 name: 1m-trade-news
 description: | 
-  0 skill for querying crypto news, newsflashes, articles, search, and on-chain market data (ETF flows, stablecoin supply, derivatives OI, M2, DXY, Bitfinex long positions, and more). Requires BLOCKBEATS_API_KEY.
+  Querying crypto news, newsflashes, articles, search, and on-chain market data (ETF flows, stablecoin supply, derivatives OI, M2, DXY, Bitfinex long positions, and more). Requires BLOCKBEATS_API_KEY.
 metadata:
   openclaw:
     emoji: "📰"

@@ -15,17 +15,20 @@ This document defines a set of preset Agents used to automate complex on-chain w
   3. **Output**: a formatted report with a data summary and brief interpretation (e.g. if sentiment < 20, highlight a potential opportunity zone).
 - **Use cases**: pre-open review, quick market sentiment check, decision support.
 
-### 2) Agent: Funding Flash
-- **Invocation name**: `funding-flash`
-- **Description**: A one-stop "from zero to tradable" funding and activation flow for a new user or a new wallet.
+### 2) Agent: Wallet Setup
+- **Invocation name**: `wallet-setup`
+- **Description**: Directs users to **[1M-Trade](https://www.1m-trade.com)** for **wallet creation and management** in the browser; then guides **`hl1m init-wallet`** with wallet **public address** + **proxy (API) private key**. Does not bridge assets.
 - **Workflow**:
-  1. **Trigger**: user expresses intent like "I want to start trading" / "deposit to Hyperliquid".
+  1. **Trigger**: user wants to connect or configure trading (e.g. "init wallet", "set up Hyperliquid", "configure my API/proxy key", or non-English phrases with the same meaning plus labeled wallet address and proxy private key).
   2. **Execution**:
-     a. Call `1m-trade-dex` → Branch A, Stage 1 to generate a deposit address.
-     b. Wait for the user to confirm the transfer.
-     c. After confirmation, call `1m-trade-dex` → Branch A, Stage 2 to bridge/activate.
-  3. **Output**: provide the address and step-by-step logs; never print private keys in chat.
-- **Security note**: The agent must not read private keys into context or send them as chat text. If the user needs the key, **invoke** the CLI secure-delivery flow in `1m-trade-dex` (e.g. `hl1m send-private-key`); delivery goes through the platform secure channel, not through the model.
+     a. For **creating/managing** the wallet in the UI, send the user to **[1M-Trade](https://www.1m-trade.com)**.
+     b. Call `1m-trade-dex` → **Wallet initialization** and **Natural-language binding** (`skills/1m-trade-dex/SKILL.md`).
+     c. If the user sends **both** address and proxy key in one message (labeled, e.g. `wallet address` / `proxy private key` or equivalent in other languages), parse and **invoke** `hl1m init-wallet --address … --pri_key …` in a trusted shell; do not echo full keys in chat.
+     d. Otherwise, show placeholders only and ask the user to run locally:
+        `hl1m init-wallet --address 0xYourWalletAddress --pri_key 0xYourProxyPrivateKey`
+     e. **Critical**: **Never** use the wallet **main / master private key** for `init-wallet` — only the **proxy** key intended for automation/API use.
+  3. **Output**: step-by-step checklist; confirm success with `hl1m query-user-state` after init. Do not repeat full private keys in assistant-visible text.
+- **Security note**: Prefer local init without pasting keys. If the user voluntarily pastes address + proxy key for binding, pass values only to the `hl1m` CLI invocation; do not store or quote them in chat.
 
 ### 3) Agent: Trend Trader
 - **Invocation name**: `trend-trader`
@@ -74,7 +77,7 @@ You can invoke agents via natural language or structured commands.
 Examples:
 - Natural language: "Start `market-scout` and give me a morning report."
 - Structured: `/agent run market-scout`
-- Combined: "Run `market-scout` first; if sentiment is bullish, then run `funding-flash` to prepare a 100 USDT funding route."
+- Combined: "Run `market-scout` first; if sentiment is bullish, then run `wallet-setup` so I can configure `hl1m init-wallet` before trading."
 
 ## Configuration & extension
 Each agent definition is a "script". You can modify this file to:

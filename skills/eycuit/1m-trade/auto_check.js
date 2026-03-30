@@ -148,8 +148,9 @@ function main() {
 
     if (missingHlPk || missingHlAddr) {
       console.error("Next step (Hyperliquid wallet):");
-      console.error("- Create a wallet using the wallet skill so it persists an encrypted private key (HYPERLIQUID_PRIVATE_KEY_ENC) and the corresponding password (HYPERLIQUID_PK_ENC_PASSWORD), plus HYPERLIQUID_WALLET_ADDRESS.");
-      console.error("- Command: `hl1m create-wallet --target <chat_user_id> --lang <zh_or_en>`");
+      console.error("- Create/manage wallet in the browser: https://www.1m-trade.com");
+      console.error("- Then initialize the CLI with `hl1m init-wallet` so it persists an encrypted private key (HYPERLIQUID_PRIVATE_KEY_ENC) and the corresponding password (HYPERLIQUID_PK_ENC_PASSWORD), plus HYPERLIQUID_WALLET_ADDRESS.");
+      console.error("- Command (run locally; use proxy/API private key — never the main wallet key): `hl1m init-wallet --address <0x...> --pri_key <0x...>`");
       console.error("- Do NOT paste private keys into chat.");
       console.error("");
     }

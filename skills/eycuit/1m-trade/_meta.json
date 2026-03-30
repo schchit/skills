@@ -3,11 +3,16 @@
   "slug": "1m-trade",
   "displayName": "[1m-trade] AI Autonomous Trading",
   "latest": {
-    "version": "1.1.3",
-    "publishedAt": 1774422097684,
-    "commit": "https://github.com/openclaw/skills/commit/35b8c255002678abcc77785d45405f74e4963a65"
+    "version": "1.1.8",
+    "publishedAt": 1774844096896,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.1.3",
+      "publishedAt": 1774422097684,
+      "commit": "https://github.com/openclaw/skills/commit/35b8c255002678abcc77785d45405f74e4963a65"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1774004357604,
