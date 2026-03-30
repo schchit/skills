@@ -1,7 +1,7 @@
 ---
 name: klingai
-version: "1.0.3"
-description: Official Kling AI Skill. Call Kling AI for video generation, image generation, and subject management. Use subcommand video / image / element by user intent. Use when the user mentions "Kling", "可灵", "文生视频", "图生视频", "文生图", "图生图", "AI 画图", "视频生成", "图片生成", "主体", "角色", "多镜头", "4K", "组图", "text-to-video", "image-to-video", "text-to-image", "subject", "character", "element".
+version: "1.0.5"
+description: Official Kling AI Skill. Call Kling AI for video generation, image generation, and subject management. Use subcommand video / image / element by user intent. Use when the user mentions "Kling", "可灵", "文生视频", "图生视频", "参考视频", "视频编辑", "文生图", "图生图", "AI 画图", "视频生成", "图片生成", "主体", "角色", "多镜头", "4K", "组图", "text-to-video", "image-to-video", "reference video", "video editing", "text-to-image", "subject", "character", "element".
 metadata: {"openclaw":{"emoji":"🎬","requires":{"bins":["node"]},"primaryEnv":"KLING_TOKEN","homepage":"https://app.klingai.com/cn/dev/document-api"}}
 ---
 
@@ -27,7 +27,7 @@ In examples below, `{baseDir}` means the skill directory (e.g. `skills/klingai`)
 
 | User intent | Subcommand |
 | --- | --- |
-| Video (text-to-video, image-to-video, multi-shot, reference video, animation) | `video` |
+| Video (t2v, i2v, multi-shot, Omni ref/edit video via `feature`/`base`, animation) | `video` |
 | Image (text-to-image, image-to-image, 4K, picture, AI drawing) | `image` |
 | Subject / element (create, manage, or list characters) | `element` |
 
@@ -56,6 +56,8 @@ node {baseDir}/scripts/kling.mjs --help
 # Video
 node {baseDir}/scripts/kling.mjs video --prompt "A cat running on the grass" --output_dir ./output
 node {baseDir}/scripts/kling.mjs video --image ./photo.jpg --prompt "Wind blowing hair"
+node {baseDir}/scripts/kling.mjs video --prompt "Match motion of <<<video_1>>>" --video "https://..." --video_refer_type feature
+node {baseDir}/scripts/kling.mjs video --prompt "Change background to ..." --video "https://..." --video_refer_type base
 node {baseDir}/scripts/kling.mjs video --multi_shot --shot_type customize --multi_prompt '[{"index":1,"prompt":"Sunrise","duration":"5"}]'
 
 # Image
@@ -77,6 +79,8 @@ node {baseDir}/scripts/kling.mjs image --task_id <id> --download
 
 ### video (video generation)
 
+On Omni, optional input clip **`--video`** (public **http(s) URL** only) with **`--video_refer_type`**: **`feature`** = reference for **new** footage; **`base`** = **edit** that clip (content/background, subjects, next shot). See **`--video`** / **`--video_refer_type`** in the table.
+
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `--prompt` | Video description (required for text/image/Omni) | — |
@@ -88,8 +92,8 @@ node {baseDir}/scripts/kling.mjs image --task_id <id> --download
 | `--sound` | on / off (v3/omni; with --video only off; o1 no sound) | off |
 | `--image_tail` | Last-frame image | — |
 | `--element_ids` | Subject IDs, comma-separated (Omni, max 3) | — |
-| `--video` | Reference video path or URL (Omni) | — |
-| `--video_refer_type` | feature / base (with --video) | feature |
+| `--video` | Omni input clip: public **http(s) URL** only (`video_list.video_url`) | — |
+| `--video_refer_type` | **feature** = reference (learn traits → new video); **base** = clip to edit (content/background, subjects, next shot) | feature |
 | `--multi_shot` | Enable multi-shot | false |
 | `--shot_type` | customize (required when multi_shot) | — |
 | `--multi_prompt` | Shots JSON array (max 6) | — |
@@ -130,9 +134,9 @@ Run `node {baseDir}/scripts/kling.mjs video --help`, `image --help`, or `element
 
 ## API routing (by subcommand)
 
-You choose the subcommand (video | image | element); the script then picks the backend API from the parameters (e.g. multi_shot, element_ids, multiple images, or reference video → omni). So pass the right parameters for the task: use the “When to use Omni” section to decide when to pass Omni-triggering options.
+You choose the subcommand (video | image | element); the script then picks the backend API from the parameters (e.g. multi_shot, element_ids, multiple images, or Omni **`--video`** URL with **`feature`** / **`base`** → omni-video). So pass the right parameters for the task: use the “When to use Omni” section to decide when to pass Omni-triggering options.
 
-- **video**: Text only → text2video; single first-frame only → image2video; multi-image/subject/reference video/multi-shot → omni-video.
+- **video**: Text only → text2video; single first-frame only → image2video; multi-image / subject / Omni input video (`--video` + `video_refer_type`) / multi-shot → omni-video.
 - **image**: Basic (1k/2k, no 4K/series/subject) → generations; 4K/series/subject/multi-image/auto → omni-image.
 - **element**: advanced-custom-elements, advanced-presets-elements, delete-elements.
 
@@ -140,7 +144,7 @@ You choose the subcommand (video | image | element); the script then picks the b
 
 **kling-v3 / kling-v2-6** suit standard text-to-video, image-to-video, and first/last-frame tasks. **kling-v3-omni** is for the more complex cases below.
 
-**Use Omni (kling-v3-omni)** when the task is not just “first frame animates” (simple image-to-video), but involves: multiple different images, combinations of elements and images, or **edit-style instructions** (add/remove/change content in images or videos). The Omni model supports these by letting you refer to subjects, images, and video in the prompt (see below).
+**Use Omni (kling-v3-omni)** when the task is not just “first frame animates” (simple image-to-video), but involves: multiple different images, combinations of elements and images, or **edit-style instructions** (add/remove/change content in images or videos). The Omni model supports these by letting you refer to subjects, images, and video in the prompt (see below). Input-video semantics (`feature` / `base`) are summarized under **video (video generation)** above; for **`base`**, spell out the edit in `--prompt`.
 
 **Prefer image as reference** for straightforward “use this image as reference” tasks (e.g. “make the person in this photo move”, “generate based on this reference”). Pass the image via `--image` and use the basic or image-to-video path. **Create an element first** only when the user clearly intends to *solidify* the subject as a reusable element, or explicitly needs **subject ID consistency** across shots/outputs, or needs to **reuse the same subject in many places**. Creating an element adds an extra step and latency; default to completing the task with image reference when that is sufficient.
 
@@ -150,7 +154,7 @@ In `--prompt` you can reference inputs with `<<<>>>`:
 
 - `<<<image_1>>>` — first image from `--image`
 - `<<<element_1>>>` — first subject from `--element_ids`
-- `<<<video_1>>>` — video from `--video` (video subcommand only)
+- `<<<video_1>>>` — Omni input clip from `--video` (`feature` or `base`; video subcommand only)
 
 ## Notes
 

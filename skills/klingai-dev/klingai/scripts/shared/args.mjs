@@ -159,3 +159,18 @@ export async function readMediaAsValue(pathOrUrl) {
   const buf = await readFile(abs);
   return buf.toString('base64');
 }
+
+/**
+ * Omni-Video 参考视频字段 `video_list[].video_url`：仅接受公网 `http://` 或 `https://` 链接，不接受本地路径或 Base64。
+ * @param {string} pathOrUrl
+ * @returns {string|undefined}
+ */
+export function readOmniVideoRefUrl(pathOrUrl) {
+  if (!pathOrUrl) return undefined;
+  const s = pathOrUrl.trim();
+  if (s.startsWith('http://') || s.startsWith('https://')) return s;
+  throw new Error(
+    'Omni --video must be a public http(s) URL / Omni --video 须为公网 http(s) 链接（不接受本地路径或 Base64）。\n'
+    + 'Upload the file and pass the URL / 请先上传视频再传入 URL。',
+  );
+}

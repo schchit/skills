@@ -7,7 +7,7 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { submitTask, queryTask, pollAndDownload, downloadFile } from './shared/task.mjs';
-import { parseArgs, getTokenOrExit, readMediaAsValue, resolveAllowedOutputDir } from './shared/args.mjs';
+import { parseArgs, getTokenOrExit, readMediaAsValue, readOmniVideoRefUrl, resolveAllowedOutputDir } from './shared/args.mjs';
 
 const API_T2V = '/v1/videos/text2video';
 const API_I2V = '/v1/videos/image2video';
@@ -39,7 +39,7 @@ Image-to-video / Omni:
   --image           First-frame path or URL (comma-separated multiple → Omni)
   --image_tail      Last-frame image
   --element_ids     Subject IDs, comma-separated (Omni)
-  --video           Reference video path or URL (Omni)
+  --video           Omni reference video: public http(s) URL only (video_list[].video_url)
   --video_refer_type feature / base (default: feature)
 
 Multi-shot (Omni):
@@ -220,13 +220,12 @@ export async function main() {
 
     if (args.element_ids) {
       payload.element_list = args.element_ids.split(',').map(id => {
-        const num = Number(id.trim());
-        return { element_id: num };
+        return { element_id: String(id.trim()) };
       });
     }
 
     if (args.video) {
-      const videoUrl = await readMediaAsValue(args.video);
+      const videoUrl = readOmniVideoRefUrl(args.video);
       payload.video_list = [{ video_url: videoUrl, refer_type: args.video_refer_type || 'feature' }];
     }
 

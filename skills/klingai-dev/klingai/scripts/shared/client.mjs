@@ -58,6 +58,17 @@ async function resolveApiBase(token) {
 }
 
 /**
+ * 保护 JSON 中的大整数字段（防止 Number 精度丢失）
+ * 将 element_id, task_id 等大整数字段转为字符串
+ */
+function protectBigInts(text) {
+  return text.replace(
+    /"(element_id|task_id|elementId|taskId)":\s*(\d{15,})/g,
+    '"$1":"$2"'
+  );
+}
+
+/**
  * 解析可灵 API 响应，code 为 0 或 200 为成功
  */
 function parseResponse(json) {
@@ -86,7 +97,8 @@ export async function klingPost(path, body, token) {
     const text = await res.text().catch(() => '');
     throw new Error(`HTTP ${res.status}: ${text}`);
   }
-  return parseResponse(await res.json());
+  const text = await res.text();
+  return parseResponse(JSON.parse(protectBigInts(text)));
 }
 
 /**
@@ -106,7 +118,8 @@ export async function klingGet(path, token) {
     const text = await res.text().catch(() => '');
     throw new Error(`HTTP ${res.status}: ${text}`);
   }
-  return parseResponse(await res.json());
+  const text = await res.text();
+  return parseResponse(JSON.parse(protectBigInts(text)));
 }
 
 export { getBearerToken, makeKlingHeaders, setSkillVersion, getSkillVersion } from './auth.mjs';
