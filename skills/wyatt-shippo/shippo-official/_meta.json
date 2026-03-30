@@ -1,0 +1,11 @@
+{
+  "owner": "wyatt-shippo",
+  "slug": "shippo-official",
+  "displayName": "Shippo",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1773847748493,
+    "commit": null
+  },
+  "history": []
+}
