@@ -1,13 +1,18 @@
 {
   "owner": "mayafans",
   "slug": "xyfcli-order-guide",
-  "displayName": "xyfcli-order-guide",
+  "displayName": "肥料订单下单与客户管理",
   "latest": {
-    "version": "1.4.0",
-    "publishedAt": 1774346365087,
-    "commit": "https://github.com/openclaw/skills/commit/abbeb7a27aef3bcbc94bb94b2ebb6357b92b7fb1"
+    "version": "1.4.3",
+    "publishedAt": 1774690331359,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.4.0",
+      "publishedAt": 1774346365087,
+      "commit": "https://github.com/openclaw/skills/commit/abbeb7a27aef3bcbc94bb94b2ebb6357b92b7fb1"
+    },
     {
       "version": "1.0.6",
       "publishedAt": 1774123236237,

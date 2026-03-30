@@ -73,8 +73,9 @@ xyfcli order place \
   -name "牛建建" \
   -sales "EZB2019063" \
   -products "Y163U1305276020000" \
-  -base "新洋丰中磷" \
-  -dest "湖北省荆门市东宝区"
+  -q "10" \
+  -base "10" \
+  -addr-id "123"
 ```
 
 ## 项目结构
