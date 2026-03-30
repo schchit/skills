@@ -3,11 +3,16 @@
   "slug": "moltyjacs",
   "displayName": "Jacs",
   "latest": {
-    "version": "0.9.18",
-    "publishedAt": 1774350199815,
-    "commit": "https://github.com/openclaw/skills/commit/d8ee53c7d006b67d3e9be4580b22607be7375232"
+    "version": "0.9.20",
+    "publishedAt": 1774676228784,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.9.18",
+      "publishedAt": 1774350199815,
+      "commit": "https://github.com/openclaw/skills/commit/d8ee53c7d006b67d3e9be4580b22607be7375232"
+    },
     {
       "version": "0.9.15",
       "publishedAt": 1774056470948,
