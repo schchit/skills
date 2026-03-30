@@ -1,6 +1,6 @@
 ---
 name: soul-archive
-description: "灵魂存档 —— 通过日常对话静默构建用户的数字人格克隆体，同时持续改进 AI 自身能力。采集说话习惯、兴趣爱好、个人信息、性格特征、语音音色，创造一个 AI 生命副本。生前可代为行事，身后可延续对话。存档触发词：灵魂沉淀、灵魂提取、灵魂提炼、灵魂存档、灵魂采集、灵魂收集、灵魂更新、灵魂刷新、灵魂记录、灵魂归档、灵魂快照、灵魂切片、灵魂印记、灵魂备份、灵魂写入、灵魂同步、灵魂结晶、灵魂凝练、沉淀一下、存档一下、记录灵魂、分析我、soul extract、soul archive、soul update、soul sync、soul snapshot、soul sediment。报告触发词：灵魂报告、生成画像、总结画像、生成报告、总结报告、获取画像、获取报告、查看画像、查看报告、展示画像、展示报告、我的画像、soul report。对话触发词：灵魂对话、soul chat、让XX跟我说话。自我改进触发词：自我反思、自我批评、自我学习、反思一下、总结教训、学到了什么、改进记录、查看改进、self-reflect、self-improve、learn from mistakes。"
+description: "Soul Archive — A digital personality persistence system that silently builds your digital soul clone through everyday AI conversations, while continuously improving AI capabilities. Four modes: Soul Extract, Soul Chat, Soul Report, AI Self-Improvement. | 灵魂存档 —— 通过日常对话静默构建数字人格克隆体，同时持续改进 AI 自身能力。四大模式：灵魂沉淀、灵魂对话、灵魂报告、AI 自我改进。Trigger words: soul extract, soul archive, soul update, soul sync, soul snapshot, soul sediment, soul report, soul chat, self-reflect, self-improve, learn from mistakes, 灵魂沉淀, 灵魂提取, 灵魂存档, 灵魂报告, 灵魂对话, 自我反思, 自我批评, 自我学习."
 allowed-tools: Read, Write, Edit, Bash, Grep, Glob, WebSearch
 ---
 
