@@ -344,7 +344,7 @@ docker compose exec wordpress wp --allow-root theme activate astra-child
 Install plugins one by one to track failures:
 
 ```bash
-PLUGINS="elementor seo-by-rank-math wp-super-cache imagify jetpack-boost polylang contact-form-7 chaty ecommerce-product-catalog"
+PLUGINS="elementor seo-by-rank-math wp-super-cache imagify jetpack-boost polylang contact-form-7 flamingo chaty ecommerce-product-catalog"
 for plugin in $PLUGINS; do
     docker compose exec wordpress wp --allow-root plugin install $plugin --activate 2>&1 || echo "WARN: $plugin install failed, manual install needed"
 done
@@ -352,13 +352,32 @@ done
 
 Note: Some plugins may not be in the wordpress.org directory. For failed installs, inform the user to install manually from the admin panel (Plugins → Add New).
 
-### 6c. Configure Imagify
+### 6c. Configure CF7 + Flamingo
+
+**Critical:** CF7 only sends emails by default — if the recipient email is wrong, all inquiries are lost permanently. Flamingo stores every submission in the WP database as a safety net.
+
+After installing, verify:
+
+```bash
+# Verify Flamingo is active (auto-stores CF7 submissions)
+docker compose exec wordpress wp --allow-root plugin list --status=active --field=name | grep flamingo
+
+# Update CF7 form recipient to the admin email (not a non-existent address)
+docker compose exec wordpress wp --allow-root post list --post_type=wpcf7_contact_form --fields=ID,post_title
+# For each form, verify the recipient matches EMAIL:
+docker compose exec wordpress wp --allow-root post meta get <FORM_ID> _mail
+# If recipient is wrong, update it via WP Admin → Contact → Forms → Edit
+```
+
+Inquiries are viewable at: WP Admin → Flamingo → Inbound Messages.
+
+### 6d. Configure Imagify
 
 AskUserQuestion: "Do you have an Imagify API key? (Free signup at imagify.io, 20MB/month free tier)"
 - Yes → Collect `IMAGIFY_API_KEY`
 - Skip for now → Remind user to configure later in Settings → Imagify
 
-### 6d. Configure WP Super Cache
+### 6e. Configure WP Super Cache
 
 ```bash
 docker compose exec wordpress wp --allow-root super-cache enable 2>/dev/null || true
@@ -368,7 +387,7 @@ If WP-CLI doesn't support it, tell the user to go to Settings → WP Super Cache
 1. Enable Caching
 2. Advanced → Use mod_rewrite
 
-### 6e. Jetpack Boost
+### 6f. Jetpack Boost
 
 Tell the user to enable in the admin panel:
 - Critical CSS generation
@@ -507,6 +526,69 @@ Target metrics:
 
 ---
 
+## Phase 8.5: GEO (Generative Engine Optimization)
+
+### 8.5a. Deploy GEO functions
+
+```bash
+# Copy GEO functions to child theme
+docker compose exec wordpress bash -c '
+curl -sL https://raw.githubusercontent.com/iPythoning/wordpress-trade-starter/main/assets/geo-functions.php \
+  -o /var/www/html/wp-content/themes/astra-child/geo-functions.php
+'
+```
+
+Add configuration to child theme's functions.php:
+
+```bash
+docker compose exec wordpress bash -c '
+cat >> /var/www/html/wp-content/themes/astra-child/functions.php << "GEO"
+
+// GEO Configuration
+define("GEO_SAMEAS", []);  // Add Wikipedia, LinkedIn, YouTube URLs later
+define("GEO_LANGUAGES", [${LANGUAGES_ARRAY}]);
+define("GEO_CONTACT_EMAIL", "${EMAIL}");
+define("GEO_CONTACT_PHONE", "${WHATSAPP}");
+require_once get_stylesheet_directory() . "/geo-functions.php";
+GEO
+'
+```
+
+AskUserQuestion: "Do you have profiles on these platforms? (We'll add them to your schema for AI recognition)" (multiSelect)
+- Wikipedia page
+- LinkedIn company page
+- YouTube channel
+- Twitter/X account
+- None yet — Skip
+
+For each selected platform, collect the URL and add to `GEO_SAMEAS` array.
+
+### 8.5b. Verify GEO deployment
+
+```bash
+# Check robots.txt has AI bots
+curl -s https://${DOMAIN}/robots.txt | grep -c "User-agent:"
+# Expected: 15+ entries (standard + AI tier 1 + tier 2 + SEO bots)
+
+# Check llms.txt auto-generation
+curl -s https://${DOMAIN}/llms.txt | head -5
+# Expected: "# COMPANY_NAME" followed by description
+
+# Check JSON-LD schema
+curl -s https://${DOMAIN}/ | grep -o '"@type":"[^"]*"' | sort -u
+# Expected: Organization, WebSite, BreadcrumbList
+```
+
+### 8.5c. Cloudflare AI bot access
+
+**Critical:** Cloudflare's "Managed robots.txt" blocks AI crawlers by default.
+
+Tell the user: Go to Cloudflare Dashboard → Security → Bots → **Disable "Managed robots.txt"**.
+
+Without this, all GEO work is nullified.
+
+---
+
 ## Phase 9: Security Hardening + Verification
 
 ### 9a. File permissions
@@ -608,6 +690,7 @@ Triple-layer cache active
 Database auto-backup configured
 xmlrpc.php blocked
 File permissions hardened
+GEO: robots.txt has AI bot tiers, llms.txt serving, JSON-LD schemas active
 
 Site URL:  https://${DOMAIN}
 Admin URL: https://${DOMAIN}/wp-admin
