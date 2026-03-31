@@ -3,11 +3,16 @@
   "slug": "natural-language-video-search",
   "displayName": "Natural Language Video Search",
   "latest": {
-    "version": "0.2.2",
-    "publishedAt": 1774581324888,
-    "commit": "https://github.com/openclaw/skills/commit/f4fb29128817bc47d7a24c138d4f24e059e14411"
+    "version": "0.2.3",
+    "publishedAt": 1774581572987,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.2.2",
+      "publishedAt": 1774581324888,
+      "commit": "https://github.com/openclaw/skills/commit/f4fb29128817bc47d7a24c138d4f24e059e14411"
+    },
     {
       "version": "0.2.0",
       "publishedAt": 1774580498980,
