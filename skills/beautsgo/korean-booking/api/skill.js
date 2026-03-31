@@ -1,12 +1,10 @@
 const { getBookingGuide } = require('../core/service')
-const { exec } = require('child_process')
-const { promisify } = require('util')
-const playwright = require('playwright')
 const hospitals = require('../data/hospitals.json')
 const { matchHospital } = require('../core/resolver')
 const { extractHospitalKeyword } = require('../core/preprocessor')
-
-const execAsync = promisify(exec)
+const { openUrl } = require('./browser/open-url')
+const https = require('https')
+const http = require('http')
 
 /**
  * 识别用户意图
@@ -18,7 +16,7 @@ const execAsync = promisify(exec)
  *
  * @param {string} query 用户输入
  * @param {string[]} hospitalNames 所有医院名（用于检测输入是否含有医院名）
- * @returns {string} 意图类型：'view' | 'open' | 'book' | 'consult'
+ * @returns {string} 意图类型：'view' | 'open' | 'book' | 'consult' | 'price'
  */
 function detectIntent(query, hospitalNames = []) {
   const q = query.trim()
@@ -37,6 +35,13 @@ function detectIntent(query, hospitalNames = []) {
   const isConsultIntent = /^(咨询客服|联系客服|咨询一下|帮我咨询)$/.test(q.trim()) ||
     (!containsHospitalName && (qLower.includes('咨询客服') || qLower.includes('联系客服')))
 
+  // ——— price：查看价格表（含医院名也允许触发）———
+  const isPriceIntent =
+    qLower.includes('价格') || qLower.includes('价钱') || qLower.includes('收费') ||
+    qLower.includes('多少钱') || qLower.includes('费用') || qLower.includes('报价') ||
+    qLower.includes('价格表') || qLower.includes('price') || qLower.includes('cost') ||
+    /^(查价格|看价格|打开价格|价格页面)$/.test(q.trim())
+
   // ——— fill_form：用户提供预约信息（人数 + 时间 / 继续填写 / 提交）———
   // 识别策略：输入包含数字人数、日期词、"继续填写"、"填写信息"等关键词
   const isFillFormIntent =
@@ -49,12 +54,60 @@ function detectIntent(query, hospitalNames = []) {
     false
 
   if (isFillFormIntent) return 'fill_form'
+  if (isPriceIntent) return 'price'
   if (isConsultIntent) return 'consult'
   if (isBookIntent) return 'book'
   if (isOpenIntent) return 'open'
 
   // 默认：含有医院名 or 含有问询词 → 查看预约流程
   return 'view'
+}
+
+/**
+ * 从 hospital.url 推导咨询页 URL
+ *
+ * URL 规则：
+ *   详情页：https://i.beautsgo.com/cn/hospital/<slug>?from=skill
+ *   咨询页：https://i.beautsgo.com/cn/hospital/<slug>-chat
+ *
+ * 优先使用 hospital.chat_url（如果有），否则自动推导
+ */
+function getChatUrl(hospital) {
+  if (hospital.chat_url) return hospital.chat_url
+
+  // 从 url 提取 slug（去掉查询参数）
+  try {
+    const parsed = new URL(hospital.url)
+    // pathname 形如 /cn/hospital/<slug>
+    const slug = parsed.pathname.replace(/^\/cn\/hospital\//, '').replace(/\/$/, '')
+    return `https://i.beautsgo.com/cn/hospital/${slug}-chat`
+  } catch (e) {
+    // url 解析失败时兜底：直接拼
+    const base = hospital.url.split('?')[0].replace(/\/$/, '')
+    return `${base}-chat`
+  }
+}
+
+/**
+ * 从 hospital.url 推导价格表页 URL
+ *
+ * URL 规则：
+ *   详情页：https://i.beautsgo.com/cn/hospital/<slug>?from=skill
+ *   价格页：https://i.beautsgo.com/cn/hospital/<slug>-price
+ *
+ * 优先使用 hospital.price_url（如果有），否则自动推导
+ */
+function getPriceUrl(hospital) {
+  if (hospital.price_url) return hospital.price_url
+
+  try {
+    const parsed = new URL(hospital.url)
+    const slug = parsed.pathname.replace(/^\/cn\/hospital\//, '').replace(/\/$/, '')
+    return `https://i.beautsgo.com/cn/hospital/${slug}-price`
+  } catch (e) {
+    const base = hospital.url.split('?')[0].replace(/\/$/, '')
+    return `${base}-price`
+  }
 }
 
 /**
@@ -71,143 +124,6 @@ function getAllHospitalNames(hospitals) {
   return names
 }
 
-/**
- * 打开浏览器（系统默认浏览器，用于简单打开链接）
- */
-async function openBrowser(url) {
-  try {
-    if (process.platform === 'darwin') {
-      await execAsync(`open "${url}"`)
-    } else if (process.platform === 'win32') {
-      await execAsync(`start "${url}"`)
-    } else {
-      await execAsync(`xdg-open "${url}"`)
-    }
-    console.log(`[Booking Skill] Browser opened: ${url}`)
-    return true
-  } catch (err) {
-    console.error('[Booking Skill] Failed to open browser:', err.message)
-    return false
-  }
-}
-
-/**
- * 创建一个预授权的 Playwright 页面（避免权限弹窗）
- * 用于自动化场景，自动点击"允许"按钮
- * 返回 { browser, page }，调用方负责关闭 browser
- */
-async function createAuthorizedPage(url) {
-  const browser = await playwright.chromium.launch({
-    headless: false,
-    args: [
-      // 禁止浏览器弹出"打开外部应用"对话框
-      '--disable-external-intent-requests',
-      '--disable-features=ExternalProtocolDialog',
-      '--no-default-browser-check',
-    ]
-  })
-
-  // 预授权所有可能触发弹窗的权限
-  const context = await browser.newContext({
-    permissions: [
-      'geolocation',
-      'notifications',
-      'clipboard-read',
-      'clipboard-write',
-    ],
-    bypassCSP: true,
-  })
-
-  // 拦截 dialog 弹窗，全部自动接受
-  context.on('page', page => {
-    page.on('dialog', async dialog => {
-      console.log(`[Booking Skill] Auto-accepting dialog: ${dialog.type()} - ${dialog.message()}`)
-      await dialog.accept().catch(() => dialog.dismiss().catch(() => {}))
-    })
-  })
-
-  const page = await context.newPage()
-
-  // 拦截自定义协议跳转（如 beautsgo:// / intent:// 等），直接阻断避免弹窗
-  await page.route('**/*', async (route) => {
-    const reqUrl = route.request().url()
-    if (!reqUrl.startsWith('http://') && !reqUrl.startsWith('https://')) {
-      console.log(`[Booking Skill] Blocked custom protocol: ${reqUrl}`)
-      await route.abort()
-    } else {
-      await route.continue()
-    }
-  })
-
-  // page 本身的 dialog 监听
-  page.on('dialog', async dialog => {
-    console.log(`[Booking Skill] Page dialog auto-accepted: ${dialog.type()} - ${dialog.message()}`)
-    await dialog.accept().catch(() => dialog.dismiss().catch(() => {}))
-  })
-
-  await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 }).catch(() => {
-    console.warn('[Booking Skill] networkidle timeout, continuing anyway')
-  })
-
-  console.log(`[Booking Skill] Page loaded: ${url}`)
-  return { browser, page }
-}
-
-/**
- * 自动点击预约按钮
- */
-async function clickBookingButton(url) {
-  let browser
-  try {
-    const result = await createAuthorizedPage(url)
-    browser = result.browser
-    const page = result.page
-
-    // 等待预约按钮出现（Vue 渲染通常 1~3 秒即可）
-    await page.waitForSelector('.btns-right', { timeout: 10000 }).catch(() => {})
-    await page.waitForTimeout(2000)
-
-    // 策略1: 优先 .btns-right（排除 .btns-consult，找包含"预约"文字的按钮）
-    const clicked = await page.evaluate(() => {
-      // 优先：.btns-right 中文本包含"预约"的元素
-      const btnsRight = document.querySelectorAll('.btns-right')
-      for (const el of btnsRight) {
-        const text = (el.textContent || '').trim()
-        if (text.includes('预约') && el.offsetParent !== null) {
-          el.click()
-          return true
-        }
-      }
-      // 降级：文本包含"预约面诊"或"立即预约"的任意可见元素
-      const elements = document.querySelectorAll('*')
-      for (const el of elements) {
-        const text = (el.textContent || '').trim()
-        if ((text.includes('预约面诊') || text.includes('立即预约')) && el.offsetParent !== null && text.length < 30) {
-          el.click()
-          return true
-        }
-      }
-      // 备选：class 包含 book 或 reservation
-      const btn = document.querySelector('[class*="book"],[class*="reservation"],[class*="appoint"]')
-      if (btn) { btn.click(); return true }
-      return false
-    })
-
-    if (clicked) {
-      console.log(`[Booking Skill] ✅ Booking button clicked`)
-      await page.waitForTimeout(3000)
-      return true
-    }
-
-    console.warn('[Booking Skill] Booking button not found')
-    return false
-  } catch (err) {
-    console.error('[Booking Skill] Failed to click booking button:', err.message)
-    return false
-  } finally {
-    if (browser) await browser.close()
-  }
-}
 
 /**
  * 解析用户输入，提取预约表单字段
@@ -250,293 +166,76 @@ function parseFormInput(query) {
     if (contact.length < 2) contact = ''
   }
 
-  return { persons, dateText, contact }
+  // 时间段：上午 / 下午 / 全天（默认全天）
+  let timeSlot = '全天'
+  if (query.includes('上午') || query.match(/AM|morning/i)) timeSlot = '上午'
+  else if (query.includes('下午') || query.match(/PM|afternoon/i)) timeSlot = '下午'
+
+  return { persons, dateText, contact, timeSlot }
 }
 
 /**
- * 打开预约表单页面并自动填写提交
- * @param {string} url 医院页面 URL（会先打开医院页，再点预约按钮进入表单）
- * @param {{ persons: number, dateText: string, remark: string }} formData
- * @returns {{ success: boolean, message: string }}
+ * 将日期文本解析为 YYYY-MM-DD 格式
+ * 输入如："3月26日"、"4月5号"、"2026-04-05"
  */
-async function fillBookingForm(url, bookingUrl, formData) {
-  let browser
-  try {
-    // 直接打开预约表单页，跳过详情页点按钮
-    const targetUrl = bookingUrl || url
-    const result = await createAuthorizedPage(targetUrl)
-    browser = result.browser
-    const page = result.page
-
-    // 等待表单页渲染
-    console.log('[Booking Skill] 等待预约表单加载...')
-    await page.waitForSelector('.u-number-box__plus, .sub-right', { timeout: 15000 }).catch(() => {})
-    await page.waitForTimeout(2000)
-
-    // 2. 填写人数
-    if (formData.persons && formData.persons > 1) {
-      console.log(`[Booking Skill] 设置人数：${formData.persons}`)
-      // 直接设置 input 值
-      await page.evaluate((n) => {
-        const input = document.querySelector('.u-number-box__input input, input.uni-input-input[type="number"]')
-        if (input) {
-          const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
-          nativeInputValueSetter.call(input, n)
-          input.dispatchEvent(new Event('input', { bubbles: true }))
-          input.dispatchEvent(new Event('change', { bubbles: true }))
-        }
-      }, formData.persons)
-      // 用加号按钮逐一点击（更可靠）
-      const currentVal = await page.evaluate(() => {
-        const input = document.querySelector('input.uni-input-input[type="number"]')
-        return input ? parseInt(input.value, 10) : 1
-      })
-      const clickCount = formData.persons - (currentVal || 1)
-      for (let i = 0; i < clickCount; i++) {
-        await page.evaluate(() => {
-          const plusBtn = document.querySelector('.u-number-box__plus')
-          if (plusBtn) plusBtn.click()
-        })
-        await page.waitForTimeout(300)
-      }
-    }
-
-    // 3. 选择预约时间（点击时间行，弹出日期选择器）
-    if (formData.dateText) {
-      console.log(`[Booking Skill] 选择日期：${formData.dateText}`)
-      // 点击时间行
-      await page.evaluate(() => {
-        const rows = document.querySelectorAll('.flex.info.add')
-        for (const row of rows) {
-          if (row.textContent?.includes('选择预约时间')) {
-            row.click(); return
-          }
-        }
-      })
-      await page.waitForTimeout(2000)
-
-      // 解析日期中的"日"数字
-      const dayMatch = formData.dateText.match(/(\d{1,2})[日号]$/) ||
-                       formData.dateText.match(/[月\/\-](\d{1,2})/)
-      const targetDay = dayMatch ? parseInt(dayMatch[1], 10) : null
-
-      if (targetDay) {
-        // 在日历弹窗中找到对应日期并点击
-        const dateClicked = await page.evaluate((day) => {
-          // 查找所有文本为 day 的可见元素（日历格子）
-          const allEls = document.querySelectorAll('*')
-          for (const el of allEls) {
-            const text = (el.textContent || '').trim()
-            if (text === String(day) && el.offsetParent !== null) {
-              // 排除页面其他数字（人数输入框等）
-              const cls = el.className || ''
-              if (cls.includes('day') || cls.includes('date') || cls.includes('calendar') ||
-                  el.closest('[class*="calendar"]') || el.closest('[class*="date"]') ||
-                  el.closest('.u-popup')) {
-                el.click()
-                return true
-              }
-            }
-          }
-          // 降级：在所有弹窗中找
-          const popups = document.querySelectorAll('.u-popup')
-          for (const popup of popups) {
-            if (popup.offsetParent !== null) {
-              const dayEls = popup.querySelectorAll('*')
-              for (const el of dayEls) {
-                if ((el.textContent || '').trim() === String(day) && el.offsetParent !== null) {
-                  el.click()
-                  return true
-                }
-              }
-            }
-          }
-          return false
-        }, targetDay)
-
-        console.log(`[Booking Skill] 日期 ${targetDay} 点击结果：${dateClicked}`)
-        await page.waitForTimeout(1500)
-
-        // 点击"下一步"按钮（日历弹窗底部）
-        const nextClicked = await page.evaluate(() => {
-          const allEls = document.querySelectorAll('*')
-          for (const el of allEls) {
-            const text = (el.textContent || '').trim()
-            if ((text === '下一步' || text === '确定' || text === '完成') && el.offsetParent !== null) {
-              el.click()
-              return true
-            }
-          }
-          return false
-        })
-        console.log(`[Booking Skill] 下一步点击结果：${nextClicked}`)
-        await page.waitForTimeout(1500)
-      }
-    }
-
-    // 4. 填写联系方式
-    if (formData.contact && formData.contact.length > 0) {
-      console.log(`[Booking Skill] 填写联系方式：${formData.contact}`)
-      const contactFilled = await page.evaluate((contact) => {
-        // 找 type=text 的 input（联系方式字段）
-        const inputs = document.querySelectorAll('input.uni-input-input[type="text"], input[type="text"]')
-        for (const input of inputs) {
-          if (input.offsetParent !== null) {
-            const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
-            nativeInputValueSetter.call(input, contact)
-            input.dispatchEvent(new Event('input', { bubbles: true }))
-            return true
-          }
-        }
-        return false
-      }, formData.contact)
-      console.log(`[Booking Skill] 联系方式填写结果：${contactFilled}`)
-      await page.waitForTimeout(500)
-    }
-
-    // 5. 勾选服务条款
-    console.log('[Booking Skill] 勾选服务条款...')
-    await page.evaluate(() => {
-      // 找条款区域的图片（作为复选框）或包含条款文字的可点击元素
-      const termsEl = document.querySelector('.text')
-      if (termsEl) {
-        // 点击条款区域的图标（通常是前面的 checkbox 图片）
-        const img = termsEl.querySelector('img, uni-image')
-        if (img) { img.click(); return }
-        termsEl.click()
-      }
-    })
-    await page.waitForTimeout(500)
-
-    // 6. 点击"去付款"/"去下单"按钮
-    console.log('[Booking Skill] 点击去付款/去下单...')
-    const submitClicked = await page.evaluate(() => {
-      // 优先 .sub-right（确认为可见的按钮）
-      const subRight = document.querySelector('.sub-right')
-      if (subRight && subRight.offsetParent !== null) {
-        subRight.click()
-        return true
-      }
-      // 降级：文字匹配
-      const allEls = document.querySelectorAll('*')
-      for (const el of allEls) {
-        const text = (el.textContent || '').trim()
-        if ((text === '去付款' || text === '去下单' || text === '提交预约') && el.offsetParent !== null) {
-          el.click()
-          return true
-        }
-      }
-      return false
-    })
-
-    if (submitClicked) {
-      console.log('[Booking Skill] ✅ 表单已提交')
-      await page.waitForTimeout(3000)
-      return { success: true, message: '预约已提交' }
-    } else {
-      return { success: false, message: '点击提交按钮失败，可能需要手动确认' }
-    }
-
-  } catch (err) {
-    console.error('[Booking Skill] fillBookingForm error:', err.message)
-    return { success: false, message: err.message }
-  } finally {
-    if (browser) await browser.close()
+function parseDateToISO(dateText) {
+  // 已是 YYYY-MM-DD
+  const isoMatch = dateText.match(/(\d{4})[年\-\/](\d{1,2})[月\-\/](\d{1,2})/)
+  if (isoMatch) {
+    const y = isoMatch[1]
+    const m = String(isoMatch[2]).padStart(2, '0')
+    const d = String(isoMatch[3]).padStart(2, '0')
+    return `${y}-${m}-${d}`
   }
+  // "3月26日" or "3月26号"
+  const cnMatch = dateText.match(/(\d{1,2})[月\/](\d{1,2})[日号]?/)
+  if (cnMatch) {
+    const year = new Date().getFullYear()
+    const m = String(cnMatch[1]).padStart(2, '0')
+    const d = String(cnMatch[2]).padStart(2, '0')
+    return `${year}-${m}-${d}`
+  }
+  return dateText
 }
 
 /**
- * 自动点击客服咨询按钮
- * 优化：使用 waitForSelector + 直接 DOM 操作的混合策略
+ * 通过接口提交预约
+ * POST https://api.yestokr.com/api/Appointment/saveFromSkill
  */
-async function clickConsultButton(url) {
-  let browser
-  try {
-    const result = await createAuthorizedPage(url)
-    browser = result.browser
-    const page = result.page
-
-    console.log(`[Booking Skill] Waiting for Vue components to render...`)
-    await page.waitForTimeout(8000)
-
-    console.log(`[Booking Skill] Looking for consult button...`)
-
-    // 策略1: waitForSelector 等待元素出现
-    await page.waitForSelector('.btns-consult', { timeout: 10000 }).catch(() => {})
-
-    // 策略2: DOM 直接点击
-    const clickSuccess = await page.evaluate(() => {
-      try {
-        // 方法1: class 精确定位
-        let button = document.querySelector('.btns-consult')
-        if (button) {
-          button.click()
-          return true
+function submitBookingApi(payload) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify(payload)
+    const options = {
+      hostname: 'api.yestokr.com',
+      path: '/api/Appointment/saveFromSkill',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body),
+      },
+    }
+    const req = https.request(options, (res) => {
+      let data = ''
+      res.on('data', chunk => { data += chunk })
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data)
+          resolve(json)
+        } catch (e) {
+          resolve({ code: -1, msg: `响应解析失败: ${data.slice(0, 200)}` })
         }
-
-        // 方法2: 精确文本"咨询一下"
-        const elements = document.querySelectorAll('*')
-        for (const el of elements) {
-          const text = (el.textContent || '').trim()
-          if (text === '咨询一下' && el.offsetParent !== null) {
-            el.click()
-            return true
-          }
-        }
-
-        // 方法3: 最小可见含"咨询"元素
-        let targetButton = null
-        let minTextLength = Infinity
-        for (const el of elements) {
-          const text = (el.textContent || '').trim()
-          if (text.includes('咨询') && el.offsetParent !== null && text.length < 100) {
-            if (text.length < minTextLength) {
-              minTextLength = text.length
-              targetButton = el
-            }
-          }
-        }
-        if (targetButton) {
-          targetButton.click()
-          return true
-        }
-
-        return false
-      } catch (e) {
-        return false
-      }
+      })
     })
-
-    if (clickSuccess) {
-      console.log(`[Booking Skill] ✅ Consult button clicked successfully`)
-      await page.waitForTimeout(3000)
-      return true
-    }
-
-    // 策略3: Playwright fallback
-    const fallbackSelectors = ['text=/咨询一下/', '[class*="consult"]', 'text=/咨询/']
-    for (const selector of fallbackSelectors) {
-      try {
-        const locator = page.locator(selector).first()
-        if (await locator.count() > 0 && await locator.isVisible().catch(() => false)) {
-          await locator.click()
-          console.log(`[Booking Skill] ✅ Clicked with fallback selector: ${selector}`)
-          await page.waitForTimeout(2000)
-          return true
-        }
-      } catch (e) {
-        // 继续
-      }
-    }
-
-    console.warn('[Booking Skill] ❌ Consult button could not be found or clicked')
-    return false
-  } catch (err) {
-    console.error('[Booking Skill] Failed to click consult button:', err.message)
-    return false
-  } finally {
-    if (browser) await browser.close()
-  }
+    req.on('error', (e) => {
+      resolve({ code: -1, msg: `请求失败: ${e.message}` })
+    })
+    req.setTimeout(15000, () => {
+      req.destroy()
+      resolve({ code: -1, msg: '请求超时' })
+    })
+    req.write(body)
+    req.end()
+  })
 }
 
 /**
@@ -636,6 +335,9 @@ module.exports = async function (input) {
 📖 **打开医院页面**
 说"打开链接" → 我帮你打开 ${hospital ? hospital.name : '医院'} 的页面
 
+💰 **查看价格表**
+说"查价格" → 我帮你打开 ${hospital ? hospital.name : '医院'} 的价格表页面
+
 ⚡ **自动预约**
 说"帮我预约" → 我帮你自动点击【预约面诊】按钮，跳转到预约表单
 
@@ -656,7 +358,7 @@ module.exports = async function (input) {
         return '❌ 我还不知道你要查看哪家医院，请告诉我医院名称，例如"打开JD皮肤科的链接"。'
       }
 
-      const opened = await openBrowser(hospital.url)
+      const opened = await openUrl(hospital.url).then(() => true).catch(() => false)
       if (!opened) {
         return `❌ 链接打开失败，请手动访问：${hospital.url}`
       }
@@ -688,19 +390,16 @@ module.exports = async function (input) {
         return '❌ 我还不知道你要预约哪家医院，请告诉我医院名称，例如"帮我预约JD皮肤科"。'
       }
 
-      // 优先用 booking_url（直接跳过详情页），没有则降级用 url
-      const bookingUrl = hospital.booking_url || hospital.url
-      await openBrowser(bookingUrl)
+      return `好的，帮你预约 **${hospital.name}** 🏥
 
-      return `✅ 预约表单已打开！
-
-📝 请告诉我以下预约信息，我来帮你自动填写并提交：
+📝 请告诉我以下信息，我直接帮你提交预约：
 
 1. **预约人数**（例如：1人、2人）
 2. **预约时间**（例如：3月26日）
-3. **联系方式**（手机号或微信号）
+3. **时间段**（上午 / 下午 / 全天，默认全天）
+4. **联系方式**（手机号）
 
-👉 直接回复，例如："**2人，3月26日，13800138000**"`
+👉 直接回复，例如："**2人，3月26日下午，13800138000**"`
     }
 
     // ——————————————————————————————————————————
@@ -723,37 +422,92 @@ module.exports = async function (input) {
 
 其他信息可选：
 • 预约人数（默认1人）
-• 联系方式（手机号或微信号）`
+• 联系方式（手机号）`
       }
 
-      const result = await fillBookingForm(hospital.url, hospital.booking_url, formData)
+      if (!hospital.id) {
+        return `❌ 该医院暂不支持在线预约（缺少医院ID），请手动打开 BeautsGO 预约：${hospital.url || ''}`
+      }
 
-      if (result.success) {
+      // 组装接口参数
+      const dateISO = parseDateToISO(formData.dateText)
+      const expectedTime = formData.timeSlot && formData.timeSlot !== '全天'
+        ? `${dateISO} ${formData.timeSlot}`
+        : `${dateISO} 全天`
+
+      const payload = {
+        contact: formData.contact || '',
+        expected_time: expectedTime,
+        project_type: '',
+        d_id: '',
+        h_id: hospital.id,
+        p_id: '',
+        num: formData.persons,
+        source_type: 'skill',
+      }
+
+      console.log(`[Booking Skill] 提交接口参数：`, JSON.stringify(payload))
+      const result = await submitBookingApi(payload)
+      console.log(`[Booking Skill] 接口返回：`, JSON.stringify(result))
+
+      if (result.code === 0) {
         return `✅ **预约已提交！**
 
 📋 **预约信息摘要：**
 • 🏥 机构：${hospital.name}
 • 👥 人数：${formData.persons} 人
-• 📅 时间：${formData.dateText}${formData.contact ? `\n• 📞 联系方式：${formData.contact}` : ''}
+• 📅 时间：${expectedTime}${formData.contact ? `\n• 📞 联系方式：${formData.contact}` : ''}
 
 🎉 提交成功！BeautsGO 平台会尽快联系机构为你匹配时间，确认短信将发送到你的账号绑定手机。
 
 还有什么需要帮忙吗？`
       } else {
-        return `⚠️ 自动填写遇到问题：${result.message}
+        const errMsg = result.msg || result.message || JSON.stringify(result)
+        return `❌ 预约提交失败：${errMsg}
 
-你可以在已打开的浏览器中手动完成填写：
-1. 选择预约人数
-2. 选择预约时间（${formData.dateText}）
-3. 填写联系方式
-4. 点击"去付款"提交
+你可以通过以下方式手动预约：
+• 打开 BeautsGO App，搜索"${hospital.name}"
+• 或说"打开链接"，我帮你打开医院页面
 
-如需其他帮助，随时告诉我！`
+如需重试，请告诉我新的预约信息。`
       }
     }
 
     // ——————————————————————————————————————————
-    // 第4轮：自动点击咨询按钮
+    // 价格：打开价格表页面
+    // ——————————————————————————————————————————
+    if (intent === 'price') {
+      const hospital = resolveHospital()
+
+      if (!hospital) {
+        return '❌ 我还不知道你要查询哪家医院的价格，请告诉我医院名称，例如"JD皮肤科价格"。'
+      }
+
+      const priceUrl = getPriceUrl(hospital)
+      const opened = await openUrl(priceUrl).then(() => true).catch(() => false)
+
+      if (opened) {
+        return `✅ 已为你打开 **${hospital.name}** 的价格表页面！
+
+价格页面：${priceUrl}
+
+页面上你可以看到：
+• 💰 各项目收费标准
+• 🎁 当前优惠套餐
+• 📋 项目详情说明
+
+还需要预约或在线咨询吗？`
+      } else {
+        return `⚠️ 自动打开价格页面失败，请手动访问：
+
+${priceUrl}
+
+还需要其他帮助吗？`
+      }
+    }
+
+    // ——————————————————————————————————————————
+    // 咨询客服 → 直接打开咨询页
     // ——————————————————————————————————————————
     if (intent === 'consult') {
       const hospital = resolveHospital()
@@ -762,33 +516,25 @@ module.exports = async function (input) {
         return '❌ 我还不知道你要咨询哪家医院，请告诉我医院名称，例如"帮我咨询JD皮肤科"。'
       }
 
-      await openBrowser(hospital.url)
-      const clicked = await clickConsultButton(hospital.url)
+      const chatUrl = getChatUrl(hospital)
+      const opened = await openUrl(chatUrl).then(() => true).catch(() => false)
 
-      if (clicked) {
-        return `✅ 已帮你打开 **${hospital.name}** 的在线客服对话！
+      if (opened) {
+        return `✅ 已为你打开 **${hospital.name}** 的在线客服对话页面！
 
-我已经：
-1. 打开了医院页面
-2. 自动点击了"咨询一下"按钮
+客服页面：${chatUrl}
 
-现在客服对话窗口应该已打开，你可以直接：
+你可以直接向客服咨询：
 • 询问价格和套餐详情
 • 询问指定医生是否有档期
 • 确认预约时间
 • 了解术前术后注意事项
 
-如果对话窗口没有自动打开，请手动点击页面上的"咨询一下"按钮。
-
 还需要预约或其他帮助吗？`
       } else {
-        return `⚠️ 自动点击咨询按钮未成功，但页面已为你打开。
+        return `⚠️ 自动打开咨询页面失败，请手动访问：
 
-请在浏览器中手动操作：
-1. 找到页面上的"咨询一下"按钮（通常在页面右上方）
-2. 点击后会打开在线客服对话窗口
-
-医院页面：${hospital.url}
+${chatUrl}
 
 除了网页客服，你也可以通过：
 • 微信公众号搜索「BeautsGO 彼此美 APP」
