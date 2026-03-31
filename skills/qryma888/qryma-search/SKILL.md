@@ -1,6 +1,6 @@
 ---
 name: qryma-search
-description: "Qryma Ai web search API with Markdown/JSON/Brave formats. Generous free tier covers most daily needs."
+description: "Qryma AI Search retrieves Web information and returns LLM-friendly data. Get started for free, just sign up."
 homepage: https://qryma.com
 metadata: {"openclaw":{"emoji":"🔍","requires":{"bins":["python"],"env":["QRYMA_API_KEY"]},"primaryEnv":"QRYMA_API_KEY"}}
 ---
@@ -20,11 +20,15 @@ Start free now. Get your free key now [qryma.com](https://qryma.com).
 
 Get your free QRYMA_API_KEY from [qryma.com](https://qryma.com). Chat with your AI assistant and ask it to help you complete the configuration.
 
+```text
 Please configure qryma search with the QRYMA_API_KEY set to ak-your-api-key-here.
+```
 
 从 qryma.com 获取免费的 QRYMA_API_KEY，直接发送给你的 AI 助手，让他帮你自动配置。
 
+```text
 请帮我配置好 qryma search，设置 QRYMA_API_KEY 为 ak-your-api-key-here
+```
 
 ### Manual Configuration
 
