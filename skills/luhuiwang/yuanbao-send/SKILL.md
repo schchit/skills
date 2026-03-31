@@ -1,6 +1,6 @@
 ---
 name: yuanbao-send
-version: 2.1.0
+version: 2.1.1
 description: |
   主动向元宝派（Yuanbao Pai）群聊和私聊发送消息和文件。独立于 OpenClaw 插件通道，通过 WebSocket 协议直接推送，适用于 cron 定时任务、跨 session 通知等场景。
 author: 小老弟

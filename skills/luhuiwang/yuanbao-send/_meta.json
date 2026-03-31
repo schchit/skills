@@ -1,11 +1,17 @@
 {
   "owner": "luhuiwang",
   "slug": "yuanbao-send",
-  "displayName": "yuanbao-send",
+  "displayName": "元宝派主动推送",
   "latest": {
-    "version": "2.1.0",
-    "publishedAt": 1774488397705,
-    "commit": "https://github.com/openclaw/skills/commit/3bcaa0226a3f1d22b4b74395bd668c99f6bec548"
+    "version": "2.1.1",
+    "publishedAt": 1774505530110,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "2.1.0",
+      "publishedAt": 1774488397705,
+      "commit": "https://github.com/openclaw/skills/commit/3bcaa0226a3f1d22b4b74395bd668c99f6bec548"
+    }
+  ]
 }

@@ -1,4 +1,4 @@
-#!/home/wangluhui/miniforge3/bin/python3
+#!/usr/bin/env python3
 """
 yuanbao-send — 元宝派主动发消息（独立于 OpenClaw 插件）
 
