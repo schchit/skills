@@ -33,9 +33,9 @@ import urllib.parse
 from pathlib import Path
 from datetime import datetime
 
-TEXT2VIDEO_URL = "http://gpt.juhe.cn/text2video/generate"
+TEXT2VIDEO_URL = "https://gpt.juhe.cn/text2video/generate"
 IMAGE2VIDEO_URL = "https://gpt.juhe.cn/text2video/baseimg"
-QUERY_URL = "http://gpt.juhe.cn/text2video/query"
+QUERY_URL = "https://gpt.juhe.cn/text2video/query"
 REGISTER_URL = "https://www.juhe.cn/docs/api/id/827"
 
 MAX_PROMPT_LEN = 500
