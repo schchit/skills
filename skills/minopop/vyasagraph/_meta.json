@@ -3,11 +3,16 @@
   "slug": "vyasagraph",
   "displayName": "VyasaGraph — Persistent Agent Memory",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1774701033184,
-    "commit": "https://github.com/openclaw/skills/commit/bdcdef61e4c6df981cf5bf8acbf8ff96d6707c3d"
+    "version": "1.2.0",
+    "publishedAt": 1774728760517,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1774701033184,
+      "commit": "https://github.com/openclaw/skills/commit/bdcdef61e4c6df981cf5bf8acbf8ff96d6707c3d"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1774700720895,

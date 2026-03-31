@@ -1,18 +1,27 @@
 ---
 name: vyasagraph
-description: "No more agentic amnesia. VyasaGraph gives your agent short-term + long-term memory: SESSION-STATE for hot context, knowledge graph for permanent recall. Semantic search, graph relations, no server required."
+description: "No more agentic amnesia. Gives your agent short-term + long-term memory: hot survivable context + knowledge graph for permanent recall. Semantic search, graph relations, no server required."
 metadata:
   {
     "openclaw":
       {
+        "homepage": "https://github.com/minopop/vyasagraph",
+        "repository": "https://github.com/minopop/vyasagraph",
+        "license": "MIT",
         "requires": { "bins": [] },
+        "optionalEnv": ["OPENAI_API_KEY"],
+        "envNotes":
+          {
+            "OPENAI_API_KEY": "Optional. Used for semantic vector embeddings (text-embedding-3-small). Without it, VyasaGraph falls back to keyword search. Only embeddings requests are sent to OpenAI — no user conversation data.",
+          },
         "install":
           [
             {
               "id": "node",
               "kind": "node",
               "package": "vyasagraph",
-              "label": "Install VyasaGraph (npm)",
+              "bins": [],
+              "label": "Install VyasaGraph from npm (source: github.com/minopop/vyasagraph)",
             },
           ],
       },
@@ -35,15 +44,23 @@ Most AI agents are amnesiac by design — every conversation starts from zero. V
 
 **What gives VyasaGraph superpowers?**
 
+---
+
 **1. SHORT TERM MEMORY** — RAM layer. Instant access to current-session context. Survives context compaction. Written before every response.
-- Holds *hot, in-flight context*: what's happening right now, decisions made this session, things to remember before the next compaction
-- Survives context window resets (compaction) because it's a file, not just tokens
-- Think of it as a *write-ahead log* — the agent writes to it continuously so nothing is lost mid-session
+
+- 🔥 Holds *hot, in-flight context*: what's happening right now, decisions made this session, things to remember before the next compaction
+- 🛡️ Survives context window resets (compaction) because it's a file, not just tokens
+- 📝 Think of it as a *write-ahead log* — the agent writes to it continuously so nothing is lost mid-session
+
+---
 
 **2. LONG TERM MEMORY** — Hard drive layer. Permanent knowledge graph with semantic search, graph relations, and project tracking. Persists across sessions.
-- An *embedded SurrealDB database* (no server needed — it's a local file)
-- Stores *permanent knowledge*: entities, relations between them, past decisions, errors, project state
-- Query it with natural language and it finds all relevant memories — full native semantic search
+
+- 🗄️ An *embedded SurrealDB database* (no server needed — it's a local file)
+- 🧠 Stores *permanent knowledge*: entities, relations between them, past decisions, errors, project state
+- 🔍 Query it with natural language and it finds all relevant memories — full native semantic search
+
+---
 
 VyasaGraph does this all automatically. No need to tell it to do anything memory-related.
 
@@ -64,14 +81,43 @@ VyasaGraph does this all automatically. No need to tell it to do anything memory
 
 ## Features
 
-- **Multi-model database**: Graph + Document + Vector in one embedded engine
-- **Semantic search**: HNSW-indexed 1536-dim embeddings (cosine similarity) — search by *meaning*, not just keywords
-- **Graph relations**: Native SurrealDB graph edges with traversal (`works_at`, `reports_to`, `owns`, etc.)
-- **Project management**: Built-in task board with status tracking (v3)
-- **Error tracking**: Verrors system for recurring issue detection (v4)
-- **Zero infrastructure**: Embedded RocksDB, no server needed — just a local file
-- **MCP-compatible API**: Drop-in replacement for MCP memory operations
-- **Node.js 18+**: ES Modules, works anywhere Node runs
+- 🗂️ **Multi-model database** — Graph + Document + Vector in one embedded engine
+
+- 🔍 **Semantic search** — HNSW-indexed 1536-dim embeddings (cosine similarity). Search by *meaning*, not just keywords
+
+- 🕸️ **Graph relations** — Native SurrealDB graph edges with traversal (`works_at`, `reports_to`, `owns`, etc.)
+
+- 📋 **Project management** — Built-in task board with status, priority, and next-action tracking (v3)
+
+- 🐛 **Error tracking** — Verrors system: log recurring issues as entities, detect patterns over time (v4)
+
+- ⚡ **Zero infrastructure** — Embedded RocksDB, no server needed. Just a local file
+
+- 🔌 **MCP-compatible API** — Drop-in replacement for MCP memory operations
+
+- 🟢 **Node.js 18+** — ES Modules, works anywhere Node runs
+
+---
+
+## 🔒 Security & Privacy
+
+**What this skill does with your data:**
+
+- 📁 **Local only** — all data is stored in files on your machine (`memory.db`, `SESSION-STATE.md`). Nothing is sent to external servers except OpenAI embedding calls (if you set `OPENAI_API_KEY`).
+- 🔑 **OpenAI API key** — used only to generate text embeddings. Embeddings are computed from entity observations (facts you explicitly store), not from raw conversation messages. The text sent to OpenAI is what you have written into VyasaGraph entities — not the full conversation transcript. Omit the key entirely to use keyword search only.
+- 🌐 **No telemetry** — VyasaGraph makes no outbound network calls except to the OpenAI embeddings API when a key is configured.
+- 📦 **Open source** — full source code at https://github.com/minopop/vyasagraph. Review it before installing.
+
+**What you should NOT store in VyasaGraph:**
+
+- ❌ API keys, passwords, or credentials
+- ❌ Payment card or financial account details
+- ❌ Health or medical records
+- ❌ Any data you would not want stored in a local unencrypted file
+
+**Memory is opt-in by design.** The instructions in this skill tell the agent *when* to record information, but you control what data you share with your agent. The agent only stores what you tell it — it does not scrape, intercept, or auto-collect data from other sources.
+
+**Retention:** `SESSION-STATE.md` is designed to be cleared at session end. `memory.db` is permanent until you delete it. To erase all memory: delete `memory.db`.
 
 ---
 
