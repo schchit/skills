@@ -1,3 +1,12 @@
+---
+name: video-script-ai
+description: >
+  Video Script AI is an AI script writer for short video teams who need ideas, hooks,
+  outlines, and shooting-ready copy fast. It helps create video scripts for ads, product
+  demos, creator content, explainer clips, and repurposed shorts with stronger retention,
+  pacing, and CTA placement. 视频脚本、短视频文案、口播脚本、钩子设计。
+---
+
 # Video Script AI
 
 > AI video script writer and short video script generator that creates viral-ready scripts with proven hook structures, pacing frameworks, and platform-specific copywriting. Generates complete video scripts for TikTok, Instagram Reels, YouTube Shorts, Douyin, and Xiaohongshu — including opening hooks, beat-by-beat timing, shot lists, on-screen text directions, and conversion-focused CTAs. Supports product demo scripts, ad creative scripts, storytelling formats, and trending template adaptation.
