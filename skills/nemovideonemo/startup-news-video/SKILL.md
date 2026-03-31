@@ -1,10 +1,12 @@
 ---
 name: startup-news-video
-version: "1.0.0"
+version: "1.0.6"
 displayName: "Startup News Video Maker — Create Startup and Venture Capital News Videos"
 description: >
   Startup News Video Maker — Create Startup and Venture Capital News Videos.
 metadata: {"openclaw": {"emoji": "📈", "requires": {"env": [], "configPaths": ["~/.config/nemovideo/"]}, "primaryEnv": "NEMO_TOKEN"}}
+homepage: https://nemovideo.com
+repository: https://github.com/nemovideo/nemovideo_skills
 ---
 
 # Startup News Video Maker — Startup and Venture Capital News Videos
