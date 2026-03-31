@@ -14,6 +14,10 @@ tags:
   - css
   - components
   - design-system
+env:
+  - name: FIGMA_TOKEN
+    description: "Figma Personal Access Token (generate at figma.com → Settings → Personal Access Tokens)"
+    required: true
 ---
 
 # Figma Bridge
@@ -22,15 +26,17 @@ You extract design information from Figma and make it usable for development.
 
 ## Setup
 
-On first use, ask for a Figma Personal Access Token:
+This skill requires a Figma Personal Access Token provided via environment variable.
+
 1. Go to figma.com → Settings → Personal Access Tokens → Generate
-2. Store in `~/.openclaw/figma-config.json`:
-```json
-{
-  "token": "figd_...",
-  "team_id": ""
-}
-```
+2. Set as environment variable: `export FIGMA_TOKEN="figd_..."`
+
+## Credential Handling
+
+- Token is read from the `FIGMA_TOKEN` environment variable at runtime
+- This skill does NOT store tokens to disk
+- This skill is read-only — it never modifies your Figma files
+- If the token is missing, prompt the user to set the environment variable
 
 ## Figma API
 
@@ -146,7 +152,7 @@ Extract `FILE_KEY` and optionally `NODE_ID` from any Figma URL the user provides
 
 ## Rules
 - NEVER modify the Figma file — read-only operations only
-- Store the token securely in ~/.openclaw/figma-config.json
+- Token comes from environment variable FIGMA_TOKEN, never stored to disk
 - If the token is invalid or expired, guide the user to generate a new one
 - Present design tokens in both CSS custom properties AND JSON formats
 - When exporting, default to 2x scale for retina
