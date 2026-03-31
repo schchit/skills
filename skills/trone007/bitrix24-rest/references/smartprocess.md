@@ -1,8 +1,8 @@
 # Smart Processes and Funnels
 
-> **Note:** These endpoints use assumed Vibe Platform paths. Verify actual endpoints at runtime or check Vibe API documentation.
+Use this file for smart processes (custom CRM types), funnels/categories, stages, and stage history.
 
-Custom CRM entity types (smart processes), their items, funnels/categories, and stages. Uses the universal `crm.item` approach with `entityTypeId`.
+Scope: `crm`
 
 ## Entity Type IDs
 
@@ -12,74 +12,124 @@ Standard types:
 - `2` — deal
 - `3` — contact
 - `4` — company
+- `5` — old invoice (deprecated)
 - `7` — quote
-- `31` — smart invoice
+- `31` — new invoice (smart invoice)
 - `128+` — custom smart processes
 
-## Endpoints
+Discover custom types with `crm.type.list`.
 
-| Action | Command |
-|--------|---------|
-| List items | `vibe.py --raw GET '/v1/crm/items?entityTypeId=128' --json` |
-| Get item | `vibe.py --raw GET /v1/crm/items/123 --json` |
-| Create item | `vibe.py --raw POST /v1/crm/items --body '{"entityTypeId":128,"title":"Item","stageId":"NEW"}' --confirm-write --json` |
-| List types | `vibe.py --raw GET /v1/crm/types --json` |
+## Smart Process Types
 
-## Key Fields (camelCase)
+- `crm.type.list` — list all smart process types (filter by `title`, `entityTypeId`, `isCategoriesEnabled`, etc.)
+- `crm.type.get` — get one type by `id`
+- `crm.type.add` — create a new smart process type
+- `crm.type.update` — update a smart process type
+- `crm.type.delete` — delete a smart process type
 
-- `id` — item ID
-- `entityTypeId` — type identifier (mandatory for all operations)
-- `title` — item title
-- `stageId` — current stage ID
-- `categoryId` — funnel/category ID
-- `assignedById` — responsible user ID
-- `createdBy` — creator user ID
-- `dateCreate` — creation timestamp
-- `opportunity` — monetary amount
-- `currencyId` — currency code
+## Items (Universal API)
 
-Stage semantic IDs:
+`crm.item.*` works for deals, leads, contacts, companies, quotes, invoices, and all custom smart processes. The `entityTypeId` parameter is always required.
 
-- `P` — in progress
-- `S` — success (won)
-- `F` — fail (lost)
+- `crm.item.list` — list items (requires `entityTypeId`, supports `select`, `filter`, `order`)
+- `crm.item.get` — get one item by `id` and `entityTypeId`
+- `crm.item.add` — create item (requires `entityTypeId` and `fields`)
+- `crm.item.update` — update item
+- `crm.item.delete` — delete item
+- `crm.item.fields` — get field schema for an entity type
 
-## Copy-Paste Examples
+Filter operators are prefixes on the key: `>=dateCreate`, `!stageId`, `%title`.
 
-### Discover custom smart process types
+## Funnels (Categories)
+
+- `crm.category.list` — list funnels for a type (requires `entityTypeId`)
+- `crm.category.get` — get one funnel
+- `crm.category.add` — create funnel
+- `crm.category.update` — update funnel
+- `crm.category.delete` — delete funnel
+- `crm.category.fields` — field schema
+
+## Stages and Statuses
+
+- `crm.status.list` — list statuses/stages (filter by `ENTITY_ID`)
+- `crm.stagehistory.list` — stage change history (requires `entityTypeId`)
+
+Stage history `TYPE_ID` values:
+
+- `1` — create
+- `2` — intermediate stage change
+- `3` — final stage
+- `5` — funnel change
+
+`STAGE_SEMANTIC_ID`: `P` = in progress, `S` = success, `F` = fail.
+
+## Common Use Cases
+
+### List all smart process types
 
 ```bash
-vibe.py --raw GET /v1/crm/types --json
+python3 scripts/bitrix24_call.py crm.type.list --json
 ```
 
-### List items of a smart process (entityTypeId=128)
+### List items of a smart process
 
 ```bash
-vibe.py --raw GET '/v1/crm/items?entityTypeId=128' --json
+python3 scripts/bitrix24_call.py crm.item.list \
+  --param 'entityTypeId=128' \
+  --param 'select[]=id' \
+  --param 'select[]=title' \
+  --param 'select[]=stageId' \
+  --param 'select[]=assignedById' \
+  --json
 ```
 
 ### Create an item in a smart process
 
 ```bash
-vibe.py --raw POST /v1/crm/items --body '{
-  "entityTypeId": 128,
-  "title": "New application",
-  "stageId": "NEW",
-  "assignedById": 5
-}' --confirm-write --json
+python3 scripts/bitrix24_call.py crm.item.add \
+  --param 'entityTypeId=128' \
+  --param 'fields[title]=New item' \
+  --param 'fields[assignedById]=1' \
+  --json
 ```
 
-### Get a specific item
+### Get field schema for a type
 
 ```bash
-vibe.py --raw GET /v1/crm/items/123 --json
+python3 scripts/bitrix24_call.py crm.item.fields \
+  --param 'entityTypeId=128' \
+  --json
 ```
 
-## Common Pitfalls
+### List funnels (categories) for deals
 
-- `entityTypeId` is mandatory for all item operations — omitting it causes errors.
-- Use `/v1/crm/types` to discover `entityTypeId` values for custom processes.
-- Fields use camelCase (`stageId`, `assignedById`, `categoryId`) in the universal API.
-- Stage IDs are strings, not integers — pass them as `"NEW"`, `"WON"`, etc.
-- Filter operators may be key prefixes: `>=dateCreate`, `!stageId`, `%title`.
-- Always check field schema before writing custom field values.
+```bash
+python3 scripts/bitrix24_call.py crm.category.list \
+  --param 'entityTypeId=2' \
+  --json
+```
+
+### Get stage history
+
+```bash
+python3 scripts/bitrix24_call.py crm.stagehistory.list \
+  --param 'entityTypeId=2' \
+  --param 'filter[>=CREATED_TIME]=2026-01-01T00:00:00' \
+  --json
+```
+
+## Working Rules
+
+- `entityTypeId` is mandatory for all `crm.item.*` and `crm.category.*` methods.
+- Use `crm.type.list` to discover `entityTypeId` values for custom processes.
+- Fields use camelCase in `crm.item.*` (e.g. `stageId`, `assignedById`, `categoryId`).
+- For deal-specific methods (`crm.deal.*`), fields use UPPER_CASE (`STAGE_ID`, `CATEGORY_ID`).
+- Always call `crm.item.fields` before writing custom field values.
+
+## Good MCP Queries
+
+- `crm type list add smart process`
+- `crm item list add fields`
+- `crm category list funnels`
+- `crm stagehistory`
+- `crm status list`

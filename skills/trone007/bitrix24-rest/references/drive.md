@@ -1,74 +1,118 @@
 # Drive and Disk
 
-> **Note:** These endpoints use assumed Vibe Platform paths. Verify actual endpoints at runtime or check Vibe API documentation.
+Use this file for storage, folder, file, and external-link operations.
 
-Cloud storage for files, folders, and external links. Manages uploads, downloads, and folder hierarchy.
+## Core Methods
 
-## Endpoints
+Storages:
 
-| Action | Command |
-|--------|---------|
-| List files | `vibe.py --raw GET /v1/drive/files --json` |
-| Get file | `vibe.py --raw GET /v1/drive/files/123 --json` |
-| Upload file | `vibe.py --raw POST /v1/drive/files --body '{"folderId":1,"name":"doc.pdf","content":"base64..."}' --confirm-write --json` |
-| Get folder | `vibe.py --raw GET /v1/drive/folders/123 --json` |
-| Create folder | `vibe.py --raw POST /v1/drive/folders --body '{"parentId":1,"name":"New Folder"}' --confirm-write --json` |
+- `disk.storage.getlist` — list all storages
+- `disk.storage.get` — get storage by ID
+- `disk.storage.getchildren` — list root contents
+- `disk.storage.addfolder` — create folder in root
+- `disk.storage.uploadfile` — upload file to root
 
-## Key Fields (camelCase)
+Folders:
 
-- `id` — file or folder ID
-- `name` — file or folder name
-- `folderId` — parent folder ID
-- `parentId` — parent folder ID (for folder creation)
-- `size` — file size in bytes
-- `downloadUrl` — authenticated download link
-- `content` — base64-encoded file content (for upload)
-- `createdBy` — user ID of creator
-- `updatedAt` — last modification timestamp
+- `disk.folder.get` — folder metadata
+- `disk.folder.getchildren` — list folder contents
+- `disk.folder.addsubfolder` — create subfolder
+- `disk.folder.uploadfile` — upload file to folder
+- `disk.folder.getexternallink` — public link
+- `disk.folder.moveto` — move folder
+- `disk.folder.deletetree` — delete folder permanently
 
-## Copy-Paste Examples
+Files:
 
-### List all files
+- `disk.file.get` — file metadata (includes `DOWNLOAD_URL`)
+- `disk.file.copyto` — copy to folder
+- `disk.file.moveto` — move to folder
+- `disk.file.rename` — rename file
+- `disk.file.uploadversion` — upload new version
+- `disk.file.delete` — delete permanently
+
+Attached objects (files linked to tasks, chats, CRM entities):
+
+- `disk.attachedObject.get` — get info about an attached file (from task, chat, etc.)
+
+Chat handoff:
+
+- `im.disk.file.commit` — send existing Disk file to chat
+
+## Common Use Cases
+
+### List all storages
 
 ```bash
-vibe.py --raw GET /v1/drive/files --json
+python3 scripts/bitrix24_call.py disk.storage.getlist --json
 ```
 
-### Get file metadata
+### Browse storage contents
 
 ```bash
-vibe.py --raw GET /v1/drive/files/9043 --json
-```
-
-### Upload a file to a folder
-
-```bash
-vibe.py --raw POST /v1/drive/files --body '{
-  "folderId": 42,
-  "name": "report.pdf",
-  "content": "base64_encoded_content_here"
-}' --confirm-write --json
+python3 scripts/bitrix24_call.py disk.storage.getchildren \
+  --param 'id=1' \
+  --json
 ```
 
 ### Browse folder contents
 
 ```bash
-vibe.py --raw GET /v1/drive/folders/42 --json
+python3 scripts/bitrix24_call.py disk.folder.getchildren \
+  --param 'id=42' \
+  --json
 ```
 
-### Create a subfolder
+### Get file metadata
 
 ```bash
-vibe.py --raw POST /v1/drive/folders --body '{
-  "parentId": 42,
-  "name": "Q1 Reports"
-}' --confirm-write --json
+python3 scripts/bitrix24_call.py disk.file.get \
+  --param 'id=9043' \
+  --json
 ```
 
-## Common Pitfalls
+### Upload file to a folder
 
-- `downloadUrl` requires authentication — it is not a public link. Use external link endpoints for sharing.
-- File uploads use base64 encoding — large files may hit POST size limits (~30 MB after encoding).
-- Always get file metadata before attempting download or move operations.
-- Folder IDs from the root level may differ per user — list storages first to find the correct root.
-- Deleting files/folders may be permanent — verify before using delete endpoints.
+```bash
+python3 scripts/bitrix24_call.py disk.folder.uploadfile \
+  --param 'id=42' \
+  --param 'data[NAME]=document.txt' \
+  --param 'fileContent[0]=document.txt' \
+  --param 'fileContent[1]=<base64_content>' \
+  --json
+```
+
+### Get public link for a folder
+
+```bash
+python3 scripts/bitrix24_call.py disk.folder.getexternallink \
+  --param 'id=42' \
+  --json
+```
+
+### Get attached file info (from task, chat, etc.)
+
+```bash
+python3 scripts/bitrix24_call.py disk.attachedObject.get \
+  --param 'id=495' \
+  --json
+```
+
+Returns `OBJECT_ID` (disk file ID), `NAME`, `SIZE`, `DOWNLOAD_URL`, `MODULE_ID`, `ENTITY_TYPE`, `ENTITY_ID`.
+Get the attachment ID from methods like `tasks.task.get` (UF_TASK_WEBDAV_FILES) or chat message files.
+
+## Working Rules
+
+- Find file IDs from `disk.storage.getchildren` or `disk.folder.getchildren`.
+- Use `disk.file.get` to inspect metadata before download or move.
+- `DOWNLOAD_URL` requires authentication — it's not a public link.
+- Use `disk.folder.getexternallink` for sharing.
+- Use `disk.attachedObject.get` to get info about files attached to tasks or messages.
+
+## Good MCP Queries
+
+- `disk storage folder file`
+- `disk file upload version`
+- `disk external link`
+- `disk attachedObject get`
+- `im disk file commit`

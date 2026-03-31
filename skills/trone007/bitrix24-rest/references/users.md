@@ -1,73 +1,125 @@
 # Users, Departments, and Org Structure
 
-> **Note:** These endpoints use assumed Vibe Platform paths. Verify actual endpoints at runtime or check Vibe API documentation. The `/v1/me` endpoint is confirmed.
+Use this file for user lookup, department hierarchy, subordinates, managers, and org-structure reports.
 
-User lookup, department hierarchy, subordinates, and org-structure queries.
+## Users
 
-## Endpoints
+- `user.current` — current webhook user (always start here to get own ID)
+- `user.get` — get users by filter (supports `UF_DEPARTMENT`, `ACTIVE`, etc.)
+- `user.search` — fast fuzzy search by name, position, department
+- `profile` — basic info about current user (no scope required)
 
-| Action | Command |
-|--------|---------|
-| Current user | `vibe.py --raw GET /v1/me --json` |
-| List users | `vibe.py --raw GET /v1/users --json` |
-| Get user | `vibe.py --raw GET /v1/users/5 --json` |
-| Get departments | `vibe.py --raw GET /v1/departments --json` |
-| Get subordinates | `vibe.py --raw GET '/v1/users?managerId=5' --json` |
+## Departments
 
-## Key Fields (camelCase)
+- `department.get` — list departments (supports `PARENT`, `UF_HEAD`, `NAME` filters)
+- `department.add` / `department.update` / `department.delete`
+- `department.fields` — field schema
 
-- `id` — user ID
-- `name` — full name
-- `email` — email address
-- `position` — job title
-- `departmentId` — department ID
-- `managerId` — direct manager's user ID
-- `active` — whether the user is active
-- `phone` — work phone number
+Key fields in `department.get`:
 
-Department fields:
+- `ID` — department ID
+- `NAME` — department name
+- `PARENT` — parent department ID (use to build tree)
+- `UF_HEAD` — user ID of department head
+- `SORT` — sort order
 
-- `id` — department ID
-- `name` — department name
-- `parentId` — parent department ID (for building hierarchy tree)
-- `headId` — user ID of department head
+## Org Structure Helpers (Messenger API)
 
-## Copy-Paste Examples
+- `im.department.employees.get` — employees of given department(s)
+- `im.department.managers.get` — managers/heads of given department(s)
+- `im.department.colleagues.list` — colleagues of current user (for managers: returns subordinates)
+- `im.department.get` — department data by ID
+- `im.search.user.list` — search users by name/position
+- `im.search.department.list` — search departments by name
+- `im.user.get` — get user data by ID
+
+`BX24.selectUsers` is frontend-only, not usable from REST.
+
+## Common Use Cases
 
 ### Get current user identity
 
 ```bash
-vibe.py --raw GET /v1/me --json
+python3 scripts/bitrix24_call.py user.current --json
 ```
 
-### List all active users
+### Build department tree
+
+Get all departments, use `PARENT` field to reconstruct hierarchy:
 
 ```bash
-vibe.py --raw GET /v1/users --json
+python3 scripts/bitrix24_call.py department.get --json
 ```
 
-### Get a specific user
+### Get subdepartments of a specific department
 
 ```bash
-vibe.py --raw GET /v1/users/5 --json
+python3 scripts/bitrix24_call.py department.get \
+  --param 'PARENT=1' \
+  --json
 ```
 
-### Get all departments
+### Get department head
 
 ```bash
-vibe.py --raw GET /v1/departments --json
+python3 scripts/bitrix24_call.py im.department.managers.get \
+  --param 'ID[]=5' \
+  --param 'USER_DATA=Y' \
+  --json
 ```
 
-### Get subordinates of a manager
+### Get all employees of a department
 
 ```bash
-vibe.py --raw GET '/v1/users?managerId=5' --json
+python3 scripts/bitrix24_call.py im.department.employees.get \
+  --param 'ID[]=5' \
+  --json
 ```
 
-## Common Pitfalls
+### Get subordinates (for a manager)
 
-- Always start with `/v1/me` to get the current webhook user's ID — do not assume it.
-- Department hierarchy uses `parentId` — build a tree from flat list by grouping on this field.
-- `headId` in department data gives the head's user ID directly.
-- Pagination may apply — check response for `next` or `total` fields.
-- User search by name may require separate query parameters — verify at runtime.
+`im.department.colleagues.list` returns subordinates when called by a manager:
+
+```bash
+python3 scripts/bitrix24_call.py im.department.colleagues.list --json
+```
+
+### Get users by department
+
+```bash
+python3 scripts/bitrix24_call.py user.get \
+  --param 'filter[UF_DEPARTMENT]=5' \
+  --param 'filter[ACTIVE]=true' \
+  --json
+```
+
+### Search users by name
+
+```bash
+python3 scripts/bitrix24_call.py user.search \
+  --param 'FILTER[NAME]=Ivan' \
+  --json
+```
+
+## Building Reports by Department
+
+To build a report by department with subordinates:
+
+1. Get all departments: `department.get`
+2. For each department, get employees: `im.department.employees.get` or `user.get` with `filter[UF_DEPARTMENT]`
+3. For each department, get head: `im.department.managers.get`
+4. Cross-reference with task/timeman data as needed
+
+## Working Rules
+
+- Always start with `user.current` to know the webhook user's ID.
+- Use `department.get` with `PARENT` filter to navigate the tree.
+- `UF_HEAD` in department data gives the head's user ID directly.
+- Pagination: page size 50, use `START=0`, `START=50`, etc.
+
+## Good MCP Queries
+
+- `user current get search`
+- `department get fields`
+- `im department employees managers colleagues`
+- `im search user department`

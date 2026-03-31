@@ -1,112 +1,112 @@
 # Activity Stream (Feed)
 
-Use this file for the Bitrix24 news feed -- posting, reading, commenting, and sharing messages in the company feed.
+Use this file for the Bitrix24 news feed — posting, reading, commenting, and sharing messages in the company feed.
 
-## Entity CRUD
+Scope: `log`
 
-| Action | Command |
-|--------|---------|
-| List posts | `vibe.py posts --json` |
-| Get post | `vibe.py posts/755 --json` |
-| Create post | `vibe.py posts --create --body '{"title":"News","message":"Update!"}' --confirm-write --json` |
-| Update post | `vibe.py posts/755 --update --body '{"message":"Updated text"}' --confirm-write --json` |
-| Delete post | `vibe.py posts/755 --delete --confirm-destructive --json` |
-| Search posts | `vibe.py posts/search --body '{"filter":{"createdAt":{"$gte":"2026-03-01"}}}' --json` |
-| Fields | `vibe.py posts/fields --json` |
+## Core Methods
 
-## Comments and Sharing
+- `log.blogpost.get` — read feed posts (filter by `POST_ID` or `LOG_RIGHTS`)
+- `log.blogpost.add` — post a message to the feed
+- `log.blogpost.update` — update a feed post
+- `log.blogpost.share` — add recipients to an existing post
+- `log.blogcomment.add` — add comment to a feed post
+- `log.blogcomment.user.get` — get comments by user for a post
 
-| Action | Command |
-|--------|---------|
-| Add comment | `vibe.py posts/755/comments --create --body '{"text":"Great work!"}' --confirm-write --json` |
-| List comments | `vibe.py posts/755/comments --json` |
-| Share post | `vibe.py posts/755 --update --body '{"addRecipients":["U42"]}' --confirm-write --json` |
+Also related (CRM-specific):
 
-## Key Fields
+- `crm.livefeedmessage.add` — post to CRM entity feed
 
-All field names use camelCase:
-
-- `title` -- post title (optional)
-- `message` -- post body text
-- `recipients` -- array of recipient codes
-- `createdAt` -- creation timestamp
-- `authorId` -- post author user ID
-- `important` -- flag for pinnable posts
-
-## Recipients
+## Recipients (DEST / LOG_RIGHTS)
 
 Feed messages use recipient codes:
 
-- `UA` -- all authorized users
-- `U<id>` -- specific user (e.g. `U1`, `U42`)
-- `SG<id>` -- workgroup/project (e.g. `SG15`)
-- `DR<id>` -- department including subdepartments (e.g. `DR5`)
+- `UA` — all authorized users
+- `U<id>` — specific user (e.g. `U1`, `U42`)
+- `SG<id>` — workgroup/project (e.g. `SG15`)
+- `DR<id>` — department including subdepartments (e.g. `DR5`)
 
-Default recipient: `["UA"]` (everyone).
-
-## Filter Syntax
-
-MongoDB-style operators in search:
-
-| Operator | Meaning | Example |
-|----------|---------|---------|
-| `$eq` | Equals | `{"authorId":{"$eq":5}}` |
-| `$gte` | Greater or equal | `{"createdAt":{"$gte":"2026-03-01"}}` |
-| `$lte` | Less or equal | `{"createdAt":{"$lte":"2026-03-31"}}` |
-| `$contains` | Contains substring | `{"message":{"$contains":"quarterly"}}` |
+Default recipient: `['UA']` (everyone).
 
 ## Common Use Cases
 
 ### Read recent feed posts
 
 ```bash
-python3 scripts/vibe.py posts --json
+python3 scripts/bitrix24_call.py log.blogpost.get --json
 ```
 
-### Post a message to the entire company
+### Read a specific post
 
 ```bash
-python3 scripts/vibe.py posts --create \
-  --body '{"message":"Hello team!","recipients":["UA"]}' \
-  --confirm-write --json
+python3 scripts/bitrix24_call.py log.blogpost.get \
+  --param 'POST_ID=755' \
+  --json
+```
+
+### Read posts visible to a specific group
+
+```bash
+python3 scripts/bitrix24_call.py log.blogpost.get \
+  --param 'LOG_RIGHTS=SG15' \
+  --json
+```
+
+### Post a message to the feed
+
+```bash
+python3 scripts/bitrix24_call.py log.blogpost.add \
+  --param 'POST_MESSAGE=Hello team!' \
+  --param 'DEST[]=UA' \
+  --json
 ```
 
 ### Post to a specific department
 
 ```bash
-python3 scripts/vibe.py posts --create \
-  --body '{"title":"Department Update","message":"Monthly results are ready.","recipients":["DR5"]}' \
-  --confirm-write --json
+python3 scripts/bitrix24_call.py log.blogpost.add \
+  --param 'POST_TITLE=Department Update' \
+  --param 'POST_MESSAGE=Monthly results are ready.' \
+  --param 'DEST[]=DR5' \
+  --json
 ```
 
 ### Post to a project group
 
 ```bash
-python3 scripts/vibe.py posts --create \
-  --body '{"message":"Sprint review tomorrow at 10:00","recipients":["SG15"]}' \
-  --confirm-write --json
+python3 scripts/bitrix24_call.py log.blogpost.add \
+  --param 'POST_MESSAGE=Sprint review tomorrow at 10:00' \
+  --param 'DEST[]=SG15' \
+  --json
 ```
 
 ### Add a comment
 
 ```bash
-python3 scripts/vibe.py posts/755/comments --create \
-  --body '{"text":"Great work!"}' \
-  --confirm-write --json
-```
-
-### Search posts by date
-
-```bash
-python3 scripts/vibe.py posts/search \
-  --body '{"filter":{"createdAt":{"$gte":"2026-03-01","$lte":"2026-03-31"}}}' \
+python3 scripts/bitrix24_call.py log.blogcomment.add \
+  --param 'POST_ID=755' \
+  --param 'TEXT=Great work!' \
   --json
 ```
 
-## Common Pitfalls
+### Share a post with additional recipients
 
-- Posts are visible only to specified recipients. Use `recipients` to control visibility.
+```bash
+python3 scripts/bitrix24_call.py log.blogpost.share \
+  --param 'POST_ID=755' \
+  --param 'DEST[]=U42' \
+  --json
+```
+
+## Working Rules
+
+- `log.blogpost.get` without `POST_ID` returns recent posts for current user.
+- Posts are visible only to specified recipients. Use `DEST` to control visibility.
 - Comments inherit visibility from the parent post.
-- Default recipient is `["UA"]` (all users) if not specified.
-- `important` flag makes a post pinnable with an optional expiration date.
-- Write operations require `--confirm-write`, delete operations require `--confirm-destructive`.
+- `IMPORTANT=Y` flag makes a post pinnable with an optional expiration date.
+
+## Good MCP Queries
+
+- `log blogpost add get`
+- `log blogcomment`
+- `crm livefeedmessage`

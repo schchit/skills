@@ -1,90 +1,116 @@
 # Products and Product Rows
 
-> **Note:** These endpoints use assumed Vibe Platform paths. Verify actual endpoints at runtime or check Vibe API documentation.
+Use this file for the product catalog, product items, and attaching products to CRM entities (deals, quotes, invoices).
 
-Product catalog management and attaching product rows to CRM entities (deals, quotes, invoices).
+Scope: `crm`, `catalog`
 
-## Endpoints
+## Product Catalog
 
-| Action | Command |
-|--------|---------|
-| List products | `vibe.py --raw GET /v1/products --json` |
-| Get product | `vibe.py --raw GET /v1/products/123 --json` |
-| Create product | `vibe.py --raw POST /v1/products --body '{"name":"Widget","price":1000,"currencyId":"RUB"}' --confirm-write --json` |
-| Product rows on deal | `vibe.py --raw GET /v1/deals/123/products --json` |
-| Set product rows | `vibe.py --raw POST /v1/deals/123/products --body '{"rows":[{"productId":1,"quantity":5,"price":1000}]}' --confirm-write --json` |
+- `crm.product.list` — list products (supports `order`, `filter`, `select`)
+- `crm.product.add` — add product to CRM catalog
+- `crm.product.get` — get product by ID
+- `crm.product.update` — update product
+- `crm.product.delete` — delete product
+- `crm.product.fields` — field schema
 
-## Key Fields (camelCase)
+Key fields: `ID`, `NAME`, `PRICE`, `CURRENCY_ID`, `CATALOG_ID`, `SECTION_ID`, `ACTIVE`, `MEASURE`, `DESCRIPTION`.
 
-Product fields:
+## Product Sections
 
-- `id` — product ID
-- `name` — product name
-- `price` — price per unit
-- `currencyId` — currency code (e.g., `RUB`, `USD`)
-- `active` — whether product is active
-- `description` — product description
-- `sectionId` — product category/section ID
-- `measureCode` — unit of measure code
+- `crm.productsection.list` — list product sections (categories)
+- `crm.productsection.add` — add section
+- `crm.productsection.get` — get section
+- `crm.productsection.update` — update section
+- `crm.productsection.delete` — delete section
 
-Product row fields:
+## Product Rows on CRM Entities
 
-- `productId` — ID from catalog (optional if using `productName`)
+Product rows attach catalog products to deals, quotes, invoices, and smart processes.
+
+- `crm.item.productrow.list` — list product rows (filter by `ownerId`, `ownerType`)
+- `crm.item.productrow.get` — get one product row by ID
+- `crm.item.productrow.set` — set product rows on entity (replaces all existing rows!)
+- `crm.item.productrow.delete` — delete a product row
+- `crm.item.productrow.getAvailableForPayment` — get rows available for payment
+
+Owner type short codes: `L` = lead, `D` = deal, `Q` = quote, `SI` = smart invoice, dynamic types use `T{entityTypeId}`.
+
+### Product row fields
+
+- `productId` — ID from catalog (optional, can use `productName` alone)
 - `productName` — product name (auto-filled from catalog if `productId` given)
 - `price` — price per unit including discounts and taxes
 - `quantity` — quantity (default 1)
 - `discountTypeId` — 1 = absolute, 2 = percentage
-- `discountRate` — discount in percent
-- `taxRate` — tax rate in percent
-- `taxIncluded` — whether tax is included in price
+- `discountRate` — discount in %
+- `discountSum` — discount in absolute value
+- `taxRate` — tax rate in %
+- `taxIncluded` — `Y`/`N`
+- `measureCode` — unit of measure code
 - `sort` — sort order
 
-## Copy-Paste Examples
+## Common Use Cases
 
 ### List all products
 
 ```bash
-vibe.py --raw GET /v1/products --json
+python3 scripts/bitrix24_call.py crm.product.list \
+  --param 'select[]=ID' \
+  --param 'select[]=NAME' \
+  --param 'select[]=PRICE' \
+  --param 'select[]=CURRENCY_ID' \
+  --param 'order[NAME]=ASC' \
+  --json
 ```
 
-### Get a specific product
+### Add a product to catalog
 
 ```bash
-vibe.py --raw GET /v1/products/456 --json
+python3 scripts/bitrix24_call.py crm.product.add \
+  --param 'fields[NAME]=Widget Pro' \
+  --param 'fields[PRICE]=1500' \
+  --param 'fields[CURRENCY_ID]=RUB' \
+  --param 'fields[ACTIVE]=Y' \
+  --json
 ```
 
-### Create a product
+### Get product rows of a deal
 
 ```bash
-vibe.py --raw POST /v1/products --body '{
-  "name": "Widget Pro",
-  "price": 1500,
-  "currencyId": "RUB",
-  "active": true
-}' --confirm-write --json
-```
-
-### Get product rows on a deal
-
-```bash
-vibe.py --raw GET /v1/deals/123/products --json
+python3 scripts/bitrix24_call.py crm.item.productrow.list \
+  --param 'filter[ownerId]=123' \
+  --param 'filter[ownerType]=D' \
+  --json
 ```
 
 ### Set product rows on a deal
 
+This replaces all existing product rows:
+
 ```bash
-vibe.py --raw POST /v1/deals/123/products --body '{
-  "rows": [
-    {"productId": 456, "price": 1500, "quantity": 2},
-    {"productName": "Custom Service", "price": 5000, "quantity": 1}
-  ]
-}' --confirm-write --json
+python3 scripts/bitrix24_call.py crm.item.productrow.set \
+  --param 'ownerType=D' \
+  --param 'ownerId=123' \
+  --param 'productRows[0][productId]=456' \
+  --param 'productRows[0][price]=1500' \
+  --param 'productRows[0][quantity]=2' \
+  --param 'productRows[1][productName]=Custom Service' \
+  --param 'productRows[1][price]=5000' \
+  --param 'productRows[1][quantity]=1' \
+  --json
 ```
 
-## Common Pitfalls
+## Working Rules
 
-- Setting product rows replaces all existing rows — always include all desired rows in one call.
-- You can use either `productId` (from catalog) or `productName` (ad hoc) for each row.
-- Currency codes must match portal settings — verify valid codes at runtime.
-- Discount and tax fields interact — if `taxIncluded` is set, `price` already contains tax.
-- Product sections/categories are managed separately — list them to find valid `sectionId` values.
+- `crm.item.productrow.set` overwrites all existing rows — always include all desired rows.
+- `crm.product.*` uses UPPER_CASE field names.
+- `crm.item.productrow.*` uses camelCase field names.
+- Filter prefix operators work on `crm.product.list`: `>=PRICE`, `%NAME`.
+- `CATALOG_ID` filter is useful when multiple catalogs exist.
+
+## Good MCP Queries
+
+- `crm product list add fields`
+- `crm item productrow set list`
+- `crm productsection`
+- `catalog product`

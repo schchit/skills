@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Use this file when Vibe Platform calls fail or the agent cannot reach the portal.
+Use this file when webhook calls fail or the agent cannot reach the portal.
 
 ## Default Behavior
 
@@ -8,71 +8,69 @@ Do the first diagnosis yourself before asking the user anything.
 
 Preferred order:
 
-1. Run `scripts/check_connection.py --json`
-2. Inspect the result: HTTP status, error code, message
+1. Run `scripts/check_webhook.py --json`
+2. Inspect the result: format, DNS, HTTP status
 3. Report concrete findings and one next fix
-4. Only guide the user to vibecode.bitrix24.tech if no valid key exists
+4. Only ask the user for a webhook if no saved config exists
 
-## Error Mapping
+## Typical Failure: No Webhook Configured
 
-| HTTP | Code | What happened | User message |
-|------|------|--------------|-------------|
-| 401 | AUTH_REQUIRED | Key invalid | "Ключ не подошёл. Создайте новый на vibecode.bitrix24.tech" |
-| 403 | KEY_REVOKED | Key disabled | "Ваш ключ был отключён. Создайте новый на vibecode.bitrix24.tech" |
-| 403 | SCOPE_DENIED | Missing permissions | "Нет доступа к этому разделу. Создайте новый ключ с полными правами" |
-| 404 | NOT_FOUND | Record not found | "Не нашёл запись с таким номером" |
-| 422 | BITRIX_ERROR | Bitrix24 internal error | "Битрикс24 вернул ошибку, попробуйте позже" |
-| 429 | RATE_LIMIT | Rate limited | Auto-pause ~45s + retry (user never sees this) |
-| 502 | BITRIX_UNAVAILABLE | Portal down | "Портал Битрикс24 временно недоступен" |
-| 400 | VALIDATION_ERROR | Agent error | Log, don't show to user |
-| 500 | INTERNAL_ERROR | Server error | "Сервис временно недоступен" |
+If `check_webhook.py` reports `"source": "missing"`:
 
-## Typical Failure: No Key Configured
+- Ask the user for a webhook URL
+- Save and verify in one step:
 
-If `check_connection.py` reports no key or `"source": "missing"`:
+```bash
+python3 scripts/bitrix24_call.py user.current --url "<webhook>" --json
+```
 
-- Show the user onboarding instructions
-- Direct them to vibecode.bitrix24.tech to create a key
-- Once the key is configured, verify with `check_connection.py --json`
+If the user already pasted the webhook earlier in the conversation, save it immediately and retry.
 
-## Typical Failure: Key Invalid (401)
+## Typical Failure: DNS Resolution Failed
 
-HTTP 401 with code `AUTH_REQUIRED`:
+Usually means:
 
-- The key was entered incorrectly or has expired
-- Tell the user to create a new key on vibecode.bitrix24.tech
-- Do not ask the user to debug the key — just replace it
+- typo in the portal domain
+- local network issue
 
-## Typical Failure: Key Revoked (403)
+Tell the user the portal address could not be reached. Name the host that failed.
 
-HTTP 403 with code `KEY_REVOKED`:
+## Typical Failure: Bad Format
 
-- The key was disabled by the portal administrator
-- Tell the user to create a new key on vibecode.bitrix24.tech
+Expected format:
 
-## Typical Failure: Missing Scope (403)
+```text
+https://your-portal.bitrix24.ru/rest/<user_id>/<webhook>/
+```
 
-HTTP 403 with code `SCOPE_DENIED`:
+Common mistakes:
 
-- The key does not have permissions for the requested module
-- Tell the user to create a new key with all scopes (full permissions) on vibecode.bitrix24.tech
-- Name the specific module that was denied (CRM, Tasks, Calendar, etc.) if available in the error
+- copied portal URL instead of webhook URL
+- extra quotes or spaces
+- wrong user ID segment
 
-## Typical Failure: Rate Limit (429)
+## Typical Failure: HTTP 401 or Auth Errors
 
-HTTP 429 with code `RATE_LIMIT`:
+Usually indicates:
 
-- Handled automatically by vibe.py — pause ~45 seconds and retry
-- The user should never see this error
-- If retries are exhausted, report to the user that Bitrix24 is temporarily overloaded
+- revoked webhook
+- wrong secret
+- expired OAuth token
 
-## Typical Failure: Portal Unavailable (502)
+Ask the user to verify or regenerate the webhook in Bitrix24.
 
-HTTP 502 with code `BITRIX_UNAVAILABLE`:
+## Typical Failure: `ACCESS_DENIED` or `insufficient_scope`
 
-- The Bitrix24 portal is temporarily down
-- Auto-retry once after a short pause
-- If still failing, tell the user: the portal is temporarily unavailable, try again in a few minutes
+Missing permissions. Tell the user exactly which scope family is likely missing:
+
+- CRM
+- Tasks
+- Calendar
+- Disk
+- IM
+- `imbot`
+
+Do not just say "permissions issue" without naming the likely scope.
 
 ## User-Facing Style
 
@@ -82,42 +80,41 @@ Prefer:
 - what failed
 - what is already confirmed working
 - one next action
-- plain business language ("связь с Битрикс24", "доступ к CRM")
+- plain business language ("connection to Bitrix24", "access to calendar")
 - doing the next safe step yourself before asking the user
 
 Avoid:
 
 - long lists of shell commands for the user
 - asking for confirmation before a simple retry
-- exposing API keys or secrets
-- talking about curl, HTTP, JSON, DNS, or config mechanics unless explicitly asked
+- exposing webhook URLs or secrets
+- talking about curl, MCP, JSON, DNS, or config mechanics unless explicitly asked
 - multiple-choice menus
-- technical jargon (status codes, error codes) in user-facing messages
 
 ## Response Templates
 
 Bad:
 
-- "What you need to do now: 1. go to settings 2. copy the key 3. run the check script 4. verify the response..."
+- "What you need to do now: 1. create env 2. source env 3. run curl 4. or try direct URL..."
 
-Better for missing key:
+Better for missing webhook:
 
-- "Сейчас доступ к Битрикс24 не подключен. Подключитесь через vibecode.bitrix24.tech."
+- "Сейчас доступ к Битрикс24 не подключен. Пришлите вебхук, и я сразу настрою и проверю подключение."
+
+Better when DNS failed:
+
+- "Не удаётся связаться с Битрикс24. Похоже, адрес портала указан неверно."
 
 Better when auth failed:
 
-- "Связь с Битрикс24 есть, но ключ не подтверждён. Создайте новый ключ."
-
-Better when portal down:
-
-- "Не удаётся связаться с Битрикс24. Попробуйте через пару минут."
+- "Связь с Битрикс24 есть, но доступ не подтверждён. Скорее всего, вебхук нужно обновить."
 
 ## Autonomous Retry Rule
 
 For safe read-only requests:
 
 - Execute immediately
-- If it fails, run `check_connection.py --json`
+- If it fails, run `check_webhook.py --json`
 - If fixable, retry once automatically
 - Only then report the blocker
 

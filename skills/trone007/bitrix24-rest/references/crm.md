@@ -1,149 +1,197 @@
 # CRM
 
-Use this file for deals, contacts, companies, leads, activities, timeline, and stage history.
+Use this file for deals, contacts, companies, leads, activities, and modern CRM item APIs.
 
-## Entity CRUD
+## Core Methods
 
-### Deals
+Deals:
 
-| Action | Command |
-|--------|---------|
-| List deals | `vibe.py deals --json` |
-| Get deal | `vibe.py deals/123 --json` |
-| Create deal | `vibe.py deals --create --body '{"title":"Deal","stageId":"NEW","opportunity":50000}' --confirm-write --json` |
-| Update deal | `vibe.py deals/123 --update --body '{"stageId":"WON"}' --confirm-write --json` |
-| Delete deal | `vibe.py deals/123 --delete --confirm-destructive --json` |
-| Search deals | `vibe.py deals/search --body '{"filter":{"opportunity":{"$gte":100000}}}' --json` |
-| Aggregate | `vibe.py deals/aggregate --body '{"field":"opportunity","function":"sum"}' --json` |
-| Fields | `vibe.py deals/fields --json` |
+- `crm.deal.list` / `crm.deal.get` / `crm.deal.add` / `crm.deal.update` / `crm.deal.delete`
+- `crm.deal.fields` — field schema
+- `crm.deal.contact.add` / `crm.deal.contact.items.get`
 
-### Contacts
+Contacts:
 
-| Action | Command |
-|--------|---------|
-| List contacts | `vibe.py contacts --json` |
-| Get contact | `vibe.py contacts/123 --json` |
-| Create contact | `vibe.py contacts --create --body '{"name":"John","lastName":"Doe","phone":"+1234567890"}' --confirm-write --json` |
-| Update contact | `vibe.py contacts/123 --update --body '{"phone":"+0987654321"}' --confirm-write --json` |
-| Delete contact | `vibe.py contacts/123 --delete --confirm-destructive --json` |
-| Search contacts | `vibe.py contacts/search --body '{"filter":{"name":{"$contains":"John"}}}' --json` |
-| Fields | `vibe.py contacts/fields --json` |
+- `crm.contact.list` / `crm.contact.get` / `crm.contact.add` / `crm.contact.update` / `crm.contact.delete`
+- `crm.contact.fields`
 
-### Companies
+Companies:
 
-| Action | Command |
-|--------|---------|
-| List companies | `vibe.py companies --json` |
-| Get company | `vibe.py companies/123 --json` |
-| Create company | `vibe.py companies --create --body '{"title":"Acme Corp"}' --confirm-write --json` |
-| Update company | `vibe.py companies/123 --update --body '{"title":"Acme Corporation"}' --confirm-write --json` |
-| Delete company | `vibe.py companies/123 --delete --confirm-destructive --json` |
-| Search companies | `vibe.py companies/search --body '{"filter":{"title":{"$contains":"Acme"}}}' --json` |
-| Fields | `vibe.py companies/fields --json` |
+- `crm.company.list` / `crm.company.get` / `crm.company.add` / `crm.company.update` / `crm.company.delete`
 
-### Leads
+Leads:
 
-| Action | Command |
-|--------|---------|
-| List leads | `vibe.py leads --json` |
-| Get lead | `vibe.py leads/123 --json` |
-| Create lead | `vibe.py leads --create --body '{"title":"New Lead","name":"Jane","lastName":"Smith"}' --confirm-write --json` |
-| Update lead | `vibe.py leads/123 --update --body '{"statusId":"CONVERTED"}' --confirm-write --json` |
-| Delete lead | `vibe.py leads/123 --delete --confirm-destructive --json` |
-| Search leads | `vibe.py leads/search --body '{"filter":{"statusId":{"$eq":"NEW"}}}' --json` |
-| Fields | `vibe.py leads/fields --json` |
+- `crm.lead.list` / `crm.lead.get` / `crm.lead.add` / `crm.lead.update` / `crm.lead.delete`
+- `crm.lead.fields`
 
-## Activities, Timeline, Stage History
+Activities (classic):
 
-Use `--raw` mode for these endpoints.
+- `crm.activity.list` / `crm.activity.add` / `crm.activity.update` / `crm.activity.delete`
 
-### Activities
+Timeline — Todo (universal activities in deal/lead/contact timeline):
 
-```bash
-# List activities for a deal
-python3 scripts/vibe.py --raw GET '/v1/crm/activities?ownerTypeId=2&ownerId=123' --json
+- `crm.activity.todo.add` — create a todo item in timeline
+- `crm.activity.todo.update` — update todo
+- `crm.activity.todo.updateDeadline` — change deadline only
+- `crm.activity.todo.updateDescription` — change description only
 
-# Add activity
-python3 scripts/vibe.py --raw POST /v1/crm/activities \
-  --body '{"ownerTypeId":2,"ownerId":123,"typeId":2,"subject":"Follow-up call"}' \
-  --confirm-write --json
-```
+Timeline — Comments & Log:
 
-### Timeline Todo
+- `crm.timeline.comment.add` — add comment to entity timeline
+- `crm.timeline.comment.update` — edit existing comment
+- `crm.timeline.logmessage.add` — add log entry to timeline (for recording events)
 
-```bash
-# Add todo to deal timeline
-python3 scripts/vibe.py --raw POST /v1/crm/timeline/todos \
-  --body '{"ownerTypeId":2,"ownerId":123,"deadline":"2026-03-15T15:00:00","title":"Follow up with client","description":"Call to discuss proposal","responsibleId":5}' \
-  --confirm-write --json
-```
+CRM Feed:
 
-### Timeline Comments
+- `crm.livefeedmessage.add` — post message to CRM activity stream
 
-```bash
-# Add comment to deal timeline
-python3 scripts/vibe.py --raw POST /v1/crm/timeline/comments \
-  --body '{"entityId":123,"entityType":"deal","comment":"Client confirmed budget approval"}' \
-  --confirm-write --json
-```
+Stage History:
 
-### Timeline Log
+- `crm.stagehistory.list` — history of stage transitions (deals, leads, invoices)
 
-```bash
-# Add log entry to timeline
-python3 scripts/vibe.py --raw POST /v1/crm/timeline/log \
-  --body '{"entityTypeId":2,"entityId":123,"title":"Price changed","text":"Price updated from 100k to 120k after negotiation","iconCode":"info"}' \
-  --confirm-write --json
-```
+Modern generalized APIs (smart processes, dynamic types):
 
-### Stage History
-
-```bash
-# Get stage history for deals
-python3 scripts/vibe.py --raw GET '/v1/crm/stagehistory?entityTypeId=2&filter[createdTime][$gte]=2026-03-01' --json
-```
+- `crm.item.list` / `crm.item.add` / `crm.item.update` / `crm.item.delete`
+- `crm.item.batchImport`
 
 ## Filter Syntax
 
-MongoDB-style operators replace prefix operators:
+CRM list methods use prefix operators:
 
-| Operator | Meaning | Example |
-|----------|---------|---------|
-| `$eq` | Equals | `{"stageId":{"$eq":"WON"}}` |
-| `$ne` | Not equal | `{"stageId":{"$ne":"LOSE"}}` |
-| `$gt` | Greater than | `{"opportunity":{"$gt":10000}}` |
-| `$gte` | Greater or equal | `{"opportunity":{"$gte":100000}}` |
-| `$lt` | Less than | `{"opportunity":{"$lt":50000}}` |
-| `$lte` | Less or equal | `{"createdAt":{"$lte":"2026-03-01"}}` |
-| `$contains` | Contains substring | `{"title":{"$contains":"urgent"}}` |
-| `$in` | In list | `{"stageId":{"$in":["NEW","WON"]}}` |
+- `>OPPORTUNITY` — greater than
+- `>=DATE_CREATE` — on or after
+- `=STAGE_ID` — equals (default without prefix)
+- `!STATUS_ID` — not equal
 
-Example: find deals with opportunity above 100k:
+Example: `filter[>OPPORTUNITY]=10000` returns deals with opportunity above 10000.
+
+## Common Use Cases
+
+### List deals with filter
 
 ```bash
-python3 scripts/vibe.py deals/search \
-  --body '{"filter":{"opportunity":{"$gte":100000}}}' --json
+python3 scripts/bitrix24_call.py crm.deal.list \
+  --param 'filter[>OPPORTUNITY]=10000' \
+  --param 'select[]=ID' \
+  --param 'select[]=TITLE' \
+  --param 'select[]=OPPORTUNITY' \
+  --param 'select[]=STAGE_ID' \
+  --json
 ```
 
-## Key Fields
-
-All field names use camelCase:
-
-- `title` — deal/lead/company name
-- `stageId` — pipeline stage
-- `opportunity` — deal amount
-- `currencyId` — currency code
-- `contactId` — linked contact
-- `companyId` — linked company
-- `assignedById` — responsible user
-- `createdAt` — creation timestamp
-- `updatedAt` — last modification timestamp
-
-Use `{entity}/fields` to discover all available fields including custom fields:
+### Create a deal
 
 ```bash
-python3 scripts/vibe.py deals/fields --json
+python3 scripts/bitrix24_call.py crm.deal.add \
+  --param 'fields[TITLE]=New Deal' \
+  --param 'fields[OPPORTUNITY]=50000' \
+  --param 'fields[CURRENCY_ID]=RUB' \
+  --json
 ```
+
+### Get field schema before writing
+
+```bash
+python3 scripts/bitrix24_call.py crm.deal.fields --json
+```
+
+### Add activity to a deal
+
+```bash
+python3 scripts/bitrix24_call.py crm.activity.add \
+  --param 'fields[OWNER_TYPE_ID]=2' \
+  --param 'fields[OWNER_ID]=123' \
+  --param 'fields[TYPE_ID]=2' \
+  --param 'fields[SUBJECT]=Follow-up call' \
+  --json
+```
+
+### Stuck deals (no activity for 14+ days)
+
+Deals in active pipeline with no recent modification — useful for proactive "💤" warnings:
+
+```bash
+python3 scripts/bitrix24_call.py crm.deal.list \
+  --param 'filter[ASSIGNED_BY_ID]=1' \
+  --param 'filter[STAGE_SEMANTIC_ID]=P' \
+  --param 'filter[<DATE_MODIFY]=2026-02-22' \
+  --param 'select[]=ID' \
+  --param 'select[]=TITLE' \
+  --param 'select[]=STAGE_ID' \
+  --param 'select[]=DATE_MODIFY' \
+  --param 'select[]=OPPORTUNITY' \
+  --json
+```
+
+`STAGE_SEMANTIC_ID=P` = in progress (active pipeline). `<DATE_MODIFY` = last modified before 14 days ago.
+
+### Add todo to a deal timeline
+
+```bash
+python3 scripts/bitrix24_call.py crm.activity.todo.add \
+  --param 'ownerTypeId=2' \
+  --param 'ownerId=123' \
+  --param 'deadline=2026-03-15T15:00:00' \
+  --param 'title=Follow up with client' \
+  --param 'description=Call to discuss proposal' \
+  --param 'responsibleId=5' \
+  --json
+```
+
+`ownerTypeId`: 1=lead, 2=deal, 3=contact, 4=company.
+Optional `pingOffsets` (array of minutes for reminders): `--param 'pingOffsets[]=0' --param 'pingOffsets[]=15'`
+
+### Add comment to deal timeline
+
+```bash
+python3 scripts/bitrix24_call.py crm.timeline.comment.add \
+  --param 'fields[ENTITY_ID]=123' \
+  --param 'fields[ENTITY_TYPE]=deal' \
+  --param 'fields[COMMENT]=Client confirmed budget approval' \
+  --json
+```
+
+`ENTITY_TYPE` values: `deal`, `lead`, `contact`, `company`, `order`, `quote` (string, lowercase).
+
+### Add log entry to timeline
+
+```bash
+python3 scripts/bitrix24_call.py crm.timeline.logmessage.add \
+  --param 'fields[entityTypeId]=2' \
+  --param 'fields[entityId]=123' \
+  --param 'fields[title]=Price changed' \
+  --param 'fields[text]=Price updated from 100k to 120k after negotiation' \
+  --param 'fields[iconCode]=info' \
+  --json
+```
+
+Note: `crm.timeline.logmessage.add` uses camelCase field names (`entityTypeId`), not UPPER_CASE.
+
+### Post message to CRM feed
+
+```bash
+python3 scripts/bitrix24_call.py crm.livefeedmessage.add \
+  --param 'fields[POST_TITLE]=Deal update' \
+  --param 'fields[MESSAGE]=Contract signed with Company X' \
+  --param 'fields[ENTITYTYPEID]=2' \
+  --param 'fields[ENTITYID]=123' \
+  --json
+```
+
+### Get stage history for deals
+
+```bash
+python3 scripts/bitrix24_call.py crm.stagehistory.list \
+  --param 'entityTypeId=2' \
+  --param 'filter[>=CREATED_TIME]=2026-03-01T00:00:00' \
+  --param 'select[]=OWNER_ID' \
+  --param 'select[]=STAGE_ID' \
+  --param 'select[]=CREATED_TIME' \
+  --json
+```
+
+Returns items with `TYPE_ID`: 1=created, 2=intermediate stage, 3=final stage, 5=pipeline change.
+`STAGE_SEMANTIC_ID`: P=in progress, S=won, F=lost.
 
 ## Entity Type IDs
 
@@ -158,39 +206,13 @@ python3 scripts/vibe.py deals/fields --json
 | 31 | Smart Invoice (new) |
 | 128+ | Custom smart processes |
 
-## Common Use Cases
-
-### Stuck deals (no activity for 14+ days)
-
-```bash
-python3 scripts/vibe.py deals/search \
-  --body '{"filter":{"assignedById":{"$eq":1},"stageSemanticId":{"$eq":"P"},"updatedAt":{"$lt":"2026-03-10"}}}' --json
-```
-
-`stageSemanticId=P` = in progress (active pipeline).
-
-### Deals by stage
-
-```bash
-python3 scripts/vibe.py deals/search \
-  --body '{"filter":{"stageId":{"$in":["NEW","PREPARATION"]}}}' --json
-```
-
-### Total deal value
-
-```bash
-python3 scripts/vibe.py deals/aggregate \
-  --body '{"field":"opportunity","function":"sum"}' --json
-```
-
 ## Working Rules
 
-- Read `{entity}/fields` before writing custom or portal-specific fields.
+- Read `*.fields` before writing custom or portal-specific fields.
 - Do not hardcode stage names across portals — pipelines and categories vary.
-- Field names are camelCase: `opportunity`, `stageId`, `assignedById`.
-- Pagination: use `page` and `pageSize` query parameters.
-- Use entity CRUD commands for deals, contacts, companies, leads.
-- Use `--raw` mode for activities, timeline, and stage history.
+- Use classic `crm.deal.*` for built-in entities, `crm.item.*` for smart processes.
+- Always use `select[]` to limit response size.
+- Pagination: page size is 50, use `start=0`, `start=50`, etc.
 
 ## Good MCP Queries
 

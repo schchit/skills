@@ -1,47 +1,62 @@
 # Access and Auth
 
-## Vibe Key Setup
+## Webhook Setup
 
-1. Go to [vibecode.bitrix24.tech](https://vibecode.bitrix24.tech).
-2. Sign in with your Bitrix24 account.
-3. Create a new key and select **all scopes** for full access.
-4. Copy the key.
-5. Save and verify:
+1. In Bitrix24 open `Developer resources -> Other -> Inbound webhook`.
+2. Create a webhook and copy its URL.
+3. Save it:
 
 ```bash
-python3 scripts/vibe.py --raw GET /v1/me --json
+python3 scripts/bitrix24_call.py user.current --url "<webhook>" --json
 ```
 
-The script will prompt for the key on first run and save it to `~/.config/bitrix24-skill/config.json`. The `GET /v1/me` call verifies the key works.
+This saves the webhook to `~/.config/bitrix24-skill/config.json` and verifies it works in one step.
 
-## Replacing a Key
+Expected format:
 
-Edit `~/.config/bitrix24-skill/config.json` directly, or delete the file and re-run the setup command above.
+```text
+https://your-portal.bitrix24.ru/rest/<user_id>/<webhook>/
+```
+
+After that, the skill reuses the saved webhook automatically for all calls.
+
+To replace an existing webhook:
 
 ```bash
-# Option 1: delete config and re-setup
-rm ~/.config/bitrix24-skill/config.json
-python3 scripts/vibe.py --raw GET /v1/me --json
-
-# Option 2: edit the config file
-# Replace the "vibe_key" value with your new key
+python3 scripts/save_webhook.py --url "<new-webhook>" --force --check
 ```
 
 ## Agent Setup Behavior
 
 When a user asks for setup help or a REST call fails:
 
-1. Check saved config with `scripts/check_connection.py --json`
-2. If the user already shared a key in the conversation, save it and retry
-3. Only ask the user for a key if no saved config exists
+1. Check saved config with `scripts/check_webhook.py --json`
+2. If the user already shared a webhook in the conversation, save it and retry
+3. Only ask the user for a webhook if no saved config exists
 
-Mask the key in user-facing output.
+Mask the webhook secret in user-facing output.
 
-## Permissions / Scopes
+## Permissions
 
-Select **all scopes** when creating the key. This gives full access to CRM, Tasks, Calendar, Drive, Chat, Users, and all other modules.
+Grant the permission groups that match the methods you will call.
 
-If a method returns a permission error, the key was likely created with limited scopes. Create a new key with all scopes selected.
+Recommended full-coverage set:
+
+- CRM
+- Tasks
+- Calendar
+- Disk or Drive
+- IM or Chat
+- User and department access
+
+## `CLIENT_ID` For Bot Integrations
+
+For `imbot` integrations, Bitrix24 bot registration requires `CLIENT_ID`.
+
+- Provide `CLIENT_ID` when registering the bot
+- Persist it as part of the bot credentials
+- Pass the same `CLIENT_ID` into all later `imbot.*` calls
+- Treat `CLIENT_ID` as a secret
 
 ## Official MCP Docs Endpoint
 
@@ -56,3 +71,46 @@ Tools exposed by the server:
 - `bitrix-method-details`
 - `bitrix-article-details`
 - `bitrix-event-details`
+
+## When To Use OAuth Instead Of A Webhook
+
+Use a webhook when:
+
+- you are connecting one portal quickly
+- the integration is admin-managed
+- you want the shortest setup path
+
+Use OAuth when:
+
+- your service lives outside Bitrix24
+- users connect their own portals to your service
+- you need renewable tokens instead of a fixed webhook secret
+
+Key official docs:
+
+- Full OAuth: `https://apidocs.bitrix24.ru/settings/oauth/index.html`
+- REST call overview: `https://apidocs.bitrix24.ru/sdk/bx24-js-sdk/how-to-call-rest-methods/index.html`
+- Install callback: `https://apidocs.bitrix24.ru/settings/app-installation/mass-market-apps/installation-callback.html`
+
+## OAuth Facts From MCP Docs
+
+- Authorization server: `https://oauth.bitrix24.tech/`
+- Authorization starts at `https://portal.bitrix24.com/oauth/authorize/`
+- Temporary authorization `code` is valid for 30 seconds
+- Token exchange at `https://oauth.bitrix24.tech/oauth/token/`
+- Returns `access_token`, `refresh_token`, `client_endpoint`, `server_endpoint`, `scope`
+
+Useful MCP titles for auth topics:
+
+- `Полный протокол авторизации OAuth 2.0`
+- `Упрощенный вариант получения токенов OAuth 2.0`
+- `Вызов методов REST`
+- `Callback установки`
+
+## Install Callback For UI-Less Apps
+
+If you build a local or UI-less app, Bitrix24 can POST OAuth credentials to an install callback URL. That flow is documented in `Callback установки`.
+
+- Save the received `access_token` and `refresh_token`
+- Refresh access tokens on your backend
+- Do not rely on browser-side JS install helpers for the callback flow

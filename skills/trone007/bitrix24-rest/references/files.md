@@ -1,41 +1,37 @@
 # File Uploads
 
-> **Note:** These endpoints use assumed Vibe Platform paths. Verify actual endpoints at runtime or check Vibe API documentation.
+Bitrix24 REST API has two methods for uploading files. Which one to use depends on the entity.
 
-File upload strategies for Vibe Platform. The approach depends on the target entity and file size.
+## Method 1: Inline Base64 (CRM entities)
 
-## Upload Strategies
+CRM entity fields (leads, deals, contacts, companies) accept files directly as `["filename", "base64_content"]`.
 
-| Strategy | Use Case | How |
-|----------|----------|-----|
-| Base64 inline | Small files for CRM attachments | Encode file as base64, pass in request body |
-| Disk upload + attach | Task files, chat files | Upload to Drive first, then attach by file ID |
-| Multipart upload | Large files (if supported) | Send as multipart/form-data |
-
-## Strategy 1: Base64 Inline (CRM Attachments)
-
-Best for small files attached to CRM entities (leads, deals, contacts, companies).
-
-### Encode and attach to a CRM entity
+### Single file in a CRM field
 
 ```bash
 # Encode file to base64
 B64=$(python3 -c "import base64, sys; print(base64.b64encode(open(sys.argv[1],'rb').read()).decode())" /path/to/photo.jpg)
 
-# Attach to a contact
-vibe.py --raw POST /v1/crm/contacts/123 --body "{
-  \"photo\": [\"photo.jpg\", \"$B64\"]
-}" --confirm-write --json
+# Attach to contact
+python3 scripts/bitrix24_call.py crm.contact.update \
+  --param 'ID=123' \
+  --param "fields[PHOTO][0]=photo.jpg" \
+  --param "fields[PHOTO][1]=$B64" \
+  --confirm-write \
+  --json
 ```
 
 ### Multiple files in a user field
 
-Use `--body` with a JSON file for complex payloads:
+For UF (user field) that accepts multiple files, pass an array of `[name, base64]` pairs.
+
+Use `--params-file` for this — it's cleaner than inline params:
 
 ```json
 {
+  "ID": 123,
   "fields": {
-    "ufCrmFiles": [
+    "UF_CRM_FILES": [
       ["doc1.pdf", "<base64>"],
       ["doc2.pdf", "<base64>"]
     ]
@@ -43,64 +39,80 @@ Use `--body` with a JSON file for complex payloads:
 }
 ```
 
-## Strategy 2: Disk Upload + Attach (Tasks)
+```bash
+python3 scripts/bitrix24_call.py crm.deal.update \
+  --params-file /tmp/deal_files.json \
+  --confirm-write \
+  --json
+```
 
-Tasks do not accept base64 directly. Upload to Drive first, then attach the file ID.
+## Method 2: Disk Upload + Attach (Tasks and other entities)
 
-### Step 1: Upload file to Drive
+Tasks do NOT accept base64 directly. Use the two-step process:
+
+### Step 1: Upload file to Disk
+
+First, find a folder to upload to:
+
+```bash
+# List storage root (user's personal storage)
+python3 scripts/bitrix24_call.py disk.storage.getchildren \
+  --param 'id=1' \
+  --json
+```
+
+Then upload:
 
 ```bash
 B64=$(python3 -c "import base64, sys; print(base64.b64encode(open(sys.argv[1],'rb').read()).decode())" /path/to/report.pdf)
 
-vibe.py --raw POST /v1/drive/files --body "{
-  \"folderId\": 42,
-  \"name\": \"report.pdf\",
-  \"content\": \"$B64\"
-}" --confirm-write --json
+python3 scripts/bitrix24_call.py disk.folder.uploadfile \
+  --param 'id=FOLDER_ID' \
+  --param 'fileContent[0]=report.pdf' \
+  --param "fileContent[1]=$B64" \
+  --param 'data[NAME]=report.pdf' \
+  --confirm-write \
+  --json
 ```
 
-The response contains the file object with `id`.
+The response contains the disk file object with `ID`.
 
 ### Step 2: Attach to task
 
 ```bash
-vibe.py --raw POST /v1/tasks/456/files --body '{
-  "fileId": 789
-}' --confirm-write --json
+python3 scripts/bitrix24_call.py tasks.task.files.attach \
+  --param 'taskId=456' \
+  --param 'fileId=DISK_FILE_ID' \
+  --confirm-write \
+  --json
 ```
 
-## Strategy 3: Multipart Upload (If Supported)
+Note: the method is `tasks.task.files.attach` (with `s` in `files`), not `tasks.task.file.attach`.
 
-For large files, multipart/form-data may be supported. This avoids base64 overhead (33% size increase).
+## Chat file uploads
 
-```bash
-# Check if multipart is supported at runtime
-# Conceptual — verify actual endpoint and content-type support
-curl -X POST /v1/drive/files \
-  -F "folderId=42" \
-  -F "file=@/path/to/large-file.zip"
-```
+**Sending a file to the user in the current conversation:** do not call any API — return the file as a media attachment in your response. The channel plugin delivers it automatically.
 
-## When to Use Which Strategy
+**Sending a file to another chat** (when the user asks to post a file somewhere): use disk upload + `im.disk.file.commit`. See `references/chat.md` for details.
 
-| Entity | Strategy | Notes |
-|--------|----------|-------|
-| CRM lead/deal/contact/company | Base64 inline | Pass `["name", "base64"]` in field |
-| Task | Disk + attach | Upload to Drive, then attach file ID |
-| Chat message | Disk + commit | Upload to Drive, then send in chat |
-| Feed post | Disk + attach | Upload first, reference Drive file ID |
+## Size limits
 
-## Key Fields (camelCase)
+- Inline base64 in CRM fields: limited by POST request size (typically ~30 MB after encoding)
+- Disk uploads: subject to portal disk quota
+- Attachment objects in Open Lines: max 30 KB (metadata only, not file content)
 
-- `folderId` — target folder for Drive uploads
-- `name` — filename with extension
-- `content` — base64-encoded file content
-- `fileId` — Drive file ID (for attaching)
+## When to use which method
 
-## Common Pitfalls
+| Entity | Method | Notes |
+|--------|--------|-------|
+| CRM lead/deal/contact/company | Inline base64 | Pass `["name", "base64"]` in field |
+| Task | Disk + attach | `disk.folder.uploadfile` → `tasks.task.files.attach` |
+| Chat message | Disk + commit | `disk.folder.uploadfile` → `im.disk.file.commit` |
+| Feed post | Disk + attach | Upload first, reference disk file ID |
 
-- Base64 encoding adds ~33% size overhead — a 30 MB file becomes ~40 MB encoded.
-- POST size limits apply: typically ~30 MB after encoding for inline uploads.
-- Tasks reject inline base64 — always use the two-step Disk upload approach.
-- Always include the file extension in the `name` field for correct MIME detection.
-- Portal disk quota applies to all uploads — check available space for large batches.
+## Good MCP Queries
+
+- `disk folder uploadfile`
+- `tasks task files attach`
+- `im disk file commit`
+- `crm contact photo`

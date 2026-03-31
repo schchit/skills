@@ -1,7 +1,7 @@
 ---
 name: bitrix24-rest
 description: >
-  Work with Bitrix24 (Битрикс24) via Vibe Platform API and MCP documentation server. Triggers on:
+  Work with Bitrix24 (Битрикс24) via REST API and MCP documentation server. Triggers on:
   CRM — "сделки", "контакты", "лиды", "воронка", "клиенты", "deals", "contacts", "leads", "pipeline";
   Tasks — "задачи", "мои задачи", "просроченные", "создай задачу", "tasks", "overdue", "to-do";
   Calendar — "расписание", "встречи", "календарь", "schedule", "meetings", "events";
@@ -9,11 +9,6 @@ description: >
   Channels — "каналы", "канал", "объявления", "подписчики", "channels", "announcements", "subscribers";
   Open Lines — "открытые линии", "поддержка", "обращения", "клиентские чаты", "операторы",
   "омниканал", "виджет чата", "open lines", "support", "customer chat", "helpdesk", "operator";
-  Bots — "боты", "бот", "чат-бот", "слэш-команды", "bots", "chatbot", "slash commands";
-  Telephony — "звонки", "телефония", "АТС", "транскрипция", "calls", "telephony", "PBX";
-  Workflows — "бизнес-процессы", "автоматизация", "триггеры", "workflows", "automation", "triggers";
-  E-commerce — "платежи", "заказы", "корзина", "payments", "orders", "basket";
-  Duplicates — "дубликаты", "дубли", "duplicates";
   Projects — "проекты", "рабочие группы", "projects", "workgroups";
   Time — "рабочее время", "кто на работе", "учёт времени", "timeman", "work status";
   Drive — "файлы", "документы", "диск", "files", "documents", "drive";
@@ -27,6 +22,16 @@ metadata:
     requires:
       bins:
         - python3
+      pip_packages:
+        - name: keyring
+          required: false
+          purpose: "OS keychain integration and encrypted file storage for webhook"
+        - name: keyrings.alt
+          required: false
+          purpose: "AES-256 encrypted file backend for environments without OS keychain"
+        - name: pycryptodome
+          required: false
+          purpose: "Cryptographic primitives required by keyrings.alt EncryptedKeyring"
       mcp:
         - url: https://mcp-dev.bitrix24.tech/mcp
           transport: streamable_http
@@ -36,6 +41,17 @@ metadata:
             - bitrix-method-details
             - bitrix-article-details
             - bitrix-event-details
+      env_vars:
+        - name: BITRIX24_KEYRING_PASSWORD
+          required: false
+          description: "Encryption password for AES-256 webhook storage. Used in Docker containers where OS keychain is unavailable. Set by the install script from a host-side secret file. When absent, password is derived from /etc/machine-id or falls back to a built-in default (protects against casual exposure only, not targeted access)."
+      config_paths:
+        - "~/.config/bitrix24-skill/config.json"
+    credentials:
+      - name: webhook_url
+        description: "Bitrix24 inbound webhook URL (https://<portal>/rest/<user_id>/<secret>/). Storage depends on environment: OS keychain (desktop), AES-256 encrypted file (container/headless), or plaintext config with permissions 600 (fallback). Use a webhook with minimal required scopes."
+        storage: "auto"
+        required: true
     emoji: "B24"
     homepage: https://github.com/bitrix24/bitrix24-skill
     aliases:
@@ -59,19 +75,7 @@ metadata:
       - chat
       - messenger
       - im
-      - vibe
-      - bots
-      - боты
-      - telephony
-      - телефония
-      - звонки
-      - workflows
-      - бизнес-процессы
-      - ecommerce
-      - платежи
-      - заказы
-      - duplicates
-      - дубликаты
+      - webhook
       - oauth
       - mcp
       - Битрикс24
@@ -114,32 +118,47 @@ metadata:
 
 # Bitrix24
 
+## Security Model
+
+- The webhook URL is the user's explicit authorization. By providing it, the user grants the agent access to their Bitrix24 portal via REST API.
+- Read requests execute immediately because the user has already authorized access. Write and destructive operations always require explicit confirmation (Rule 3 below, enforced by `--confirm-write` / `--confirm-destructive` flags in scripts).
+- Webhook storage uses a three-level fallback (best available wins):
+  1. **OS keychain** (macOS Keychain, Windows Credential Vault, Linux SecretService) — webhook never touches disk.
+  2. **AES-256 encrypted file** (`keyrings.alt` EncryptedKeyring) — when OS keychain is unavailable (containers, headless servers). Encryption password comes from env var `BITRIX24_KEYRING_PASSWORD`, or machine-id derivation, or a built-in default.
+  3. **Plaintext config** (`~/.config/bitrix24-skill/config.json`, permissions 600) — when encryption packages are not installed. Agent tries to install them via shell (visible to user); if that fails, informs the user once.
+- Non-secret data (user_id, timezone, webhook_storage type) is always stored in `~/.config/bitrix24-skill/config.json` (permissions 600).
+- The webhook is never transmitted to any third-party service. All API calls go directly to the user's Bitrix24 portal.
+- If the stored webhook is lost (e.g. new machine, keychain reset), the user simply provides it again.
+- Users should create a dedicated webhook with only the scopes they need, and can revoke it at any time from their Bitrix24 admin panel.
+
 ## STOP — Read These Rules Before Doing Anything
 
 You are talking to a business person (company director), NOT a developer. They do not know what an API is. They do not want to see technical details. Every violation of these rules makes the user angry.
 
 ### Rule 1: Read requests — EXECUTE IMMEDIATELY
 
-When the user asks to see, show, list, or check anything — DO IT RIGHT NOW. Do not ask questions. Do not ask for confirmation. Do not offer choices. Just call Bitrix24 and show the result.
+When the user asks to see, show, list, or check anything — DO IT RIGHT NOW. Do not ask questions. Do not ask for confirmation. Do not offer choices. Call the Bitrix24 methods using the configured webhook and show the result. The user has already authorized access by providing their webhook URL.
 
 User says "дай расписание на среду" → you IMMEDIATELY:
-1. Call `vibe.py --raw GET /v1/me --json` to get user ID and timezone
-2. Call `vibe.py --raw GET /v1/calendar/events` for that date (read `references/calendar.md` for exact syntax)
-3. Call `vibe.py tasks/search` with deadline filter for that date (read `references/tasks.md`)
+1. Call `user.current` to get user ID and timezone
+2. Call `calendar.event.get` for that date (read `references/calendar.md` for exact syntax)
+3. Call `tasks.task.list` with deadline filter for that date (read `references/tasks.md`)
 4. Show combined schedule in a clean list
 
-User says "покажи сделки" → you IMMEDIATELY call `vibe.py deals` and show results.
+User says "покажи сделки" → you IMMEDIATELY call `crm.deal.list` and show results.
 
-User says "мои задачи" → you IMMEDIATELY call `vibe.py tasks` and show results.
+User says "мои задачи" → you IMMEDIATELY call `tasks.task.list` and show results.
 
-### Rule 2: NEVER show technical details
+### Rule 2: Keep replies non-technical
 
-These words are FORBIDDEN in your replies to the user:
-API, REST, Vibe, endpoint, scope, token, curl, JSON, method, parameter, SDK, OAuth, vibe.py, config.json, /v1/me, /v1/deals, Authorization, Bearer
+The user is a business person. Avoid implementation details in replies. Do not expose these in user-facing output:
+method names (calendar.event.get, crm.deal.list), script names (bitrix24_call.py), config paths (config.json), raw parameters, HTTP details, JSON structures.
+
+It is OK to say "получаю данные из Битрикс24" or "подключаюсь к вашему порталу" — the user knows they connected their Bitrix24. Just don't show HOW technically.
 
 WRONG replies (NEVER do this):
-- "Используем Vibe API ключ..." — FORBIDDEN
-- "Вызовем /v1/calendar/events..." — FORBIDDEN
+- "Используем ваш webhook URL bitrix24.team/rest/5/..." — FORBIDDEN
+- "Вызовем calendar.get или calendar.event.get..." — FORBIDDEN
 - "Пришлите экспорт календаря (ICS/CSV)..." — FORBIDDEN
 - "Подтвердите часовой пояс..." — FORBIDDEN
 - "Подтвердите источник данных..." — FORBIDDEN
@@ -166,7 +185,7 @@ If a call fails, retry automatically. If still fails: "Не удалось по�
 - Present data as clean tables or bullet lists
 - Use business words: "сделка", "задача", "контакт", "встреча", "расписание"
 - For schedule requests: combine calendar events AND task deadlines into one view
-- Get timezone from `/v1/me`, never ask the user
+- Get timezone from `user.current`, never ask the user
 
 ### Rule 6: Proactive insights
 
@@ -196,11 +215,11 @@ Use these when the user's request matches. Execute ALL calls, then present combi
 
 Use batch call for speed:
 ```bash
-echo '[
-  {"method":"GET","path":"/v1/calendar/events","body":{"filter":{"ownerId":{"$eq":"<ID>"},"from":{"$gte":"<today_start>"},"to":{"$lte":"<today_end>"}},"forCurrentUser":true}},
-  {"method":"GET","path":"/v1/tasks","body":{"filter":{"responsibleId":{"$eq":"<ID>"},"status":{"$ne":"5"},"deadline":{"$lte":"<today_end>"}},"select":["id","title","deadline","status"]}},
-  {"method":"GET","path":"/v1/deals","body":{"filter":{"assignedById":{"$eq":"<ID>"},"stageSemantic":{"$eq":"P"}},"select":["id","title","opportunity","stageId"]}}
-]' | python3 scripts/vibe.py --batch --json
+python3 scripts/bitrix24_batch.py \
+  --cmd 'calendar=calendar.event.get.nearest?type=user&ownerId=<ID>&forCurrentUser=Y&days=1' \
+  --cmd 'tasks=tasks.task.list?filter[RESPONSIBLE_ID]=<ID>&filter[!STATUS]=5&filter[<=DEADLINE]=<today_end>' \
+  --cmd 'deals=crm.deal.list?filter[ASSIGNED_BY_ID]=<ID>&filter[STAGE_SEMANTIC_ID]=P&select[]=ID&select[]=TITLE&select[]=OPPORTUNITY&select[]=STAGE_ID' \
+  --json
 ```
 
 Present as:
@@ -211,10 +230,10 @@ Present as:
 ### Weekly report ("итоги недели", "еженедельный отчёт")
 
 ```bash
-echo '[
-  {"method":"GET","path":"/v1/tasks","body":{"filter":{"responsibleId":{"$eq":"<ID>"},"status":{"$eq":"5"},"closedAt":{"$gte":"<week_start>"}},"select":["id","title","closedAt"]}},
-  {"method":"GET","path":"/v1/deals","body":{"filter":{"assignedById":{"$eq":"<ID>"},"updatedAt":{"$gte":"<week_start>"}},"select":["id","title","stageId","opportunity"]}}
-]' | python3 scripts/vibe.py --batch --json
+python3 scripts/bitrix24_batch.py \
+  --cmd 'done=tasks.task.list?filter[RESPONSIBLE_ID]=<ID>&filter[STATUS]=5&filter[>=CLOSED_DATE]=<week_start>' \
+  --cmd 'deals=crm.deal.list?filter[ASSIGNED_BY_ID]=<ID>&filter[>=DATE_MODIFY]=<week_start>&select[]=ID&select[]=TITLE&select[]=STAGE_ID&select[]=OPPORTUNITY' \
+  --json
 ```
 
 Present as:
@@ -223,21 +242,21 @@ Present as:
 
 ### Team status ("статус команды", "как дела в отделе")
 
-1. Get department: `vibe.py --raw GET /v1/departments` with user's department
-2. Get employees: `vibe.py --raw GET /v1/departments/{id}/employees`
+1. Get department: `department.get` with user's department
+2. Get employees: `im.department.employees.get`
 3. Batch tasks + timeman for each employee
 
 Present as table: Name | Active tasks | Overdue | Work status
 
 ### Client dossier ("расскажи про клиента X", "всё по компании Y", "досье")
 
-1. Find contact/company by name → `vibe.py contacts/search` filter `{"lastName":{"$contains":"..."}}` or `vibe.py companies/search` filter `{"title":{"$contains":"..."}}`
+1. Find contact/company by name → `crm.contact.list` filter `%LAST_NAME` or `crm.company.list` filter `%TITLE`
 2. Batch:
 ```bash
-echo '[
-  {"method":"GET","path":"/v1/deals","body":{"filter":{"contactId":{"$eq":"<ID>"},"stageSemantic":{"$eq":"P"}},"select":["id","title","opportunity","stageId"]}},
-  {"method":"GET","path":"/v1/activities","body":{"filter":{"ownerTypeId":{"$eq":3},"ownerId":{"$eq":"<ID>"}},"select":["id","subject","deadline"],"order":{"deadline":"desc"}}}
-]' | python3 scripts/vibe.py --batch --json
+python3 scripts/bitrix24_batch.py \
+  --cmd 'deals=crm.deal.list?filter[CONTACT_ID]=<ID>&filter[STAGE_SEMANTIC_ID]=P&select[]=ID&select[]=TITLE&select[]=OPPORTUNITY&select[]=STAGE_ID' \
+  --cmd 'activities=crm.activity.list?filter[OWNER_TYPE_ID]=3&filter[OWNER_ID]=<ID>&select[]=ID&select[]=SUBJECT&select[]=DEADLINE&order[DEADLINE]=desc' \
+  --json
 ```
 
 Present as:
@@ -248,9 +267,9 @@ Present as:
 
 ### Meeting prep ("подготовь к встрече", "что за встреча в 14:00")
 
-1. Get today's events → `vibe.py --raw GET /v1/calendar/events` for today
+1. Get today's events → `calendar.event.get` for today
 2. Find the matching event by time or name
-3. Get attendee info → `vibe.py --raw GET /v1/users/{id}` for each attendee ID
+3. Get attendee info → `user.get` for each attendee ID
 4. Check for related deals (search by attendee company name)
 
 Present as:
@@ -262,12 +281,12 @@ Present as:
 ### Day results ("итоги дня", "что я сделал", "мой отчёт за день")
 
 ```bash
-echo '[
-  {"method":"GET","path":"/v1/tasks","body":{"filter":{"responsibleId":{"$eq":"<ID>"},"status":{"$eq":"5"},"closedAt":{"$gte":"<today_start>"}},"select":["id","title"]}},
-  {"method":"GET","path":"/v1/calendar/events","body":{"filter":{"ownerId":{"$eq":"<ID>"},"from":{"$gte":"<today_start>"},"to":{"$lte":"<today_end>"}}}}
-]' | python3 scripts/vibe.py --batch --json
+python3 scripts/bitrix24_batch.py \
+  --cmd 'tasks=tasks.task.list?filter[RESPONSIBLE_ID]=<ID>&filter[STATUS]=5&filter[>=CLOSED_DATE]=<today_start>&select[]=ID&select[]=TITLE' \
+  --cmd 'events=calendar.event.get?type=user&ownerId=<ID>&from=<today_start>&to=<today_end>' \
+  --json
 ```
-Also call `vibe.py --raw GET /v1/crm/stagehistory` with `filter[createdAt][$gte]=<today_start>` for deal movements.
+Also call `crm.stagehistory.list` with `filter[>=CREATED_TIME]=<today_start>` for deal movements.
 
 Present as:
 - ✅ Завершённые задачи (count + list)
@@ -278,10 +297,10 @@ Present as:
 ### Sales pipeline ("воронка", "как работает отдел продаж", "продажи")
 
 ```bash
-echo '[
-  {"method":"GET","path":"/v1/deals","body":{"filter":{"stageSemantic":{"$eq":"P"}},"select":["id","title","stageId","opportunity","updatedAt","assignedById"]}},
-  {"method":"GET","path":"/v1/leads","body":{"filter":{"createdAt":{"$gte":"<week_start>"}},"select":["id","title","sourceId","createdAt"]}}
-]' | python3 scripts/vibe.py --batch --json
+python3 scripts/bitrix24_batch.py \
+  --cmd 'active=crm.deal.list?filter[STAGE_SEMANTIC_ID]=P&select[]=ID&select[]=TITLE&select[]=STAGE_ID&select[]=OPPORTUNITY&select[]=DATE_MODIFY&select[]=ASSIGNED_BY_ID' \
+  --cmd 'leads=crm.lead.list?filter[>=DATE_CREATE]=<week_start>&select[]=ID&select[]=TITLE&select[]=SOURCE_ID&select[]=DATE_CREATE' \
+  --json
 ```
 
 Present as:
@@ -294,73 +313,14 @@ Present as:
 
 When user searches for something, search across multiple entities in parallel:
 ```bash
-echo '[
-  {"method":"POST","path":"/v1/contacts/search","body":{"filter":{"lastName":{"$contains":"<query>"}},"select":["id","name","lastName","companyId"]}},
-  {"method":"POST","path":"/v1/companies/search","body":{"filter":{"title":{"$contains":"<query>"}},"select":["id","title"]}},
-  {"method":"POST","path":"/v1/deals/search","body":{"filter":{"title":{"$contains":"<query>"}},"select":["id","title","stageId","opportunity"]}}
-]' | python3 scripts/vibe.py --batch --json
+python3 scripts/bitrix24_batch.py \
+  --cmd 'contacts=crm.contact.list?filter[%LAST_NAME]=<query>&select[]=ID&select[]=NAME&select[]=LAST_NAME&select[]=COMPANY_ID' \
+  --cmd 'companies=crm.company.list?filter[%TITLE]=<query>&select[]=ID&select[]=TITLE' \
+  --cmd 'deals=crm.deal.list?filter[%TITLE]=<query>&select[]=ID&select[]=TITLE&select[]=STAGE_ID&select[]=OPPORTUNITY' \
+  --json
 ```
 
 Present grouped results: Контакты | Компании | Сделки. If only one match — show full details immediately.
-
-### Duplicates check ("проверь дубли", "есть дубликаты?", "дубли контактов")
-
-Find potential duplicate contacts, companies, or leads:
-```bash
-python3 scripts/vibe.py --raw POST /v1/duplicates/find --body '{"entityType":"contact","criteria":["phone","email"]}' --json
-```
-
-Present as:
-- 🔍 Найденные дубликаты — сгруппированные по совпадению (телефон, email)
-- 👤 Для каждой группы — имена, телефоны, email
-- 💡 "Могу объединить дубликаты или показать подробности."
-
-### Start workflow ("запусти процесс", "бизнес-процесс", "запусти автоматизацию")
-
-Launch an existing workflow on a target entity:
-```bash
-python3 scripts/vibe.py --raw POST /v1/workflows/start --body '{"templateId":"<TEMPLATE_ID>","entityType":"deal","entityId":"<DEAL_ID>"}' --confirm-write --json
-```
-
-Present as:
-- ✅ Процесс запущен — название шаблона, сущность
-- 💡 "Могу показать статус процесса или список доступных шаблонов."
-
-### Call statistics ("статистика звонков", "сколько звонков", "отчёт по звонкам")
-
-Get call stats for a period:
-```bash
-python3 scripts/vibe.py --raw GET /v1/calls/statistics --body '{"filter":{"createdAt":{"$gte":"<period_start>"},"assignedById":{"$eq":"<ID>"}}}' --json
-```
-
-Present as:
-- 📞 Звонки за период — входящие, исходящие, пропущенные
-- ⏱️ Средняя длительность
-- 👤 По менеджерам (если запросили по отделу)
-- 💡 "Могу показать детали по конкретному звонку или менеджеру."
-
-### Workday report ("табель", "кто на работе", "рабочее время")
-
-Check workday status for employees:
-```bash
-python3 scripts/vibe.py --raw GET /v1/workday/status --body '{"filter":{"departmentId":{"$eq":"<DEPT_ID>"}}}' --json
-```
-
-Present as:
-- 🕐 Статус рабочего дня — кто на работе, кто отсутствует
-- ⏱️ Отработано часов
-- 💡 "Могу показать детали за неделю или месяц."
-
-### Feed post ("напиши в ленту", "объявление", "пост в ленту")
-
-Create a post in the activity feed:
-```bash
-python3 scripts/vibe.py posts --create --body '{"title":"<TITLE>","message":"<MESSAGE>","recipients":["UA"]}' --confirm-write --json
-```
-
-Present as:
-- ✅ Опубликовано — заголовок, получатели
-- 💡 "Могу добавить файл к посту или написать ещё одно объявление."
 
 ---
 
@@ -373,10 +333,10 @@ These are pre-built scenarios for scheduled/cron execution. The user can activat
 Build a structured day plan from calendar events and tasks:
 
 ```bash
-echo '[
-  {"method":"GET","path":"/v1/calendar/events","body":{"filter":{"ownerId":{"$eq":"<ID>"},"from":{"$gte":"<today_start>"},"to":{"$lte":"<today_end>"}},"forCurrentUser":true}},
-  {"method":"GET","path":"/v1/tasks","body":{"filter":{"responsibleId":{"$eq":"<ID>"},"deadline":{"$lte":"<today_end>"},"status":{"$lt":"5"}},"select":["id","title","deadline","status"],"order":{"deadline":"asc"}}}
-]' | python3 scripts/vibe.py --batch --json
+python3 scripts/bitrix24_batch.py \
+  --cmd 'events=calendar.event.get?type=user&ownerId=<ID>&from=<today_start>&to=<today_end>' \
+  --cmd 'tasks=tasks.task.list?filter[RESPONSIBLE_ID]=<ID>&filter[<=DEADLINE]=<today_end>&filter[<REAL_STATUS]=5&select[]=ID&select[]=TITLE&select[]=DEADLINE&select[]=STATUS&order[DEADLINE]=asc' \
+  --json
 ```
 
 Output format:
@@ -401,12 +361,12 @@ Output format:
 Day plan (above) PLUS active deals summary and new leads from yesterday:
 
 ```bash
-echo '[
-  {"method":"GET","path":"/v1/calendar/events","body":{"filter":{"ownerId":{"$eq":"<ID>"},"from":{"$gte":"<today_start>"},"to":{"$lte":"<today_end>"}},"forCurrentUser":true}},
-  {"method":"GET","path":"/v1/tasks","body":{"filter":{"responsibleId":{"$eq":"<ID>"},"deadline":{"$lte":"<today_end>"},"status":{"$lt":"5"}},"select":["id","title","deadline","status"]}},
-  {"method":"GET","path":"/v1/deals","body":{"filter":{"assignedById":{"$eq":"<ID>"},"stageSemantic":{"$eq":"P"}},"select":["id","title","opportunity","stageId","updatedAt"]}},
-  {"method":"GET","path":"/v1/leads","body":{"filter":{"createdAt":{"$gte":"<yesterday_start>"}},"select":["id","title","sourceId"]}}
-]' | python3 scripts/vibe.py --batch --json
+python3 scripts/bitrix24_batch.py \
+  --cmd 'events=calendar.event.get?type=user&ownerId=<ID>&from=<today_start>&to=<today_end>' \
+  --cmd 'tasks=tasks.task.list?filter[RESPONSIBLE_ID]=<ID>&filter[<=DEADLINE]=<today_end>&filter[<REAL_STATUS]=5&select[]=ID&select[]=TITLE&select[]=DEADLINE&select[]=STATUS' \
+  --cmd 'deals=crm.deal.list?filter[ASSIGNED_BY_ID]=<ID>&filter[STAGE_SEMANTIC_ID]=P&select[]=ID&select[]=TITLE&select[]=OPPORTUNITY&select[]=STAGE_ID&select[]=DATE_MODIFY' \
+  --cmd 'leads=crm.lead.list?filter[>=DATE_CREATE]=<yesterday_start>&select[]=ID&select[]=TITLE&select[]=SOURCE_ID' \
+  --json
 ```
 
 ### Evening summary (daily, workdays 18:00)
@@ -422,10 +382,10 @@ Same as "Weekly report" scenario. Tasks completed + deal pipeline changes for th
 Check for overdue tasks and stuck deals. Send ONLY if there are problems (no spam when all is clean):
 
 ```bash
-echo '[
-  {"method":"GET","path":"/v1/tasks","body":{"filter":{"responsibleId":{"$eq":"<ID>"},"deadline":{"$lt":"<today_start>"},"status":{"$lt":"5"}},"select":["id","title","deadline"]}},
-  {"method":"GET","path":"/v1/deals","body":{"filter":{"assignedById":{"$eq":"<ID>"},"stageSemantic":{"$eq":"P"},"updatedAt":{"$lt":"<14_days_ago>"}},"select":["id","title","updatedAt","opportunity"]}}
-]' | python3 scripts/vibe.py --batch --json
+python3 scripts/bitrix24_batch.py \
+  --cmd 'overdue=tasks.task.list?filter[RESPONSIBLE_ID]=<ID>&filter[<DEADLINE]=<today_start>&filter[<REAL_STATUS]=5&select[]=ID&select[]=TITLE&select[]=DEADLINE' \
+  --cmd 'stuck=crm.deal.list?filter[ASSIGNED_BY_ID]=<ID>&filter[STAGE_SEMANTIC_ID]=P&filter[<DATE_MODIFY]=<14_days_ago>&select[]=ID&select[]=TITLE&select[]=DATE_MODIFY&select[]=OPPORTUNITY' \
+  --json
 ```
 
 If both are empty — do not send anything. If there are results:
@@ -446,142 +406,153 @@ If both are empty — do not send anything. If there are results:
 Check for new leads in the last 24 hours. Send only if there are new leads:
 
 ```bash
-python3 scripts/vibe.py leads/search --body '{"filter":{"createdAt":{"$gte":"<24h_ago>"}},"select":["id","title","sourceId","name","lastName"]}' --json
-```
-
-### Duplicate monitor (weekly, Monday 10:00)
-
-Scan for new duplicate contacts and companies. Send only if duplicates found:
-
-```bash
-echo '[
-  {"method":"POST","path":"/v1/duplicates/find","body":{"entityType":"contact","criteria":["phone","email"]}},
-  {"method":"POST","path":"/v1/duplicates/find","body":{"entityType":"company","criteria":["title","phone"]}}
-]' | python3 scripts/vibe.py --batch --json
-```
-
-If duplicates found:
-```
-🔍 Еженедельная проверка дубликатов
-
-👤 Контакты — найдено 4 группы дубликатов:
-  • Иванов И.И. — 2 записи (совпадение по телефону)
-  • Петрова А.С. — 3 записи (совпадение по email)
-
-🏢 Компании — найдено 2 группы:
-  • ООО «Рога и копыта» — 2 записи
-
-💡 Могу объединить дубликаты — скажите какие.
-```
-
-### Call digest (daily, workdays 17:00)
-
-Daily summary of call activity. Send only if there were calls:
-
-```bash
-python3 scripts/vibe.py --raw GET /v1/calls/statistics --body '{"filter":{"createdAt":{"$gte":"<today_start>"},"createdAt":{"$lte":"<today_end>"}}}' --json
-```
-
-If there were calls:
-```
-📞 Звонки за сегодня
-
-📊 Итого: 12 звонков
-  • Исходящие: 8 (средняя длительность 4 мин)
-  • Входящие: 3
-  • Пропущенные: 1
-
-⚠️ Пропущенный звонок от +7 (999) 123-45-67 в 14:32
-
-💡 Могу показать подробности по любому звонку.
+python3 scripts/bitrix24_call.py crm.lead.list \
+  --param 'filter[>=DATE_CREATE]=<24h_ago>' \
+  --param 'select[]=ID' \
+  --param 'select[]=TITLE' \
+  --param 'select[]=SOURCE_ID' \
+  --param 'select[]=NAME' \
+  --param 'select[]=LAST_NAME' \
+  --json
 ```
 
 ---
 
 ## Setup
 
-The only thing needed is a Vibe API key. When the key is not configured, show these instructions:
-
-> **Чтобы начать, нужно подключиться к вашему Битрикс24:**
->
-> 1. Откройте сайт **vibecode.bitrix24.tech**
-> 2. Нажмите «Войти» — используйте логин и пароль от вашего Битрикс24
-> 3. В личном кабинете нажмите «Создать ключ»
-> 4. Назовите его как угодно (например, «Мой помощник»)
-> 5. В разделе «Доступы» отметьте все пункты — это позволит работать со сделками, задачами, календарём и всем остальным
-> 6. Нажмите «Создать» и скопируйте ключ (он показывается один раз!)
-> 7. Вставьте ключ сюда в чат
->
-> Это займёт пару минут. После этого я смогу работать с вашим Битрикс24.
-
-When the user provides a key, save and verify:
+The only thing needed is a webhook URL. When the user provides one, save it and verify:
 
 ```bash
-python3 scripts/vibe.py --raw GET /v1/me --json
+python3 scripts/bitrix24_call.py user.current --url "<webhook>" --json
 ```
 
-If the key works, confirm: "Готово! Подключился к порталу **{portal}**. Чем могу помочь?"
+This saves the webhook to config and calls `user.current` to verify it works. It also caches user_id and timezone in the config for faster subsequent calls. After that, all calls use the saved config automatically.
 
-If the key fails (401/403): "Ключ не подошёл. Проверьте, что вы скопировали его полностью — он начинается с `vibe_api_`. Если не помогло, создайте новый ключ на vibecode.bitrix24.tech."
+If the webhook is not configured yet and you need to set it up, read `references/access.md`.
 
-If calls fail later, run `scripts/check_connection.py --json`.
+After the webhook is saved, check `webhook_storage` in `~/.config/bitrix24-skill/config.json`:
+- If `"plaintext"` — try installing encryption packages:
+  ```bash
+  pip3 install --break-system-packages --quiet keyring keyrings.alt pycryptodome
+  ```
+  Then re-save the webhook: `python3 scripts/save_webhook.py --url "<webhook>" --force`
+  If pip install fails, tell the user **once**: "Вебхук сохранён, но без шифрования. Для дополнительной защиты попросите администратора установить пакеты keyring." Do not repeat this message.
+- If `"os-keyring"` or `"encrypted"` — say nothing, all is fine.
 
-## Making Vibe API Calls
+## Making REST Calls
 
 ```bash
-# List deals
-python3 scripts/vibe.py deals --json
-# Get by ID
-python3 scripts/vibe.py deals/123 --json
-# Search with MongoDB-style filters
-python3 scripts/vibe.py deals/search --body '{"filter":{"opportunity":{"$gte":100000}}}' --json
-# Create (requires --confirm-write)
-python3 scripts/vibe.py deals --create --body '{"title":"New Deal","stageId":"NEW"}' --confirm-write --json
-# Raw endpoint
-python3 scripts/vibe.py --raw GET /v1/chats/recent --json
+python3 scripts/bitrix24_call.py <method> --json
 ```
 
-### Operation safety
+Examples:
 
-| Type | Action | Required flag |
-|------|--------|---------------|
-| Read | list, get, search | — |
-| Write | create, update | `--confirm-write` |
-| Destructive | delete | `--confirm-destructive` |
+```bash
+python3 scripts/bitrix24_call.py user.current --json
+python3 scripts/bitrix24_call.py crm.deal.list \
+  --param 'select[]=ID' \
+  --param 'select[]=TITLE' \
+  --param 'select[]=STAGE_ID' \
+  --json
+```
+
+### Parameters from JSON file
+
+For complex parameters (nested objects, arrays, multi-file uploads), use `--params-file` instead of multiple `--param` flags. This avoids shell escaping issues:
+
+```bash
+echo '{"filter": {">=DATE_CREATE": "2025-01-01", "%TITLE": "client"}, "select": ["ID", "TITLE"]}' > /tmp/params.json
+python3 scripts/bitrix24_call.py crm.deal.list --params-file /tmp/params.json --json
+```
+
+### Auto-pagination
+
+For `.list` methods, use `--iterate` to automatically collect all pages:
+
+```bash
+python3 scripts/bitrix24_call.py crm.deal.list \
+  --param 'filter[STAGE_SEMANTIC_ID]=P' \
+  --param 'select[]=ID' \
+  --param 'select[]=TITLE' \
+  --iterate --json
+```
+
+Use `--max-items N` to cap the total number of items collected.
+
+### Dry-run mode
 
 Preview what would be called without executing:
 
 ```bash
-python3 scripts/vibe.py deals --create --body '{"title":"Test"}' --dry-run --json
+python3 scripts/bitrix24_call.py crm.deal.add \
+  --param 'fields[TITLE]=Test' \
+  --dry-run --json
 ```
 
-## Batch Calls (Multiple Requests at Once)
+### Operation safety
 
-For scenarios that need 2+ requests (schedule, briefing, reports), use batch to reduce HTTP calls:
+Methods are automatically classified by suffix:
+
+| Type | Suffixes | Required flag |
+|------|----------|---------------|
+| Read | `.list`, `.get`, `.current`, `.fields` | — |
+| Write | `.add`, `.update`, `.set`, `.start`, `.complete`, `.attach`, `.send` | `--confirm-write` |
+| Destructive | `.delete`, `.remove`, `.unbind` | `--confirm-destructive` |
+
+The script refuses to execute write/destructive methods without the matching flag. This prevents accidental data changes. When writing scenarios, always include the flag:
 
 ```bash
-echo '[
-  {"method":"GET","path":"/v1/tasks","body":{"filter":{"assignedById":{"$eq":5}}}},
-  {"method":"GET","path":"/v1/deals","body":{"filter":{"assignedById":{"$eq":5}}}}
-]' | python3 scripts/vibe.py --batch --json
+python3 scripts/bitrix24_call.py crm.deal.add \
+  --param 'fields[TITLE]=New deal' \
+  --confirm-write --json
 ```
 
-Results are returned keyed by path. Use batch whenever you need data from 2+ domains.
+If calls fail, read `references/troubleshooting.md` and run `scripts/check_webhook.py --json`.
+
+## Batch Calls (Multiple Methods in One Request)
+
+For scenarios that need 2+ methods (schedule, briefing, reports), use batch to reduce HTTP calls:
+
+```bash
+python3 scripts/bitrix24_batch.py \
+  --cmd 'tasks=tasks.task.list?filter[RESPONSIBLE_ID]=5' \
+  --cmd 'deals=crm.deal.list?filter[ASSIGNED_BY_ID]=5&select[]=ID&select[]=TITLE' \
+  --json
+```
+
+Results are returned under `body.result.result` keyed by command name. Use batch whenever you need data from 2+ domains.
+
+### Cross-command references ($result)
+
+In batch, use `$result[name]` to pass the output of one command into another. This allows chaining — e.g., create a company and immediately create a contact linked to it:
+
+```bash
+python3 scripts/bitrix24_batch.py \
+  --cmd 'company=crm.company.add?fields[TITLE]=Acme Corp' \
+  --cmd 'contact=crm.contact.add?fields[NAME]=John&fields[COMPANY_ID]=$result[company]' \
+  --cmd 'deal=crm.deal.add?fields[TITLE]=New deal&fields[CONTACT_ID]=$result[contact]&fields[COMPANY_ID]=$result[company]' \
+  --halt 1 \
+  --json
+```
+
+Use `--halt 1` to stop on first error when commands depend on each other.
+
+**Encoding note:** Batch commands use query string format — Cyrillic and special characters must be URL-encoded. For complex values, prefer `--params-file` with the regular `bitrix24_call.py` instead of batch.
 
 ## User ID and Timezone Cache
 
-After the first `/v1/me` call, user_id and timezone are saved to config. To use cached values without calling `/v1/me` again:
+After the first `user.current` call, user_id and timezone are saved to config. To use cached values without calling `user.current` again:
 
 ```python
-from vibe_config import get_cached_user
+from bitrix24_config import get_cached_user
 user = get_cached_user()  # returns {"user_id": 5, "timezone": "Europe/Kaliningrad"} or None
 ```
 
-If cache is empty, call `/v1/me` first — it auto-populates the cache.
+If cache is empty, call `user.current` first — it auto-populates the cache.
 
 ## Finding the Right Method
 
-When the exact endpoint is unknown, use MCP docs in this order:
+When the exact method name is unknown, use MCP docs in this order:
 
 1. `bitrix-search` to find the method, event, or article title.
 2. `bitrix-method-details` for REST methods.
@@ -609,49 +580,42 @@ Then read the domain reference that matches the task:
 - `references/feed.md`
 - `references/timeman.md`
 - `references/sites.md`
-- `references/bots.md`
-- `references/telephony.md`
-- `references/workflows.md`
-- `references/ecommerce.md`
-- `references/duplicates.md`
-- `references/timeline-logs.md`
 
 ## Technical Rules
 
 These rules are for the agent internally, not for user-facing output.
 
-- Start with `vibe.py --raw GET /v1/me --json` to get the current user's ID — many endpoints need `ownerId` or `assignedById`.
-- Entity CRUD uses `vibe.py {entity}` (e.g., `vibe.py deals`, `vibe.py contacts`, `vibe.py tasks`).
-- Non-entity endpoints use `vibe.py --raw {HTTP_VERB} {path}` (e.g., `vibe.py --raw GET /v1/chats/recent`).
-- Filters use MongoDB-style operators: `{"filter":{"opportunity":{"$gte":100000}}}`.
-  - `$eq` — equals, `$ne` — not equals, `$gt` — greater than, `$gte` — greater or equal,
-  - `$lt` — less than, `$lte` — less or equal, `$contains` — substring match.
-- Fields are camelCase: `stageId`, `opportunity`, `assignedById`, `responsibleId`, `createdAt`, `updatedAt`, `closedAt`, `deadline`, `status`, `title`, `lastName`, `companyId`.
-- Pagination: `page`/`pageSize` (default 50).
+- **Do not use `im.message.add`, `im.chat.add`, `im.disk.file.commit`, or other `im.*`/`imbot.*` methods to reply to the user or deliver files to the user.** These methods manage internal Bitrix24 chats, not the current conversation. Use `im.*` methods only when the user explicitly asks to manage **other** chats (read history, search messages, create a group chat for employees, send a message to someone else on their behalf).
+- Start with `user.current` to get the webhook user's ID — many methods need `ownerId` or `RESPONSIBLE_ID`.
+- Do not invent method names. There is no `calendar.get`, `tasks.list`, etc. Always use exact names from the reference files or MCP search. When unsure, search MCP first.
+- Prefer server-side filtering with `filter[...]` and narrow output with `select[]`.
+- Filter operators are prefixes on the key: `>=DEADLINE`, `!STATUS`, `>OPPORTUNITY`. Not on the value.
+- Use `*.fields` or user-field discovery methods before writing custom fields.
+- Expect pagination on list methods via `start` (page size = 50).
 - Use ISO 8601 date-time strings for datetime fields, `YYYY-MM-DD` for date-only fields.
-- When a call fails, run `scripts/check_connection.py --json` before asking the user.
-- Safety flags: `--confirm-write` for create/update, `--confirm-destructive` for delete, `--dry-run` to preview.
-- Do not invent endpoint names. Always use exact names from the reference files or MCP search. When unsure, search MCP first.
+- Treat `ACCESS_DENIED`, `insufficient_scope`, `QUERY_LIMIT_EXCEEDED`, and `expired_token` as normal operational cases.
+- For `imbot.*`, persist and reuse the same `CLIENT_ID`.
+- When a call fails, run `scripts/check_webhook.py --json` before asking the user.
 - When the portal-specific configuration matters, verify exact field names with `bitrix-method-details`.
 
 ## API Module Restrictions
 
-Not all Bitrix24 modules work the same way through the Vibe Platform. Some methods exist only for external system integration. Before using methods from these modules, understand their limitations:
+Not all Bitrix24 REST modules work as expected through a webhook. Some methods exist only for external system integration. Before using methods from these modules, understand their limitations:
 
-- **Telephony (`/v1/calls/*`):** The Vibe Platform exposes call history, statistics, and transcriptions. `telephony.externalcall.register` only creates a call record in CRM — for integrating external PBX systems. The API cannot initiate actual voice connections. Tell the user this limitation if they ask to make a call.
-- **Mail services:** No API exists for actual email operations. Cannot send or read emails.
-- **SMS providers:** Registers SMS providers, does not send messages directly. Requires a pre-configured external provider.
+- **Telephony (`voximplant.*`, `telephony.*`):** Does NOT make real calls. `telephony.externalcall.register` only creates a call record in CRM — for integrating external PBX systems. Tell the user the REST API cannot initiate voice connections.
+- **Mail services (`mailservice.*`):** Configures SMTP/IMAP server settings, cannot send or read emails. No REST API exists for actual email operations.
+- **SMS providers (`messageservice.*`):** Registers SMS providers, does not send messages directly. Requires a pre-configured external provider.
 - **Connectors (`imconnector.*`):** Infrastructure for connecting external messengers to Open Lines. Requires an external server handler. Useless without a configured integration.
-- **Widget embedding (`placement.*`, `userfieldtype.*`):** Registers UI widgets and custom field types. Only works in Marketplace application context.
+- **Widget embedding (`placement.*`, `userfieldtype.*`):** Registers UI widgets and custom field types. Only works in Marketplace application context, not via webhook.
 - **Event handlers (`event.*`):** Registers webhook handlers for events. Requires an external HTTP server to receive notifications.
-- **Business processes (`/v1/workflows/*`):** Can launch existing processes via `/v1/workflows/start`, but creating/modifying templates through the API is limited.
+- **Business processes (`bizproc.*`):** `bizproc.workflow.start` can launch existing processes, but creating/modifying templates through webhook is risky and limited.
 
 If the user requests something from these modules — do not refuse. Explain what the method actually does and what it does NOT do. Let the user decide.
 
 ## Domain References
 
-- `references/access.md` — Vibe key setup, scopes, MCP docs endpoint.
-- `references/troubleshooting.md` — diagnostics, self-repair, check_connection.py.
+- `references/access.md` — webhook setup, OAuth, install callbacks.
+- `references/troubleshooting.md` — diagnostics and self-repair.
 - `references/mcp-workflow.md` — MCP tool selection and query patterns.
 - `references/crm.md` — deals, contacts, leads, companies, activities.
 - `references/smartprocess.md` — smart processes, funnels, stages, universal crm.item API.
@@ -669,12 +633,6 @@ If the user requests something from these modules — do not refuse. Explain wha
 - `references/feed.md` — activity stream, feed posts, comments.
 - `references/timeman.md` — time tracking, work day, absence reports, task time.
 - `references/sites.md` — landing pages, sites, blocks, publishing.
-- `references/bots.md` — chat bots, slash commands, bot messaging.
-- `references/telephony.md` — call history, statistics, transcriptions, external PBX integration.
-- `references/workflows.md` — business processes, templates, launch, status tracking.
-- `references/ecommerce.md` — payments, orders, basket, online store integration.
-- `references/duplicates.md` — duplicate detection, merge, criteria configuration.
-- `references/timeline-logs.md` — CRM timeline entries, log messages, comments.
 
 Read only the reference file that matches the current task.
 

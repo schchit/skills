@@ -1,72 +1,107 @@
 # Calendar
 
-> **Note:** These endpoints use assumed Vibe Platform paths. Verify actual endpoints at runtime or check Vibe API documentation.
+Use this file for personal calendars, group calendars, meetings, sections, recurrence, and availability checks.
 
-Calendar events, sections, recurrence, and availability checks. Covers personal calendars, group calendars, and meetings.
+## Core Methods
 
-**CRITICAL:** There is NO `calendar.get` method. The correct approach is `calendar.event.get` with mandatory `type` and `ownerId`.
+- `calendar.event.get` — list events in a date range (requires `type` and `ownerId`)
+- `calendar.event.get.nearest` — list upcoming events (simplest way to get schedule)
+- `calendar.event.getbyid` — get one event by ID
+- `calendar.event.add` — create event
+- `calendar.event.update` — update event
+- `calendar.event.delete` — delete event
+- `calendar.section.get` — list calendars (sections)
+- `calendar.section.add` — create calendar
+- `calendar.accessibility.get` — check user availability
+- `calendar.meeting.status.get` — get current user's meeting participation status
+- `calendar.resource.list` — list calendar resources
 
-## Endpoints
+There is NO `calendar.get` or `calendar.list` method. Always use the full method names above.
 
-| Action | Command |
-|--------|---------|
-| Get events | `vibe.py --raw GET '/v1/calendar/events?type=user&ownerId=5&from=2026-03-24&to=2026-03-25' --json` |
-| Create event | `vibe.py --raw POST /v1/calendar/events --body '{"type":"user","ownerId":5,"name":"Meeting","from":"2026-03-25T10:00:00","to":"2026-03-25T11:00:00"}' --confirm-write --json` |
-| Get sections | `vibe.py --raw GET '/v1/calendar/sections?type=user&ownerId=5' --json` |
-| Check availability | `vibe.py --raw POST /v1/calendar/accessibility --body '{"users":[5,10],"from":"2026-03-25","to":"2026-03-26"}' --json` |
+## Critical: Required Parameters
 
-## Key Fields (camelCase)
+`calendar.event.get` requires two mandatory parameters:
 
 - `type` — one of: `user`, `group`, `company_calendar`
 - `ownerId` — user ID for `user` type, group ID for `group`, `0` for `company_calendar`
-- `name` — event title
-- `from` / `to` — date range (`YYYY-MM-DD` for dates, ISO 8601 for datetime)
-- `description` — event description
-- `attendees` — list of invited user IDs
-- `location` — event location string
 
-## Copy-Paste Examples
+Without these, the call fails with `ERROR_METHOD_NOT_FOUND` or similar.
 
-### Get today's events for user 5
+`from` and `to` use date format `YYYY-MM-DD` (not datetime). Defaults: `from` = 1 month ago, `to` = 3 months ahead.
 
-```bash
-vibe.py --raw GET '/v1/calendar/events?type=user&ownerId=5&from=2026-03-24&to=2026-03-24' --json
-```
+## Common Use Cases
 
-### Create a meeting tomorrow
+### Show schedule via batch (preferred — one HTTP call)
+
+Combine calendar + tasks in one request:
 
 ```bash
-vibe.py --raw POST /v1/calendar/events --body '{
-  "type": "user",
-  "ownerId": 5,
-  "name": "Team Standup",
-  "from": "2026-03-25T09:00:00",
-  "to": "2026-03-25T09:30:00",
-  "description": "Daily sync",
-  "attendees": [5, 10, 15]
-}' --confirm-write --json
+python3 scripts/bitrix24_batch.py \
+  --cmd 'events=calendar.event.get?type=user&ownerId=1&from=2026-03-11&to=2026-03-11' \
+  --cmd 'tasks=tasks.task.list?filter[RESPONSIBLE_ID]=1&filter[>=DEADLINE]=2026-03-11T00:00:00&filter[<=DEADLINE]=2026-03-11T23:59:59&select[]=ID&select[]=TITLE&select[]=DEADLINE&select[]=STATUS' \
+  --json
 ```
 
-### Check availability for two users
+### Show user's schedule for a specific day
+
+Get user ID from cached config or `user.current`, then query events:
 
 ```bash
-vibe.py --raw POST /v1/calendar/accessibility --body '{
-  "users": [5, 10],
-  "from": "2026-03-25",
-  "to": "2026-03-26"
-}' --json
+python3 scripts/bitrix24_call.py user.current --json
+python3 scripts/bitrix24_call.py calendar.event.get \
+  --param 'type=user' \
+  --param 'ownerId=1' \
+  --param 'from=2026-03-10' \
+  --param 'to=2026-03-10' \
+  --json
 ```
 
-### List calendar sections
+### Show upcoming events (easiest for "what's on my schedule")
 
 ```bash
-vibe.py --raw GET '/v1/calendar/sections?type=user&ownerId=5' --json
+python3 scripts/bitrix24_call.py calendar.event.get.nearest \
+  --param 'type=user' \
+  --param 'ownerId=1' \
+  --param 'days=7' \
+  --param 'forCurrentUser=true' \
+  --json
 ```
 
-## Common Pitfalls
+### Check availability before scheduling
 
-- **No `calendar.get`** — always use `calendar.event.get` with `type` and `ownerId`. Without these the call fails.
-- `type` and `ownerId` are mandatory for event queries — omitting them returns an error, not an empty list.
-- Date-only params use `YYYY-MM-DD`, not datetime. Datetime params use full ISO 8601.
-- Check `calendar.accessibility` before proposing meeting slots to avoid double-booking.
-- Group calendar events need `type=group` and the group ID as `ownerId`.
+```bash
+python3 scripts/bitrix24_call.py calendar.accessibility.get \
+  --param 'users[]=1' \
+  --param 'users[]=2' \
+  --param 'from=2026-03-10' \
+  --param 'to=2026-03-11' \
+  --json
+```
+
+### Create an event
+
+```bash
+python3 scripts/bitrix24_call.py calendar.event.add \
+  --param 'type=user' \
+  --param 'ownerId=1' \
+  --param 'name=Team Meeting' \
+  --param 'from=2026-03-10T10:00:00' \
+  --param 'to=2026-03-10T11:00:00' \
+  --json
+```
+
+## Working Rules
+
+- Always pass `type` and `ownerId` for `calendar.event.get`.
+- Use `calendar.event.get.nearest` for "show my schedule" — it needs fewer parameters.
+- Get user ID from `user.current` first if you don't know it.
+- Check `calendar.accessibility.get` before proposing meeting slots.
+- For read-only requests, execute immediately — do not ask permission.
+- One retry on first failure, then report blocker.
+
+## Good MCP Queries
+
+- `calendar event get nearest`
+- `calendar accessibility`
+- `calendar section`
+- `calendar resource booking`
