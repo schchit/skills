@@ -1,6 +1,6 @@
 ---
 name: dental-video-maker
-version: "1.0.1"
+version: 1.0.3
 displayName: "Dental Video Maker â Create Patient Education and Dental Practice Videos with AI"
 description: >
   Dental Video Maker â Create Patient Education and Dental Practice Videos with AI.
@@ -20,6 +20,8 @@ description: >
   referrals, and dental marketing agencies scaling educational content across a
   roster of clinics. Supports mp4, mov, webm, jpg, png.
 metadata: {"openclaw": {"emoji": "ð¦·", "requires": {"env": [], "configPaths": ["~/.config/nemovideo/"]}, "primaryEnv": "NEMO_TOKEN"}}
+homepage: https://nemovideo.com
+repository: https://github.com/nemovideo/nemovideo_skills
 ---
 
 ## 0. First Contact
@@ -33,11 +35,11 @@ When the user opens this skill or sends their first message, **greet them immedi
 - "add effects to this clip"
 - "help me create a short video"
 
-**IMPORTANT**: Do NOT wait silently. Always greet the user proactively on first contact.
+**IMPORTANT**: Always greet the user proactively on first contact. Let them know you're setting up while connecting. Always greet the user proactively on first contact.
 
-### Auto-Setup (do this SILENTLY before anything else)
+### Auto-Setup
 
-Before responding to the user, complete these steps invisibly:
+When the user first interacts, set up the connection:
 
 1. **Check token**: If `NEMO_TOKEN` env var is set, use it. Otherwise:
 2. **Read or generate Client-ID**:
@@ -50,7 +52,7 @@ Before responding to the user, complete these steps invisibly:
    Store the returned `token` as `NEMO_TOKEN` for this session. You get 100 free credits.
 4. **Create a session** (§3.0) so you're ready to work immediately.
 
-**CRITICAL**: Never mention tokens, authentication, API setup, or Client-IDs to the user. The user should feel like the skill "just works".
+Let the user know briefly: "Setting things up… ready!" then proceed with their request.
 
 # Dental Practice Videos â Explain the Procedure, Calm the Patient
 
@@ -82,7 +84,7 @@ Token setup if `NEMO_TOKEN` is not set:
 CLIENT_ID="${NEMO_CLIENT_ID:-$(cat ~/.config/nemovideo/client_id 2>/dev/null)}"
 if [ -z "$CLIENT_ID" ]; then
   CLIENT_ID=$(uuidgen 2>/dev/null || echo "client-$(date +%s)-$RANDOM")
-  mkdir -p ~/.config/nemovideo && echo "$CLIENT_ID" > ~/.config/nemovideo/client_id
+  mkdir -p ~/.config/nemovideo & echo "$CLIENT_ID" > ~/.config/nemovideo/client_id
 fi
 curl -s -X POST "$API/api/auth/anonymous-token" -H "X-Client-Id: $CLIENT_ID"
 ```
@@ -106,7 +108,7 @@ Every edit request goes through the SSE workflow. No special syntax needed â�
 | "credits" / "balance" | Balance check Â§3.3 |
 | "show me what we have" | State query Â§3.4, show track summary |
 
-**After every edit**, summarize what changed: "â Trimmed 5s from the start. Video is now 0:45. Want to add music next?"
+**After every edit**, summarize what changed: "â Trimmed 5s from the start. Video is now 0:45. Want to add music next"
 
 ## 3. API Reference
 
@@ -126,7 +128,7 @@ curl -s -X POST "$API/api/tasks/me/with-session/nemo_agent" \
   -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE" \
   -d '{"task_name":"editing_session","language":"<lang>"}'
 ```
-Save `session_id`, `task_id`. Browser: `$WEB/workspace/claim?token=$TOKEN&task={task_id}&session={session_id}&skill_name=$SKILL_NAME&skill_version=$SKILL_VERSION&skill_source=$SKILL_SOURCE`
+Save `session_id`, `task_id`. Browser: `$WEB/workspace/claim?task={task_id}&session={session_id}&skill_name=$SKILL_NAME&skill_version=$SKILL_VERSION&skill_source=$SKILL_SOURCE`
 
 ### 3.1 Send Edit (SSE)
 
@@ -188,9 +190,9 @@ Don't re-send. Wait 30s â Â§3.4. After 5 unchanged â report failure.
 
 ## 5. Conversation Patterns
 
-**Multi-edit sessions**: Users often chain 3-5 edits. After each, confirm and suggest next: "Trimmed â. Music next? Or want to add a title?"
+**Multi-edit sessions**: Users often chain 3-5 edits. After each, confirm and suggest next: "Trimmed â. Music next Or want to add a title"
 
-**Vague requests**: "make it better" â ask one clarifying question, then act: "Want me to add background music and color-correct, or something else?"
+**Vague requests**: "make it better" â ask one clarifying question, then act: "Want me to add background music and color-correct, or something else"
 
 **Non-video requests**: Redirect politely. "I handle video editing â for images try an image skill."
 
