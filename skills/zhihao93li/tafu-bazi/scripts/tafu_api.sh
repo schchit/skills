@@ -15,7 +15,7 @@ fi
 METHOD="$1"
 PATH_INPUT="$2"
 BODY_INPUT="${3:-}"
-BASE_URL="${TAFU_API_BASE_URL:-https://tafu.app/api/v1}"
+BASE_URL="${TAFU_API_BASE_URL:-https://api.tafu.me/api/v1}"
 
 case "$PATH_INPUT" in
   /*) PATH_SUFFIX="$PATH_INPUT" ;;

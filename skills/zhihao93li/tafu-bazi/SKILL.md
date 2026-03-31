@@ -1,7 +1,7 @@
 ---
 name: tafu_bazi
 description: Use Tafu's paid API for deterministic BaZi chart calculation, thematic readings, synastry, and soul-song generation when users ask for Chinese astrology analysis based on birth data.
-homepage: https://tafu.app/developers
+homepage: https://tafu.me/developers
 user-invocable: true
 metadata: {"openclaw":{"emoji":"☯️","skillKey":"tafu_bazi","os":["darwin","linux"],"requires":{"bins":["sh","curl"],"env":["TAFU_API_KEY"]},"primaryEnv":"TAFU_API_KEY"}}
 ---
@@ -21,13 +21,13 @@ Tafu is the source of truth for all chart math and paid analysis. Do not improvi
 
 - The host should inject `TAFU_API_KEY` from `skills.entries.tafu_bazi.apiKey`.
 - Optional override: `skills.entries.tafu_bazi.env.TAFU_API_BASE_URL`.
-- If the key is missing, stop and tell the user to create a key at `https://tafu.app/developers`, then configure `skills.entries.tafu_bazi.apiKey`.
+- If the key is missing, stop and tell the user to create a key at `https://tafu.me/developers`, then configure `skills.entries.tafu_bazi.apiKey`.
 
 Use `{baseDir}/scripts/tafu_api.sh` for every API call. It reads:
 
 - `TAFU_API_KEY`
 - `TAFU_API_BASE_URL` if present
-- otherwise defaults to `https://tafu.app/api/v1`
+- otherwise defaults to `https://api.tafu.me/api/v1`
 
 If you need concrete payload examples, read `{baseDir}/references/examples.md`.
 
@@ -125,7 +125,7 @@ If the response includes `taskId` and `status`:
 - You may add a short top summary, but do not discard or rewrite away important structured output.
 - Surface `creditsUsed` and `creditsRemaining` when returned.
 - If the API returns `viewUrl`, include it.
-- On `402` or `INSUFFICIENT_CREDITS`, tell the user to recharge Credits at `https://tafu.app/developers/billing`.
+- On `402` or `INSUFFICIENT_CREDITS`, tell the user to recharge Credits at `https://tafu.me/developers/billing`.
 - On `401` or `INVALID_API_KEY`, tell the user to rotate or reconfigure the API key.
 - On input validation errors, ask for the missing or invalid field instead of guessing.
 - If the API fails, do not fall back to a hallucinated BaZi reading.
