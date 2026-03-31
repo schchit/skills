@@ -1,6 +1,30 @@
 ---
-name: clickup
-description: Interact with ClickUp project management platform via REST API. Use when working with tasks, spaces, lists, assignees, or any ClickUp workflow automation. Handles pagination, subtasks, and common query patterns. Use for task management, reporting, automation, or any ClickUp-related queries.
+name: personal-task-tracking
+description: Query and manage ClickUp via REST API and the local `scripts/query.sh` helper. Use when listing open or completed tasks, counting due work, looking up spaces or lists, checking assignee workload, fetching task details, creating tasks, or closing tasks in ClickUp.
+metadata:
+  {
+    "openclaw":
+      {
+        "emoji": "⏫",
+        "requires":
+          {
+            "bins": ["bash", "curl", "jq"],
+            "env":
+              ["CLICKUP_API_KEY", "CLICKUP_TEAM_ID", "CLICKUP_ASSIGNEE_ID"],
+          },
+        "primaryEnv": "CLICKUP_API_KEY",
+        "install":
+          [
+            {
+              "id": "jq-brew",
+              "kind": "brew",
+              "formula": "jq",
+              "bins": ["jq"],
+              "label": "Install jq (brew)",
+            },
+          ],
+      },
+  }
 ---
 
 # ClickUp Skill
@@ -9,15 +33,14 @@ Interact with ClickUp's REST API for task management, reporting, and workflow au
 
 ## Configuration
 
-Before using this skill, ensure the following are configured in `~/.openclaw/workspace/TOOLS.md`:
+Before using this skill, ensure the following are configured:
 
 - **API Token:** `CLICKUP_API_KEY`
 - **Team/Workspace ID:** `CLICKUP_TEAM_ID`
 - **Task Assignee ID:** `CLICKUP_ASSIGNEE_ID`
-- **Space IDs** (optional, for filtering)
-- **List IDs** (optional, for creating tasks)
 
-Then check if they are available as environment variables:
+
+Check if they are available as environment variables:
 ```bash
 echo $CLICKUP_API_KEY
 echo $CLICKUP_TEAM_ID
