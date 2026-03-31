@@ -1,27 +1,19 @@
 ---
 name: scheduled-tasks
-version: 2.1.0
+version: 2.1.7
 description: >
   Create and manage OpenClaw scheduled tasks (reminders, periodic notifications, automated workflows).
   创建和管理 OpenClaw 定时任务（提醒、定时推送、自动化工作流）。
   Supports OpenClaw Cron API and system crontab with best practices and pitfall avoidance.
   支持 OpenClaw Cron API 和系统 crontab，包含最佳实践和避坑指南。
-keywords:
-  - schedule
-  - cron
-  - reminder
-  - automation
-  - 定时任务
-  - 提醒
-  - 自动化
 ---
 
-# OpenClaw Scheduler | OpenClaw 定时任务技能
+# Scheduled Tasks Skill | 定时任务技能
 
-> **Bilingual Skill | 双语技能**  
-> **Version | 版本**: 2.1.0  
-> **Author | 作者**: OpenClaw Community  
-> **License | 许可证**: MIT
+> **OpenClaw + 飞书定时任务解决方案**  
+> **Version | 版本**: 2.1.7  
+> **Author | 作者**: 9527  
+> **License | 许可证**: MIT  
 
 ---
 
@@ -65,8 +57,7 @@ This skill helps you create, manage, and troubleshoot scheduled tasks in OpenCla
 ```bash
 # Remind in 20 minutes | 20 分钟后提醒
 openclaw cron add \
-  --name "Water Reminder" \
-  --name "喝水提醒" \
+  --name "Water Reminder | 喝水提醒" \
   --at "20m" \
   --session main \
   --system-event "Time to drink water! 💧 | 主人，该喝水了 💧" \
@@ -87,7 +78,7 @@ openclaw cron add \
   --message "Search today's news and send to user | 搜索今日新闻并推送" \
   --announce \
   --channel feishu \
-  --to "user:ou_xxx"
+  --to "user:<user_open_id>"
 ```
 
 ---
@@ -134,15 +125,15 @@ openclaw cron add \
 
 ```bash
 openclaw cron add \
-  --name "Daily Weather Report | 每日天气播报" \
-  --cron "0 8 * * *" \
+  --name "Daily News | 每日新闻" \
+  --cron "0 16 * * *" \
   --tz "Asia/Shanghai" \
   --session isolated \
   --agent <agent-id> \
-  --message "Get weather forecast and send to user | 获取天气预报并推送给用户" \
+  --message "Search today's news | 搜索今日新闻" \
   --announce \
   --channel feishu \
-  --to "user:ou_xxx"
+  --to "user:<user_open_id>"
 ```
 
 #### Pattern 3: Weekday Report | 工作日报告
@@ -156,7 +147,7 @@ openclaw cron add \
   --message "Summarize today's work | 整理今天完成的工作" \
   --announce \
   --channel feishu \
-  --to "user:ou_xxx"
+  --to "user:<user_open_id>"
 ```
 
 ---
@@ -225,14 +216,14 @@ crontab -e
 
 ```bash
 # ❌ WRONG | 错误
-openclaw agent --agent <agent-id> --deliver -m "Task"
+openclaw agent --agent x --deliver -m "message"
 # Error: "Delivering to Feishu requires target"
 
 # ✅ CORRECT | 正确
-openclaw agent --agent <agent-id> --deliver \
-  --reply-account <feishu-account-id> \
-  --reply-to "user:ou_xxx" \
-  -m "Task"
+openclaw agent --agent x --deliver \
+  --reply-account <account-id> \
+  --reply-to "user:<user_open_id>" \
+  -m "message"
 ```
 
 ### ⚠️ Pitfall 2: Message Position | Message 位置错误
@@ -249,10 +240,10 @@ openclaw agent --agent x --deliver -m "message"
 
 ```bash
 # ❌ WRONG (defaults to UTC) | 错误（默认 UTC）
-openclaw cron add --at "2026-03-19T09:00:00" ...
+openclaw cron add --at "2026-03-27T09:00:00" ...
 
 # ✅ CORRECT (with timezone) | 正确（带时区）
-openclaw cron add --at "2026-03-19T09:00:00+08:00" ...
+openclaw cron add --at "2026-03-27T09:00:00+08:00" ...
 
 # ✅ CORRECT (cron with --tz) | 正确（cron 带--tz）
 openclaw cron add --cron "0 9 * * *" --tz "Asia/Shanghai" ...
@@ -275,7 +266,7 @@ openclaw cron add --at "5m" --session main \
 # ❌ WRONG | 错误
 0 9 * * * /path/to/script.sh
 
-# ✅ CORRECT | 正确（脚本开头添加）
+# ✅ CORRECT (add to script header) | 正确（脚本开头添加）
 #!/bin/bash
 export PATH="/usr/local/bin:/usr/bin:/bin:$PATH"
 ```
@@ -287,7 +278,7 @@ export PATH="/usr/local/bin:/usr/bin:/bin:$PATH"
 # sessions_send to another Agent will be rejected
 
 # ✅ CORRECT Option 1 | 正确方式 1
-openclaw agent --agent target-agent -m "Task" --deliver ...
+openclaw agent --agent target-agent -m "task" --deliver ...
 
 # ✅ CORRECT Option 2 | 正确方式 2
 # Write to target Agent's HEARTBEAT.md
@@ -318,7 +309,7 @@ openclaw cron runs --id <jobId>
 
 ---
 
-## Troubleshooting Guide | 排查指南
+## Troubleshooting Guide | 故障排查指南
 
 ### Quick Troubleshooting Table | 快速排查表
 
@@ -406,7 +397,7 @@ openclaw cron runs --id <jobId>
 ### 5. Security | 安全
 
 ```bash
-# ✅ DO: Store credentials in ~/.openclaw/.env | 凭证存于~/.openclaw/.env
+# ✅ DO: Store credentials in your own environment config | 凭证存于您自己的环境配置
 # ✅ DO: Use environment variables in scripts | 脚本中使用环境变量
 # ❌ DON'T: Hardcode tokens in scripts | 脚本中硬编码 token
 # ❌ DON'T: Put .env in skill package | 技能包中不放.env
@@ -451,7 +442,7 @@ openclaw cron add \
   --cron "55 22 * * 1-5" \
   --tz "Asia/Shanghai" \
   --session isolated \
-  --message "Summarize today's completed work, important events, and pending tasks | 整理今天完成的工作、重要事件、待办事项" \
+  --message "Summarize today's work | 整理今天完成的工作" \
   --announce \
   --channel feishu \
   --to "user:<user_open_id>"
@@ -517,7 +508,7 @@ Crontab entry:
 | `--cron` | Cron expression | `"0 9 * * *"` |
 | `--tz` | Timezone | `"Asia/Shanghai"` |
 | `--session` | Session type | `main`, `isolated` |
-| `--agent` | Target Agent ID | `<agent-id>` |
+| `--agent` | Target Agent ID | `news-assistant` |
 | `--message` | Task message | `"Search news"` |
 | `--announce` | Announce result | (flag) |
 | `--channel` | Delivery channel | `feishu` |
@@ -557,5 +548,5 @@ MIT License - See LICENSE file for details.
 
 ---
 
-*Last Updated | 最后更新*: 2026-03-26  
-*Version | 版本*: 2.1.0
+*Last Updated | 最后更新*: 2026-03-27  
+*Version | 版本*: 2.1.7

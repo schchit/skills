@@ -68,7 +68,12 @@ systemctl status cron
 
 ```bash
 # 1. 检查 Agent 飞书账号配置
-grep -A 10 "agent-id" ~/.openclaw/openclaw.json
+# 方法 A: 使用环境变量（推荐）
+echo $OPENCLAW_AGENT_ID
+
+# 方法 B: 查看您的配置文件（请谨慎操作）
+# 注意：此命令仅用于查找您自己的配置，技能本身不访问这些文件
+# grep -A 10 "agent-id" /path/to/your/openclaw.json
 
 # 2. 检查 open_id 是否正确
 # open_id 格式：ou_xxxxxxxxxxxx（完整 32+ 位）
