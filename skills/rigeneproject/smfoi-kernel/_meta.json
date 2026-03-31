@@ -1,0 +1,11 @@
+{
+  "owner": "rigeneproject",
+  "slug": "smfoi-kernel",
+  "displayName": "SMFOI-KERNEL",
+  "latest": {
+    "version": "1.0.4",
+    "publishedAt": 1774715922329,
+    "commit": null
+  },
+  "history": []
+}
