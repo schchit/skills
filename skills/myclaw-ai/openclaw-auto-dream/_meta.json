@@ -1,11 +1,17 @@
 {
   "owner": "myclaw-ai",
   "slug": "openclaw-auto-dream",
-  "displayName": "OpenClaw Auto-Dream",
+  "displayName": "Openclaw Auto Dream",
   "latest": {
-    "version": "3.0.0",
-    "publishedAt": 1774705643274,
-    "commit": "https://github.com/openclaw/skills/commit/d092fc678f5d247737da5599216d510a1955fae6"
+    "version": "4.0.3",
+    "publishedAt": 1774930399107,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "3.0.0",
+      "publishedAt": 1774705643274,
+      "commit": "https://github.com/openclaw/skills/commit/d092fc678f5d247737da5599216d510a1955fae6"
+    }
+  ]
 }

@@ -1,267 +1,141 @@
 ---
 name: openclaw-auto-dream
-description: "Cognitive memory architecture for OpenClaw agents — multi-layered dream cycle with knowledge graphs, importance scoring, forgetting curves, push notifications, interactive health dashboard, and cross-instance migration. Use when: user asks for 'auto memory', 'dream', 'auto-dream', 'memory consolidation', 'memory dashboard', 'memory health', 'export memory', 'import memory'. Powered by MyClaw.ai (https://myclaw.ai)."
+description: "Cognitive memory architecture for OpenClaw agents — periodic dream cycles that consolidate daily logs into structured long-term memory with importance scoring, insights, and push notifications. Use when: user asks for 'auto memory', 'dream', 'auto-dream', 'memory consolidation', 'memory dashboard'. Powered by MyClaw.ai (https://myclaw.ai)."
 ---
 
-# OpenClaw Auto-Dream v3.0 — Cognitive Memory Architecture
+# OpenClaw Auto-Dream — Memory Consolidation System
 
-A multi-layered memory system inspired by human cognition. The agent periodically "dreams" to consolidate, organize, score, and prune its memories across four distinct memory layers. v3.0 adds push notifications, an interactive health dashboard, cross-instance memory migration, non-obvious dream insights, and a reachability graph metric.
+Agent periodically "dreams" — scans daily logs, extracts key knowledge, consolidates into long-term memory, and sends a summary report to the user.
 
-## Memory Layers
+> **[MyClaw.ai](https://myclaw.ai)** — the best way to run your OpenClaw. A dedicated server running 24/7 with full code control, cron jobs, persistent memory, and one-click skill install.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Working Memory          (OpenClaw LCM — not managed here)  │
-├─────────────────────────────────────────────────────────────┤
-│  Episodic Memory         memory/episodes/*.md               │
-│  (project narratives, event timelines)                      │
-├─────────────────────────────────────────────────────────────┤
-│  Long-term Memory        MEMORY.md                          │
-│  (structured knowledge: facts, decisions, people, strategy) │
-├─────────────────────────────────────────────────────────────┤
-│  Procedural Memory       memory/procedures.md               │
-│  (how-to: user prefs, workflows, tool patterns)             │
-├─────────────────────────────────────────────────────────────┤
-│  Memory Index            memory/index.json                  │
-│  (metadata, importance scores, relations, health stats)     │
-└─────────────────────────────────────────────────────────────┘
-```
+## Core Files
 
-### Layer Details
+| File | Purpose | Mutability |
+|------|---------|------------|
+| `MEMORY.md` | Structured long-term knowledge | Append, update |
+| `memory/procedures.md` | Workflow preferences, tool usage | Append, update |
+| `memory/episodes/*.md` | Project narratives | Append only |
+| `memory/index.json` | Metadata index (v3.0 schema) | Rebuilt each dream |
+| `memory/dream-log.md` | Dream report log | Append only |
+| `memory/archive.md` | Summarized older entries | Append only |
 
-| Layer | File(s) | Purpose | Mutability |
-|-------|---------|---------|------------|
-| Long-term | `MEMORY.md` | Structured knowledge base | Append, update, prune |
-| Episodic | `memory/episodes/*.md` | Project/event narratives | Append-only |
-| Procedural | `memory/procedures.md` | Learned workflows & preferences | Append, update |
-| Index | `memory/index.json` | Metadata graph for all entries | Rebuilt each dream |
-| Archive | `memory/archive.md` | Compressed old entries | Append-only |
-| Dream Log | `memory/dream-log.md` | Dream cycle reports | Append-only |
+Optional: LCM plugin (Working Memory layer). If not installed, prompt the user:
+> "Recommended: install the LCM plugin for working memory: `openclaw plugins install @martian-engineering/lossless-claw`"
+
+Do not auto-install plugins or modify config.
 
 ## Setup
 
-### 1. Create the cron job
+### 0. First Dream (Run Immediately After Install)
 
-```
-Use the cron tool to create:
-- schedule: { kind: "cron", expr: "0 4 * * *", tz: "<user timezone>" }
-- payload: { kind: "agentTurn", message: <content of references/dream-prompt.md> }
-- sessionTarget: "isolated"
-- name: "auto-memory-dream"
-```
+After setup is complete, DO NOT wait for the cron schedule. Immediately run the First Dream:
 
-Frequency recommendations:
-- `0 4 * * *` — daily at 4 AM (recommended for active agents)
-- `0 */12 * * *` — every 12 hours (high-activity)
-- `0 4 * * 1` — weekly Monday (low-activity)
+1. Read `references/first-dream-prompt.md`
+2. Follow every step — the user should see progress as it happens
+3. This scans existing daily logs, consolidates them, and sends a before/after comparison report
+4. The report shows the user exactly what Auto-Dream found and organized
 
-### 2. Configure notification level (v3.0)
+If the user has existing daily logs, they'll see their scattered knowledge consolidated instantly.
+If the instance is brand new, they'll see the memory architecture initialized and ready.
 
-During setup, ask the user which notification level they prefer and record it in `memory/index.json` under `config.notificationLevel`:
-
-| Level | Behavior |
-|-------|----------|
-| `silent` | Write to dream-log.md only; no push message |
-| `summary` | Push a 3–5 line digest: health score, counts, top insight |
-| `full` | Push the complete dream report section as a message |
-
-Default: `summary`
-
-The notification is sent via the `message` tool after each dream cycle completes. The delivery target is inherited from the cron job's delivery config.
-
-### 3. Initialize memory structure
-
-If this is a fresh setup or upgrading from v1/v2, ensure the directory structure exists:
+### 1. Initialize Files
 
 ```bash
 mkdir -p memory/episodes
 ```
 
-Then initialize files from templates in `references/memory-template.md`:
-- Create `MEMORY.md` if it doesn't exist (use template sections)
-- Create `memory/procedures.md` from template
-- Create `memory/index.json` with initial empty structure (v3.0 schema)
-- Create `memory/dream-log.md` (empty)
+Ensure the following files exist (create from `references/memory-template.md` templates if missing):
+- `memory/index.json`
+- `memory/procedures.md`
+- `memory/dream-log.md`
+- `memory/archive.md`
 
-If upgrading from v1, read `references/migration-v2-to-v3.md` for the full v1→v2→v3 migration path.
-If upgrading from v2, read `references/migration-v2-to-v3.md` § "v2 → v3 Upgrade" for the shorter path.
+### 2. Create Cron Job
 
-### 4. Verify
+```
+name: "auto-memory-dream"
+schedule: { kind: "cron", expr: "0 4 * * *", tz: "<user timezone>" }
+payload: {
+  kind: "agentTurn",
+  message: "Run auto memory consolidation.\n\nRead skills/skills/openclaw-auto-dream/references/dream-prompt-lite.md and follow every step strictly.",
+  timeoutSeconds: 600
+}
+sessionTarget: "isolated"
+delivery: { mode: "announce" }
+```
+
+### 3. Verify
 
 - [ ] Cron job created and enabled
 - [ ] `MEMORY.md` exists with section headers
+- [ ] `memory/index.json` exists
 - [ ] `memory/procedures.md` exists
-- [ ] `memory/episodes/` directory exists
-- [ ] `memory/index.json` exists with version `"3.0"`
-- [ ] `notificationLevel` set in `index.json` config block
-- [ ] (Optional) Test push notification by running a manual dream
+- [ ] `memory/dream-log.md` exists
 
-## Dream Cycle — Three Phases
+## Dream Cycle Flow
 
-The dream cycle runs as an isolated agent session. Read `references/dream-prompt.md` for the complete execution prompt. Summary below:
+Each dream runs in an isolated session (see `references/dream-prompt-lite.md`):
 
-### Phase 1: Collect
+### Step 0: Smart Skip + Recall
+Check if any unconsolidated daily logs exist in the last 7 days. All processed → still send a useful message: surface an old memory ("N days ago, you decided...") and show streak count. Never send a blank "nothing to do" message.
 
-Gather raw material from multiple sources:
+### Step 1: Collect
+Read unconsolidated daily logs. Extract decisions, facts, progress, lessons, and todos.
 
-1. **Daily logs** — scan `memory/YYYY-MM-DD.md` files from last 7 days without `<!-- consolidated -->` marker
-2. **Previous dreams** — read last entry in `memory/dream-log.md` for continuity
-3. **User markers** — prioritize entries with `<!-- important -->`, `⚠️`, `🔥`, or `📌` tags
+### Step 2: Consolidate
+Compare with MEMORY.md → append new content, update existing, skip duplicates. Write workflow preferences to procedures.md. Mark processed daily logs with `<!-- consolidated -->`.
 
-### Phase 2: Consolidate
+### Step 2.8: Stale Thread Detection
+Scan Open Threads for items stale >14 days. Include top 3 in notification with context.
 
-Classify and route each extracted insight:
+### Step 3: Generate Report + Auto-Refresh Dashboard
+Append to dream-log.md with change list + insights + suggestions. If dashboard.html exists, regenerate with latest data.
 
-| Content Type | Destination |
-|---|---|
-| Decisions, facts, people, milestones | `MEMORY.md` → matching section |
-| "How-to" knowledge, preferences, workflows | `memory/procedures.md` → matching section |
-| Multi-event narratives, project arcs | `memory/episodes/<name>.md` |
+### Step 4: Notify with Growth Metrics
+Send a consolidation report showing:
+- Before → after comparison (entries, decisions, lessons)
+- Cumulative growth ("142 → 145 entries, +2.1%")
+- Dream streak count ("Dream #14")
+- Milestones when hit (first dream, 7-day streak, 100 entries, etc.)
+- Top 3 stale reminders (if any)
+- Weekly summary on Sundays (week-over-week growth, biggest memories)
 
-During consolidation:
-- **Semantic dedup** — compare meaning not just text; keep the better-worded version
-- **Link relations** — tag `related: [mem_xxx, mem_yyy]` between connected entries
-- **Assign IDs** — every new entry gets a `mem_NNN` identifier tracked in the index
+### Notification Principles
+1. **Every notification must deliver value** — never send empty "nothing happened" messages
+2. **Show growth, not just changes** — cumulative stats make the user feel the system is evolving
+3. **Surface forgotten context** — stale thread reminders and old memory recalls create surprise and utility
+4. **Celebrate milestones** — streak counts and entry milestones build habit and attachment
 
-### Phase 3: Evaluate
+## Manual Triggers
 
-Assess and maintain memory health:
+| Command | Action |
+|---------|--------|
+| "Consolidate memory" / "Dream now" | Run full dream cycle in current session |
+| "Memory dashboard" | Generate memory/dashboard.html |
+| "Export memory" | User-initiated export of memory files to JSON (see migration guide) |
 
-1. **Update index** — rebuild `memory/index.json` with current entries, scores, and relations
-2. **Score importance** — see `references/scoring.md` for the full algorithm
-3. **Apply forgetting curve** — entries >90 days old with low importance → compress to one-line summary in `memory/archive.md`
-4. **Calculate health score** — freshness, coverage, coherence, efficiency, **reachability** (new in v3.0)
-5. **Generate insights (v3.0)** — 1–3 non-obvious pattern observations across the memory graph
-6. **Generate dream report** — append to `memory/dream-log.md`
-7. **Send notification (v3.0)** — based on configured `notificationLevel`
-8. **Update dashboard data (v3.0)** — append latest health snapshot to `healthHistory` in index.json
+## Language Rules
 
-## v3.0 New Features
-
-### 🔔 Push Notifications
-
-After each dream cycle, the agent optionally pushes a summary to the user's channel:
-
-- **`silent`** — no push; dream is logged silently
-- **`summary`** — compact 3–5 line message:
-  ```
-  🌀 Dream complete — Health: 82/100 | +5 new, ~3 updated, -1 archived
-  💡 Insight: Decision frequency is accelerating — consider a decision journal
-  ```
-- **`full`** — the complete dream report section (stats, changes, insights, suggestions)
-
-Notification level is set in `memory/index.json` at `config.notificationLevel` and can be changed any time by asking "Set dream notifications to [silent/summary/full]".
-
-### 📊 Memory Health Dashboard
-
-Trigger phrases: "Show memory dashboard", "Generate memory dashboard", "Memory health report"
-
-When triggered, the agent:
-1. Reads `memory/index.json` and `memory/dream-log.md`
-2. Builds a complete data JSON from live memory state
-3. Reads the dashboard template from `references/dashboard-template.html`
-4. Injects the data into the template
-5. Writes the populated dashboard to `memory/dashboard.html`
-6. Informs the user the file is ready (and opens it if possible)
-
-The dashboard features (dark theme, MyClaw gold #D4AF37):
-- Health score gauge (large, prominent)
-- 5-metric cards (freshness, coverage, coherence, efficiency, reachability)
-- Memory distribution donut chart (entries per layer)
-- Importance histogram
-- Dream history line chart (last 30 cycles)
-- Recent changes table
-- Top suggestions + stale entries list
-
-### 🔄 Cross-Instance Memory Migration
-
-Read `references/migration-cross-instance.md` for the full protocol.
-
-**Export** (triggers: "Export memory bundle", "Pack memories for migration"):
-- Bundles all memory layers into a portable JSON file
-- Output: `memory/export-YYYY-MM-DD.json`
-- Selective: "Export only procedures" — exports a single layer
-
-**Import** (triggers: "Import memory bundle", "Restore memories from [file]"):
-- Reads the bundle and merges each layer into the current instance
-- Conflict resolution: newer `lastReferenced` wins on ID collisions
-- Backup of all current files is taken before any changes
-- Selective: "Import episodes from bundle" — imports one layer
-
-### 🧠 Dream Insights
-
-After health scoring (Phase 3.7), the dream cycle generates 1–3 non-obvious insights:
-
-- **Pattern connections** — "Project X's strategy mirrors what worked for Project Y"
-- **Temporal patterns** — "Strategic decisions tend to cluster on Mondays"
-- **Gap detection** — "No lessons learned recorded for the last 3 projects"
-- **Trend alerts** — "Memory health declining for 3 consecutive cycles"
-
-Insights appear in the dream report under `### 🔮 Insights` and are included in push notifications.
-
-### 🎯 Memory Reachability Score
-
-A fifth health metric (see `references/scoring.md` for formula):
-
-```
-reachability = avg(connected_component_size / total_entries) for all components
-```
-
-- `1.0` = all entries reachable from each other (one connected graph)
-- `0.1` = many isolated clusters (fragmented knowledge)
-
-Updated 5-metric health formula:
-```
-health = freshness×0.25 + coverage×0.25 + coherence×0.2 + efficiency×0.15 + reachability×0.15
-```
-
-## User Marker System
-
-Users can tag entries in daily logs or MEMORY.md to influence dream behavior:
-
-| Marker | Effect |
-|--------|--------|
-| `⚠️ PERMANENT` | Never pruned or archived |
-| `🔥 HIGH` | 2× importance weight, slower decay |
-| `📌 PIN` | Exempt from auto-reorganization |
-| `<!-- important -->` | Prioritized during collection |
-
-## Manual Trigger Phrases
-
-| Phrase | Action |
-|--------|--------|
-| "Run memory maintenance" | Full dream cycle in current session |
-| "Consolidate memories" | Full dream cycle in current session |
-| "Dream now" | Full dream cycle in current session |
-| "Run auto-dream" | Full dream cycle in current session |
-| "Show memory dashboard" | Generate `memory/dashboard.html` |
-| "Generate memory dashboard" | Generate `memory/dashboard.html` |
-| "Memory health report" | Generate `memory/dashboard.html` |
-| "Export memory bundle" | Export all layers to JSON bundle |
-| "Pack memories for migration" | Export all layers to JSON bundle |
-| "Export only [layer]" | Selective layer export |
-| "Import memory bundle" | Import from JSON bundle file |
-| "Restore memories from [file]" | Import from specified bundle file |
-| "Import [layer] from bundle" | Selective layer import |
-| "Set dream notifications to [level]" | Update `notificationLevel` in index.json |
+All output uses the user's preferred language (from workspace settings).
 
 ## Safety Rules
 
-1. **Never delete daily log files** — source of truth, append-only
-2. **Never remove `⚠️ PERMANENT` entries** — honor user protection markers
-3. **Backup before major changes** — if MEMORY.md changes >30%, create `memory/MEMORY.md.bak`
-4. **Backup index** — copy `index.json` → `index.json.bak` before each dream
-5. **Episodes are append-only** — never delete episode files
-6. **Procedures changes logged** — any modification to `procedures.md` must appear in the dream report
-7. **Secrets policy** — only consolidate secrets already present in MEMORY.md; never create new secret entries
-8. **Migration backup** — before any import operation, back up all current memory files to `memory/pre-import-backup/`
-9. **Dashboard is read-only output** — `memory/dashboard.html` is generated; never treat it as an input source
+1. **Never delete daily logs** — only mark with `<!-- consolidated -->`
+2. **Never remove ⚠️ PERMANENT items** — user-protected markers
+3. **Safe changes** — if MEMORY.md changes >30%, save .bak copy first
+4. **Index safety** — save index.json.bak before each dream
+5. **Privacy** — only consolidate information the user has already written in their own workspace files
+6. **Scope** — only read and write files within the `memory/` directory and `MEMORY.md`
 
 ## Reference Files
 
-- `references/dream-prompt.md` — Complete prompt for cron-triggered dream cycles
-- `references/memory-template.md` — Templates for all memory files (MEMORY.md, procedures.md, episodes, index.json)
-- `references/scoring.md` — Importance scoring algorithm, forgetting curve, health score formula (5 metrics)
-- `references/dashboard-template.html` — HTML dashboard template (data injected at runtime)
-- `references/migration-cross-instance.md` — Cross-instance memory bundle export/import protocol
-- `references/migration-v2-to-v3.md` — Upgrade guide from v1→v2→v3 cognitive architecture
+- `references/first-dream-prompt.md` — **First Dream: post-install full scan with before/after report**
+- `references/dream-prompt-lite.md` — **Compact prompt for daily cron use** (default)
+- `references/dream-prompt.md` — Full prompt (for manual deep consolidation)
+- `references/scoring.md` — Importance scoring, forgetting curve, health score algorithms
+- `references/memory-template.md` — File templates (MEMORY.md, procedures, index.json, etc.)
+- `references/dashboard-template.html` — HTML dashboard template
+- `references/migration-cross-instance.md` — Cross-instance migration protocol
+- `references/migration-v1-to-v2.md` — v1→v2 upgrade guide
+- `references/migration-v2-to-v3.md` — v2→v3 upgrade guide

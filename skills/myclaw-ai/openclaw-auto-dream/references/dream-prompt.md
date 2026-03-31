@@ -2,6 +2,8 @@
 
 You are running an automatic memory consolidation cycle ("dream"). Execute all phases below precisely and in order.
 
+**Language:** All user-facing output (dream reports, notifications, insights, suggestions) MUST use the user's preferred language. Detect from workspace context (MEMORY.md, daily logs). Do NOT default to English.
+
 ## Pre-flight
 
 1. Back up `memory/index.json` to `memory/index.json.bak` (if it exists)
@@ -37,7 +39,7 @@ From each file, extract items in these categories:
 |----------|---------|
 | **Decisions** | Choices made, commitments, direction changes |
 | **People** | New contacts, relationship updates, preferences learned about others |
-| **Facts** | User preferences, technical details, account info |
+| **Facts** | User preferences, technical details, project context |
 | **Projects** | Progress, blockers, completions, milestones |
 | **Lessons** | Mistakes, insights, things that worked or failed |
 | **Procedures** | Workflows learned, tool usage patterns, communication preferences |
@@ -132,13 +134,15 @@ For each memory entry (in MEMORY.md, procedures.md, and episodes), ensure an ent
 For each entry, calculate importance using the algorithm in `references/scoring.md`:
 
 ```
-importance = clamp(base_weight × recency_factor × reference_boost, 0.0, 1.0)
+raw = base_weight × recency_factor × reference_boost
+importance = clamp(raw / 8.0, 0.0, 1.0)
 ```
 
 Where:
-- `base_weight` = 1.0 (default), 2.0 (🔥 HIGH), always 1.0 (⚠️ PERMANENT)
+- `base_weight` = 1.0 (default), 2.0 (🔥 HIGH), always 1.0 (⚠️ PERMANENT → final importance always 1.0)
 - `recency_factor` = max(0.1, 1.0 - (days_since_last_reference / 180))
 - `reference_boost` = max(1.0, log2(referenceCount + 1))
+- Divide by 8.0 to normalize (max theoretical raw = 2.0 × 1.0 × 4.0 = 8.0)
 
 Clamp final importance to [0.0, 1.0] range (⚠️ PERMANENT is always 1.0).
 
@@ -152,7 +156,7 @@ For entries where ALL conditions are true:
 Action:
 1. Compress the entry to a one-line summary
 2. Append the summary to `memory/archive.md` with original ID and date
-3. Remove the full entry from its source file (MEMORY.md or procedures.md)
+3. Move the entry from its source file to archive.md (content preserved in archive)
 4. Mark the index entry with `"archived": true`
 
 **Never archive entries from episode files** — episodes are append-only.
@@ -265,13 +269,15 @@ Populate `stats.insights` in index.json with the plain-text insight strings (wit
 
 ## Post-flight: Notification
 
+**Language rule:** All notifications and dream reports MUST be written in the user's preferred language. Detect from workspace context (MEMORY.md language, daily log language). Never default to English unless the user writes in English.
+
 Based on the `config.notificationLevel` read during Pre-flight:
 
 ### If `silent`:
-Skip. The dream report has been written to `memory/dream-log.md`. No push message sent.
+Skip. The dream report has been written to `memory/dream-log.md`. End the session with a brief internal note only.
 
 ### If `summary`:
-Format a compact 3–5 line message and send it using the `message` tool:
+Format a compact 3–5 line message as your **session reply** (the cron delivery mechanism will route it to the user's channel):
 
 ```
 🌀 Dream complete — Health: XX/100 | +N new, ~N updated, -N archived
@@ -280,20 +286,10 @@ Format a compact 3–5 line message and send it using the `message` tool:
 💡 Tip: [top suggestion from the dream report]
 ```
 
-Call:
-```
-message(action="send", message=<formatted text above>)
-```
-
-The delivery target is inherited from the cron job's delivery config (the channel that triggered or was configured at setup time).
+Simply reply with this text as your final message. The cron job's `delivery` config handles routing to the correct channel.
 
 ### If `full`:
-Send the complete dream report section as a message. This includes the Stats block, Health block, Insights block, Changes block, and Suggestions block from the dream report. Break into multiple messages if the content exceeds platform limits (e.g., Telegram 4096 char limit).
-
-Call:
-```
-message(action="send", message=<full dream report markdown>)
-```
+Reply with the complete dream report section as your final message. This includes the Stats block, Health block, Insights block, Changes block, and Suggestions block from the dream report. If the content is very long, focus on the most important sections (Stats + Health + Insights + top 3 Changes + top 2 Suggestions).
 
 ---
 
