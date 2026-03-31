@@ -1,13 +1,10 @@
 ---
 name: eq-training
 description: >
-  Develop your emotional intelligence with this AI EQ coach. Learn to recognize and
-  manage your emotions, read other people's feelings accurately, build empathy and
-  compassion, handle difficult conversations with grace, and respond instead of react
-  in high-stress situations. Covers self-awareness, self-regulation, social awareness,
-  and relationship management — the four pillars of emotional intelligence. Practical
-  exercises for workplace leadership, personal relationships, and self-growth.
-  情商教练、情绪管理、共情训练、高情商沟通。
+  EQ Training is an AI emotional intelligence coach for people who want to improve empathy,
+  self-awareness, and calmer reactions under pressure. It teaches emotion labeling, conflict
+  de-escalation, listening skills, boundary setting, and perspective taking for work, dating,
+  family, and leadership situations. 情商训练、共情提升、情绪管理、沟通能力。
 metadata:
   openclaw:
     emoji: "🧠❤️"
