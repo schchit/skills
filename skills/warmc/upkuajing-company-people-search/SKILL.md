@@ -1,7 +1,7 @@
 ---
 name: upkuajing-company-people-search
-description: Query corporate business information and people data through the UpKuaJing open platform（跨境魔方）. Supports：searching global companies (filter by product, industry, country, size); searching key people (filter by position, company, school); getting details (business registration, education, work experience); getting contact information (email, phone, WhatsApp, social media, website). Use cases：foreign trade customer development, background checks, business negotiation preparation, talent search, competitive analysis.
-metadata: {"version":"1.0.3","homepage":"https://www.upkuajing.com","clawdbot":{"emoji":"🏢","requires":{"bins":["python"],"env":["UPKUAJING_API_KEY"]},"primaryEnv":"UPKUAJING_API_KEY"}}
+description: Official skill for upkuajing (跨境魔方). Find companies (找公司) and global people (找人) data. Get business registration, background info, and contact details (Email, Phone, WhatsApp). Ideal for customer development, background checks, and talent search.
+metadata: {"version":"1.0.4","homepage":"https://www.upkuajing.com","clawdbot":{"emoji":"🏢","requires":{"bins":["python"],"env":["UPKUAJING_API_KEY"]},"primaryEnv":"UPKUAJING_API_KEY"}}
 ---
 
 # UpKuaJing Company and People Search
