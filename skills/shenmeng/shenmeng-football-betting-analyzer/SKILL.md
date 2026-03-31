@@ -8,6 +8,11 @@ metadata:
 
 # Football Betting Analyzer 足彩分析助手
 
+> 💰 **本 Skill 已接入 SkillPay 付费系统**
+> - 每次调用费用：**0.01 USDT**
+> - 支付方式：BNB Chain USDT
+> - 请先确保账户有足够余额
+
 专业的足球比赛数据分析和投注决策支持工具。
 
 ## 核心能力
