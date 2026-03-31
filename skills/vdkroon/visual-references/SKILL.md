@@ -1,12 +1,12 @@
 ---
 name: visual-references
-description: "Search and download visual reference images from Unsplash to inspire image or video generation. Use when you need style references, mood boards, composition or color palette inspiration before generating an asset."
-metadata: {"clawdbot":{"emoji":"🖼️","requires":{"bins":["python3"],"pip":["requests"],"env":["UNSPLASH_ACCESS_KEY"]}}}
+description: "Search and download visual reference images from Pexels to inspire image or video generation. Use when you need style references, mood boards, composition or color palette inspiration before generating an asset."
+metadata: {"clawdbot":{"emoji":"🖼️","requires":{"bins":["python3"],"pip":["requests"],"env":["PEXELS_API_KEY"]}}}
 ---
 
-# Visual References (Unsplash)
+# Visual References (Pexels)
 
-Download visual references from Unsplash to inspect style, mood, and composition before generating.
+Download visual references from Pexels to inspect style, mood, and composition before generating.
 
 ## When to use
 
@@ -23,12 +23,12 @@ Download visual references from Unsplash to inspect style, mood, and composition
 
 ## Prerequisites
 
-Requires the `UNSPLASH_ACCESS_KEY` environment variable (free Unsplash API key). The script will fail if the key is not configured. Get one at https://unsplash.com/developers.
+Requires the `PEXELS_API_KEY` environment variable (free Pexels API key). The script will fail if the key is not configured. Get one at https://pexels.com/api.
 
 ## Basic usage
 
 ```bash
-python3 ~/.openclaw/skills/visual-references/scripts/visual_ref.py "QUERY" [options]
+python3 ~/.openclaw/workspace/skills/visual-references/scripts/visual_ref.py "QUERY" [options]
 ```
 
 ### Options
@@ -37,17 +37,21 @@ python3 ~/.openclaw/skills/visual-references/scripts/visual_ref.py "QUERY" [opti
 |------|---------|-------------|
 | `--count N` | 5 | Number of images |
 | `--output DIR` | `/tmp/visual-refs` | Output folder |
-| `--orientation` | — | `landscape`, `portrait`, `squarish` |
+| `--orientation` | — | `landscape`, `portrait`, `square` |
 | `--list-only` | — | List URLs only, no download |
+
+### Output directory rule (MANDATORY)
+
+**ALWAYS use `--output /tmp/visual-refs` as the output directory.** Do NOT invent unique folder names like `visual-refs-salon-v2`, `visual-refs-v3`, etc. The script automatically cleans the output folder before each search, so using the same folder every time is safe and prevents accumulation of old references.
 
 ### Examples
 
 ```bash
 # References for a real estate hero image
-python3 visual_ref.py "luxury real estate minimalist nordic" --count 5 --orientation landscape
+python3 visual_ref.py "luxury real estate minimalist nordic" --count 5 --orientation landscape --output /tmp/visual-refs
 
 # Square thumbnails for social media
-python3 visual_ref.py "personal branding outdoor golden hour" --count 3 --orientation squarish
+python3 visual_ref.py "personal branding outdoor golden hour" --count 5 --orientation square --output /tmp/visual-refs
 
 # List only, no download
 python3 visual_ref.py "product photography white background" --list-only
@@ -56,14 +60,14 @@ python3 visual_ref.py "product photography white background" --list-only
 ## IMPORTANT: Usage limits
 
 - **Maximum 3 searches per task.** One main query, up to two refinements. Do NOT run dozens of searches looking for the perfect reference.
-- Use `--count 3` (not 5) to keep it fast.
+- Use `--count 5` (not 5) to keep it fast.
 - Pick the best reference from what you get and move on to generation. The references are inspiration, not the final product.
 
 ## Workflow when you decide to use it
 
 1. **Receive brief** with vague style or mentioned inspiration
-2. **Translate query to English** — Unsplash works best in English
-3. **Run ONE search** with `--count 3`
+2. **Translate query to English** — Pexels works best in English
+3. **Run ONE search** with `--count 5`
 4. **Do NOT review or pick** — pass ALL 3 references directly to generate_image
 5. **Generate with ALL references as input_images** (MANDATORY):
    ```
@@ -82,15 +86,14 @@ python3 visual_ref.py "product photography white background" --list-only
 If the brief explicitly asks to see references first ("enséñame referencias", "muéstrame antes de generar", "quiero elegir yo"), use this flow instead:
 
 1. Search and download references as usual
-2. Send ALL reference images to the user via `sessions_send`, one per message with `--media`:
+2. Send ALL reference images in a SINGLE message via `sessions_send`:
    ```
-   sessions_send(sessionKey="<REPLY_TO>", message="Referencia 1: [description].\nArchivo: /path/to/ref_01_xxx.jpg", timeoutSeconds=0)
-   sessions_send(sessionKey="<REPLY_TO>", message="Referencia 2: [description].\nArchivo: /path/to/ref_02_xxx.jpg", timeoutSeconds=0)
-   sessions_send(sessionKey="<REPLY_TO>", message="Referencia 3: [description].\nArchivo: /path/to/ref_03_xxx.jpg", timeoutSeconds=0)
-   sessions_send(sessionKey="<REPLY_TO>", message="¿Cuál te gusta? Puedo usar una, mezclar varias, o buscar otras.", timeoutSeconds=0)
+   sessions_send(sessionKey="<REPLY_TO>", message="5 referencias de salón editorial:\n\nArchivo: /tmp/visual-refs/ref_01_xxx.jpg\nArchivo: /tmp/visual-refs/ref_02_xxx.jpg\nArchivo: /tmp/visual-refs/ref_03_xxx.jpg\nArchivo: /tmp/visual-refs/ref_04_xxx.jpg\nArchivo: /tmp/visual-refs/ref_05_xxx.jpg\n\n¿Cuál te gusta? Puedo usar una, mezclar varias, o buscar otras.", timeoutSeconds=0)
    ```
 3. **Wait for user response** before generating
 4. Generate with the references the user chose as `input_images`
+
+**CRITICAL: Send references EXACTLY ONCE.** Do NOT send them individually AND again in a summary. Do NOT re-send references you already sent. One single message with all file paths, that's it.
 
 Only use this alternative flow when the user EXPLICITLY asks to see references first. Default is always: search → pass all → generate.
 
@@ -98,7 +101,7 @@ Only use this alternative flow when the user EXPLICITLY asks to see references f
 
 - Images downloaded to `--output` as `ref_01_<id>.jpg`, `ref_02_<id>.jpg`...
 - `refs_meta.json` with metadata: path, description, author
-- Attribution printed to stdout (required by Unsplash guidelines)
+- Attribution printed to stdout (required by Pexels guidelines)
 
 ## Limits
 
