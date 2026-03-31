@@ -1,0 +1,11 @@
+{
+  "owner": "haohanyang92",
+  "slug": "video-download-whisper",
+  "displayName": "视频下载与转录(Whisper)",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774635269654,
+    "commit": null
+  },
+  "history": []
+}
