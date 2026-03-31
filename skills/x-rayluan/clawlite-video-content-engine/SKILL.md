@@ -1,6 +1,11 @@
 ---
 name: clawlite-video-content-engine
-description: Turn YouTube source videos into ClawLite-friendly educational promo content using a YouTube → NotebookLM → summary → short-video/X-thread/blog workflow. Use when the task is to repurpose a YouTube video, transcript, or creator lesson into ClawLite marketing assets such as knowledge-explainer shorts, beginner summaries, X threads, blog summaries, hook banks, or content packs. Especially useful when the user wants to learn from an existing video, borrow demand from creator education content, build a repeatable video-content pipeline, or create a reusable ClawLite video promotion SOP/skill.
+description: |
+  中文：将 YouTube 视频转化为 ClawLite 营销资产的内容引擎，覆盖摘要、短视频脚本、X thread 与博客输出，支持知识型内容复用与渠道化分发。
+  日本語：YouTube動画をClawLite向け教育・マーケ配信資産へ再構成。要約、短尺動画、Xスレッド、ブログ出力まで一貫して最適化。
+  한국어：YouTube 영상을 ClawLite 마케팅 자산으로 재가공하는 콘텐츠 엔진. 요약, 숏폼, X 스레드, 블로그 산출물을 일괄 생성해 채널 확장을 지원.
+  Español：Convierte videos de YouTube en activos de marketing para ClawLite: resumen, guion short-form, hilos de X y posts de blog para reutilización escalable del contenido.
+
 ---
 
 # ClawLite Video Content Engine
