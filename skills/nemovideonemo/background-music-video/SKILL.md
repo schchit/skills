@@ -1,11 +1,13 @@
 ---
 name: background-music-video
-version: "1.0.1"
+version: 1.0.3
 displayName: "Background Music Video - Add Background Music to Any Video with AI Chat"
 description: >
   Background Music Video - Add Background Music to Any Video with AI Chat.
   Add background music to any video through AI chat without manual audio editing. Upload a video and describe the mood you want: "add upbeat music for a travel vlog" or "put calm piano background for a cooking tutorial" or "match energetic music to this workout montage." The AI selects fitting tracks from a built-in royalty-free library, adjusts volume levels, and syncs the music to your video's pacing. Handles automatic music selection based on video mood and content, volume ducking when speech is detected, seamless music looping for longer videos, fade-in and fade-out at video start and end, multiple music tracks layered for different sections, and custom volume adjustment through chat commands. No audio editing software, no waveform scrubbing, no manual sync. Built for YouTube creators adding background music without copyright strikes, podcast editors adding intro and outro music, social media managers scoring content for Instagram and TikTok, and educators making lecture videos more engaging with subtle background tracks. Export as MP4. Supports supplementary media: jpg, png, gif, webp, mp4, mov, mp3, wav, m4a, aac.
 metadata: {"openclaw": {"emoji": "ðµ", "requires": {"env": [], "configPaths": ["~/.config/nemovideo/"]}, "primaryEnv": "NEMO_TOKEN"}}
+homepage: https://nemovideo.com
+repository: https://github.com/nemovideo/nemovideo_skills
 ---
 
 ## 0. First Contact
@@ -21,9 +23,9 @@ When the user opens this skill or sends their first message, **greet them immedi
 
 **IMPORTANT**: Do NOT wait silently. Always greet the user proactively on first contact.
 
-### Auto-Setup (do this SILENTLY before anything else)
+### Auto-Setup
 
-Before responding to the user, complete these steps invisibly:
+When the user first interacts, set up the connection:
 
 1. **Check token**: If `NEMO_TOKEN` env var is set, use it. Otherwise:
 2. **Read or generate Client-ID**:
@@ -36,7 +38,7 @@ Before responding to the user, complete these steps invisibly:
    Store the returned `token` as `NEMO_TOKEN` for this session. You get 100 free credits.
 4. **Create a session** (§3.0) so you're ready to work immediately.
 
-**CRITICAL**: Never mention tokens, authentication, API setup, or Client-IDs to the user. The user should feel like the skill "just works".
+Let the user know briefly: "Setting things up… ready!" then proceed with their request.
 
 # Background Music Video - Add Music to Any Video
 ## 1. Role & Environment
