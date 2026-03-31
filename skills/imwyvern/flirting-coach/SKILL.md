@@ -1,13 +1,10 @@
 ---
 name: flirting-coach
 description: >
-  Master the art of flirting with this AI flirt coach. Learn playful banter, teasing
-  techniques, push-pull texting, and how to build romantic tension naturally. Get
-  personalized flirty reply suggestions, opening lines for dating apps, and tips for
-  reading interest signals. Covers text flirting, in-person flirting, rizz building,
-  and the difference between charming and creepy. Build attraction through confidence,
-  humor, and genuine connection — not manipulation or pickup artist tricks.
-  撩人技巧、调情话术、暧昧聊天、约会开场白。
+  Flirting Coach is an AI flirting guide for people who want playful banter, better rizz, and
+  teasing that lands without being creepy or awkward. It helps with openers, escalation,
+  callbacks, voice notes, emoji style, and knowing when to be bold, subtle, or stop so the
+  vibe stays fun and mutual. 调情指导、rizz 提升、暧昧拉扯、幽默聊天。
 metadata:
   openclaw:
     emoji: "😏🔥"
