@@ -1,7 +1,16 @@
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import { LocalMemoryStore } from "./lib/store.js";
 import { buildCaptureHandler, buildRecallHandler } from "./lib/hooks.js";
-import { registerSearchTool, registerStoreTool, registerForgetTool, registerWipeTool, registerListTool } from "./lib/tools.js";
+import { 
+  registerSearchTool, 
+  registerStoreTool, 
+  registerForgetTool, 
+  registerWipeTool, 
+  registerListTool,
+  registerProfileTool,
+  registerStatsTool,
+  registerRecentTool,
+} from "./lib/tools.js";
 
 // ─── Config Schema ───────────────────────────────────────────────────────────
 
@@ -12,9 +21,37 @@ const ConfigSchema = {
     containerTag: { type: "string", default: "openclaw_local_memory" },
     autoRecall: { type: "boolean", default: true },
     autoCapture: { type: "boolean", default: true },
-    maxRecallResults: { type: "number", default: 10 },
-    similarityThreshold: { type: "number", default: 0.1 },
+    maxRecallResults: { type: "number", default: 5 }, // REDUCED from 10
+    similarityThreshold: { type: "number", default: 0.35 }, // SLIGHTLY HIGHER
     debug: { type: "boolean", default: false },
+    
+    // Smart capture - CONSERVATIVE to save context
+    captureInterval: { type: "number", default: 8 }, // INCREASED (less frequent)
+    summariseThreshold: { type: "number", default: 60000 }, // REDUCED (more frequent consolidation)
+    captureSignificantOnly: { type: "boolean", default: true },
+    pruneAfterCapture: { type: "boolean", default: true },
+    minSignificanceScore: { type: "number", default: 0.5 }, // INCREASED (stricter)
+    
+    // Profile settings - CONSERVATIVE  
+    profileFrequency: { type: "number", default: 15 }, // INCREASED (less frequent)
+    includeProfileOnFirstTurn: { type: "boolean", default: true },
+    
+    // Memory management
+    maxMemories: { type: "number", default: 500 },
+    pruneOlderThanDays: { type: "number", default: 30 },
+    decayRate: { type: "number", default: 0.05 },
+    chunkThreshold: { type: "number", default: 2000 },
+    chunkSize: { type: "number", default: 800 }, // REDUCED (smaller chunks)
+    maxChunks: { type: "number", default: 3 }, // REDUCED
+    
+    // Context limiting
+    maxMemoryInjections: { type: "number", default: 3 }, // MAX 3 per recall
+    contextBudget: { type: "number", default: 2000 }, // MAX 2000 chars
+    
+    // Scoring weights
+    importanceWeight: { type: "number", default: 0.25 }, // SLIGHTLY LOWER
+    recencyWeight: { type: "number", default: 0.25 }, // SLIGHTLY LOWER
+    relevanceWeight: { type: "number", default: 0.5 }, // HIGHER (relevance matters more)
   },
 };
 
@@ -25,6 +62,24 @@ type LocalMemoryConfig = {
   maxRecallResults?: number;
   similarityThreshold?: number;
   debug?: boolean;
+  captureInterval?: number;
+  summariseThreshold?: number;
+  captureSignificantOnly?: boolean;
+  pruneAfterCapture?: boolean;
+  minSignificanceScore?: number;
+  profileFrequency?: number;
+  includeProfileOnFirstTurn?: boolean;
+  maxMemories?: number;
+  pruneOlderThanDays?: number;
+  decayRate?: number;
+  chunkThreshold?: number;
+  chunkSize?: number;
+  maxChunks?: number;
+  maxMemoryInjections?: number;
+  contextBudget?: number;
+  importanceWeight?: number;
+  recencyWeight?: number;
+  relevanceWeight?: number;
 };
 
 // ─── Plugin ──────────────────────────────────────────────────────────────────
@@ -32,7 +87,7 @@ type LocalMemoryConfig = {
 export default definePluginEntry({
   id: "openclaw-local-memory",
   name: "Local Memory",
-  description: "Local vector memory for OpenClaw — stores, searches and injects memories using a local vector DB",
+  description: "Brain-like local memory for OpenClaw — stores, searches, and injects memories with importance scoring, entity extraction, and automatic consolidation.",
   kind: "memory",
   configSchema: ConfigSchema,
 
@@ -55,46 +110,63 @@ export default definePluginEntry({
     const store = new LocalMemoryStore({
       containerTag: cfg.containerTag ?? "openclaw_local_memory",
       debug: cfg.debug ?? false,
+      maxMemories: cfg.maxMemories ?? 500,
+      pruneOlderThanDays: cfg.pruneOlderThanDays ?? 30,
+      decayRate: cfg.decayRate ?? 0.05,
+      chunkThreshold: cfg.chunkThreshold ?? 2000,
+      chunkSize: cfg.chunkSize ?? 1000,
+      maxChunks: cfg.maxChunks ?? 5,
+      importanceWeight: cfg.importanceWeight ?? 0.3,
+      recencyWeight: cfg.recencyWeight ?? 0.3,
+      relevanceWeight: cfg.relevanceWeight ?? 0.4,
     });
 
     log("info", "initialized", {
       container: store.containerTag,
-      backend: "tfidf",
+      backend: "tfidf-v2",
+      features: [
+        "significance_detection",
+        "entity_extraction", 
+        "importance_scoring",
+        "time_decay",
+        "semantic_chunking",
+        "profile_building",
+        "context_pruning",
+      ],
     });
 
-    // ── Tools ────────────────────────────────────────────────────────────────
+    // ── Register Tools ────────────────────────────────────────────────────────
     registerSearchTool(api, store, cfg, log);
     registerStoreTool(api, store, cfg, log);
     registerForgetTool(api, store, cfg, log);
     registerWipeTool(api, store, log);
-    registerListTool(api, store, log);
+    registerListTool(api, store, cfg, log);
+    registerProfileTool(api, store, log);
+    registerStatsTool(api, store, log);
+    registerRecentTool(api, store, log);
 
     // ── Memory Prompt Section ─────────────────────────────────────────────────
     api.registerMemoryPromptSection(({ agentId, sessionKey }) => {
-      // Will be filled by recall handler
-      return "";
+      return ""; // Filled by recall handler
     });
 
     // ── Hooks ────────────────────────────────────────────────────────────────
-    // Track turn index per session for ordering conversation exchanges
-    const turnIndexBySession = new Map<string, number>();
-
-    // Build handlers up front so they can share state
     const captureHandler = buildCaptureHandler(store, cfg, log);
     const recallHandler = cfg.autoRecall ? buildRecallHandler(store, cfg, log) : null;
 
     api.on("before_agent_start", (event: Record<string, unknown>, ctx: Record<string, unknown>) => {
       const sessionKey = ctx.sessionKey as string | undefined;
+      
       if (sessionKey) {
-        const idx = turnIndexBySession.get(sessionKey) ?? 0;
-        turnIndexBySession.set(sessionKey, idx + 1);
-        // Always register user message so autoCapture can pair it with the response
         const userPrompt = extractUserPrompt(event);
         if (userPrompt) {
-          captureHandler.registerUserMessage(userPrompt, sessionKey, idx);
+          captureHandler.registerUserMessage(userPrompt, sessionKey, 0);
         }
       }
-      if (recallHandler) return recallHandler(event, ctx);
+      
+      if (recallHandler) {
+        return recallHandler(event, ctx);
+      }
     });
 
     if (cfg.autoCapture) {
@@ -104,10 +176,18 @@ export default definePluginEntry({
       });
     }
 
+    // ── Service ─────────────────────────────────────────────────────────────
     api.registerService({
       id: "openclaw-local-memory",
-      start: () => { log("info", "service started"); },
-      stop: () => { log("info", "service stopped"); },
+      start: () => {
+        log("info", "🧠 Local Memory started");
+        log("info", `   Container: ${cfg.containerTag ?? "openclaw_local_memory"}`);
+        log("info", `   Auto-capture: ${cfg.autoCapture ?? true}`);
+        log("info", `   Auto-recall: ${cfg.autoRecall ?? true}`);
+      },
+      stop: () => { 
+        log("info", "service stopped");
+      },
     });
   },
 });
