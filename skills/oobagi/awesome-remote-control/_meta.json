@@ -1,11 +1,17 @@
 {
   "owner": "oobagi",
   "slug": "awesome-remote-control",
-  "displayName": "Claude Remote Control",
+  "displayName": "Awesome Remote Control",
   "latest": {
-    "version": "1.0.7",
-    "publishedAt": 1774419114429,
-    "commit": "https://github.com/openclaw/skills/commit/eef04018621c16c45f0e7327254059e9bc43bdd7"
+    "version": "1.0.8",
+    "publishedAt": 1774692856896,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.7",
+      "publishedAt": 1774419114429,
+      "commit": "https://github.com/openclaw/skills/commit/eef04018621c16c45f0e7327254059e9bc43bdd7"
+    }
+  ]
 }
