@@ -1,14 +1,14 @@
 ---
 name: ollama-herd
-description: Manage your Ollama Herd device fleet — check node status, view queue depths, list available models, inspect request traces, monitor fleet health, manage settings, and get model recommendations. Use when the user asks about their local LLM fleet, inference routing, node status, model availability, or fleet performance.
-version: 1.1.0
+description: Ollama multimodal model router for Llama, Qwen, DeepSeek, Phi, and Mistral — plus mflux image generation, speech-to-text, and embeddings. Self-hosted local AI on Apple Silicon with 7-signal scoring, queue management, real-time dashboard, and health monitoring. Routes LLM, image, STT, and embedding requests across Mac Studio, Mac Mini, MacBook Pro. Use when the user asks about their local LLM fleet, inference routing, node status, or fleet performance.
+version: 1.5.0
 homepage: https://github.com/geeks-accelerator/ollama-herd
-metadata: {"openclaw":{"emoji":"llama","requires":{"anyBins":["curl","wget"],"optionalBins":["python3","sqlite3","pip"],"configPaths":["~/.fleet-manager/latency.db","~/.fleet-manager/logs/herd.jsonl"]},"os":["darwin","linux"]}}
+metadata: {"openclaw":{"emoji":"llama","requires":{"anyBins":["curl","wget"],"optionalBins":["python3","sqlite3","pip"]},"configPaths":["~/.fleet-manager/latency.db","~/.fleet-manager/logs/herd.jsonl"],"os":["darwin","linux"]}}
 ---
 
 # Ollama Herd Fleet Manager
 
-You are managing an Ollama Herd fleet — a smart inference router that distributes LLM requests across multiple Ollama instances. It scores nodes on 7 signals (thermal state, memory fit, queue depth, latency history, role affinity, availability trend, context fit) and routes each request to the optimal device.
+You are managing an Ollama Herd fleet — a smart multimodal router that distributes AI workloads across multiple devices. It handles 4 model types: LLM inference (Ollama), image generation (mflux), speech-to-text (Qwen3-ASR), and embeddings. It scores nodes on 7 signals (thermal state, memory fit, queue depth, latency history, role affinity, availability trend, context fit) and routes each request to the optimal device.
 
 ## Install
 
