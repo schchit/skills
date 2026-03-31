@@ -1,0 +1,11 @@
+{
+  "owner": "rogue-agent1",
+  "slug": "deadlinks",
+  "displayName": "Deadlinks",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774639545118,
+    "commit": null
+  },
+  "history": []
+}
