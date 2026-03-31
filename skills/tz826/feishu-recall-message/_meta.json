@@ -1,0 +1,11 @@
+{
+  "owner": "tz826",
+  "slug": "feishu-recall-message",
+  "displayName": "飞书群消息撤回",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774641021450,
+    "commit": null
+  },
+  "history": []
+}
