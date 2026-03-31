@@ -3,9 +3,15 @@
   "slug": "stocktorch",
   "displayName": "Stocktorch",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774496138114,
-    "commit": "https://github.com/openclaw/skills/commit/dd1277f7f075dd8c1fa2c5bcca9d308d4d6cb824"
+    "version": "1.0.2",
+    "publishedAt": 1774928205559,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774496138114,
+      "commit": "https://github.com/openclaw/skills/commit/dd1277f7f075dd8c1fa2c5bcca9d308d4d6cb824"
+    }
+  ]
 }
