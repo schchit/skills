@@ -111,9 +111,9 @@ This agent provides intelligent health and nutrition management solutions, integ
 ### API Service Module
 [API Service Module](./api-service.md)
 
-## Data and Privacy Statement
+## Data and Privacy
 
-### Local Data Processing
+### Data Processing Localization
 
 All data processing is completed locally to ensure user privacy and data security:
 

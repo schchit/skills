@@ -39,7 +39,8 @@ Agents should access the above API specification addresses in real-time to obtai
 1. **Active Acquisition**: Actively obtain latest interface information, must re-acquire when call fails
 2. **Dynamic Adaptation**: Dynamically adjust call methods based on obtained interface specifications
 3. **Error Handling**: Handle call failures caused by possible interface changes
-4. **Version Compatibility**: Consider version change compatibility handling
+4. **Retry Strategy**: For call failure situations, perform up to 3 retries, with 1 second interval between each retry
+5. **Version Compatibility**: Consider version change compatibility handling
 
 ## Data Processing Specifications
 
