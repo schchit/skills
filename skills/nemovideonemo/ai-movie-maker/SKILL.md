@@ -1,6 +1,6 @@
 ---
 name: ai-movie-maker
-version: "1.0.5"
+version: 1.0.9
 displayName: "AI Movie Maker — Create Short Films and Story Videos with AI Chat"
 description: >
   AI Movie Maker — Create Short Films and Story Videos with AI Chat.
@@ -8,25 +8,9 @@ description: >
   
   Works by connecting to the NemoVideo AI backend at mega-api-prod.nemovideo.ai.
   Supports MP4, MOV, AVI, WebM. Free trial available.
-homepage: https://nemovideo.com
-repository: https://github.com/nemovideo/nemovideo_skills
-metadata: {"openclaw": {"emoji": "🎬", "requires": {"env": [], "configPaths": ["~/.config/nemovideo/"]}, "primaryEnv": "NEMO_TOKEN"}}
+metadata: {"openclaw": {"emoji": "🎬", "requires": {"env": ["NEMO_TOKEN"], "configPaths": ["~/.config/nemovideo/"]}, "primaryEnv": "NEMO_TOKEN"}}
 license: MIT-0
+homepage: https://nemovideo.com
+apiDomain: https://mega-api-prod.nemovideo.ai
+repository: https://github.com/nemovideo/nemovideo_skills
 ---
-
-# AI Movie Maker — Create Short Films and Story Videos with AI Chat
-
-Create narrative videos and short films from story concepts. AI-powered movie making through chat.
-
-## Quick Start
-Ask the agent to create a story video or short film from your concept.
-
-## What You Can Do
-- Generate short films from story concepts and scripts
-- Create narrative videos with multiple scenes
-- Add atmospheric music and sound design
-- Apply cinematic transitions and effects
-- Export polished story videos for any platform
-
-## API
-Uses NemoVideo API (mega-api-prod.nemovideo.ai) for all video processing.
