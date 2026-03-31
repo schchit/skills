@@ -8,16 +8,19 @@ metadata:
       env:
         - PIPIADS_API_KEY
       bins:
-        - npx
+        - npm
+    install:
+      command: npm
+      args:
+        - install
+        - -g
+        - "pipiads-mcp-server@1.0.3"
     primaryEnv: PIPIADS_API_KEY
     emoji: "📊"
     homepage: https://www.pipiads.com
     mcpServers:
       pipiads:
-        command: npx
-        args:
-          - "-y"
-          - "pipiads-mcp-server"
+        command: pipiads-mcp-server
         env:
           PIPIADS_API_KEY: "{{PIPIADS_API_KEY}}"
 ---

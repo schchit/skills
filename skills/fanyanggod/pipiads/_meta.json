@@ -3,9 +3,15 @@
   "slug": "pipiads",
   "displayName": "pipiads",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1774591835583,
-    "commit": "https://github.com/openclaw/skills/commit/d7eb50021c66745024c5691f852336a94db2018f"
+    "version": "1.0.2",
+    "publishedAt": 1774945839239,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1774591835583,
+      "commit": "https://github.com/openclaw/skills/commit/d7eb50021c66745024c5691f852336a94db2018f"
+    }
+  ]
 }
