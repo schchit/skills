@@ -1,6 +1,6 @@
 ---
 name: video-background-remover
-version: "1.0.4"
+version: "1.3.1"
 displayName: "Video Background Remover — Remove and Replace Video Background with AI"
 description: >
   Video Background Remover — Remove and Replace Video Background with AI.
@@ -8,25 +8,9 @@ description: >
   
   Works by connecting to the NemoVideo AI backend at mega-api-prod.nemovideo.ai.
   Supports MP4, MOV, AVI, WebM. Free trial available.
-homepage: https://nemovideo.com
-repository: https://github.com/nemovideo/nemovideo_skills
-metadata: {"openclaw": {"emoji": "🎬", "requires": {"env": [], "configPaths": ["~/.config/nemovideo/"]}, "primaryEnv": "NEMO_TOKEN"}}
+metadata: {"openclaw": {"emoji": "🎬", "requires": {"env": ["NEMO_TOKEN"], "configPaths": ["~/.config/nemovideo/"]}, "primaryEnv": "NEMO_TOKEN"}}
 license: MIT-0
+homepage: https://nemovideo.com
+apiDomain: https://mega-api-prod.nemovideo.ai
+repository: https://github.com/nemovideo/nemovideo_skills
 ---
-
-# Video Background Remover — Remove and Replace Video Background with AI
-
-Remove and replace video backgrounds with AI. Green screen effects without green screens.
-
-## Quick Start
-Ask the agent to remove or replace the background in your video.
-
-## What You Can Do
-- Remove backgrounds from videos automatically
-- Replace backgrounds with solid colors or images
-- Create transparent backgrounds for compositing
-- Blur backgrounds while keeping subjects sharp
-- Apply green screen effects without green screens
-
-## API
-Uses NemoVideo API (mega-api-prod.nemovideo.ai) for all video processing.
