@@ -1,13 +1,13 @@
 ---
 name: boc-deploy
-description: BOC 3.10 正式部署工具。根据部署规划信息自动生成配置文件并执行部署。使用场景：用户需要部署 BOC 3.10 集群时使用，包括生成 config.yaml、执行 bocctl run、监控部署状态。
-version: 1.0.0
+description: 博云BOC容器平台 部署工具。根据部署规划信息自动生成配置文件并执行部署。使用场景：用户需要部署 BOC容器平台时使用，包括生成 config.yaml、执行 bocctl run、监控部署状态。
+version: 1.0.1
 icon: 🚀
 ---
 
-# BOC 3.10 正式部署
+# BOC容器平台 部署
 
-自动化完成 BOC 3.10 的正式部署阶段（配置文件生成 → 部署执行 → 状态验证）。
+自动化完成 BOC容器平台  的部署阶段（配置文件生成 → 部署执行 → 状态验证）。
 
 ## 输入参数
 
@@ -16,7 +16,7 @@ icon: 🚀
 | deploy_server_ip | 部署机IP | 是 | 10.50.6.181 |
 | ssh_port | SSH端口 | 否 | 22 |
 | ssh_user | SSH用户名 | 是 | root |
-| ssh_password | SSH密码 | 是 | Onceas#11 |
+| ssh_password | SSH密码 | 是 | Password |
 | ci_ip | CI节点IP | 是 | 10.50.6.182 |
 | node_ips | BOC节点IP列表(逗号分隔) | 是 | 10.50.6.183,10.50.6.184,10.50.6.185 |
 | master_vip | K8s Master VIP | 是 | 10.50.6.186 |
@@ -99,10 +99,10 @@ tail -100 /opt/BOC_k8s_noarch/log/bocctl.log
 
 ### 6. 验证结果
 
-**方法一**：直接连接 master 节点验证（推荐）
+直接连接 master 节点验证
 ```bash
 # 从本机直接连接 master 节点
-ssh root@10.50.6.183
+ssh root@<master节点IP>
 
 # 检查节点状态
 kubectl get nodes
@@ -111,10 +111,7 @@ kubectl get nodes
 kubectl get pods -A
 ```
 
-**方法二**：通过部署机跳转（如果 SSH 互信已配置）
-```bash
-ssh root@部署机IP "ssh root@master节点IP kubectl get nodes"
-```
+
 
 **预期结果**：
 - 所有节点状态为 `Ready`
@@ -124,25 +121,25 @@ ssh root@部署机IP "ssh root@master节点IP kubectl get nodes"
 
 使用浏览器访问：
 ```
-http://10.50.6.186:30001
+http://<master_vip>:30001
 ```
 
 **常用服务端口**：
 | 服务 | 地址 |
 |------|------|
-| BOC Portal | http://VIP:30001 |
-| K8s API Server | https://VIP:6443 |
-| Grafana | http://VIP:30902 |
-| Prometheus | http://VIP:30909 |
+| BOC Portal | http://<master_vip>:30001 |
+| K8s API Server | https://<master_vip>:6443 |
+| Grafana | http://<master_vip>:30902 |
+| Prometheus | http://<master_vip>:30909 |
 
 
 ## 使用示例
 
 ```
-请使用 boc-deploy 部署 BOC 3.10：
+请使用 boc-deploy 部署 BOC容器平台：
 - 部署机IP：10.50.6.181
 - SSH用户：root
-- Password#11
+- SSH密码：Password
 - CI节点IP：10.50.6.182
 - BOC节点IP：10.50.6.183,10.50.6.184,10.50.6.185
 - VIP：10.50.6.186
