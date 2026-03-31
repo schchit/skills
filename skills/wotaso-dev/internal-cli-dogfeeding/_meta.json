@@ -1,0 +1,11 @@
+{
+  "owner": "wotaso-dev",
+  "slug": "internal-cli-dogfeeding",
+  "displayName": "Internal Cli Dogfeeding",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774653129931,
+    "commit": null
+  },
+  "history": []
+}
