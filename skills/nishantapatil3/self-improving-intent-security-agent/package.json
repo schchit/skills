@@ -1,7 +1,7 @@
 {
   "name": "self-improving-intent-security-agent",
-  "version": "1.0.2",
-  "description": "Autonomous agent with intent validation, security monitoring, and continuous learning",
+  "version": "1.0.7",
+  "description": "Documentation-first skill and workflow toolkit for intent-based security, audit trails, rollback records, and self-improvement logs",
   "keywords": [
     "agent",
     "ai-safety",
@@ -41,7 +41,7 @@
     "test": "echo 'No tests yet'"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "openclaw": {
     "type": "skill",
@@ -78,17 +78,17 @@
         "AGENT_AUTO_ROLLBACK": {
           "required": false,
           "default": "true",
-          "description": "Enable automatic rollback on violations (optional)"
+          "description": "Flag that your host workflow should use rollback records on violations (optional)"
         },
         "AGENT_ANOMALY_THRESHOLD": {
           "required": false,
           "default": "0.8",
-          "description": "Anomaly detection threshold 0.0-1.0 (optional)"
+          "description": "Suggested anomaly threshold for your host workflow, 0.0-1.0 (optional)"
         },
         "AGENT_LEARNING_ENABLED": {
           "required": false,
           "default": "true",
-          "description": "Enable self-improvement learning (optional)"
+          "description": "Enable local learning and strategy record generation (optional)"
         }
       },
       "notes": {

@@ -94,6 +94,22 @@ Process customer feedback files and extract sentiment
 EOF
 ```
 
+### 4. Or Scaffold a Full Run Folder
+
+If you want a transcript, report, and `.agent` artifacts together:
+
+```bash
+./scripts/scaffold-run.sh examples/my-demo customer_feedback medium
+```
+
+This creates:
+- `conversation.md`
+- `report.md`
+- `.agent/intents/...`
+- `.agent/audit/...`
+- `.agent/violations/...`
+- `.agent/learnings/...`
+
 ---
 
 ## Your First Validation
@@ -236,6 +252,20 @@ Create `.agent/config.json` for advanced configuration:
 # Strategies Evolved: 3
 # Success Rate: 87%
 ```
+
+### Scaffold a Conversation-Driven Run
+
+```bash
+./scripts/scaffold-run.sh examples/privacy-review pii_redaction high
+```
+
+Use this when you want a realistic working folder that captures:
+- the user and agent conversation
+- the formal intent
+- the audit log
+- anomaly and violation handling
+- rollback steps
+- post-run learning and strategy evolution
 
 ---
 

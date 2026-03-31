@@ -25,6 +25,7 @@ echo "✓ Created directory structure"
 SKILL_DIR="$(dirname "$0")/.."
 if [ -d "$SKILL_DIR/assets" ]; then
     cp "$SKILL_DIR/assets/INTENT-TEMPLATE.md" .agent/intents/ 2>/dev/null || true
+    cp "$SKILL_DIR/assets/CONVERSATION-TEMPLATE.md" .agent/ 2>/dev/null || true
     cp "$SKILL_DIR/assets/VIOLATIONS.md" .agent/violations/ 2>/dev/null || true
     cp "$SKILL_DIR/assets/ANOMALIES.md" .agent/violations/ 2>/dev/null || true
     cp "$SKILL_DIR/assets/LEARNINGS.md" .agent/learnings/ 2>/dev/null || true

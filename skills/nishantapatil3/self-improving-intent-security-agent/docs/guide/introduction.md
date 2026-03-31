@@ -8,6 +8,8 @@ nav_order: 1
 # Introduction to Intent Security Agent
 {: .no_toc }
 
+This package is a documentation-first skill and local workflow toolkit. It helps you define and record intent security processes, but it does not itself provide a production runtime engine that automatically intercepts or blocks arbitrary agent actions.
+
 ## Table of contents
 {: .no_toc .text-delta }
 
@@ -22,7 +24,7 @@ Traditional security models ask: *"Do you have permission?"*
 
 Intent security asks: *"Should you do this for this goal?"*
 
-This fundamental shift enables autonomous agents to validate actions against stated objectives, detect goal drift early, and maintain alignment with user intent throughout execution.
+This fundamental shift helps teams design agents and workflows that validate actions against stated objectives, detect goal drift early, and maintain alignment with user intent throughout execution.
 
 ```
 ┌─────────────────┐
@@ -65,27 +67,29 @@ These issues become critical as agents gain more autonomy and operate in product
 
 ## The Solution
 
+This repository provides the workflow scaffolding for three integrated pillars. In a full implementation, the surrounding host agent or runtime would perform the actual enforcement.
+
 The Intent Security Agent provides three integrated pillars:
 
 ### 1. Intent-Based Security
 
 **Pre-Execution Validation**
-- Every action checked against intent specification
-- Goal alignment verification
-- Constraint satisfaction checks
-- Expected behavior matching
+- Intent specification templates
+- Goal alignment review criteria
+- Constraint satisfaction checklist
+- Expected behavior documentation
 
 **Real-Time Monitoring**
-- Anomaly detection during execution
-- Resource usage tracking
-- Permission boundary enforcement
-- Side effect detection
+- Anomaly log templates
+- Monitoring guidance for host runtimes
+- Permission boundary documentation
+- Side effect review patterns
 
-**Automatic Rollback**
-- Checkpoint-based state restoration
-- Transaction-like guarantees
-- Reversible operations
-- Recovery without data loss
+**Rollback Workflow**
+- Checkpoint record templates
+- Recovery documentation patterns
+- Reversible-operation guidance
+- Post-incident review notes
 
 ### 2. Self-Improvement
 

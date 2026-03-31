@@ -1,44 +1,74 @@
 # Self-Improving Intent Security Agent
 
 <p align="center">
-  <a href="https://clawhub.ai/nishantapatil3/self-improving-intent-security-agent"><img src="https://img.shields.io/badge/Clawhub-Install%20Skill-blueviolet?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cGF0aCBkPSJNMTIgMkM2LjQ4IDIgMiA2LjQ4IDIgMTJzNC40OCAxMCAxMCAxMCAxMC00LjQ4IDEwLTEwUzE3LjUyIDIgMTIgMnoiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo=" alt="Install on Clawhub"></a>
+  <a href="https://clawhub.ai/nishantapatil3/self-improving-intent-security-agent"><img src="https://img.shields.io/badge/Clawhub-Install%20Skill-blueviolet?style=for-the-badge" alt="Install on Clawhub"></a>
   <a href="https://nishantapatil3.github.io/self-improving-intent-security-agent/"><img src="https://img.shields.io/badge/Docs-GitHub%20Pages-blue?style=for-the-badge&logo=github" alt="Documentation"></a>
   <a href="https://github.com/nishantapatil3/self-improving-intent-security-agent/actions/workflows/pages.yml"><img src="https://img.shields.io/github/actions/workflow/status/nishantapatil3/self-improving-intent-security-agent/pages.yml?branch=main&style=for-the-badge&label=Build" alt="Documentation Build Status"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="MIT License"></a>
 </p>
 
-An autonomous agent skill that combines **intent-based security** with **continuous self-improvement**. Every action is validated against user intent before execution, with automatic rollback on violations and learning from outcomes.
+A documentation-first skill and workflow toolkit for **intent-based security** and **continuous self-improvement**. It provides templates, examples, and local helper scripts for capturing intent, reviewing actions, documenting rollbacks, and recording learnings.
+
+## What This Package Is
+
+- A local skill package with markdown templates, examples, and helper shell scripts
+- A framework for documenting or prototyping intent validation workflows
+- A starting point for teams building their own runtime enforcement layer
+
+## What This Package Is Not
+
+- It is not a production runtime engine that automatically intercepts or blocks arbitrary agent actions
+- It does not ship a background daemon, sandbox, or autonomous rollback service
+- The included scripts create, validate, scaffold, and summarize local files; they do not implement full execution enforcement
 
 ## Why Intent Security?
 
 Traditional security models ask: *"Do you have permission?"*
 Intent security asks: *"Should you do this for this goal?"*
 
-This fundamental shift enables autonomous agents to:
-- ✓ Validate actions against stated objectives
-- ✓ Detect goal drift and misalignment early
-- ✓ Rollback automatically on violations
-- ✓ Learn safe, effective strategies over time
+This fundamental shift helps teams design systems that can:
+- ✓ validate actions against stated objectives
+- ✓ detect goal drift and misalignment early
+- ✓ define rollback and audit workflows
+- ✓ learn safer execution patterns over time
 
 ## Features
 
 ### 🛡️ Intent-Based Security
-- **Pre-Execution Validation**: Every action checked against intent
-- **Real-Time Monitoring**: Anomaly detection during execution
-- **Automatic Rollback**: Checkpoint-based state restoration
-- **Audit Trail**: Complete transparency log
+- **Intent Templates**: Structured specifications for goals, constraints, and expected behavior
+- **Validation Helpers**: Local scripts to check intent file format and scaffold workflow artifacts
+- **Rollback Documentation**: Templates and examples for checkpoint-based recovery records
+- **Audit Trail**: Local markdown logs for transparency and review
 
 ### 🧠 Self-Improvement
-- **Pattern Extraction**: Learn from successful executions
-- **Strategy Evolution**: A/B test and adopt better approaches
-- **Failure Prevention**: Remember and avoid antipatterns
-- **Bounded Learning**: Safety guardrails prevent harmful modifications
+- **Pattern Extraction**: Record learnings from successful or failed executions
+- **Strategy Evolution**: Track candidate strategies and rollout decisions
+- **Failure Prevention**: Preserve antipatterns and prevention guidance
+- **Bounded Learning**: Document safety guardrails for future implementations
 
 ### 🔍 Transparency & Oversight
-- **Complete Logging**: All decisions and actions recorded
-- **Human Approval Gates**: High-risk actions require permission
-- **Explainable Learning**: Traceable improvements
-- **Rollback Capability**: Undo at any time
+- **Complete Logging**: Decisions and actions can be recorded in local files
+- **Human Approval Gates**: The workflow encourages approval checks for high-risk actions
+- **Explainable Learning**: Improvements remain traceable in markdown
+- **Reviewable Scripts**: Included shell scripts are local-only and easy to inspect
+
+## Security Notes
+
+- The included shell scripts only create, read, validate, or summarize local files
+- The runtime scripts do not call external network endpoints
+- Publishing workflows may use `NPM_TOKEN` and `CLAWHUB_TOKEN`, but those are only needed when publishing this package
+
+## 🚀 Publish Your Own Skills
+
+Want to publish your Claude Code skills to Clawhub? Use our dedicated GitHub Action:
+
+```yaml
+- uses: nishantapatil3/clawhub-publish-action@v1
+  with:
+    clawhub-token: ${{ secrets.CLAWHUB_TOKEN }}
+```
+
+👉 **[clawhub-publish-action](https://github.com/nishantapatil3/clawhub-publish-action)** - Automated Clawhub publishing for your skills!
 
 ## Quick Start
 
@@ -101,13 +131,16 @@ Process customer feedback files and extract sentiment
 - Environment: development
 EOF
 
-# 4. Execute task with agent
-# (Your agent implementation validates against intent automatically)
+# 4. Execute task with your own agent or workflow
+# (This package provides the intent files, examples, and helper scripts)
 
 # 5. Review outcomes
 cat .agent/violations/VIOLATIONS.md    # Any violations?
 cat .agent/learnings/LEARNINGS.md      # What was learned?
 ./scripts/report.sh                     # Summary report
+
+# Optional: scaffold a complete conversation-driven run folder
+./scripts/scaffold-run.sh examples/my-demo customer_feedback medium
 ```
 
 ## Documentation
@@ -122,6 +155,7 @@ cat .agent/learnings/LEARNINGS.md      # What was learned?
 |----------|-------------|
 | [SKILL.md](SKILL.md) | Complete usage guide and quick reference |
 | [examples/](examples/) | Practical examples with step-by-step walkthroughs |
+| [examples/customer-feedback-demo/](examples/customer-feedback-demo/) | End-to-end conversation, intent, violation, rollback, and learning demo |
 | [references/architecture.md](references/architecture.md) | System design and components |
 | [references/intent-security.md](references/intent-security.md) | Intent validation and authorization |
 | [references/self-improvement.md](references/self-improvement.md) | Learning mechanisms and safety |

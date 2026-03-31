@@ -2,6 +2,16 @@
 
 Practical examples demonstrating intent security and self-improvement.
 
+## End-to-End Demo Folder
+
+For a realistic multi-file example with conversation, audit logs, violation handling, rollback, and learning artifacts, see [`customer-feedback-demo/`](./customer-feedback-demo).
+
+To scaffold a new folder like this automatically, run:
+
+```bash
+./scripts/scaffold-run.sh examples/my-demo task_slug medium
+```
+
 ## Example 1: Basic Intent Specification and Validation
 
 ### Scenario
