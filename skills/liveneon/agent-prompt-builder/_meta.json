@@ -1,0 +1,11 @@
+{
+  "owner": "liveneon",
+  "slug": "agent-prompt-builder",
+  "displayName": "Agent Prompt Builder",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774692554315,
+    "commit": null
+  },
+  "history": []
+}
