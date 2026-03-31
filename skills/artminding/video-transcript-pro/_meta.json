@@ -1,11 +1,17 @@
 {
   "owner": "artminding",
   "slug": "video-transcript-pro",
-  "displayName": "Video Transcript Pro",
+  "displayName": "video-transcript-pro",
   "latest": {
-    "version": "2.2.0",
-    "publishedAt": 1774326986927,
-    "commit": "https://github.com/openclaw/skills/commit/7fb5d4bd8a970bfaaecc8e81b03566623646f4d3"
+    "version": "2.3.0",
+    "publishedAt": 1774877494963,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "2.2.0",
+      "publishedAt": 1774326986927,
+      "commit": "https://github.com/openclaw/skills/commit/7fb5d4bd8a970bfaaecc8e81b03566623646f4d3"
+    }
+  ]
 }
