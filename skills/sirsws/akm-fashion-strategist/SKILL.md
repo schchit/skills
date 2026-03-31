@@ -18,6 +18,7 @@ body context, scenes, wardrobe assets, functional needs, purchase tolerance, and
 | Primary outcome | a wardrobe-aware outfit or purchase decision |
 | Best use case | when generic styling advice fails because the user's real wardrobe and scene constraints matter |
 | Public source | `https://github.com/sirsws/akm/tree/main/branches/fashion` |
+| Sample record | `https://github.com/sirsws/akm/blob/main/branches/fashion/skill/SAMPLE_RECORD.md` |
 | Research paper | `https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6231466` |
 | Install source | `https://github.com/sirsws/akm` |
 
@@ -25,6 +26,7 @@ body context, scenes, wardrobe assets, functional needs, purchase tolerance, and
 
 - GitHub branch: `https://github.com/sirsws/akm/tree/main/branches/fashion`
 - Skill files: `https://github.com/sirsws/akm/tree/main/branches/fashion/skill`
+- Sample record: `https://github.com/sirsws/akm/blob/main/branches/fashion/skill/SAMPLE_RECORD.md`
 - Branch paper: `https://github.com/sirsws/akm/tree/main/branches/fashion/paper`
 - SSRN paper: `https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6231466`
 
@@ -78,6 +80,7 @@ If the necessary state is unclear, the skill should surface `MissingInputs` inst
 1. `ELICITATION_PROMPT.md`
 2. `RECORD_TEMPLATE.md`
 3. `EXECUTION_PROMPT.md`
+4. `SAMPLE_RECORD.md`
 
 ## Output Contract
 
@@ -102,3 +105,4 @@ Read these files before running the skill:
 - `ELICITATION_PROMPT.md`
 - `RECORD_TEMPLATE.md`
 - `EXECUTION_PROMPT.md`
+- `SAMPLE_RECORD.md`
