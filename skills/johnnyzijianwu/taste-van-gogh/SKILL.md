@@ -62,7 +62,7 @@ This is a **preview** of the Van Gogh Taste Skill. The full version includes:
 
 **Unlock the complete skill at [InspiredHub](https://inspiredhub.ai/taste/vincent-van-gogh-post-impressionist)**
 
-Explore 76+ aesthetic skills for AI agents at [inspiredhub.ai/taste](https://inspiredhub.ai/taste)
+Explore 86 aesthetic skills for AI agents at [inspiredhub.ai/taste](https://inspiredhub.ai/taste)
 
 ---
 

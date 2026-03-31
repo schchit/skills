@@ -1,11 +1,17 @@
 {
   "owner": "johnnyzijianwu",
   "slug": "taste-van-gogh",
-  "displayName": "Taste: Van Gogh — Post-Impressionist Master",
+  "displayName": "Taste Van Gogh",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774522543100,
-    "commit": "https://github.com/openclaw/skills/commit/ae927dd4f07da8e6a02814f5fc36e0bd8c80d35f"
+    "version": "1.0.1",
+    "publishedAt": 1774603619814,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774522543100,
+      "commit": "https://github.com/openclaw/skills/commit/ae927dd4f07da8e6a02814f5fc36e0bd8c80d35f"
+    }
+  ]
 }
