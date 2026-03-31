@@ -46,19 +46,11 @@ def get_yesterday():
     yesterday = datetime.now() - timedelta(days=1)
     return yesterday.strftime('%Y-%m-%d')
 
-def get_yesterday_range():
-    """获取昨天的时间范围"""
-    yesterday = datetime.now() - timedelta(days=1)
-    start = yesterday.replace(hour=0, minute=0, second=0, microsecond=0)
-    end = yesterday.replace(hour=23, minute=59, second=59, microsecond=0)
-    return start, end
-
-def get_recent_range():
-    """获取最近3天的时间范围（fallback）"""
+def get_recent_24h_range():
+    """获取最近24小时的时间范围"""
     now = datetime.now()
-    start = (now - timedelta(days=3)).replace(hour=0, minute=0, second=0, microsecond=0)
-    end = now
-    return start, end
+    start = now - timedelta(hours=24)
+    return start, now
 
 def fetch_rss(source):
     """抓取 RSS 源"""
@@ -82,7 +74,9 @@ def fetch_rss(source):
                 title_elem = item.find('title')
                 link_elem = item.find('link')
                 desc_elem = item.find('description')
-                pubdate_elem = item.find('pubDate') or item.find('published')
+                pubdate_elem = item.find('pubDate')
+                if pubdate_elem is None:
+                    pubdate_elem = item.find('published')
                 
                 if title_elem is None or link_elem is None:
                     continue
@@ -97,28 +91,37 @@ def fetch_rss(source):
                     try:
                         # 尝试多种日期格式
                         date_str = pubdate_elem.text.strip()
+                        # 处理 36kr 格式: "2026-03-26 22:33:08  +0800"
+                        date_str = re.sub(r'\s+', ' ', date_str)  # 多个空格变成一个
+                        date_str = re.sub(r'\s*[+-]\d{4}\s*$', '', date_str)  # 去掉时区
+                        date_str = re.sub(r'\s*GMT\s*$', '', date_str)
+                        date_str = re.sub(r'\s*UTC\s*$', '', date_str)
+                        
                         for fmt in [
-                            '%a, %d %b %Y %H:%M:%S %z',
-                            '%a, %d %b %Y %H:%M:%S',
                             '%Y-%m-%d %H:%M:%S',
-                            '%Y-%m-%d'
+                            '%a, %d %b %Y %H:%M:%S',
+                            '%d %b %Y %H:%M:%S',
+                            '%Y-%m-%dT%H:%M:%S',
+                            '%Y-%m-%d',
+                            '%a, %d %b %Y',
+                            '%d %b %Y'
                         ]:
                             try:
-                                pub_date = datetime.strptime(date_str, fmt)
+                                pub_date = datetime.strptime(date_str.strip(), fmt)
                                 break
                             except:
                                 continue
                     except:
                         pass
                 
-                # 过滤昨天的文章（如果日期解析失败，仍然保留）
+                # 只保留最近24小时的文章
                 if pub_date:
-                    start, end = get_yesterday_range()
-                    recent_start, recent_end = get_recent_range()
-                    # 放宽到最近3天
-                    if not (recent_start <= pub_date <= recent_end):
+                    start, end = get_recent_24h_range()
+                    if not (start <= pub_date <= end):
                         continue
-                # 如果没有日期，仍然保留（可能格式不同）
+                else:
+                    # 没有日期的文章跳过
+                    continue
                 
                 articles.append({
                     'title': title,
