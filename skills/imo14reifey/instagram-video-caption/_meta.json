@@ -3,9 +3,15 @@
   "slug": "instagram-video-caption",
   "displayName": "Instagram Video Caption",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1774505000183,
-    "commit": "https://github.com/openclaw/skills/commit/eb91ec8d414f916ae37dad62cf3ce0b4f3c12001"
+    "version": "1.0.4",
+    "publishedAt": 1774747923423,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1774505000183,
+      "commit": "https://github.com/openclaw/skills/commit/eb91ec8d414f916ae37dad62cf3ce0b4f3c12001"
+    }
+  ]
 }
