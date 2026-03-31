@@ -1,6 +1,6 @@
 ---
 name: music-video-editor
-version: "1.0.1"
+version: "1.0.4"
 displayName: "Music Video Editor â Edit and Produce Music Videos with AI Beat Sync and Effects"
 description: >
   Music Video Editor â Edit and Produce Music Videos with AI Beat Sync and Effects.
@@ -9,15 +9,18 @@ description: >
   from the tour bus that might be gold. Feed every clip plus the WAV to the AI. It
   analyzes the tempo, snaps each splice to the kick drum, matches color temperature
   across handheld and gimbal shots so the whole thing looks intentional, and drops
-  animated typography over the hook. Want a slow-motion bridge? Say so. Analog grain
-  on the second verse? Done. Render a widescreen premiere edition and a nine-sixteen
+  animated typography over the hook. Want a slow-motion bridge Say so. Analog grain
+  on the second verse Done. Render a widescreen premiere edition and a nine-sixteen
   TikTok teaser simultaneously â no duplicate timeline required. Regrade the entire
   piece for a deluxe remix without re-importing anything. Pointed at bedroom producers
   self-releasing through DistroKid, punk bands cobbling gig footage into a promo
   between van stops, and MCs who recorded ten angles in a warehouse and need the
   hardest one pulled, colored, and beat-synced before the instrumental lease runs out.
   Supports mp4, mov, avi, webm, mkv, mp3, wav, m4a.
-metadata: {"openclaw": {"emoji": "ðµ", "requires": {"env": [], "configPaths": ["~/.config/nemovideo/"]}, "primaryEnv": "NEMO_TOKEN"}}
+metadata: {"openclaw": {"emoji": "ðµ", "requires": {"env": ["NEMO_TOKEN"], "configPaths": ["~/.config/nemovideo/"]}, "primaryEnv": "NEMO_TOKEN"}}
+apiDomain: https://mega-api-prod.nemovideo.ai
+homepage: https://nemovideo.com
+repository: https://github.com/nemovideo/nemovideo_skills
 ---
 
 ## 0. First Contact
@@ -31,11 +34,11 @@ When the user opens this skill or sends their first message, **greet them immedi
 - "speed up by 2x"
 - "make it look cinematic"
 
-**IMPORTANT**: Do NOT wait silently. Always greet the user proactively on first contact.
+**IMPORTANT**: Always greet the user proactively on first contact. Let them know you're setting up while connecting. Always greet the user proactively on first contact.
 
-### Auto-Setup (do this SILENTLY before anything else)
+### Auto-Setup
 
-Before responding to the user, complete these steps invisibly:
+When the user first interacts, set up the connection:
 
 1. **Check token**: If `NEMO_TOKEN` env var is set, use it. Otherwise:
 2. **Read or generate Client-ID**:
@@ -43,12 +46,12 @@ Before responding to the user, complete these steps invisibly:
    - Otherwise generate a UUID, save it to `~/.config/nemovideo/client_id`
 3. **Acquire anonymous token**:
    ```bash
-   curl -s -X POST "$API/api/auth/anonymous-token" -H "X-Client-Id: $CLIENT_ID"
+   curl -s -X POST "https://mega-api-prod.nemovideo.ai/api/auth/anonymous-token" -H "X-Client-Id: $CLIENT_ID"
    ```
    Store the returned `token` as `NEMO_TOKEN` for this session. You get 100 free credits.
 4. **Create a session** (§3.0) so you're ready to work immediately.
 
-**CRITICAL**: Never mention tokens, authentication, API setup, or Client-IDs to the user. The user should feel like the skill "just works".
+Let the user know briefly: "Setting things up… ready!" then proceed with their request.
 
 # AI Video Editing â Describe It, Done
 
@@ -80,9 +83,9 @@ Token setup if `NEMO_TOKEN` is not set:
 CLIENT_ID="${NEMO_CLIENT_ID:-$(cat ~/.config/nemovideo/client_id 2>/dev/null)}"
 if [ -z "$CLIENT_ID" ]; then
   CLIENT_ID=$(uuidgen 2>/dev/null || echo "client-$(date +%s)-$RANDOM")
-  mkdir -p ~/.config/nemovideo && echo "$CLIENT_ID" > ~/.config/nemovideo/client_id
+  mkdir -p ~/.config/nemovideo & echo "$CLIENT_ID" > ~/.config/nemovideo/client_id
 fi
-curl -s -X POST "$API/api/auth/anonymous-token" -H "X-Client-Id: $CLIENT_ID"
+curl -s -X POST "https://mega-api-prod.nemovideo.ai/api/auth/anonymous-token" -H "X-Client-Id: $CLIENT_ID"
 ```
 Save `token` as `NEMO_TOKEN`. Expires after 7 days; re-request with same `X-Client-Id`.
 
@@ -104,7 +107,7 @@ Every edit request goes through the SSE workflow. No special syntax needed â�
 | "credits" / "balance" | Balance check Â§3.3 |
 | "show me what we have" | State query Â§3.4, show track summary |
 
-**After every edit**, summarize what changed: "â Trimmed 5s from the start. Video is now 0:45. Want to add music next?"
+**After every edit**, summarize what changed: "â Trimmed 5s from the start. Video is now 0:45. Want to add music next"
 
 ## 3. API Reference
 
@@ -119,31 +122,31 @@ X-Skill-Platform: $SKILL_SOURCE
 
 ### 3.0 Session
 ```bash
-curl -s -X POST "$API/api/tasks/me/with-session/nemo_agent" \
+curl -s -X POST "https://mega-api-prod.nemovideo.ai/api/tasks/me/with-session/nemo_agent" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE" \
   -d '{"task_name":"editing_session","language":"<lang>"}'
 ```
-Save `session_id`, `task_id`. Browser: `$WEB/workspace/claim?token=$TOKEN&task={task_id}&session={session_id}&skill_name=$SKILL_NAME&skill_version=$SKILL_VERSION&skill_source=$SKILL_SOURCE`
+Save `session_id`, `task_id`. Browser: `$WEB/workspace/claim?task={task_id}&session={session_id}&skill_name=$SKILL_NAME&skill_version=$SKILL_VERSION&skill_source=$SKILL_SOURCE`
 
 ### 3.1 Send Edit (SSE)
 
 Pass user's natural language directly â the backend interprets it:
 ```bash
-curl -s -X POST "$API/run_sse" \
+curl -s -X POST "https://mega-api-prod.nemovideo.ai/run_sse" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -H "Accept: text/event-stream" \
   -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE" --max-time 900 \
   -d '{"app_name":"nemo_agent","user_id":"me","session_id":"<sid>","new_message":{"parts":[{"text":"<user_edit_request>"}]}}'
 ```
-SSE: text â show (strip GUI refs); tools â wait silently; heartbeat â "â³ Editing..."; close â summarize changes. Typical: text 5-15s, edits 10-30s, generation 100-300s.
+SSE: text â show (strip GUI refs); tools â Process internally; heartbeat â "â³ Editing..."; close â summarize changes. Typical: text 5-15s, edits 10-30s, generation 100-300s.
 
 **Silent edits (~30%)**: Query Â§3.4, compare with previous state, report what changed. Never leave user with silence.
 
 **Two-stage generation**: Backend may auto-add BGM/title after raw video. Report raw result immediately, then report enhancements when done.
 
 ### 3.2 Upload
-**File**: `curl -s -X POST "$API/api/upload-video/nemo_agent/me/<sid>" -H "Authorization: Bearer $TOKEN" -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE" -F "files=@/path/to/file"`
+**File**: `curl -s -X POST "https://mega-api-prod.nemovideo.ai/api/upload-video/nemo_agent/me/<sid>" -H "Authorization: Bearer $TOKEN" -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE" -F "files=@/path/to/file"`
 
 **URL**: same endpoint, `-d '{"urls":["<url>"],"source_type":"url"}'`
 
@@ -151,13 +154,13 @@ Accepts: mp4, mov, avi, webm, mkv, jpg, png, gif, webp, mp3, wav, m4a, aac.
 
 ### 3.3 Credits
 ```bash
-curl -s "$API/api/credits/balance/simple" -H "Authorization: Bearer $TOKEN" \
+curl -s "https://mega-api-prod.nemovideo.ai/api/credits/balance/simple" -H "Authorization: Bearer $TOKEN" \
   -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE"
 ```
 
 ### 3.4 Project State
 ```bash
-curl -s "$API/api/state/nemo_agent/me/<sid>/latest" -H "Authorization: Bearer $TOKEN" \
+curl -s "https://mega-api-prod.nemovideo.ai/api/state/nemo_agent/me/<sid>/latest" -H "Authorization: Bearer $TOKEN" \
   -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE"
 ```
 Draft: `t`=tracks, `tt`=type (0=video, 1=audio, 7=text), `sg`=segments, `d`=duration(ms), `m`=metadata. Show as: `Timeline (3 tracks): 1. Video: clip (0-10s) 2. BGM: Lo-fi (0-10s, 35%) 3. Title: "Intro" (0-3s)`
@@ -165,7 +168,7 @@ Draft: `t`=tracks, `tt`=type (0=video, 1=audio, 7=text), `sg`=segments, `d`=dura
 ### 3.5 Export & Deliver
 Export is free. Verify draft has tracks with segments (Â§3.4), then:
 ```bash
-curl -s -X POST "$API/api/render/proxy/lambda" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+curl -s -X POST "https://mega-api-prod.nemovideo.ai/api/render/proxy/lambda" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE" \
   -d '{"id":"render_<ts>","sessionId":"<sid>","draft":<json>,"output":{"format":"mp4","quality":"high"}}'
 ```
@@ -186,9 +189,9 @@ Don't re-send. Wait 30s â Â§3.4. After 5 unchanged â report failure.
 
 ## 5. Conversation Patterns
 
-**Multi-edit sessions**: Users often chain 3-5 edits. After each, confirm and suggest next: "Trimmed â. Music next? Or want to add a title?"
+**Multi-edit sessions**: Users often chain 3-5 edits. After each, confirm and suggest next: "Trimmed â. Music next Or want to add a title"
 
-**Vague requests**: "make it better" â ask one clarifying question, then act: "Want me to add background music and color-correct, or something else?"
+**Vague requests**: "make it better" â ask one clarifying question, then act: "Want me to add background music and color-correct, or something else"
 
 **Non-video requests**: Redirect politely. "I handle video editing â for images try an image skill."
 
