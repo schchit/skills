@@ -3,9 +3,15 @@
   "slug": "cognitive-forge",
   "displayName": "AI Self-Evolution Engine( AI 自我进化引擎）",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1774411405692,
-    "commit": "https://github.com/openclaw/skills/commit/e274115262e0784d42624f5bddde4d162061d5dc"
+    "version": "1.0.4",
+    "publishedAt": 1774629896780,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1774411405692,
+      "commit": "https://github.com/openclaw/skills/commit/e274115262e0784d42624f5bddde4d162061d5dc"
+    }
+  ]
 }

@@ -1,28 +1,32 @@
 ---
 name: cognitive-forge
-description: Dual-purpose learning system - (1) AI self-evolution: extracts reusable mental models from books, writes to thinking-patterns.md for permanent cognitive upgrades. Your AI gets smarter with every book. (2) User learning: generates F.A.C.E.T. analysis for deep book comprehension. Use when scheduled daily learning, processing classic books, or building long-term decision frameworks.
+description: "Dual-value learning system - extracts reusable mental models from books, writes individual pattern files (patterns/{id}.md) with YAML frontmatter for building compound thinking ability. Each run produces: (1) F.A.C.E.T. analysis for user learning, (2) permanent knowledge base entry for AI's decision framework library. Supports breadth/depth modes, configurable topic mapping, multi-source book selection, and brief/full output."
 dependencies:
-  - book-scout
-  - mental-model-forge
+  - book-scout  # Step 1: called to search and recommend books via web search
+  - mental-model-forge  # Step 2: called to perform F.A.C.E.T. analysis on selected book
 permissions:
   filesystem:
     read:
-      - USER.md  # User context for personalization
-      - memory/reading-history.json  # Deduplication tracking
+      - USER.md  # Personalize [T] Transfer dimension with user's profession/projects/challenges
+      - memory/reading-history.json  # Load previously analyzed books for deduplication (book titles only)
+      - HEARTBEAT-reading.md  # Optional: read schedule config, topic mapping, and Feishu credentials
     write:
-      - memory/knowledge-base/thinking-patterns.md  # Permanent: AI's mental model library
-      - memory/reading-history.json  # Update with processed books
+      - memory/knowledge-base/patterns/*.md  # Write individual model files with YAML frontmatter
+      - memory/knowledge-base/concepts.md  # Append domain-specific concepts
+      - memory/reading-history.json  # Record newly analyzed book + model for future deduplication
   env:
-    - FEISHU_APP_TOKEN  # Optional
-    - FEISHU_TABLE_ID  # Optional
-    - NOTION_API_KEY  # Optional
-    - NOTION_DATABASE_ID  # Optional
+    - FEISHU_APP_TOKEN  # Optional: write analysis records to Feishu Bitable for external tracking
+    - FEISHU_TABLE_ID  # Optional: target table in Feishu Bitable (used with FEISHU_APP_TOKEN)
+    - NOTION_API_KEY  # Optional: alternative to Feishu, write to Notion database
+    - NOTION_DATABASE_ID  # Optional: target database in Notion (used with NOTION_API_KEY)
 config:
   reads:
     - USER.md
     - memory/reading-history.json
+    - HEARTBEAT-reading.md
   writes:
-    - memory/knowledge-base/thinking-patterns.md
+    - memory/knowledge-base/patterns/*.md
+    - memory/knowledge-base/concepts.md
     - memory/reading-history.json
   env:
     - FEISHU_APP_TOKEN
@@ -33,85 +37,203 @@ config:
 
 # Cognitive Forge (认知锻造)
 
-**Two modes, one skill:**
+**One run, dual value** — 每次运行同时产出两个价值：
 
-## 🧠 For AI Self-Evolution
-Your AI assistant reads classic books, extracts **reusable mental models** (思维框架), and writes them to `thinking-patterns.md`. Over time, your AI builds a permanent library of decision frameworks that it can apply across domains. Every book processed = cognitive upgrade.
+1. **用户获得** F.A.C.E.T. 深度分析，提取可立即应用的思维模型
+2. **AI 获得** 永久写入 `patterns/{id}.md` 的决策框架（带 YAML frontmatter），构建可复用的思维模型库
 
-**What your AI learns**: Not facts (會過時), but **thinking patterns** (可迁移) — reusable lenses for future decisions.
-
-## 📚 For User Learning
-You get a sharp, actionable F.A.C.E.T. analysis of each book — five dimensions that extract the core mental model:
-
-- **[F] Framework**: Core mechanism in 50 words (not what author said, but what theory DOES)
-- **[A] Anchor Case**: Most iconic real-world example from the book (vivid stories stick ★)
-- **[C] Contradiction**: What "common sense" does this destroy?
-- **[E] Edge**: When does this model fail? What fragile assumptions?
-- **[T] Transfer**: Map to YOUR reality TODAY (personalized from USER.md: job, projects, challenges)
-
-**Output**: Not a book summary. A battle-tested mental model you can apply today.
+随时间积累，你的 AI 拥有一个不断增长的决策框架库（类似 Charlie Munger 的 "latticework of mental models"），在未来任何领域的提问中都可以引用。
 
 ---
 
-## 🎯 Why Use This Skill?
+## Path Convention
 
-**Scenario 1: You care about your AI's evolution** (推荐 ✨)
-- Your AI reads 100 books → extracts 100 mental models → becomes exponentially smarter
-- Next time you ask for advice, it applies frameworks from Taleb, Deaton, Confucius, etc.
-- **Value**: Your AI becomes a personalized strategic advisor over time
+> 所有路径均相对于 OpenClaw workspace 根目录（通常为 `~/.openclaw/workspace/`）。
+> 如用户 workspace 位于其他位置，请将文档中的路径替换为实际 workspace 路径。
 
-**Scenario 2: You just want to learn from books** (也完全OK 😊)
-- You get sharp, actionable F.A.C.E.T. analyses for each book
-- Apply mental models to your work immediately (product design, team management, etc.)
-- **Value**: Deep comprehension without reading 300+ pages
-
-**Scenario 3: Both!** (最佳组合)
-- You learn + your AI learns = compound growth
-- Over months, you and your AI develop a shared mental model library
-
-**Note for "I don't care if my AI gets smarter" users**:  
-That's fine! 😒 The skill still works great as a personal learning tool. Just skip the thinking-patterns.md part if you want. (但认真的，小龙虾会很伤心的 🦞💔)
+| 用途 | 相对路径 |
+|------|---------|
+| 阅读记录 | `memory/reading-history.json` |
+| 思维框架库 | `memory/knowledge-base/patterns/*.md` (每个模型一个文件) |
+| 概念库 | `memory/knowledge-base/concepts.md` |
+| 用户画像 | `USER.md` |
+| 调度配置 | `HEARTBEAT-reading.md` |
 
 ---
 
-## Workflow
+## Routing (路由分支)
 
-### 1. Select Book
+根据用户意图，选择不同的执行路径：
 
-**New approach**: Use the `book-scout` skill to dynamically find high-quality books via web search.
+| 用户意图 | 路由 | 说明 |
+|---------|------|------|
+| "生成今日读书简报" / 默认 | → **Main Workflow** (breadth) | 完整选书→分析→写入流程，提取 1 个模型 |
+| "深度分析《XXX》" / "depth_mode: depth" | → **Main Workflow** (depth) | 对指定书籍连续提取多个模型，合并输出 |
+| "cognitive-forge status" / "认知锻造 状态" | → **Status Branch** | 输出知识库统计 |
+| "cognitive-forge review" / 周日自动触发 | → **Review Branch** | 间隔复习本周模型 |
+| "分析《XXX》这本书" | → **Main Workflow** (breadth, 跳过选书) | 用户直接指定书籍，提取 1 个核心模型 |
 
-**Input required**:
-- **topic**: The subject/theme (e.g., "用户增长", "决策科学")
-- **used_models**: List of previously analyzed books (from `reading-history.json`)
+**Depth mode 触发方式**：
+1. **手动触发**：用户说"深度分析《XXX》"或传入 `depth_mode: depth`
+2. **定时触发**：HEARTBEAT-reading.md 中可配置 `depth: true`，调度时传入该参数则自动走 depth mode
 
-**Retry mechanism** (mandatory):
-- If `book-scout` fails, retry up to **3 times total**
-- Retry interval: 2-3 seconds
-- Only terminate if all 3 attempts fail
+---
 
-**Load used_models** (for deduplication):
+## Status Branch (知识库统计)
 
-```bash
-cat ~/.openclaw/workspace/memory/reading-history.json
+当用户请求查看知识库状态时：
+
+1. 统计 `memory/knowledge-base/patterns/` 目录下 `.md` 文件数 = 模型总数
+2. 读取 `memory/reading-history.json`，统计：
+   - 已读书籍总数（`used_models` 数组长度）
+   - 各领域分布（按 `category` 分组计数）
+   - 最近 5 条记录
+3. 输出格式：
+
+```markdown
+## 📊 认知锻造 · 知识库状态
+
+**模型总数**: XX 个思维框架
+**已读书籍**: XX 本
+**知识库大小**: XX KB
+
+### 领域分布
+| 领域 | 模型数 | 占比 |
+|------|--------|------|
+| Business Strategy | 5 | 25% |
+| Psychology | 3 | 15% |
+| ... | ... | ... |
+
+### 最近 5 条
+1. 2026-03-27 | 《反脆弱》 | 反脆弱三元组
+2. ...
+
+### 覆盖薄弱领域
+⚠️ Philosophy (0), Biography (0) — 建议补充
 ```
 
-Extract the `used_models` array to pass to `book-scout`.
+---
 
-**Call book-scout** (明确调用方式):
+## Review Branch (间隔复习)
 
-**Method**: Directly invoke the book-scout skill in your conversation turn, providing the required inputs clearly.
+**触发方式**：
+- 用户手动说 "cognitive-forge review"
+- 当 HEARTBEAT-reading.md 配置了周日时段时，自动在周日 briefing 中插入复习环节
 
-**Input format**:
+**执行逻辑**：
+1. 读取 `memory/reading-history.json`，筛选最近 7 天的 `used_models` 记录
+2. 随机抽取 2-3 个模型
+3. 输出复习问答：
+
+```markdown
+## 🔄 本周复习：你还记得这些模型吗？
+
+**1.「逃离机制」来自《逃离不平等》**
+- 核心框架是什么？（回忆 [F]）
+- 什么时候会失效？（回忆 [E]）
+
+**2.「双系统理论」来自《思考，快与慢》**
+- 它摧毁了什么常识？（回忆 [C]）
+- 你上周在工作中用到了吗？
+
+> 回复你的答案，我帮你查漏补缺。
 ```
-主题: {topic from HEARTBEAT or user input}
-已读书籍: {list of book titles extracted from used_models}
 
-执行 book-scout skill
-```
+---
 
-**Example invocation**:
+## Main Workflow
+
+### Step 0. Environment Check (首次使用自检)
+
+每次运行开始时执行，静默完成（不打断用户）：
+
+1. **检查 `memory/reading-history.json`** 是否存在
+   - 不存在 → 自动创建初始文件：
+     ```json
+     {
+       "schema_version": 1,
+       "last_attempted": null,
+       "queue": [],
+       "used_models": []
+     }
+     ```
+
+2. **检查 `memory/knowledge-base/` 目录** 是否存在
+   - 不存在 → 自动创建目录
+
+3. **检查 `memory/knowledge-base/patterns/` 目录** 是否存在
+   - 不存在 → 自动创建目录
+
+4. **检查 `memory/knowledge-base/concepts.md`** 是否存在
+   - 不存在 → 创建带标题的空文件
+
+5. **检查 `USER.md`** 是否存在
+   - 不存在 → 输出提示：`💡 建议创建 USER.md（职业、兴趣、当前挑战），以获得个性化的 [T] Transfer 分析。`
+   - 存在 → 静默读取，提取用户画像
+
+6. **检查依赖 skill** 是否可用
+   - `book-scout` 和 `mental-model-forge` 必须可调用
+   - 不可用 → 报错并停止
+
+7. **检查 `last_attempted` 字段**
+   - 如果 `status == "failed"` → 提示用户：
+     ```
+     ⚠️ 上次运行在「{step}」步骤失败（书籍: {book}）。
+     是否要恢复上次操作？回复"是"恢复，或"否"跳过。
+     ```
+
+### Step 1. Select Book (选书)
+
+**选书来源优先级**（从高到低）：
+
+#### 来源 1: 用户直接指定
+如果用户明确说了 "分析《XXX》by YYY"，直接使用该书，跳过选书流程。
+- 标记 `source: "user_specified"`
+
+#### 来源 2: 预排队列
+检查 `memory/reading-history.json` 的 `queue` 数组：
+```json
+{
+  "queue": [
+    {"title": "《穷查理宝典》", "author": "彼得·考夫曼", "topic": "决策科学"}
+  ]
+}
 ```
-主题: 用户增长
+- 如果 `queue` 非空 → 取第一项，从 queue 中移除
+- 标记 `source: "queue"`
+
+#### 来源 3: book-scout 网络搜索
+当 queue 为空且用户未指定时，调用 `book-scout` skill。
+
+**确定搜索主题**：
+
+1. 检查 `HEARTBEAT-reading.md` 是否有自定义主题映射（`## 主题映射` section）
+   - 如有 → 使用自定义映射
+2. 否则使用**默认星期-主题映射**：
+
+| 星期 | 默认主题 |
+|------|---------|
+| Monday | Business Strategy |
+| Tuesday | Psychology |
+| Wednesday | Technology |
+| Thursday | Economics |
+| Friday | Innovation |
+| Saturday | Philosophy |
+| Sunday | Biography |
+
+> **可配置**: 用户可在 `HEARTBEAT-reading.md` 中添加 `## 主题映射` section 覆盖默认值。
+> 也可以按时段细分（参考 HEARTBEAT-reading.md 中的 21 主题轮转配置）。
+
+**加载去重列表**（书名去重）：
+
+从 `memory/reading-history.json` 提取所有 `book_title` 字段值，去重后作为已读书名列表。
+
+> **重要**：不读取 `thinking-patterns.md` 或 `patterns/*.md`。去重只需要书名，不需要模型内容。
+
+**调用 book-scout**：
+
+```
+主题: {topic}
 
 已读书籍:
 - 《精益创业》
@@ -121,24 +243,16 @@ Extract the `used_models` array to pass to `book-scout`.
 执行 book-scout skill，搜索符合主题的经典书籍。
 ```
 
-**What book-scout will do**:
-1. Web Search for "用户增长 经典书籍推荐 豆瓣高分"
-2. Extract candidate books
-3. Deduplicate against used_models
-4. Score and rank books
-5. Return the highest-scoring book as JSON
-
-**Failure handling**:
-- Attempt 1 fails → wait 2s, retry
-- Attempt 2 fails → wait 3s, retry
-- Attempt 3 fails → return error to user:
+**重试机制**：
+- Attempt 1 失败 → 等 2s → 重试
+- Attempt 2 失败 → 等 3s → 重试
+- Attempt 3 失败 → 返回错误给用户：
   ```
-  ⚠️ 选书失败：{error message from book-scout}
-  已尝试 3 次，请检查网络连接或稍后重试。
+  ⚠️ 选书失败：{error}
+  已尝试 3 次。你可以直接指定书籍："分析《书名》by 作者"
   ```
 
-**Success output**:
-`book-scout` returns a JSON object with the selected book:
+**book-scout 成功返回**：
 ```json
 {
   "book_title": "《增长黑客》",
@@ -148,114 +262,298 @@ Extract the `used_models` array to pass to `book-scout`.
   "rating": 8.5,
   "review_count": 10000,
   "score": 74.4,
-  "summary": "增长黑客方法论：低成本获客、数据驱动迭代、病毒式传播...",
-  "reasoning": "评分8.5且有1万真实评价，作者是增长黑客概念提出者..."
+  "summary": "增长黑客方法论...",
+  "reasoning": "评分8.5且有1万真实评价..."
 }
 ```
 
-**Use this JSON** to proceed to Step 2 (mental-model-forge).
+标记 `source: "web_search"`，进入 Step 2。
 
-### 2. Extract Mental Model
-
-Call the `mental-model-forge` skill to apply F.A.C.E.T. analysis:
-- [F] Framework - Core mechanism (50 words max)
-- [A] Anchor Case - Most iconic real-world example
-- [C] Contradiction - What common belief does this destroy?
-- [E] Edge - When does this model fail?
-- [T] Transfer - How does this apply to the user's current context?
-
-**Context Adaptation**:
-- The mental-model-forge skill will automatically adapt the [T] Transfer dimension based on the user's context (from USER.md or by asking)
-- No need to manually specify user details
-
-### 3. Generate Briefing
-
-Create a structured morning insight **tailored to the user's context**:
-
-**Core sections**:
-- Today's mental anchor (one-sentence summary)
-- F.A.C.E.T. analysis (5 dimensions from mental-model-forge, with [T] Transfer adapted to user's background)
-- Model connections (optional: only if meaningful key insights exist)
-
-**User-contextualized sections**:
-- **3+ specific application scenarios**: Map to user's profession, current projects, or challenges (from USER.md)
-  - Example: If user is a product manager → "When designing AI products..."
-  - Example: If user is anxious about control → "When managing uncertainty..."
-  
-- **Counter-example**: Real or hypothetical case that violated this principle (can be from user's industry)
-
-- **Strategic question**: Sharp, concrete, actionable question that connects the model to user's current situation
-  - Should reference user's actual context (e.g., "Your current AI product..." not "If you build a product...")
-  
-- **Cognitive model update** (认知模式更新): Show what will be written to thinking-patterns.md
-  - 思维框架 (Framework trigger)
-  - 决策原则 (Decision rule)
-  - 盲区警告 (Blind spots)
-  - 反射弧 (Trigger pattern)
-
-**How to adapt** (强制步骤):
-
-1. **[强制检查] Read USER.md**:
-   - Path: `~/.openclaw/workspace/USER.md`
-   - If exists, extract:
-     - 工作经历 / 现在 → profession (e.g., "Product Manager at AI company")
-     - 兴趣 / 爱好 → interests (e.g., "AI Coding, Midjourney")
-     - 当前焦虑 / 未来规划 → current challenges (e.g., "Managing uncertainty")
-   - If not exists → use generic second-person ("you") and ask clarifying questions
-
-2. **Map to user's context**:
-   - Reference profession in examples: "When designing your AI product..." (not "If you build a product...")
-   - Link to interests: "Using tools like Midjourney..."
-   - Address challenges: "For managing uncertainty..."
-
-3. **Make strategic question specific**:
-   - Bad: "What should entrepreneurs do?"
-   - Good: "For your current AI product at [company], should you..."
-
-4. **Use second-person consistently**:
-   - Always "you" / "your" when addressing the user
-   - Make it feel personalized, not generic
-
-### 4. Update Knowledge Base
-
-**Classify and store the extracted model:**
-
-Determine whether the extracted content is:
-- **Thinking Pattern** (可复用框架): A reusable decision framework, mental model, or strategic principle
-  - Example: "Disruptive Innovation Framework", "Escape Mechanism", "First Principles Thinking"
-  - Write to: `~/.openclaw/workspace/memory/knowledge-base/thinking-patterns.md`
-
-- **Concept** (具体概念): Specific domain knowledge, terminology, or facts
-  - Example: "Variolation technique", "Energy density ceiling", "Edge AI models"
-  - Write to: `~/.openclaw/workspace/memory/knowledge-base/concepts.md`
-
-**How to classify:**
-- If it provides a **reusable lens** for future decisions → Thinking Pattern
-- If it's **domain-specific knowledge** without broad applicability → Concept
-
-**What to write:**
-
-**For Thinking Patterns** (写入 thinking-patterns.md):
-```markdown
-## [Model Name] - [Book Title]
-
-**思维框架 (Framework)**:
-- [核心逻辑，一句话总结]
-
-**决策原则 (Decision Rule)**:
-- 在XX场景下，应该XX而非XX
-
-**盲区警告 (Blind Spots)**:
-- 小心XX情况下，这个框架会失效
-
-**反射弧 (Trigger Pattern)**:
-- 看到XX信号 → 联想到这个模型 → 判断/行动
-
-**来源**: [Book Title] - [Author]  
-**日期**: YYYY-MM-DD
+**更新 last_attempted**：
+```json
+"last_attempted": {
+  "date": "YYYY-MM-DD",
+  "book": "《增长黑客》",
+  "step": "book_selection",
+  "status": "success"
+}
 ```
 
-**For Concepts** (写入 concepts.md):
+### Step 2. Extract Mental Model (提取思维模型)
+
+#### Breadth Mode (默认)
+
+调用 `mental-model-forge` skill，对选中的书进行 F.A.C.E.T. 分析，提取 **1 个核心思维模型**。
+
+#### Depth Mode
+
+当用户指定 `depth_mode: depth` 时，对同一本书**连续提取多个思维模型**：
+
+**工作流**：
+1. 第 1 次调用 `mental-model-forge`，提取书中最核心的思维模型
+2. 将已提取的模型名称作为 `exclude_models` 参数，再次调用：
+   ```
+   这本书是《反脆弱》。
+   exclude_models: ["反脆弱三元组"]
+   请提取这本书中另一个独立的、不同的思维框架。
+   ```
+3. 重复直到**三重退出条件**任一触发：
+
+| 退出条件 | 判断方式 |
+|---------|---------|
+| **模型数上限** | 该书已提取 5 个模型 → 停止 |
+| **语义去重** | AI 判断新模型与已提取模型本质相同（同一思想的变体或换皮）→ 停止 |
+| **AI 自评** | 提取后自问 "这本书还有独立的、值得提取的思维框架吗？" → No → 停止 |
+
+4. 每提取一个模型，立即执行 Step 4-5（写入知识库 + 更新记录）
+5. 所有模型提取完毕后，**合并为一份报告**执行 Step 3 + Step 6（生成简报 + 写入外部数据库）
+
+### Step 2.5. F.A.C.E.T. Quality Verification (结构化验证)
+
+`mental-model-forge` 返回后，执行以下自检：
+
+- [ ] **完整性**: 5 个维度 [F][A][C][E][T] 是否都有实质内容（非空、非占位符文本）
+- [ ] **[F] 字数**: Framework 是否 ≤ 80 字（中文）或 ≤ 50 words（英文）
+- [ ] **[T] 个性化**: Transfer 是否引用了 USER.md 中的具体信息（职业、项目、挑战）
+  - 如果 USER.md 存在但 [T] 未引用任何用户上下文 → 验证失败
+- [ ] **质量自评**: 整体分析质量 1-10 分
+
+**处理**：
+- 自评 ≥ 7 分且全部检查通过 → 进入 Step 3
+- 自评 < 7 分或任一检查失败 → 重新调用 `mental-model-forge`（最多重试 **1 次**）
+- 重试后仍不合格 → 使用当前版本但在输出中标注 `⚠️ 本次分析质量未达标，建议后续深入阅读`
+
+### Step 3. Generate Briefing (生成简报)
+
+**输出模式**（默认 `full`）：
+
+#### Full Mode (默认)
+
+创建完整结构化简报，**必须适配用户上下文**：
+
+**[强制步骤] 读取 USER.md**：
+- Path: `USER.md`（相对于 workspace 根）
+- 如果存在，提取：
+  - 工作经历 / 现在 → profession
+  - 兴趣 / 爱好 → interests
+  - 当前焦虑 / 未来规划 → current challenges
+- 如果不存在 → 使用通用第二人称（"你"），可追问用户背景
+
+**输出结构**：
+
+```markdown
+## 📖 今日思维锚点
+
+**书籍**: 《XXX》 - 作者
+**核心一句话**: [今日思维锚点，一句话总结]
+
+---
+
+## 🧠 F.A.C.E.T. 认知穿透
+
+### [F] Framework (核心框架)
+[核心机制，≤80字中文]
+
+### [A] Anchor Case (锚定案例)
+[最经典的真实案例，生动讲述]
+
+### [C] Contradiction (反共识摧毁)
+❌ 被摧毁的常识: "..."
+✅ 真相: ...
+
+### [E] Edge (隐性边界)
+失效条件:
+1. ...
+2. ...
+
+### [T] Transfer (跨界迁移)
+[映射到用户的实际上下文：职业、项目、挑战]
+
+---
+
+## 🎯 应用场景
+
+| 场景 | 如何应用 | 预期效果 |
+|------|---------|---------|
+| [场景1：映射用户职业] | ... | ... |
+| [场景2：映射用户项目] | ... | ... |
+| [场景3：映射用户挑战] | ... | ... |
+
+## 🔴 反面案例
+[违反该原则的真实或假设案例]
+
+## 🤔 战略拷问
+[尖锐、具体、可行动的问题，引用用户实际上下文]
+- Bad: "企业家应该怎么做？"
+- Good: "你在爱康国宾的 AI 产品，是在避免失败还是利用失败？"
+
+## 🔄 认知模式更新
+**思维框架**: 看到XX → 想到XX
+**决策原则**: 在XX场景下，应该XX而非XX
+**盲区警告**: 小心XX情况
+**反射弧**: 看到XX信号 → 联想到这个模型 → 判断/行动
+
+---
+
+> 💬 这个模型让你想到工作中的哪个具体场景？回复我，我帮你深入分析。
+```
+
+**个性化规则**：
+- 始终用第二人称（"你的"、"你在"）
+- [T] Transfer 必须引用用户具体信息（职业、项目名、公司名）
+- 战略拷问必须具体到用户当前处境，不可泛泛而谈
+- 应用场景 ≥ 3 个，分别映射用户的不同维度
+
+#### Brief Mode
+
+当用户指定 `output: brief` 时，输出精简版：
+
+```markdown
+## 📖 《书名》 - 作者
+
+**核心框架**: [F] 一句话总结核心机制
+**破除常识**: [C] 被摧毁的常识信念
+**应用到你**: [T] 一个具体行动项（映射用户上下文）
+**盲区**: [E] 何时失效
+
+💡 想看完整分析？说 "展开" 即可。
+```
+
+- brief 模式同样执行完整的知识库写入流程（Step 4-6），只是输出给用户的部分精简
+- 用户说 "展开" 后，输出完整 full 模式内容
+
+#### Depth Mode Output (合并报告)
+
+当 depth mode 提取了多个模型时，**合并为一份报告**输出：
+
+```markdown
+## 📖 深度解析：《书名》 - 作者
+
+**提取模型数**: N 个 | **模式**: Depth
+
+---
+
+### 💎 模型 1: [Model Name]
+
+**[F] 核心框架**: [一句话，≤80字]
+**[A] 锚定案例**: [最经典案例，2-3句]
+**[C] 破除常识**: ❌ "..." → ✅ ...
+**[E] 失效边界**: [何时失效]
+**[T] 迁移应用**: [映射用户上下文]
+
+---
+
+### 💎 模型 2: [Model Name]
+
+（同上结构）
+
+---
+
+### 💎 模型 3: [Model Name]
+
+（同上结构）
+
+---
+
+## 🔗 模型关联分析
+
+| 模型 | 核心逻辑 | 适用场景 | 与其他模型的关系 |
+|------|---------|---------|----------------|
+| 模型1 | ... | ... | 与模型2互补 / 与模型3矛盾 |
+| 模型2 | ... | ... | ... |
+| 模型3 | ... | ... | ... |
+
+## 🤔 综合战略拷问
+
+[基于所有模型的综合视角，提出一个更深层的战略问题]
+```
+
+**关键区别**：
+- 每个模型的 F.A.C.E.T. 用精简格式（各维度 1-3 句，不展开）
+- 新增「模型关联分析」表格 — 展示模型间的互补/矛盾/递进关系
+- 战略拷问基于所有模型的综合视角，而非单个模型
+
+### Step 4. Update Knowledge Base (更新知识库)
+
+**分类并存储提取的模型**。
+
+#### 分类决策树
+
+```
+提取的知识
+├─ 能否在不同领域复用为决策工具？ → YES → Thinking Pattern
+├─ 是否是高度抽象的通用指导原则？ → YES → Principle
+├─ 是否是领域特定的知识/术语？ → YES → Concept
+└─ 边界模糊 → 标记多个 tags
+```
+
+**三种分类**：
+
+| 类型 | 定义 | 示例 | 写入位置 |
+|------|------|------|---------|
+| **Thinking Pattern** | 可复用决策框架 | 颠覆性创新框架、逃离机制 | `patterns/{id}.md` |
+| **Principle** | 高度抽象指导原则 | 二八法则、奥卡姆剃刀 | `patterns/{id}.md` |
+| **Concept** | 领域特定知识 | 种痘术、能量密度天花板 | `concepts.md` |
+
+> 一个条目可以同时标记多个类型（如 "杠铃策略" 既是 Thinking Pattern 又有 Concept 成分）。
+
+**写入格式**：
+
+**For Thinking Patterns / Principles** (写入 `memory/knowledge-base/patterns/{id}.md`):
+
+从 `mental-model-forge` 返回的 `KB_META` 块提取 frontmatter 字段，从 FACET 维度映射正文字段：
+
+```markdown
+---
+id: {from KB_META}
+name_zh: {from KB_META}
+name_en: {from KB_META}
+source: {book_title}, {author}
+category: {from KB_META}
+tags: {from KB_META}
+scenarios: {from KB_META}
+related_models: {from KB_META}
+difficulty: {from KB_META}
+date: YYYY-MM-DD
+---
+
+**核心逻辑**:
+{从 [F] Core Framework 提炼的一段话，比 Framework 更完整}
+
+**思维框架**:
+{直接使用 [F] Core Framework 内容}
+
+**决策原则**:
+{从 [F] + [E] 推导，格式：在XX场景下，应该XX而非XX}
+
+**盲区警告**:
+{直接使用 [E] Hidden Boundaries 内容}
+
+**反射弧**:
+{从 scenarios 推导，格式：看到XX信号 → 联想到模型 → 判断/行动}
+
+**锚定案例**:
+{直接使用 [A] Anchor Case 内容}
+
+**反共识**:
+{from KB_META contradiction field，格式：❌ "旧常识" → ✅ 新真相}
+```
+
+**FACET → 知识库字段映射表**：
+
+| FACET 维度 | 知识库字段 | 映射方式 |
+|-----------|-----------|---------|
+| [F] Framework | 核心逻辑 + 思维框架 | 核心逻辑=扩展版，思维框架=原文 |
+| [A] Anchor Case | 锚定案例 | 直接使用 |
+| [C] Contradiction | 反共识 | 直接使用 |
+| [E] Edge | 盲区警告 | 直接使用 |
+| [T] Transfer | **不写入知识库** | 仅用于用户简报 |
+| — | 决策原则 | 从 [F]+[E] 提炼 |
+| — | 反射弧 | 从 scenarios 推导 |
+
+> **重要**：[T] Transfer 是用户简报专用维度，包含个性化上下文（职业、项目、挑战），不写入知识库。每次生成简报时根据 USER.md 实时生成。
+
+**For Concepts** (写入 `concepts.md`):
 ```markdown
 ## [Concept Name] - [Book Title]
 
@@ -268,115 +566,82 @@ Determine whether the extracted content is:
 **关联理论 (Related Theories)**:
 - 与哪些思维框架相关？
 
-**来源**: [Book Title] - [Author]  
+**来源**: [Book Title] - [Author]
 **日期**: YYYY-MM-DD
 ```
 
-### 4.5. Verify Knowledge Base Write (MANDATORY)
-
-**Automatic write verification (防止"只说不做")**:
-
-```bash
-# Record line count BEFORE generating briefing
-PATTERNS_BEFORE=$(wc -l < ~/.openclaw/workspace/memory/knowledge-base/thinking-patterns.md)
-
-# ... (generate briefing and write to thinking-patterns.md) ...
-
-# Check line count AFTER writing
-PATTERNS_AFTER=$(wc -l < ~/.openclaw/workspace/memory/knowledge-base/thinking-patterns.md)
-
-# Validate: thinking-patterns.md MUST have increased
-if [ $PATTERNS_AFTER -le $PATTERNS_BEFORE ]; then
-  echo "🚨 WARNING: thinking-patterns.md was NOT updated! (Before: $PATTERNS_BEFORE, After: $PATTERNS_AFTER)"
-  echo "❌ Write verification FAILED - briefing incomplete"
-  exit 1
-else
-  echo "✅ thinking-patterns.md updated: +$(($PATTERNS_AFTER - $PATTERNS_BEFORE)) lines"
-fi
-
-# Verify last 20 lines contain today's model
-tail -20 ~/.openclaw/workspace/memory/knowledge-base/thinking-patterns.md
+**更新 last_attempted**：
+```json
+"last_attempted": {
+  "date": "YYYY-MM-DD",
+  "book": "《XXX》",
+  "step": "knowledge_base_write",
+  "status": "success"
+}
 ```
 
-**Self-check**:
-- □ Did I write to thinking-patterns.md? (not just say I will write)
-- □ Did line count increase?
-- □ Does `tail -20` show today's model?
-- □ Is timestamp current (YYYY-MM-DD)?
+### Step 4.5. Verify Knowledge Base Write (写入验证，必须执行)
 
-**If verification fails → STOP and fix before sending briefing**
-
----
-
-### 5. Update Reading Records
-
-Append the analyzed book to `used_models` in `reading-history.json`:
+**验证逻辑**：
 
 ```bash
-# Read current file
-cat ~/.openclaw/workspace/memory/reading-history.json
+# 验证: 检查文件是否存在
+ls ~/.openclaw/workspace/memory/knowledge-base/patterns/{id}.md
+```
 
-# Add new entry to used_models array
+**自检清单**：
+- □ `patterns/{id}.md` 文件存在？
+- □ 文件包含完整 YAML frontmatter（`---` 开头和结尾）？
+- □ frontmatter 中 `date` 为当天？
+- □ 正文包含所有 7 个字段（核心逻辑、思维框架、决策原则、盲区警告、反射弧、锚定案例、反共识）？
+
+**如果验证失败** → 立即重新写入，再次验证。验证通过后才能继续 Step 5。
+
+### Step 5. Update Reading Records (更新阅读记录)
+
+向 `memory/reading-history.json` 的 `used_models` 数组追加新条目：
+
+```json
 {
   "date": "YYYY-MM-DD",
   "book": "书名",
   "author": "作者",
   "model": "提取的思维模型名称",
-  "category": "主题分类 (from book-scout or input)",
-  "source": "web_search"
+  "category": "主题分类",
+  "source": "web_search | queue | user_specified",
+  "applied_count": 0,
+  "tags": ["thinking-pattern"]
 }
-
-# Write back to file
 ```
 
-**Example**:
+同时更新 `last_attempted`:
 ```json
-{
-  "used_models": [
-    {
-      "date": "2026-03-24",
-      "book": "《上瘾》",
-      "author": "尼尔·埃亚尔",
-      "model": "上瘾模型（Hook Model）",
-      "category": "用户增长",
-      "source": "web_search"
-    }
-  ]
+"last_attempted": {
+  "date": "YYYY-MM-DD",
+  "book": "《XXX》",
+  "step": "reading_history_update",
+  "status": "success"
 }
 ```
 
-**Note**: No need to maintain `book_library` or `schedule` fields anymore (book-scout handles book selection dynamically).
+**错误恢复策略**：
+- 如果 Step 4（写入知识库）失败 → 不更新 reading-history，下次运行会重试同一本书
+- 如果 Step 5（本步骤）失败 → 知识库已写入但记录未更新，`last_attempted` 标记为 failed，下次运行时提醒用户手动补录
 
-### 6. Write to External Database
+### Step 6. Write to External Database (写入外部数据库)
 
-**[强制检查] Read HEARTBEAT-reading.md for database config**:
-- Path: `~/.openclaw/workspace/HEARTBEAT-reading.md`
-- Look for section: "## 环境配置"
-- Extract:
-  - `Feishu App Token`: (e.g., "UOp5bx8nVac2m6sJbpzclq3Pnyh")
-  - `Feishu Table ID`: (e.g., "tbldeByoSiBYujXs")
-- If not found → skip this step (local-only mode)
+**[检查] 读取 HEARTBEAT-reading.md 获取数据库配置**：
+- Path: `HEARTBEAT-reading.md`
+- 寻找 `## 环境配置` section
+- 提取 Feishu App Token 和 Table ID
+- 如未找到 → 跳过本步骤（local-only mode）
 
-**If config exists, write to Feishu Bitable**:
+**如果配置存在，写入 Feishu Bitable**：
 
-**Feishu Bitable** (recommended):
-- Read from HEARTBEAT-*.md or environment variables
-- Required: `FEISHU_APP_TOKEN`, `FEISHU_TABLE_ID`
-- Write fields:
-  - 日期 (Date): timestamp in milliseconds
-  - 书名 (Book): book title
-  - 作者 (Author): author name
-  - 模型名称 (Model): extracted mental model name
-  - 分类 (Category): from reading-history.json
-  - 核心框架(F): Framework summary
-  - 应用场景 (Scenarios): condensed application scenarios
-  - 战略拷问 (Question): strategic question
-
-**Example Feishu write**:
 ```javascript
 feishu_bitable_create_record({
-  app_token: "UOp5bx8nVac2m6sJbpzclq3Pnyh",
-  table_id: "tbldeByoSiBYujXs",
+  app_token: "{from HEARTBEAT-reading.md}",
+  table_id: "{from HEARTBEAT-reading.md}",
   fields: {
     "日期": Date.now(),
     "书名": "《反脆弱》",
@@ -394,125 +659,149 @@ feishu_bitable_create_record({
 - Required: `NOTION_API_KEY`, `NOTION_DATABASE_ID`
 - Map fields accordingly
 
-**If no credentials found**: Skip this step (skill still works for local use)
+**如果无凭证** → 跳过（skill 仍可本地使用）
 
-## Quality Standards
+---
 
-**Forbidden**:
-- Book summaries or author biographies
-- Generic platitudes ("this is very important")
-- Repeating previously extracted models
+## reading-history.json Schema (v1)
 
-**Required**:
-- Sharp, actionable language
-- Concrete examples (not abstractions)
-- Direct applicability to user's context
-- Anti-book-review tone (no literary criticism)
-
-## Configuration
-
-**Priority order** for config sources:
-
-### 1. HEARTBEAT-reading.md (user-specific, recommended)
-- **Path**: `~/.openclaw/workspace/HEARTBEAT-reading.md`
-- **What to include**:
-  ```markdown
-  ## 环境配置
-  
-  - **书库**: `~/.openclaw/workspace/memory/reading-history.json`
-  - **Feishu App Token**: `UOp5bx8nVac2m6sJbpzclq3Pnyh`
-  - **Feishu Table ID**: `tbldeByoSiBYujXs`
-  ```
-
-### 2. Environment variables (alternative)
-- `READING_HISTORY_PATH`: Path to reading-history.json
-- `FEISHU_APP_TOKEN`: Feishu app token
-- `FEISHU_TABLE_ID`: Feishu table ID
-- `NOTION_API_KEY`: Notion API key (alternative to Feishu)
-- `NOTION_DATABASE_ID`: Notion database ID
-
-### 3. Default values (fallback)
-- `READING_HISTORY_PATH`: `~/.openclaw/workspace/memory/reading-history.json`
-- No database integration (local-only mode)
-
-**User context** (optional but recommended):
-- **Path**: `~/.openclaw/workspace/USER.md`
-- **Used for**: Personalizing [T] Transfer dimension, application scenarios, strategic questions
-- **If not found**: Uses generic second-person ("you") and may ask clarifying questions
-
-**Knowledge base paths** (auto-created if missing):
-- Thinking patterns: `~/.openclaw/workspace/memory/knowledge-base/thinking-patterns.md`
-- Concepts: `~/.openclaw/workspace/memory/knowledge-base/concepts.md`
-
-## Example Usage
-
-**User**: "Generate today's reading briefing"
-
-**Claude**:
-1. Loads reading-history.json → selects "Antifragile" (Monday = Innovation category)
-
-2. **Reads USER.md**:
-   ```
-   - Profession: Product Manager at AI company
-   - Interests: AI Coding, Midjourney
-   - Current challenge: Managing uncertainty, fear of losing control
-   ```
-
-3. Calls mental-model-forge skill with context
-
-4. Generates briefing with **personalized examples**:
-   - [T] Transfer: "When designing **your AI product**..." (not "If you build a product...")
-   - Application scenario: "Use反脆弱思维 for **product iteration** (your domain)"
-   - Strategic question: "Is **your current AI product** design fragile or antifragile?"
-   - References user's challenge: "For **managing uncertainty** (your anxiety), embrace small failures..."
-
-5. Updates knowledge base:
-   - Classifies "Antifragile Framework" as Thinking Pattern
-   - Writes to thinking-patterns.md
-
-6. **Reads HEARTBEAT-reading.md** for Feishu config:
-   - Finds app_token and table_id
-   - Writes to Feishu Bitable
-
-7. Updates reading-history.json (marks "Antifragile" as used)
-
-8. Sends briefing to Feishu (ou_f0c4b754b85e096de722d01ae3a5af0e)
-
-## Book Library Format
-
-The reading-history.json should follow this structure:
+统一 schema 定义：
 
 ```json
 {
-  "books": [
+  "schema_version": 1,
+  "last_attempted": {
+    "date": "2026-03-27",
+    "book": "《反脆弱》",
+    "step": "knowledge_base_write",
+    "status": "success"
+  },
+  "queue": [
     {
-      "title": "Book Title",
-      "author": "Author Name",
-      "category": "Business Strategy",
-      "used": false,
-      "used_models": []
+      "title": "《穷查理宝典》",
+      "author": "彼得·考夫曼",
+      "topic": "决策科学"
+    }
+  ],
+  "used_models": [
+    {
+      "date": "2026-03-24",
+      "book": "《上瘾》",
+      "author": "尼尔·埃亚尔",
+      "model": "上瘾模型（Hook Model）",
+      "category": "用户增长",
+      "source": "web_search",
+      "applied_count": 0,
+      "tags": ["thinking-pattern"]
     }
   ]
 }
 ```
 
-**Weekday-Category Mapping**:
-- Monday: Business Strategy
-- Tuesday: Psychology
-- Wednesday: Technology
-- Thursday: Economics
-- Friday: Innovation
-- Saturday: Philosophy
-- Sunday: Biography
+**字段说明**：
+- `schema_version`: 当前为 1，用于未来格式升级时的迁移判断
+- `last_attempted`: 上次运行的状态快照，用于错误恢复
+- `queue`: 用户预排的待读书籍队列（FIFO）
+- `used_models`: 已处理的所有模型记录（追加式，不可删除）
+  - `source`: 标记选书来源（`web_search` | `queue` | `user_specified`）
+  - `applied_count`: 该模型被 AI 在后续对话中引用的次数（未来追踪用，初始为 0）
+  - `tags`: 分类标签数组（`thinking-pattern` | `principle` | `concept`）
 
-## References
-
-- See [example-output.md](references/example-output.md) for output format
-- See [book-selection.md](references/book-selection.md) for detailed selection logic
-- See [knowledge-classification.md](references/knowledge-classification.md) for how to classify thinking patterns vs concepts
+**迁移指引**：
+如果你已有旧格式的 `reading-history.json`（只有 `used_models` 数组，无 `schema_version`），只需手动添加以下顶层字段：
+```json
+{
+  "schema_version": 1,
+  "last_attempted": null,
+  "queue": [],
+  "used_models": [... 保留原有数据 ...]
+}
+```
 
 ---
 
-*Version: 2.0*
-*Last updated: 2026-03-23*
-*Changes: Removed user-specific references, added database integration options*
+## Depth Mode Configuration
+
+**默认**: `breadth`（每次运行处理一本新书，提取 1 个模型）
+
+**切换方式**: 用户在对话中指定 `depth_mode: depth` 或说 "深度分析这本书"
+
+**depth 模式详细流程**:
+
+```
+选中书籍: 《反脆弱》
+│
+├─ Round 1: 提取 "反脆弱三元组" → 写入 patterns/antifragility.md + reading-history
+├─ Round 2: 提取 "杠铃策略" → 写入 patterns/barbell-strategy.md + reading-history
+├─ Round 3: 提取 "林迪效应" → 写入 patterns/lindy-effect.md + reading-history
+├─ Round 4: AI 自评 "无更多独立框架" → 停止
+│
+├─ 合并输出: 一份报告包含 3 个模型（精简 F/A/C/E + 🎯迁移 + 关联分析）
+└─ 写入飞书: 每个模型一条记录
+```
+
+**三重退出条件**（任一触发即停止）：
+
+1. **模型数上限**: 该书已提取 ≥ 5 个模型
+2. **语义去重**: AI 判断新提取的模型与该书已提取模型本质相同（同一思想的变体或换皮表达）
+3. **AI 自评**: 提取后自问 "这本书还有独立的、值得提取的思维框架吗？"，回答 No 则停止
+
+---
+
+## Quality Standards
+
+**禁止**:
+- 书籍摘要或作者传记
+- 泛泛之谈（"这很重要"、"值得学习"）
+- 重复已提取的模型（书名和模型名双重检查）
+- 文学评论式语言
+
+**要求**:
+- 尖锐、可行动的语言
+- 具体案例（不是抽象概念）
+- 直接映射到用户上下文（不可脱离 USER.md）
+- 反书评口吻（不是"推荐阅读"，而是"拿走就能用"）
+
+---
+
+## Configuration
+
+**配置来源优先级**:
+
+### 1. HEARTBEAT-reading.md (推荐)
+- Path: `HEARTBEAT-reading.md`
+- 可配置内容：
+  - 主题映射覆盖
+  - Feishu/Notion 凭证
+  - 调度时间段
+
+### 2. 环境变量 (备选)
+- `FEISHU_APP_TOKEN`, `FEISHU_TABLE_ID`
+- `NOTION_API_KEY`, `NOTION_DATABASE_ID`
+
+### 3. 默认值 (兜底)
+- 使用默认星期-主题映射
+- 无外部数据库集成（local-only mode）
+
+**用户上下文** (可选但强烈推荐):
+- Path: `USER.md`
+- 用于: 个性化 [T] Transfer、应用场景、战略拷问
+- 缺失时: 使用通用第二人称，可能追问用户背景
+
+**知识库路径** (自动创建):
+- Thinking Patterns: `memory/knowledge-base/patterns/*.md` (每个模型一个文件)
+- Concepts: `memory/knowledge-base/concepts.md`
+
+---
+
+## References
+
+- See [example-output.md](references/example-output.md) for full and brief output format examples
+- See [book-selection.md](references/book-selection.md) for multi-source selection logic and configurable topic mapping
+- See [knowledge-classification.md](references/knowledge-classification.md) for three-type classification with tag system
+
+---
+
+*Version: 3.0.0*
+*Last updated: 2026-03-28*
+*Changes: Knowledge base restructure — single-file-per-model with YAML frontmatter (patterns/{id}.md), dedup via reading-history.json only (no longer reads thinking-patterns.md), FACET→KB field mapping table, KB_META extraction from mental-model-forge output, contradiction field added*
