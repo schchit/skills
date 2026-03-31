@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * Prana 封装技能 — Node 薄客户端（与 prana_skill_client.py 行为对齐）
- * 依赖：Node 18+；包根目录执行 npm install（需 yaml 解析 SKILL.md frontmatter）
- * 本文件为 ES Module（由 package.json 中 "type": "module" 声明）
+ * 依赖：Node 20.10+；包根目录 npm install yaml；无根 package.json 时需 NODE_OPTIONS=--experimental-default-type=module
+ * 本文件为 ES Module（import / export）
  */
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
@@ -17,7 +17,7 @@ const API_KEY_FILE = path.join(CONFIG_DIR, 'api_key.txt');
 const SKILL_MD_FILE = path.join(SKILL_ROOT, 'SKILL.md');
 
 // 封装打包时由服务端替换为对象；仓库模板为 null
-const ENCAPSULATION_EMBEDDED = {"public_skill_key": "exchange_rate_assistant_public", "original_skill_key": "exchange_rate_assistant", "encapsulation_target": "prana"};
+const ENCAPSULATION_EMBEDDED = {"public_skill_key": "exchange_rate_assistant_public", "original_skill_key": "exchange_rate_assistant", "encapsulation_target": "club_hub"};
 
 const DEFAULT_PRANA_BASE = 'https://claw-uat.ebonex.io/';
 
@@ -35,10 +35,6 @@ const API_KEYS_FETCH_TIMEOUT_MS = 60 * 1000;
 function truthyEnv(name) {
   const v = (process.env[name] || '').trim().toLowerCase();
   return v === '1' || v === 'true' || v === 'yes' || v === 'on';
-}
-
-function autoFetchApiKeyDisabled() {
-  return truthyEnv('PRANA_SKILL_NO_AUTO_API_KEY');
 }
 
 function skipWriteFetchedApiKey() {
@@ -176,41 +172,10 @@ function headersXApiKey(publicKey, secretKey) {
   };
 }
 
-function encapsulationTargetForApiKeysRequest() {
-  const v = (
-    process.env.ENCAPSULATION_TARGET ||
-    process.env.SKILL_ENCAPSULATION_TARGET ||
-    process.env.PRANA_ENCAPSULATION_TARGET ||
-    ''
-  ).trim();
-  if (v) return normalizeEncapsulationTarget(v);
-  const rt = loadEncapsulationRuntime();
-  if (rt && String(rt.encapsulation_target || '').trim()) {
-    return normalizeEncapsulationTarget(String(rt.encapsulation_target || ''));
-  }
-  if (fs.existsSync(SKILL_MD_FILE)) {
-    try {
-      const raw = fs.readFileSync(SKILL_MD_FILE, 'utf8');
-      const [fm] = extractFrontmatter(raw);
-      if (fm) return normalizeEncapsulationTarget(String(fm.encapsulation_target || ''));
-    } catch {
-      /* ignore */
-    }
-  }
-  return 'prana';
-}
-
 function buildApiKeysFetchUrl(baseUrl) {
   const root = baseUrl.replace(/\/+$/, '');
-  const q = new URLSearchParams();
-  const ts = encapsulationTargetForApiKeysRequest();
-  q.set('target_system', ts);
-  if (ts === 'prana') {
-    const aid = (process.env.ACCOUNT_ID || process.env.PRANA_ACCOUNT_ID || '').trim();
-    if (aid) q.set('account_id', aid);
-  }
-  const qs = q.toString();
-  return qs ? `${root}/api/v1/api-keys?${qs}` : `${root}/api/v1/api-keys`;
+  let path = `${root}/api/v1/api-keys`;
+  return path;
 }
 
 async function fetchPranaApiKeysViaGet(baseUrl) {
@@ -247,17 +212,27 @@ function persistFetchedApiKeyTxt(publicKey, secretKey) {
   fs.writeFileSync(API_KEY_FILE, lines.join('\n'), 'utf8');
 }
 
+function syncPranaKeysIntoEnv(pub, sec) {
+  const pk = String(pub || '').trim();
+  const sk = String(sec || '').trim();
+  if (pk && sk) {
+    process.env.PRANA_SKILL_PUBLIC_KEY = pk;
+    process.env.PRANA_SKILL_SECRET_KEY = sk;
+  }
+  return [pk, sk];
+}
+
 async function loadPranaCredentials(pranaBaseUrl) {
   let pk = (process.env.PRANA_SKILL_PUBLIC_KEY || '').trim();
   let sk = (process.env.PRANA_SKILL_SECRET_KEY || '').trim();
-  if (pk && sk) return [pk, sk];
+  if (pk && sk) return syncPranaKeysIntoEnv(pk, sk);
 
   const rawEnv = (process.env.PRANA_SKILL_API_KEY || '').trim();
   if (rawEnv) {
     const parsed = parseCredentialsJson(rawEnv);
-    if (parsed) return parsed;
+    if (parsed) return syncPranaKeysIntoEnv(parsed[0], parsed[1]);
     const pl = parseCredentialsLine(rawEnv);
-    if (pl) return pl;
+    if (pl) return syncPranaKeysIntoEnv(pl[0], pl[1]);
   }
 
   if (fs.existsSync(API_KEY_FILE)) {
@@ -268,10 +243,10 @@ async function loadPranaCredentials(pranaBaseUrl) {
     const joined = lines.join('\n').trim();
     if (joined) {
       const pj = parseCredentialsJson(joined);
-      if (pj) return pj;
+      if (pj) return syncPranaKeysIntoEnv(pj[0], pj[1]);
       for (const line of lines) {
         const pl = parseCredentialsLine(line);
-        if (pl) return pl;
+        if (pl) return syncPranaKeysIntoEnv(pl[0], pl[1]);
       }
     }
   }
@@ -282,7 +257,7 @@ async function loadPranaCredentials(pranaBaseUrl) {
     DEFAULT_PRANA_BASE ||
     ''
   ).trim();
-  if (base && !autoFetchApiKeyDisabled()) {
+  if (base) {
     const fetched = await fetchPranaApiKeysViaGet(base);
     if (fetched) {
       const [pub, sec] = fetched;
@@ -293,17 +268,15 @@ async function loadPranaCredentials(pranaBaseUrl) {
           console.error(`警告: 无法写入 config/api_key.txt：${e && e.message ? e.message : e}`);
         }
       }
-      return [pub, sec];
+      return syncPranaKeysIntoEnv(pub, sec);
     }
   }
 
   console.error(
-    '错误: 未配置 API 凭证（public_key + secret_key），且自动 GET /api/v1/api-keys 失败或未启用。\n' +
+    '错误: 未配置 API 凭证（public_key + secret_key），且自动 GET /api/v1/api-keys 失败，或未配置可访问的 --base-url / NEXT_PUBLIC_URL。\n' +
       '  可选方式：\n' +
       '  1) 设置 PRANA_SKILL_PUBLIC_KEY + PRANA_SKILL_SECRET_KEY，或 PRANA_SKILL_API_KEY；或写入 config/api_key.txt。\n' +
-      '  2) 保证 --base-url（或 NEXT_PUBLIC_URL）可访问，并确保未设置 PRANA_SKILL_NO_AUTO_API_KEY；' +
-      '请求会带 target_system；仅 prana 时可设 ACCOUNT_ID；成功后默认写入 config/api_key.txt（' +
-      '若不想写盘可设 PRANA_SKILL_SKIP_WRITE_API_KEY=1）。',
+      '  2) 保证 --base-url（或 NEXT_PUBLIC_URL）可访问；成功后默认写入 config/api_key.txt（若不想写盘可设 PRANA_SKILL_SKIP_WRITE_API_KEY=1）。',
   );
   process.exit(2);
 }
@@ -313,9 +286,48 @@ function buildInvokeContent(cfg, userMessage) {
   return [`参数：${paramsFromSkill}`, `用户消息：${userMessage}`].join('\n');
 }
 
-async function fetchAgentResult(baseUrl, requestId, publicKey, secretKey) {
+function clawTargetSystemForBody(cfg) {
+  const ts = String((cfg && cfg.encapsulation_target) || '').trim();
+  return ts || null;
+}
+
+function isPranaEncapsulation(cfg) {
+  return (
+    String((cfg && cfg.encapsulation_target) || '')
+      .trim()
+      .toLowerCase() === 'prana'
+  );
+}
+
+function extractResponseThreadId(payload) {
+  const data = payload && payload.data;
+  if (data && typeof data === 'object' && data.thread_id != null) {
+    const tid = String(data.thread_id).trim();
+    if (tid) return tid;
+  }
+  return '';
+}
+
+function emitThreadIdSessionHint(tid, pranaPack) {
+  const label = pranaPack ? 'Prana' : 'OpenClaw/其它封装';
+  console.error(
+    `[${label}] 续聊请在当前会话 shell 执行（下次未传 -t 时默认使用环境变量 THREAD_ID）：\n` +
+      `export THREAD_ID=${tid}\n` +
+      '新开会话或明确结束会话时请使用 --new-session（-n），本次请求将不传 thread_id。',
+  );
+}
+
+function resolveEffectiveThreadId(cliThreadId, newSession) {
+  if (newSession) return '';
+  const t = String(cliThreadId || '').trim();
+  if (t) return t;
+  return String(process.env.THREAD_ID || '').trim();
+}
+
+async function fetchAgentResult(baseUrl, requestId, publicKey, secretKey, targetSystem = null) {
   const url = `${baseUrl.replace(/\/+$/, '')}/api/claw/agent-result`;
   const body = { request_id: requestId };
+  if (targetSystem) body.target_system = targetSystem;
   try {
     const res = await fetch(url, {
       method: 'POST',
@@ -355,8 +367,18 @@ async function fetchAgentResult(baseUrl, requestId, publicKey, secretKey) {
   }
 }
 
+function clawResponseIsPayRequiredEnvelope(payload) {
+  if (!payload || typeof payload !== 'object' || payload.error === true) return false;
+  const data = payload.data;
+  if (!data || typeof data !== 'object') return false;
+  return String(data.status || '')
+    .trim()
+    .toLowerCase() === 'pay_required';
+}
+
 function agentResultPayloadStillRunning(payload) {
   if (payload.error === true) return false;
+  if (clawResponseIsPayRequiredEnvelope(payload)) return false;
   const data = payload.data;
   if (!data || typeof data !== 'object') return false;
   return String(data.status || '')
@@ -377,6 +399,7 @@ async function pollAgentResultUntilSettled(
   requestId,
   publicKey,
   secretKey,
+  targetSystem = null,
   triggerReason = '需通过 agent-result 拉取结果',
 ) {
   const interval = Math.max(1, AGENT_RESULT_POLL_INTERVAL_SEC);
@@ -392,7 +415,8 @@ async function pollAgentResultUntilSettled(
       console.error(`提示: 第 ${attempt} 次查询 agent-result（间隔 ${interval}s）…`);
     }
     await sleep(interval * 1000);
-    last = await fetchAgentResult(baseUrl, requestId, publicKey, secretKey);
+    last = await fetchAgentResult(baseUrl, requestId, publicKey, secretKey, targetSystem);
+    if (clawResponseIsPayRequiredEnvelope(last)) return last;
     if (agentResultPayloadStillRunning(last)) continue;
     return markRecovered(last);
   }
@@ -408,6 +432,7 @@ async function invokePrana(
   requestId,
   publicKey,
   secretKey,
+  targetSystem = null,
 ) {
   const url = `${baseUrl.replace(/\/+$/, '')}/api/claw/agent-run`;
   const body = {
@@ -416,6 +441,7 @@ async function invokePrana(
     thread_id: threadId || '',
     request_id: requestId,
   };
+  if (targetSystem) body.target_system = targetSystem;
   const opts = {
     method: 'POST',
     headers: headersXApiKey(publicKey, secretKey),
@@ -432,6 +458,7 @@ async function invokePrana(
           requestId,
           publicKey,
           secretKey,
+          targetSystem,
           `agent-run HTTP ${res.status}，改查 agent-result`,
         );
       }
@@ -442,6 +469,7 @@ async function invokePrana(
       }
     }
     try {
+      // pay_required 等为合法 JSON，直接返回，不进入 agent-result 轮询
       return JSON.parse(raw);
     } catch {
       return pollAgentResultUntilSettled(
@@ -449,6 +477,7 @@ async function invokePrana(
         requestId,
         publicKey,
         secretKey,
+        targetSystem,
         'agent-run 响应非合法 JSON',
       );
     }
@@ -458,6 +487,7 @@ async function invokePrana(
       requestId,
       publicKey,
       secretKey,
+      targetSystem,
       'agent-run 网络异常',
     );
   }
@@ -471,6 +501,7 @@ async function main() {
       options: {
         message: { type: 'string', short: 'm' },
         'thread-id': { type: 'string', short: 't', default: '' },
+        'new-session': { type: 'boolean', short: 'n', default: false },
         'base-url': { type: 'string', short: 'b', default: DEFAULT_PRANA_BASE },
         help: { type: 'boolean', short: 'h', default: false },
       },
@@ -479,7 +510,8 @@ async function main() {
     values = parsed.values;
     if (values.help) {
       console.log(
-        '用法: node scripts/prana_skill_client.js -m "用户消息" [-t thread_id] [-b base_url]',
+        '用法: node scripts/prana_skill_client.js -m "用户消息" [-t thread_id] [-n] [-b base_url]\n' +
+          '-n/--new-session：新开会话或结束会话，本次不传 thread_id；续聊可依赖环境变量 THREAD_ID',
       );
       process.exit(0);
     }
@@ -504,15 +536,25 @@ async function main() {
 
   const requestId = randomUUID();
   const content = buildInvokeContent(cfg, values.message);
+  const clawTs = clawTargetSystemForBody(cfg);
+  const effThread = resolveEffectiveThreadId(
+    values['thread-id'] || '',
+    Boolean(values['new-session']),
+  );
   const result = await invokePrana(
     baseUrl,
     skillKey,
     content,
-    values['thread-id'] || null,
+    effThread || null,
     requestId,
     publicKey,
     secretKey,
+    clawTs,
   );
+  if (!clawResponseIsPayRequiredEnvelope(result)) {
+    const tidOut = extractResponseThreadId(result);
+    if (tidOut) emitThreadIdSessionHint(tidOut, isPranaEncapsulation(cfg));
+  }
   console.log(JSON.stringify(result, null, 2));
 }
 

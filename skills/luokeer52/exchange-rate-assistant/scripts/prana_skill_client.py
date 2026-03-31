@@ -26,7 +26,7 @@ API_KEY_FILE = CONFIG_DIR / "api_key.txt"
 SKILL_MD_FILE = SKILL_ROOT / "SKILL.md"
 
 # 封装打包时由服务端替换为 dict（见锚点注释）；仓库模板为 None，仅供开发或旧版 frontmatter 回退。
-_ENCAPSULATION_EMBEDDED: Optional[Dict[str, Any]] = {"public_skill_key": "exchange_rate_assistant_public", "original_skill_key": "exchange_rate_assistant", "encapsulation_target": "prana"}
+_ENCAPSULATION_EMBEDDED: Optional[Dict[str, Any]] = {"public_skill_key": "exchange_rate_assistant_public", "original_skill_key": "exchange_rate_assistant", "encapsulation_target": "club_hub"}
 
 DEFAULT_PRANA_BASE = "https://claw-uat.ebonex.io/"
 
@@ -37,12 +37,6 @@ AGENT_RESULT_POLL_INTERVAL_SEC = int(os.environ.get("PRANA_AGENT_RESULT_POLL_INT
 AGENT_RESULT_POLL_MAX_ATTEMPTS = int(os.environ.get("PRANA_AGENT_RESULT_POLL_MAX_ATTEMPTS", "20"))
 # 自动拉取 API key（GET /api/v1/api-keys）超时
 API_KEYS_FETCH_TIMEOUT_SEC = 60
-
-
-def _auto_fetch_api_key_disabled() -> bool:
-    """PRANA_SKILL_NO_AUTO_API_KEY=1 时不在本地缺省时自动请求 create_key 接口。"""
-    v = os.environ.get("PRANA_SKILL_NO_AUTO_API_KEY", "").strip().lower()
-    return v in ("1", "true", "yes", "on")
 
 
 def _skip_write_fetched_api_key() -> bool:
@@ -181,49 +175,10 @@ def _headers_x_api_key(public_key: str, secret_key: str) -> dict[str, str]:
     }
 
 
-def _encapsulation_target_for_api_keys_request() -> str:
-    """
-    GET /api/v1/api-keys 的 target_system：环境变量优先，否则本脚本内嵌字段，再 SKILL.md，默认 prana。
-    非 prana 平台不应带 account_id（由服务端忽略误传的 account_id）。
-    """
-    v = (
-        os.environ.get("ENCAPSULATION_TARGET")
-        or os.environ.get("SKILL_ENCAPSULATION_TARGET")
-        or os.environ.get("PRANA_ENCAPSULATION_TARGET")
-        or ""
-    ).strip()
-    if v:
-        return _normalize_encapsulation_target(v)
-    rt = _load_encapsulation_runtime()
-    if rt and str(rt.get("encapsulation_target") or "").strip():
-        return _normalize_encapsulation_target(str(rt.get("encapsulation_target") or ""))
-    if SKILL_MD_FILE.exists():
-        try:
-            raw = SKILL_MD_FILE.read_text(encoding="utf-8")
-            fm, _ = _extract_frontmatter(raw)
-            if fm:
-                return _normalize_encapsulation_target(str(fm.get("encapsulation_target") or ""))
-        except OSError:
-            pass
-    return "prana"
-
-
 def _build_api_keys_fetch_url(base_url: str) -> str:
-    """
-    组装 GET /api/v1/api-keys 完整 URL。
-    始终传 target_system；仅 platform=prana 时附加 account_id（ACCOUNT_ID / PRANA_ACCOUNT_ID）。
-    """
+    """组装 GET /api/v1/api-keys 完整 URL（封装为 prana 分发时可附加查询参数，见脚本内实现）。"""
     root = base_url.rstrip("/")
     path = f"{root}/api/v1/api-keys"
-    q: Dict[str, str] = {}
-    ts = _encapsulation_target_for_api_keys_request()
-    q["target_system"] = ts
-    if ts == "prana":
-        aid = (os.environ.get("ACCOUNT_ID") or os.environ.get("PRANA_ACCOUNT_ID") or "").strip()
-        if aid:
-            q["account_id"] = aid
-    if q:
-        path = f"{path}?{urlencode(q)}"
     return path
 
 
@@ -259,6 +214,16 @@ def fetch_prana_api_keys_via_get(base_url: str) -> Optional[Tuple[str, str]]:
     return parsed
 
 
+def _sync_prana_keys_into_environ(public_key: str, secret_key: str) -> Tuple[str, str]:
+    """将最终采用的密钥写入当前进程环境（含自动拉取、文件解析等路径），便于同进程后续与沙盒工具读取。"""
+    pk = (public_key or "").strip()
+    sk = (secret_key or "").strip()
+    if pk and sk:
+        os.environ["PRANA_SKILL_PUBLIC_KEY"] = pk
+        os.environ["PRANA_SKILL_SECRET_KEY"] = sk
+    return pk, sk
+
+
 def _persist_fetched_api_key_txt(public_key: str, secret_key: str) -> None:
     """将 public_key:secret_key 写入 config/api_key.txt（首行为注释，与现有读取逻辑兼容）。"""
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
@@ -273,8 +238,7 @@ def _persist_fetched_api_key_txt(public_key: str, secret_key: str) -> None:
 def load_prana_credentials(prana_base_url: Optional[str] = None) -> Tuple[str, str]:
     """
     从环境变量或配置文件读取 public_key、secret_key（来自 GET /api/v1/api-keys 返回的 data.api_key）。
-    自动拉取时带 target_system（脚本内嵌、SKILL.md 或 ENCAPSULATION_TARGET）；仅 prana 时附加 account_id（ACCOUNT_ID）。
-    若以上皆无且未禁止自动拉取，则发起 GET /api/v1/api-keys（见 _build_api_keys_fetch_url）。
+    若以上皆无则发起 GET /api/v1/api-keys（见 _build_api_keys_fetch_url）。
     优先级：
       PRANA_SKILL_PUBLIC_KEY + PRANA_SKILL_SECRET_KEY
       PRANA_SKILL_API_KEY（整段 JSON，或单行 public_key:secret_key）
@@ -284,16 +248,16 @@ def load_prana_credentials(prana_base_url: Optional[str] = None) -> Tuple[str, s
     pk = os.environ.get("PRANA_SKILL_PUBLIC_KEY", "").strip()
     sk = os.environ.get("PRANA_SKILL_SECRET_KEY", "").strip()
     if pk and sk:
-        return pk, sk
+        return _sync_prana_keys_into_environ(pk, sk)
 
     raw = os.environ.get("PRANA_SKILL_API_KEY", "").strip()
     if raw:
         parsed = _parse_credentials_json(raw)
         if parsed:
-            return parsed
+            return _sync_prana_keys_into_environ(parsed[0], parsed[1])
         p = _parse_credentials_line(raw)
         if p:
-            return p
+            return _sync_prana_keys_into_environ(p[0], p[1])
 
     if API_KEY_FILE.exists():
         txt = API_KEY_FILE.read_text(encoding="utf-8")
@@ -302,14 +266,14 @@ def load_prana_credentials(prana_base_url: Optional[str] = None) -> Tuple[str, s
         if joined:
             parsed = _parse_credentials_json(joined)
             if parsed:
-                return parsed
+                return _sync_prana_keys_into_environ(parsed[0], parsed[1])
             for line in lines:
                 p = _parse_credentials_line(line)
                 if p:
-                    return p
+                    return _sync_prana_keys_into_environ(p[0], p[1])
 
     base = (prana_base_url or os.environ.get("NEXT_PUBLIC_URL") or DEFAULT_PRANA_BASE or "").strip()
-    if base and not _auto_fetch_api_key_disabled():
+    if base:
         fetched = fetch_prana_api_keys_via_get(base)
         if fetched:
             pub, sec = fetched
@@ -318,18 +282,62 @@ def load_prana_credentials(prana_base_url: Optional[str] = None) -> Tuple[str, s
                     _persist_fetched_api_key_txt(pub, sec)
                 except OSError as e:
                     print(f"警告: 无法写入 config/api_key.txt：{e}", file=sys.stderr)
-            return pub, sec
+            return _sync_prana_keys_into_environ(pub, sec)
 
     print(
-        "错误: 未配置 API 凭证（public_key + secret_key），且自动 GET /api/v1/api-keys 失败或未启用。\n"
+        "错误: 未配置 API 凭证（public_key + secret_key），且自动 GET /api/v1/api-keys 失败，或未配置可访问的 --base-url / NEXT_PUBLIC_URL。\n"
         "  可选方式：\n"
         "  1) 设置 PRANA_SKILL_PUBLIC_KEY + PRANA_SKILL_SECRET_KEY，或 PRANA_SKILL_API_KEY；或写入 config/api_key.txt。\n"
-        "  2) 保证 --base-url（或 NEXT_PUBLIC_URL）可访问，并确保未设置 PRANA_SKILL_NO_AUTO_API_KEY；"
-        "请求会带 target_system；仅 prana 时可设 ACCOUNT_ID；成功后默认写入 config/api_key.txt（"
-        "若不想写盘可设 PRANA_SKILL_SKIP_WRITE_API_KEY=1）。",
+        "  2) 保证 --base-url（或 NEXT_PUBLIC_URL）可访问；成功后默认写入 config/api_key.txt（若不想写盘可设 PRANA_SKILL_SKIP_WRITE_API_KEY=1）。",
         file=sys.stderr,
     )
     sys.exit(2)
+
+
+def _claw_target_system_for_body(cfg: dict) -> str | None:
+    """封装包内嵌/ frontmatter 的 encapsulation_target，作为 Claw 请求体 target_system。"""
+    ts = str(cfg.get("encapsulation_target") or "").strip()
+    return ts if ts else None
+
+
+def _is_prana_encapsulation(cfg: dict) -> bool:
+    """Prana 分发：可读写沙盒 THREAD_ID，与其它平台区分。"""
+    return (cfg.get("encapsulation_target") or "").strip().lower() == "prana"
+
+
+def _extract_response_thread_id(payload: dict) -> str:
+    """从 Claw 信封 JSON 取 data.thread_id。"""
+    data = payload.get("data")
+    if isinstance(data, dict):
+        tid = data.get("thread_id")
+        if tid is not None and str(tid).strip():
+            return str(tid).strip()
+    return ""
+
+
+def _emit_thread_id_session_hint(tid: str, *, prana_pack: bool) -> None:
+    """提示在会话 shell 中导出 THREAD_ID；新开会话/结束会话用 --new-session。"""
+    label = "Prana" if prana_pack else "OpenClaw/其它封装"
+    print(
+        f"[{label}] 续聊请在当前会话 shell 执行（下次未传 -t 时默认使用环境变量 THREAD_ID）：\n"
+        f"export THREAD_ID={tid}\n"
+        f"新开会话或明确结束会话时请使用 --new-session（-n），本次请求将不传 thread_id。",
+        file=sys.stderr,
+    )
+
+
+def resolve_effective_thread_id(cli_thread_id: str, *, new_session: bool) -> str:
+    """
+    请求 agent-run 使用的 thread_id。
+    --new-session：不传 thread_id（忽略 -t 与 THREAD_ID）。
+    否则：优先 -t，否则使用会话环境变量 THREAD_ID（所有封装目标一致）。
+    """
+    if new_session:
+        return ""
+    t = (cli_thread_id or "").strip()
+    if t:
+        return t
+    return (os.environ.get("THREAD_ID") or "").strip()
 
 
 def build_invoke_content(cfg: dict, user_message: str) -> str:
@@ -350,14 +358,17 @@ def fetch_agent_result(
     request_id: str,
     public_key: str,
     secret_key: str,
+    target_system: str | None = None,
 ) -> dict:
     """
     当 agent-run 超时或失败时，用同一 request_id 查询运行结果。
-    POST /api/claw/agent-result  body: request_id（鉴权见 x-api-key）
+    POST /api/claw/agent-result  body: request_id；封装技能会附加 target_system（鉴权见 x-api-key）
     Header: x-api-key: public_key:secret_key
     """
     url = base_url.rstrip("/") + "/api/claw/agent-result"
-    body = {"request_id": request_id}
+    body: dict = {"request_id": request_id}
+    if target_system:
+        body["target_system"] = target_system
     data = json.dumps(body, ensure_ascii=False).encode("utf-8")
     req = urllib.request.Request(
         url,
@@ -383,9 +394,21 @@ def fetch_agent_result(
         return {"error": True, "detail": str(e.reason), "_from": "agent-result"}
 
 
+def _claw_response_is_pay_required_envelope(payload: dict) -> bool:
+    """付费技能未购买等：服务端 200 + data.status=pay_required，不得再改查 agent-result 或重试技能。"""
+    if not isinstance(payload, dict) or payload.get("error") is True:
+        return False
+    data = payload.get("data")
+    if not isinstance(data, dict):
+        return False
+    return str(data.get("status") or "").strip().lower() == "pay_required"
+
+
 def _agent_result_payload_still_running(payload: dict) -> bool:
     """Claw 返回 data.status == running 时继续轮询。"""
     if payload.get("error") is True:
+        return False
+    if _claw_response_is_pay_required_envelope(payload):
         return False
     data = payload.get("data")
     if not isinstance(data, dict):
@@ -399,6 +422,7 @@ def _poll_agent_result_until_settled(
     public_key: str,
     secret_key: str,
     *,
+    target_system: str | None = None,
     trigger_reason: str = "需通过 agent-result 拉取结果",
 ) -> dict:
     """
@@ -422,7 +446,11 @@ def _poll_agent_result_until_settled(
                 file=sys.stderr,
             )
         time.sleep(interval)
-        last = fetch_agent_result(base_url, request_id, public_key, secret_key)
+        last = fetch_agent_result(
+            base_url, request_id, public_key, secret_key, target_system
+        )
+        if _claw_response_is_pay_required_envelope(last):
+            return last
         if _agent_result_payload_still_running(last):
             continue
         return _mark_recovered(last)
@@ -448,21 +476,25 @@ def invoke_prana(
     request_id: str,
     public_key: str,
     secret_key: str,
+    target_system: str | None = None,
 ) -> dict:
     """
     调用 Prana 技能执行接口。
-    body: skill_key, question, thread_id, request_id（不含 api_key）
+    body: skill_key, question, thread_id, request_id；封装技能可含 target_system（不含 api_key）
     Header: x-api-key: public_key:secret_key
     若 HTTP 超时、连接失败，或网关类错误（5xx / 408 / 504），或 200 但响应非合法 JSON，则改调 agent-result：
     自首次查询起按 AGENT_RESULT_POLL_INTERVAL_SEC（默认 120s）间隔轮询，直至非 running 或达上限。
+    若响应为付费引导（data.status=pay_required），直接返回该 JSON，**不**轮询 agent-result、不重试技能。
     """
     url = base_url.rstrip("/") + "/api/claw/agent-run"
-    body = {
+    body: dict = {
         "skill_key": skill_key,
         "question": content,
         "thread_id": thread_id or "",
         "request_id": request_id,
     }
+    if target_system:
+        body["target_system"] = target_system
     data = json.dumps(body, ensure_ascii=False).encode("utf-8")
     req = urllib.request.Request(
         url,
@@ -473,6 +505,7 @@ def invoke_prana(
     try:
         with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT_SEC) as resp:
             raw = resp.read().decode("utf-8")
+            # pay_required 等仅为合法 JSON，直接返回，不走 agent-result 轮询（见下方 except）
             return json.loads(raw)
     except json.JSONDecodeError:
         return _poll_agent_result_until_settled(
@@ -480,6 +513,7 @@ def invoke_prana(
             request_id,
             public_key,
             secret_key,
+            target_system=target_system,
             trigger_reason="agent-run 响应非合法 JSON",
         )
     except urllib.error.HTTPError as e:
@@ -491,6 +525,7 @@ def invoke_prana(
                 request_id,
                 public_key,
                 secret_key,
+                target_system=target_system,
                 trigger_reason=f"agent-run HTTP {e.code}，改查 agent-result",
             )
         try:
@@ -504,6 +539,7 @@ def invoke_prana(
             request_id,
             public_key,
             secret_key,
+            target_system=target_system,
             trigger_reason="agent-run 网络异常",
         )
     except TimeoutError:
@@ -512,6 +548,7 @@ def invoke_prana(
             request_id,
             public_key,
             secret_key,
+            target_system=target_system,
             trigger_reason="agent-run 超时",
         )
 
@@ -519,7 +556,18 @@ def invoke_prana(
 def main() -> None:
     parser = argparse.ArgumentParser(description="调用 Prana 远程技能服务")
     parser.add_argument("--message", "-m", required=True, help="用户消息 / 任务描述")
-    parser.add_argument("--thread-id", "-t", default="", help="对话 thread_id，首轮可留空")
+    parser.add_argument(
+        "--thread-id",
+        "-t",
+        default="",
+        help="对话 thread_id；未传时默认读环境变量 THREAD_ID（见上次 agent-run 后 stderr 提示）",
+    )
+    parser.add_argument(
+        "--new-session",
+        "-n",
+        action="store_true",
+        help="新开会话或结束上一会话：本次不传 thread_id（忽略 -t 与 THREAD_ID）",
+    )
     parser.add_argument("--base-url", "-b", default=DEFAULT_PRANA_BASE, help="Prana API 根地址")
     args = parser.parse_args()
 
@@ -535,15 +583,24 @@ def main() -> None:
     public_key, secret_key = load_prana_credentials(args.base_url)
     request_id = str(uuid.uuid4())
     content = build_invoke_content(cfg, args.message)
+    claw_ts = _claw_target_system_for_body(cfg)
+    eff_thread = resolve_effective_thread_id(
+        args.thread_id, new_session=args.new_session
+    )
     result = invoke_prana(
         args.base_url,
         skill_key,
         content,
-        args.thread_id or None,
+        eff_thread or None,
         request_id,
         public_key,
         secret_key,
+        claw_ts,
     )
+    if not _claw_response_is_pay_required_envelope(result):
+        tid_out = _extract_response_thread_id(result)
+        if tid_out:
+            _emit_thread_id_session_hint(tid_out, prana_pack=_is_prana_encapsulation(cfg))
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
