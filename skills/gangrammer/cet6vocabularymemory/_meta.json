@@ -1,0 +1,11 @@
+{
+  "owner": "gangrammer",
+  "slug": "cet6vocabularymemory",
+  "displayName": "基于艾宾浩斯遗忘曲线的英语六级词汇记忆系统",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774682014317,
+    "commit": null
+  },
+  "history": []
+}
