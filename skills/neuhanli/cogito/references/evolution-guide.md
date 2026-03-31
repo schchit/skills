@@ -35,15 +35,21 @@ When the user says "进化深思", Cogito executes the following steps:
 
 ### Step 1: Analyze Conversation Traces
 
-Examine the conversation history for patterns in how the user thinks and responds. Look for:
+Examine the conversation history for patterns in how the user thinks and responds.
 
-| Trace Type | What to Look For | Example |
-|------------|-----------------|---------|
-| **Mode Affinity** | Which mode triggered the deepest responses | User gave long, reflective answers during Laboratory but short answers during Mirror |
-| **Resistance Pattern** | Topics or angles the user avoided | User deflected when asked about financial fears, but opened up about identity |
-| **Engagement Signal** | Where the user leaned in vs. checked out | User responded with "hmm..." (thinking) vs. "yeah" (disengaged) |
-| **Direct Feedback** | Any explicit comment on Cogito's approach | "That question was too abstract" / "You're pushing too hard on this" |
-| **Breakthrough Moment** | Where the user's thinking visibly shifted | User went from "I don't know" to suddenly writing a long, clear statement |
+**Evidence Strength Filter** — Only traces rated Strong or Medium can trigger evolution proposals. Weak evidence alone must NOT lead to any change.
+
+| Evidence Level | Trace Type | Can Trigger Proposal | Example |
+|----------------|------------|---------------------|---------|
+| **Strong** | Direct Feedback | ✅ Yes | "That question was too abstract" / "You're pushing too hard" |
+| **Strong** | Explicit Correction | ✅ Yes | "Don't use that angle on me" / "I prefer when you..." |
+| **Medium** | Breakthrough Moment | ✅ Yes (with supporting evidence) | User shifted from "I don't know" to a clear, long statement |
+| **Medium** | Recurring Pattern (3+ sessions) | ✅ Yes | Same mode preference confirmed across multiple sessions |
+| **Weak** | Response Length Change | ❌ No | User wrote short answers in Mirror, long in Laboratory |
+| **Weak** | Vague Engagement Signal | ❌ No | "hmm..." vs. "yeah" — ambiguous, cannot infer preference |
+| **Weak** | Resistance Pattern | ❌ No | User deflected a topic once — could be mood, not preference |
+
+Weak evidence may be used as **supporting context** for a Medium/Strong proposal, but never as the sole basis for a change. When uncertain, do NOT propose — wait for stronger evidence in a future session.
 
 ### Step 2: Propose Modifications
 
@@ -79,7 +85,20 @@ Format:
 
 ### Step 4: Apply Confirmed Changes
 
-After user confirmation, update `references/user-profile.md`. Append or modify the relevant entries.
+After user confirmation, update `references/user-profile.md`.
+
+**Gradual Solidification** — Not all entries are equal. Mark each new entry with a confidence level:
+
+| Level | When | Behavior |
+|-------|------|----------|
+| **[tentative]** | First occurrence of a pattern | AI reads it but treats it as a hint, not a rule |
+| **[confirmed]** | Same trend appears in 2+ evolution sessions, OR user explicitly says "always do this" | AI applies it as a reliable preference |
+
+Rules:
+- All new entries start as `[tentative]` — never skip to `[confirmed]` on first write
+- On each subsequent evolution, Cogito checks if existing `[tentative]` entries are reinforced by new evidence. If yes, propose upgrade to `[confirmed]`. If contradicted, propose removal.
+- The user may explicitly upgrade a `[tentative]` entry to `[confirmed]` by saying so.
+- Entries are never physically deleted. Outdated or contradicted entries are marked `[archived]` and retained for reference.
 
 **SKILL.md must NEVER be touched during this process.** If any proposed change would require modifying SKILL.md, it must be rejected outright.
 
