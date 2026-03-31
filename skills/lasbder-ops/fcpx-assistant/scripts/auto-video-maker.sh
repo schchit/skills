@@ -70,6 +70,7 @@ usage() {
 }
 
 NO_SUBTITLE=false
+CLEANUP=false
 
 # === 解析参数 ===
 while [[ $# -gt 0 ]]; do
@@ -87,6 +88,7 @@ while [[ $# -gt 0 ]]; do
         --subtitle-pos) SUBTITLE_POSITION="$2"; shift 2 ;;
         --no-subtitle) NO_SUBTITLE=true; shift ;;
         --transition) TRANSITION="$2"; shift 2 ;;
+        --cleanup) CLEANUP=true; shift ;;
         --help) usage ;;
         *) echo "未知参数: $1"; usage ;;
     esac
@@ -479,3 +481,36 @@ else
     echo -e "${RED}❌ 视频制作失败${NC}"
     exit 1
 fi
+
+# === 清理临时文件 ===
+if [[ "${CLEANUP:-false}" == true ]]; then
+    echo ""
+    echo -e "${BLUE}🗑️  清理临时文件...${NC}"
+    
+    # 清理片段文件
+    if [[ -d "$TEMP_DIR" ]]; then
+        SEG_COUNT=$(ls -1 "$TEMP_DIR"/segment_*.mp4 2>/dev/null | wc -l | tr -d ' ')
+        if [[ "$SEG_COUNT" -gt 0 ]]; then
+            echo "   删除 $SEG_COUNT 个临时片段..."
+            trash "$TEMP_DIR"/segment_*.mp4 2>/dev/null || rm -f "$TEMP_DIR"/segment_*.mp4
+        fi
+    fi
+    
+    # 清理拼接列表
+    [[ -f "$CONCAT_LIST" ]] && trash "$CONCAT_LIST" 2>/dev/null || rm -f "$CONCAT_LIST"
+    
+    # 清理临时视频文件
+    [[ -f "$TEMP_VIDEO" ]] && trash "$TEMP_VIDEO" 2>/dev/null || rm -f "$TEMP_VIDEO"
+    
+    # 清理字幕文件
+    [[ -f "$SUBTITLE_SRT" ]] && trash "$SUBTITLE_SRT" 2>/dev/null || rm -f "$SUBTITLE_SRT"
+    [[ -f "$SUBTITLE_ASS" ]] && trash "$SUBTITLE_ASS" 2>/dev/null || rm -f "$SUBTITLE_ASS"
+    
+    # 清理项目中的临时文件
+    [[ -d "$PROJECT_DIR/meta" ]] && trash "$PROJECT_DIR/meta" 2>/dev/null || rm -rf "$PROJECT_DIR/meta"
+    
+    echo -e "${GREEN}✅ 清理完成${NC}"
+fi
+
+echo ""
+echo -e "${GREEN}🎉 所有工作完成！${NC}"
