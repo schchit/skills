@@ -29,8 +29,9 @@ def calculate_score(book):
 
     # 2. 动态年份提取与时效性计算
     # 用正则抓取 4 位数年份，抓不到则默认 2020
-    match = re.search(r'\d{4}', publish_date_str)
-    publish_year = int(match.group()) if match else 2020
+    # findall + take last match: "第2000次印刷 2023年出版" → 2023
+    matches = re.findall(r'((?:19|20)\d{2})', publish_date_str)
+    publish_year = int(matches[-1]) if matches else 2020
 
     current_year = datetime.now().year
     age = current_year - publish_year

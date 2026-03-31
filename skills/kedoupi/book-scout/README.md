@@ -1,40 +1,29 @@
-# Book Scout (书探)
+# Book Scout
 
-> **AI-powered book recommendation engine**: Finds high-quality books (Douban ≥7.5 or Goodreads ≥3.8) via web search, with smart deduplication and comprehensive scoring.
-
-[![ClawHub](https://img.shields.io/badge/ClawHub-Published-blue)](https://clawhub.ai)
-[![Version](https://img.shields.io/badge/version-1.0.0-green)](https://github.com/your-repo)
-[![License](https://img.shields.io/badge/license-MIT--0-lightgrey)](LICENSE)
+> AI-powered book recommendation engine: Finds high-quality books (Douban ≥7.5 or Goodreads ≥3.8) via web search, with smart deduplication and comprehensive scoring.
 
 ---
 
-## 🎯 What It Does
+## What It Does
 
 Finds the **best book** on any topic by:
-1. Web search for book recommendations (豆瓣/Goodreads/professional lists)
+1. Web search for book recommendations (Douban/Goodreads/professional lists)
 2. Extract book metadata (ratings, reviews, publication date)
-3. Score each book using a comprehensive formula
+3. Score each book using a 3-factor formula
 4. Return the highest-scoring book you haven't read yet
-
-**Not a random book list** — A battle-tested recommendation algorithm.
 
 ---
 
-## ⚡ Quick Start
+## Quick Start
 
 ### Install
 
 ```bash
-# From ClawHub
 clawhub install book-scout
-
-# Or manually
-cp -r book-scout ~/.openclaw/workspace/skills/
 ```
 
 ### Use It
 
-**Find a book on any topic:**
 ```
 Ask your AI: "Use book-scout to find a book about: User Growth"
 ```
@@ -42,173 +31,119 @@ Ask your AI: "Use book-scout to find a book about: User Growth"
 **Output**:
 ```json
 {
-  "book_title": "Hacking Growth",
-  "author": "Sean Ellis & Morgan Brown",
-  "rating": 4.2,
-  "review_count": 15000,
-  "score": 112.08,
-  "summary": "The definitive guide to growth hacking...",
-  "reasoning": "High Goodreads rating (4.2/5), massive review count (15K+), 
-               published recently (2017), directly addresses user growth."
+  "book_title": "《增长黑客》",
+  "author": "肖恩·埃利斯",
+  "author_nationality": "美国",
+  "publish_date": "2015-04",
+  "rating": 8.5,
+  "review_count": 10000,
+  "score": 74.4,
+  "summary": "增长黑客方法论：低成本获客、数据驱动迭代、病毒式传播...",
+  "reasoning": "评分8.5且有1万真实评价，作者是增长黑客概念提出者"
 }
 ```
 
 ---
 
-## 🧠 How the Scoring Algorithm Works
+## Scoring Algorithm
 
-### Comprehensive Scoring Formula
+### Formula
 
 ```
-Score = (Rating × 10) + (ReviewCount_normalized × 30) 
-        + (Recency_bonus × 20) + (Popularity_boost × 10)
+Total Score = (Base Quality + Popularity Bonus) × Recency Multiplier
 ```
 
-**Components**:
+### Components
 
-| Factor | Weight | Example |
-|--------|--------|---------|
-| **Rating** | 10x | 8.5/10 on Douban → +85 points |
-| **Review Count** | 30x (log-scaled) | 15,000 reviews → +30 points |
-| **Recency** | 20x | Published in 2020 → +15 points |
-| **Popularity** | 10x | Appears in 5 lists → +10 points |
+**A. Base Quality**:
+```
+Base = rating × 10
+If review_count < 100: Base = Base × 0.8 (small sample penalty)
+```
 
-**Total**: Maximum ~140 points for a perfect book.
+**B. Popularity Bonus**:
+```
+Bonus = log₁₀(review_count) × 2
+(log naturally compresses large numbers, preventing bestseller spam dominance)
+```
+
+**C. Recency Multiplier** (based on publish_date):
+```
+Published within 2 years:   × 1.2
+Published 3-5 years ago:    × 1.0
+Published 5+ years ago:     × 0.8
+```
+
+### Example Calculation
+
+```
+Book: 《增长黑客》
+- Rating: 8.5, Review Count: 10000, Publish: 2015
+- Base = 8.5 × 10 = 85
+- Bonus = log₁₀(10000) × 2 = 4 × 2 = 8
+- Recency = 0.8 (5+ years old)
+- Total = (85 + 8) × 0.8 = 74.4
+```
 
 ---
 
-### Quality Filters
+## Quality Filters
 
-**Minimum thresholds**:
-- Douban ≥7.5 OR Goodreads ≥3.8
-- Review count ≥100 (avoid obscure books)
-- Published ≥2000 (filter out ancient texts unless classics)
+**Minimum standards**:
+- Douban rating ≥ 7.5 OR Goodreads rating ≥ 3.8
+- At least 2 authoritative sources mention it (if rating unavailable)
 
-**Smart deduplication**:
-- Checks against `reading-history.json` (books you've already processed)
-- Filters out books in `used_models` parameter (for daily rotation)
+**No hard review count threshold** — books with few reviews get a 0.8× penalty in scoring, so they need to earn their place through exceptional quality.
+
+**Exclusions**:
+- Books with "21天", "速成", "一本通" in title
+- Marketing-heavy books (no substance)
 
 ---
 
-## 🚀 Use Cases
+## Search Strategy
+
+For each topic, we run **3 searches**:
+
+| Query | Focus |
+|-------|-------|
+| `"{topic} 经典书籍推荐"` | Chinese book lists |
+| `"{topic} best books goodreads"` | English authority sources |
+| `"{topic} 必读书单"` | Professional communities |
+
+**Data extraction**: book title, author, rating, review count, publish date, author nationality.
+
+**Deduplication**: Compare against `used_models` parameter (book title strings) immediately — matched books are discarded before scoring.
+
+---
+
+## Use Cases
 
 ### 1. Daily Reading Reports (with cognitive-forge)
-- **Who**: AI evolution enthusiasts
-- **How**: `cognitive-forge` calls `book-scout` daily with different topics
-- **Value**: Your AI reads a diverse set of high-quality books over time
-
-**Example schedule**:
-```
-Monday: Business Strategy → book-scout finds "Good Strategy Bad Strategy"
-Tuesday: Psychology → book-scout finds "Thinking, Fast and Slow"
-Wednesday: Product → book-scout finds "The Lean Startup"
-```
-
----
+`cognitive-forge` calls `book-scout` daily with different topics, building a diverse reading history over time.
 
 ### 2. Personalized Reading List
-- **Who**: Lifelong learners, students
-- **How**: Ask for books on multiple topics, get best-of-best
-- **Value**: No more "which book should I read?" paralysis
-
-**Example**:
-```
-Ask your AI: "Use book-scout to build a reading list:
-1. Decision Science
-2. Behavioral Economics  
-3. Cognitive Psychology"
-```
-
-Output: 3 books, each scored and ranked.
-
----
+Ask for books on multiple topics, get the highest-scoring book per topic.
 
 ### 3. Research Literature Discovery
-- **Who**: Researchers, consultants
-- **How**: Find authoritative books on niche topics
-- **Value**: Web search → curated recommendations (saves hours)
-
-**Example**:
-```
-Ask your AI: "Use book-scout to find books about: Climate Tech Policy"
-```
+Find authoritative books on niche topics via web search.
 
 ---
 
-## 📊 Search Strategy
+## Exclude Previously Read Books
 
-### Multi-Query Approach
+If using `cognitive-forge` daily, it auto-passes `used_models`:
 
-For each topic, we run **3 parallel searches**:
-
-**Query 1: Chinese book lists**
 ```
-"{topic} 经典书籍推荐" OR "{topic} 豆瓣高分"
+Topic: "Business Strategy"
+Used Models: ["《精益创业》", "《从0到1》", "《影响力》"]
 ```
 
-**Query 2: English authority sources**
-```
-"{topic} best books goodreads" OR "{topic} recommended reading"
-```
-
-**Query 3: Professional communities**
-```
-"{topic} 必读书单" OR "{topic} top books reddit"
-```
-
-**Why 3 queries?**
-- Cast wider net (Chinese + English sources)
-- Cross-validate quality (books appearing in multiple lists = higher score)
-- Avoid single-source bias
+Book Scout will exclude these and find the next best book.
 
 ---
 
-### Data Extraction Logic
-
-**From search results, extract**:
-1. Book title (exact match, no fuzzy)
-2. Author name (first author if multiple)
-3. Rating (Douban 0-10 or Goodreads 0-5, normalize to 0-10)
-4. Review count (豆瓣评论数 or Goodreads ratings count)
-5. Publish date (YYYY-MM or YYYY)
-
-**Validation**:
-- Missing rating → Skip book
-- Invalid publish date → Assume "2020" (neutral recency score)
-- Duplicate titles → Merge data (keep highest rating)
-
----
-
-## 🛠️ Advanced Usage
-
-### Exclude Previously Read Books
-
-If you're using `cognitive-forge` daily, it auto-passes `used_models`:
-
-```python
-book_scout(
-  topic="Business Strategy",
-  used_models=["Good to Great", "Zero to One", "The Lean Startup"]
-)
-```
-
-Book Scout will exclude these 3 and find the next best book.
-
----
-
-### Custom Scoring Weights (Future Feature)
-
-Currently, scoring weights are fixed:
-- Rating: 10x
-- Review Count: 30x (log-scaled)
-- Recency: 20x
-- Popularity: 10x
-
-**Future**: Allow users to customize (e.g., prioritize recent books over classics).
-
----
-
-## 📂 File Structure
+## File Structure
 
 ```
 book-scout/
@@ -220,107 +155,30 @@ book-scout/
 
 ---
 
-## 🎯 Example Outputs
-
-### Example 1: Business Strategy
-
-**Input**: `"Business Strategy"`
-
-**Output**:
-```json
-{
-  "book_title": "Good Strategy Bad Strategy",
-  "author": "Richard Rumelt",
-  "rating": 8.2,
-  "review_count": 8500,
-  "score": 108.5,
-  "summary": "Clarifies what makes a strategy good vs. bad...",
-  "reasoning": "Douban 8.2/10, 8500 reviews, published 2011 (still relevant), 
-               appears in 7 'best strategy books' lists."
-}
-```
-
----
-
-### Example 2: Decision Science
-
-**Input**: `"Decision Science"`
-
-**Output**:
-```json
-{
-  "book_title": "Thinking, Fast and Slow",
-  "author": "Daniel Kahneman",
-  "rating": 8.4,
-  "review_count": 25000,
-  "score": 118.2,
-  "summary": "Nobel laureate's insights on cognitive biases...",
-  "reasoning": "Goodreads 4.2/5 (= 8.4/10), 25K reviews, 2011 (foundational), 
-               cited in every decision science reading list."
-}
-```
-
----
-
-### Example 3: AI Technology
-
-**Input**: `"AI Technology"`
-
-**Output**:
-```json
-{
-  "book_title": "Life 3.0",
-  "author": "Max Tegmark",
-  "rating": 8.0,
-  "review_count": 12000,
-  "score": 105.8,
-  "summary": "Explores AI's impact on humanity's future...",
-  "reasoning": "Goodreads 4.0/5, 12K reviews, 2017 (recent), 
-               recommended by Bill Gates & Elon Musk."
-}
-```
-
----
-
-## 🛠️ Troubleshooting
+## Troubleshooting
 
 **"No books found for my topic"**:
 - Try broader topics (e.g., "Psychology" instead of "Neuromarketing of Crypto")
-- Or use English keywords (e.g., "User Growth" works better than "用户增长策略细分")
+- Or use English keywords
 
 **"Same book recommended multiple times"**:
-- Check if `reading-history.json` is being updated correctly
 - Ensure `used_models` parameter is passed when calling the skill
+
+**"Old books ranked too low"**:
+- Books published 5+ years ago get a 0.8× recency multiplier
+- This is intentional (favor modern, relevant books)
 
 **"Rating seems wrong"**:
 - We normalize Goodreads (0-5) to Douban scale (0-10) by multiplying by 2
-- If a book has both, we take the average
-
-**"Old books ranked too low"**:
-- Recency bonus penalizes pre-2000 books (−10 points)
-- This is intentional (favor modern, relevant books)
-- For classics, we may add a "timeless" override in the future
 
 ---
 
-## 📜 License
+## License
 
-MIT-0 (No Attribution Required)
-
----
-
-## 🙌 Credits
-
-Created by **汤圆 (Tangyuan)** for 雯姐's AI learning workflow.
-
-**Powers**:
-- [`cognitive-forge`](https://clawhub.ai/kedoupi/cognitive-forge) — Daily book processing
-- Any skill that needs quality book recommendations
+MIT-0
 
 ---
 
-## 📣 Feedback
-
-Found a better scoring formula? Want to add Goodreads API integration? Ping `@KeDOuPi` on ClawHub!
-
-**Star this skill** if it found you a great book! ⭐📚
+*Version: 1.1.0*
+*Last updated: 2026-03-27*
+*Changes: Aligned scoring formula with SKILL.md, removed incorrect quality filters*

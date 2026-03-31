@@ -1,6 +1,13 @@
 ---
 name: book-scout
 description: Expert book recommendation engine via web search. Finds high-quality books (Douban ≥7.5 or Goodreads ≥3.8) based on topic, with deduplication and comprehensive scoring. Use when you need to recommend books for reading tasks, skill building, or research.
+permissions:
+  filesystem:
+    read:
+      - memory/reading-history.json  # Deduplication: exclude previously analyzed books
+config:
+  reads:
+    - memory/reading-history.json
 ---
 
 # Book Scout
@@ -17,7 +24,7 @@ Expert book recommendation engine that finds high-quality books via web search.
 ## Input
 
 - **topic** (required): Subject/theme (e.g., "用户增长", "决策科学", "AI技术")
-- **used_models** (optional): Array of previously analyzed books to exclude
+- **used_models** (optional): Array of book title strings to exclude (e.g., `["《精益创业》", "《从0到1》"]`)
 
 ## Output
 
@@ -37,53 +44,78 @@ JSON object with the highest-scoring book:
 }
 ```
 
-## Core Workflow
+## Core Workflow (Two-Phase Search)
 
-### Step 1: Search Strategy
+### Phase 1: Discover Book Titles
 
-**Search Query Construction** (high information density):
+**Goal**: Get a list of 5-8 candidate book names. Do NOT try to get ratings here.
 
-```
-"{topic} 经典书籍推荐" OR "{topic} 必读书单" OR "{topic} 豆瓣高分"
-```
+**Search Queries** (execute 2-3 queries in parallel):
 
-**Example**:
-- Topic: "用户增长"
-- Queries:
-  - "用户增长 经典书籍推荐"
-  - "user growth best books goodreads"
-  - "product growth必读书单 豆瓣高分"
+| Query Type | Template | Example |
+|------------|----------|---------|
+| Chinese book lists | `"{topic} 经典书籍推荐 书单"` | `"用户增长 经典书籍推荐 书单"` |
+| English book lists | `"{topic_en} best books goodreads"` | `"user growth best books goodreads"` |
+| Community picks | `"{topic} 必读书 知乎推荐"` | `"用户增长 必读书 知乎推荐"` |
 
-**Execute**: Use `web_search` tool to fetch top 3-5 high-quality results (focus on book list articles, professional communities).
+**Extract**: Collect book titles + authors from search results. Ignore ratings at this stage.
 
-### Step 2: Data Extraction
+**Deduplicate immediately**: Compare against `used_models` — remove any matches.
 
-**Extract minimum 3 candidate books** from search results.
+**Minimum**: Need at least 3 candidate books after dedup. If fewer, broaden the topic and search again.
 
-**Required Fields**:
-- book_title
-- author
-- rating
-- review_count
-- publish_date
-- author_nationality
+### Phase 2: Get Ratings (Per-Book Lookup)
 
-**Deduplication (Priority #1)**:
-- Compare extracted books against `used_models` immediately
-- If match found → discard, do not proceed to scoring
+**Goal**: Get accurate rating + review_count for each candidate.
 
-**Missing Data Handling (Strict Timeout Protocol)**:
-- **Batch Search**: If 2 or more books lack rating/review_count, DO NOT search them individually. You MUST combine them into one single web_search query (e.g., "{book1} {book2} 豆瓣评分") to minimize tool calls.
-- **Fast Fail & Time-Box**: You are allowed MAXIMUM 1 secondary search attempt for missing data. If the search takes too long (e.g., over 5 seconds) or fails, DO NOT retry.
-- **Discard Rule**: After 1 search attempt, if a book STILL lacks a rating or review_count, DROP IT immediately from the candidate list. Do not proceed to score it.
-- **publish_date missing**: Default to 2020.
-- **author_nationality missing**: Output "未知" (NEVER fabricate from model memory).
+**Strategy** (try in order, stop at first success):
 
-### Step 3: 3D Scoring Algorithm
+#### Method A: WebFetch Douban Page (Preferred)
 
-**⚠️ Execution Action**: Collect ALL surviving candidate books (those with complete or successfully patched data) into a single JSON array. You MUST pass this entire array to `scripts/score_books.py` AT ONCE for batch scoring. Do not score them one by one. The script will return the sorted list.
+For each candidate book, search for its Douban page then fetch it:
 
-(If pure LLM without script, output CoT for all books before sorting).
+1. `web_search`: `"{book_title}" site:book.douban.com`
+2. If a `book.douban.com/subject/` URL is found → `web_fetch` that URL
+3. Extract: rating, review_count, publish_date, author from the page
+
+**Why this works**: Douban book pages have structured rating data that WebFetch can reliably parse.
+
+#### Method B: Direct Search (Fallback)
+
+If Method A fails (no Douban URL found, or WebFetch blocked):
+
+- `web_search`: `"{book_title}" "{author}" 豆瓣评分 评价人数`
+- Extract rating and review_count from search snippets
+
+#### Method C: Goodreads Lookup (For English Books)
+
+- `web_search`: `"{book_title}" "{author}" site:goodreads.com`
+- If URL found → `web_fetch` the Goodreads page
+- Extract rating and ratings_count
+
+**Important Rules**:
+- Each book gets its OWN individual lookup — never combine multiple books into one query
+- Each book gets up to **2 attempts** (e.g., Method A fails → try Method B)
+- Process books in parallel when possible
+
+### Phase 2.5: Handle Missing Data
+
+After Phase 2, some books may still lack ratings. Apply these rules:
+
+| Missing Field | Action |
+|---------------|--------|
+| rating missing after 2 attempts | Use LLM estimate from search context (mark as `"rating_source": "estimated"`). If no context at all, drop the book. |
+| review_count missing | Default to `500` (neutral — neither penalized nor boosted) |
+| publish_date missing | Default to `2020` |
+| author_nationality missing | Output `"未知"` (NEVER fabricate) |
+
+**LLM Estimation Rule**: If multiple search results consistently describe a book as "高分" / "经典" / "highly rated" but no exact number is found, estimate conservatively (7.5-8.0 for Chinese, 3.8-4.0 for English). Always mark estimated ratings.
+
+### Phase 3: 3D Scoring Algorithm
+
+**Action**: Collect ALL surviving candidate books into a single JSON array. Pass this entire array to `scripts/score_books.py` via stdin for batch scoring. The script returns sorted results.
+
+(If script unavailable, calculate manually using the formula below.)
 
 **Formula**:
 ```
@@ -99,7 +131,6 @@ If review_count < 100: Base = Base × 0.8 (small sample penalty)
 **B. Popularity Bonus**:
 ```
 Bonus = log₁₀(review_count) × 2
-(capped to prevent bestseller spam dominance)
 ```
 
 **C. Recency Multiplier** (based on publish_date):
@@ -109,113 +140,70 @@ Published 3-5 years ago (2021-2023):  × 1.0
 Published 5+ years ago (≤2020):       × 0.8
 ```
 
-**Example Calculation**:
+**Example**:
 ```
-Book: 《增长黑客》
-- Rating: 8.5, Review Count: 10000, Publish: 2015
-- Base = 8.5 × 10 = 85
-- Bonus = log₁₀(10000) × 2 = 4 × 2 = 8
-- Recency = 0.8 (old book)
-- Total = (85 + 8) × 0.8 = 74.4
+《增长黑客》: rating=8.5, review_count=10000, publish=2015
+Base = 8.5 × 10 = 85
+Bonus = log₁₀(10000) × 2 = 8
+Recency = 0.8
+Total = (85 + 8) × 0.8 = 74.4
 ```
 
-### Step 4: Output
+### Phase 4: Output
 
 Return the **highest-scoring book** in the structured JSON format.
 
-**Reasoning Field Must Include**:
-- Score justification
-- Recency consideration
-- Author background (if known)
+**Reasoning field must include**: score justification, recency consideration, author background (if known).
 
-**Example**:
-```
-"2024年硅谷最新实战派干货，评分8.9且有1.5万真实评价，作者是前Facebook增长负责人"
-```
+If `rating_source` is `"estimated"`, add a note: `"注意：评分为根据多源信息估算，非精确数据"`
+
+## Quality Filters
+
+**Minimum Standards**:
+- Douban rating ≥ 7.5 OR Goodreads rating ≥ 3.8
+- Estimated ratings: apply the same thresholds
+
+**Exclusions**:
+- Books with "21天", "速成", "一本通" in title
+- Marketing-heavy books with no substance
 
 ## Fallback & Error Handling
 
-### Scenario 1: Web Search Failure (Network Error)
+### Scenario 1: Web Search Failure
 
-**Action**:
-- Retry with 2-3 second interval
-- Max retries: 3 times
+- Retry once after 2-3 seconds
+- If still fails, try alternative query phrasing
+- After 3 total failures, return error:
 
-**Termination**:
-If all 3 attempts fail, return:
 ```json
 {
   "error": "网络连接连续 3 次超时，无法获取最新书单数据，请稍后重试。"
 }
 ```
 
-### Scenario 2: Topic Too Niche (No Valid Results)
+### Scenario 2: Topic Too Niche
 
-**Action**:
-- Fallback to broader search: `"{topic} 经典必读 豆瓣高分"`
-- Remove long-tail professional keywords
+- Broaden search: remove professional jargon, use parent category
+- Example: "认知负荷理论" → "认知心理学 经典书籍"
 
-**Termination**:
-If broad search also fails, return:
+If broad search also fails:
 ```json
 {
   "error": "该主题下未找到具备足够评价数据的经典书籍，请尝试更换更宽泛的主题或行业大词。"
 }
 ```
 
-## Quality Filters
+### Scenario 3: All Candidates Dropped
 
-**Minimum Standards**:
-- Douban rating ≥ 7.5 OR Goodreads rating ≥ 3.8
-- At least 2 authoritative sources mention it (if rating unavailable)
-
-**Note**: No minimum review count filter — let the scoring algorithm handle it. Books with few reviews get a 0.8× penalty in Step 3, so if a book has 9.5 rating but only 50 reviews, it still needs to earn its place through exceptional quality.
-
-**Exclusions**:
-- Books with "21天", "速成", "一本通" in title (get-rich-quick books)
-- Marketing-heavy books (no substance)
+If after Phase 2.5 no books survive:
+- Return to Phase 1 with broader topic
+- Lower quality filter temporarily to ≥ 7.0 / ≥ 3.5
+- If still nothing, return the best estimated candidate with a warning
 
 ## Implementation Notes
 
-**Code vs. LLM**:
-- Complex math (logarithms, conditionals) → use `scripts/score_books.py`
-- Data extraction & reasoning → LLM
-- Scoring calculation → code (deterministic, fast)
-
-**Search Result Parsing**:
-- Focus on structured content (book lists, community threads)
-- Ignore ads and promotional content
-- Prioritize Douban/Goodreads/Zhihu/Reddit sources
-
-## Example Usage
-
-**Input**:
-```
-Topic: "用户增长"
-Used Models: ["《精益创业》", "《从0到1》"]
-```
-
-**Process**:
-1. Search: "用户增长 经典书籍推荐"
-2. Extract: [《增长黑客》, 《上瘾》, 《跨越鸿沟》]
-3. Deduplicate: All 3 pass (not in used_models)
-4. Score:
-   - 《增长黑客》: 74.4
-   - 《上瘾》: 72.9
-   - 《跨越鸿沟》: 68.9
-5. Select: 《增长黑客》(highest score)
-
-**Output**:
-```json
-{
-  "book_title": "《增长黑客》",
-  "author": "肖恩·埃利斯",
-  "author_nationality": "美国",
-  "publish_date": "2015-04",
-  "rating": 8.5,
-  "review_count": 10000,
-  "score": 74.4,
-  "summary": "增长黑客方法论：低成本获客、数据驱动迭代、病毒式传播。Dropbox、Airbnb等硅谷公司的增长实战案例，适用于产品冷启动和用户增长。",
-  "reasoning": "评分8.5且有1万真实评价，作者是增长黑客概念提出者、Dropbox早期增长负责人，虽是2015年出版但增长黑客方法论至今仍是用户增长的核心框架"
-}
-```
+- **Phase 1** (discover): pure `web_search`, focus on book list articles
+- **Phase 2** (ratings): `web_search` + `web_fetch` combo, target Douban/Goodreads pages
+- **Phase 3** (scoring): `scripts/score_books.py` (deterministic)
+- **Parallelism**: Phase 1 queries can run in parallel; Phase 2 per-book lookups can run in parallel
+- Prioritize Douban/Goodreads/Zhihu/Reddit sources; ignore ads and promotional content
