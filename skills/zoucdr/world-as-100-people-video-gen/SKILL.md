@@ -1,6 +1,6 @@
 ---
 name: world-as-100-people-video-gen
-version: 1.0.0
+version: 1.0.1
 description: "Create ‘world as 100 people’ verticals: shrink hook, stat morphs, punchline, timed English captions and motion graphics (WeryAI). Use for infographic TikToks, demographic explainers, or icon-driven stats. Use when the user names the 100-people metaphor. SEO: 100 people world video; demographic hook video."
 
 tags: [infographic, demographics, data, icons, hooks, subtitles, short-video, video-gen]
