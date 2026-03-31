@@ -1,230 +1,131 @@
 ---
 name: wedding-invitation-video-maker-online-free
 version: "1.0.0"
-displayName: "Free Wedding Invitation Video Maker Online — Create Stunning Clips"
+displayName: "Wedding Invitation Video Maker Online Free — Create Beautiful Wedding Invites with AI"
 description: >
-  Turn your wedding details into a beautiful animated invitation video with this wedding-invitation-video-maker-online-free skill on ClawHub. Upload your photos, add custom text like names, date, venue, and RSVP details, then let the AI compose a cinematic invitation clip complete with transitions and music sync. Ideal for couples, wedding planners, and event designers who want a polished result without expensive software. Supports mp4, mov, avi, webm, and mkv formats.
+  Create stunning wedding invitation videos for free using AI — personalized animated invitations with couple's names, wedding date and venue details, photo slideshows, elegant typography, romantic music, and RSVP information. NemoVideo generates broadcast-quality wedding invites from your details alone: choose from romantic, modern, rustic, or traditional styles, add your favorite photos, customize colors to match your theme, and share via WhatsApp, Instagram, or email — replacing expensive printed invitations with shareable video invites that guests actually watch.
 metadata: {"openclaw": {"emoji": "💍", "requires": {"env": [], "configPaths": ["~/.config/nemovideo/"]}, "primaryEnv": "NEMO_TOKEN"}}
-homepage: https://nemovideo.com
-repository: https://github.com/nemovideo/nemovideo_skills
 ---
 
-# Craft Cinematic Wedding Invites Through Conversation
+# Wedding Invitation Video Maker Online Free — Beautiful Wedding Invites with AI
 
-Planning a wedding is already a full-time job — designing a video invitation shouldn't add to the stress. This skill lets you describe your vision in plain language: the color palette, the mood, the music style, the text overlays, and the photo sequence. The AI handles the creative assembly so you can focus on the celebration itself.
+Printed wedding invitations cost $3-$8 per card, plus envelopes, plus postage — $500-$1,500 for 200 guests. They take 2-4 weeks to design, print, and mail. Half arrive after the guest has already heard through the grapevine. The other half sit on a counter until the RSVP deadline passes. Video wedding invitations solve every problem printed invitations create: they cost nothing to distribute (WhatsApp, Instagram, email), they arrive instantly, they're more engaging (guests actually watch a 30-second video instead of glancing at a card), they contain all the information in one shareable format (date, time, venue, dress code, RSVP link), and they can be updated if details change — no reprinting, no re-mailing. NemoVideo creates personalized wedding invitation videos from your details: couple's names and photos, wedding date and time, venue name and address, dress code, RSVP information, and your choice of style. The AI generates elegant animated typography, photo transitions, romantic background music, and coordinated color themes — producing an invitation video that looks like it was designed by a professional studio, shareable to every guest in seconds.
 
-The OpenClaw agent at the core of this skill interprets your conversational instructions and translates them into precise video editing operations. Whether you say 'make it feel like a golden-hour garden party' or 'use a romantic slow fade between each photo,' the agent maps your words to real timeline decisions — clip ordering, transition timing, text placement, and audio ducking — without requiring you to touch a single slider.
+## Use Cases
 
-Because this is a back-and-forth process, you can refine the output iteratively. Ask it to swap the font, tighten the intro, or extend the outro music hold, and the agent applies those changes in context. Final exports are delivered in your preferred format, with full support for mp4, mov, avi, webm, and mkv so your invitation video plays perfectly whether shared via WhatsApp, email, Instagram Stories, or a wedding website.
+1. **Classic Romantic — Elegant Animation (30-45s)** — A couple wants a traditional-feeling invitation with modern delivery. NemoVideo creates: soft golden typography animating the couple's names ("Sarah & James"), the wedding date appearing with a gentle fade ("June 14, 2026"), venue details with an animated map pin, engagement photos transitioning with soft dissolves, romantic piano music underneath, and an RSVP card with QR code at the end. The elegance of a calligraphy invitation with the convenience of a WhatsApp forward.
+2. **Modern Minimalist — Clean and Bold (20-30s)** — A couple with a contemporary aesthetic wants something sleek. NemoVideo produces: bold sans-serif typography on a clean white background, names in large black text with a single accent color matching their wedding palette, minimal animation (text slides in, pauses, slides out), one hero photo of the couple with a subtle parallax effect, and a modern electronic-ambient music bed. Less is more — the video feels designed, not decorated.
+3. **Destination Wedding — Travel Theme (30-60s)** — A couple hosting a destination wedding in Bali wants the invitation to build excitement about the location. NemoVideo generates: opening with a dramatic aerial shot of Bali (AI-generated or stock), transitioning to the couple's photos, venue details with embedded Google Maps directions, travel tips ("Fly into Ngurah Rai International Airport"), hotel block information, a 5-day itinerary preview, and tropical acoustic guitar music. The invitation doubles as a travel planning resource.
+4. **Rustic/Boho — Nature-Inspired (30-45s)** — A barn wedding with wildflower themes. NemoVideo creates: watercolor flower animations framing the text, handwritten-style script font for names, earthy color palette (sage green, dusty rose, cream), photos displayed in organic shapes (not rectangles), and gentle acoustic folk guitar. The video feels like opening a hand-painted envelope.
+5. **Save-the-Date — Teaser Version (15-20s)** — Before the full invitation, a quick save-the-date video. NemoVideo generates: couple's photo with animated text overlay ("Save the Date"), date in large elegant typography, "Formal invitation to follow" tagline, and 15 seconds of romantic music. Short enough for an Instagram Story, memorable enough to actually save.
 
-### Environment Variables
+## How It Works
 
-| Variable | Required | Default |
-|----------|----------|--------|
-| `NEMO_TOKEN` | No | Auto-generated (100 free credits, expires in 7 days, revocable via Settings → API Tokens) |
-| `NEMO_API_URL` | No | `https://mega-api-prod.nemovideo.ai` |
-| `NEMO_WEB_URL` | No | `https://nemovideo.com` |
-| `NEMO_CLIENT_ID` | No | Auto-generated UUID, persisted to `~/.config/nemovideo/client_id` (UUID only, no secrets) |
-| `SKILL_SOURCE` | No | Auto-detected from install path, fallback `unknown` |
+### Step 1 — Provide Wedding Details
+Enter: couple's names, wedding date, ceremony time, venue name and address, dress code, RSVP deadline, RSVP method (link, email, phone), and any additional details (reception follows, plus-ones welcome, etc.).
 
-If `NEMO_TOKEN` is not set, get one (requires `X-Client-Id` header):
+### Step 2 — Choose Style and Upload Photos
+Pick a style: romantic, modern, rustic, destination, or custom. Upload 3-8 photos of the couple. Choose your color palette or let NemoVideo match it to your photos.
+
+### Step 3 — Generate
 ```bash
-# Generate or read persisted Client-Id
-CLIENT_ID="${NEMO_CLIENT_ID:-$(cat ~/.config/nemovideo/client_id 2>/dev/null)}"
-if [ -z "$CLIENT_ID" ]; then
-  CLIENT_ID=$(uuidgen 2>/dev/null || echo "client-$(date +%s)-$RANDOM")
-  mkdir -p ~/.config/nemovideo && echo "$CLIENT_ID" > ~/.config/nemovideo/client_id
-fi
-curl -s -X POST "$API/api/auth/anonymous-token" -H "X-Client-Id: $CLIENT_ID"
-# → {"code":0,"data":{"token":"nmv_usr_xxx","credits":100,...}}
-```
-Save `token` as `NEMO_TOKEN`, `CLIENT_ID` as `NEMO_CLIENT_ID`. Anonymous: 1 token per client per 7 days; token expires in 7 days and can be revoked at any time via **Settings → API Tokens** on nemovideo.com. If your token expires, request a new one with the same `X-Client-Id`.
-
-**Local persistence:** This skill writes `~/.config/nemovideo/client_id` to persist the Client-Id across sessions. This avoids generating a new ID on every request, which would hit the per-IP rate limit quickly (default 10 tokens per 7 days per IP). The file contains only a UUID — no credentials are stored locally.
-
-## 2. Routing Incoming Requests
-
-Use the table below to determine which endpoint handles each type of incoming request.
-
-| User says... | Action | Skip SSE? |
-|-------------|--------|----------|
-| "export" / "导出" / "download" / "send me the video" | → §3.5 Export | ✅ |
-| "credits" / "积分" / "balance" / "余额" | → §3.3 Credits | ✅ |
-| "status" / "状态" / "show tracks" | → §3.4 State | ✅ |
-| "upload" / "上传" / user sends file | → §3.2 Upload | ✅ |
-| Everything else (generate, edit, add BGM…) | → §3.1 SSE | ❌ |
-
-## 3. Primary Workflow Procedures
-
-$API = `${NEMO_API_URL:-https://mega-api-prod.nemovideo.ai}`, $TOKEN = `${NEMO_TOKEN}`, $WEB = `${NEMO_WEB_URL:-https://nemovideo.com}`.
-
-Skill attribution variables — do NOT hardcode:
-- `$SKILL_NAME` = this file's YAML frontmatter `name`
-- `$SKILL_VERSION` = this file's YAML frontmatter `version`
-- `$SKILL_SOURCE` = detect at runtime using the first match:
-  1. Env `SKILL_SOURCE` if set
-  2. If this file's path contains a known platform directory (e.g. `~/.clawhub/` → `clawhub`, `~/.cursor/skills/` → `cursor`)
-  3. Fallback: `unknown`
-
-**CRITICAL**: ALL API requests (including render/export/upload/state/credits) MUST include these headers. Missing them will cause export to fail with 402.
-```
-X-Skill-Source: $SKILL_NAME
-X-Skill-Version: $SKILL_VERSION
-X-Skill-Platform: $SKILL_SOURCE
+curl -X POST https://mega-api-prod.nemovideo.ai/api/v1/generate \
+  -H "Authorization: Bearer $NEMO_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "skill": "wedding-invitation-video-maker-online-free",
+    "prompt": "Create a romantic wedding invitation video. Couple: Sarah Chen & James Park. Date: Saturday, June 14, 2026 at 4:00 PM. Venue: The Grand Ballroom, Rosewood Hotel, 123 Garden Lane, Napa Valley, CA. Dress code: Black tie optional. RSVP by May 15 at sarahandjames2026.com. Style: classic romantic with golden typography. Colors: ivory, gold, and blush pink. Music: gentle piano with strings. Duration: 35 seconds. Include 5 engagement photos. End with QR code linking to RSVP page.",
+    "couple": "Sarah Chen & James Park",
+    "date": "Saturday, June 14, 2026",
+    "time": "4:00 PM",
+    "venue": "The Grand Ballroom, Rosewood Hotel",
+    "address": "123 Garden Lane, Napa Valley, CA",
+    "dress_code": "Black tie optional",
+    "rsvp_deadline": "May 15, 2026",
+    "rsvp_url": "sarahandjames2026.com",
+    "style": "classic-romantic",
+    "colors": ["ivory", "gold", "blush-pink"],
+    "music": "piano-strings-romantic",
+    "photos": 5,
+    "duration": "35 sec",
+    "format": "9:16"
+  }'
 ```
 
-### 3.0 Establishing a Session
-```bash
-curl -s -X POST "$API/api/tasks/me/with-session/nemo_agent" \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE" \
-  -d '{"task_name":"project","language":"<lang>"}'
-# → {"code":0,"data":{"task_id":"...","session_id":"..."}}
-```
-Before any other operation can proceed, a session must be initialized. This session identifier is required for all subsequent requests within the same interaction.
+### Step 4 — Preview and Share
+Preview the invitation. Adjust: typography, photo order, music, timing, or colors. Export in multiple formats: 9:16 for WhatsApp/Instagram Stories, 16:9 for email/website, and 1:1 for Instagram feed. Share instantly to every guest.
 
-**Open in browser**: After creating a session, give the user a link to view/edit the task in NemoVideo:
-`$WEB/workspace/claim?token=$TOKEN&task={task_id}&session={session_id}&skill_name=$SKILL_NAME&skill_version=$SKILL_VERSION&skill_source=$SKILL_SOURCE`
+## Parameters
 
-### 3.1 Delivering Messages Through SSE
-```bash
-curl -s -X POST "$API/run_sse" \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -H "Accept: text/event-stream" -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE" --max-time 900 \
-  -d '{"app_name":"nemo_agent","user_id":"me","session_id":"<sid>","new_message":{"parts":[{"text":"<msg>"}]}}'
-```
-All conversational messages are transmitted to the backend via a Server-Sent Events connection that streams the response back in real time.
+| Parameter | Type | Required | Description |
+|-----------|------|:--------:|-------------|
+| `prompt` | string | ✅ | Wedding details and style preferences |
+| `couple` | string | | Couple's names |
+| `date` | string | | Wedding date |
+| `time` | string | | Ceremony time |
+| `venue` | string | | Venue name |
+| `address` | string | | Venue address |
+| `dress_code` | string | | Dress code |
+| `rsvp_deadline` | string | | RSVP by date |
+| `rsvp_url` | string | | RSVP website or contact |
+| `style` | string | | "classic-romantic", "modern-minimal", "rustic-boho", "destination", "custom" |
+| `colors` | array | | Wedding color palette |
+| `music` | string | | "piano-strings", "acoustic-guitar", "electronic-ambient", "orchestral" |
+| `photos` | integer | | Number of photos to include |
+| `duration` | string | | "15 sec" (save-the-date) to "60 sec" (full invitation) |
+| `format` | string | | "9:16", "16:9", "1:1" |
+| `qr_code` | string | | URL for RSVP QR code |
 
-#### SSE Handling
+## Output Example
 
-| Event | Action |
-|-------|--------|
-| Text response | Apply GUI translation (§4), present to user |
-| Tool call/result | Wait silently, don't forward |
-| `heartbeat` / empty `data:` | Keep waiting. Every 2 min: "⏳ Still working..." |
-| Stream closes | Process final response |
-
-Typical durations: text 5-15s, video generation 100-300s, editing 10-30s.
-
-**Timeout**: 10 min heartbeats-only → assume timeout. **Never re-send** during generation (duplicates + double-charge).
-
-Ignore trailing "I encountered a temporary issue" if prior responses were normal.
-
-#### Silent Response Fallback (CRITICAL)
-
-Approximately 30% of edit operations return no visible text in the streamed response. When this occurs: poll the task state endpoint to confirm completion, retrieve the updated video asset directly, surface a default confirmation message to the user, and never re-submit the same edit request assuming it failed.
-
-**Two-stage generation**: After a raw video is produced, the backend automatically triggers a second processing stage that overlays background music and injects a title sequence. Your integration must account for both stages — wait for the second stage to complete before presenting the final asset to the user.
-
-### 3.2 Handling Asset Uploads
-
-**File upload**: `curl -s -X POST "$API/api/upload-video/nemo_agent/me/<sid>" -H "Authorization: Bearer $TOKEN" -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE" -F "files=@/path/to/file"`
-
-**URL upload**: `curl -s -X POST "$API/api/upload-video/nemo_agent/me/<sid>" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE" -d '{"urls":["<url>"],"source_type":"url"}'`
-
-Use **me** in the path; backend resolves user from token.
-
-Supported: mp4, mov, avi, webm, mkv, jpg, png, gif, webp, mp3, wav, m4a, aac.
-
-The upload endpoint accepts user-supplied media files such as photos and video clips for use within the editing pipeline.
-
-### 3.3 Checking Available Credits
-```bash
-curl -s "$API/api/credits/balance/simple" -H "Authorization: Bearer $TOKEN" \
-  -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE"
-# → {"code":0,"data":{"available":XXX,"frozen":XX,"total":XXX}}
-```
-Query the credits endpoint before initiating any generation task to confirm the user has a sufficient balance to proceed.
-
-### 3.4 Retrieving Current Task State
-```bash
-curl -s "$API/api/state/nemo_agent/me/<sid>/latest" -H "Authorization: Bearer $TOKEN" \
-  -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE"
-```
-Use **me** for user in path; backend resolves from token.
-Key fields: `data.state.draft`, `data.state.video_infos`, `data.state.canvas_config`, `data.state.generated_media`.
-
-**Draft field mapping**: `t`=tracks, `tt`=track type (0=video, 1=audio, 7=text), `sg`=segments, `d`=duration(ms), `m`=metadata.
-
-**Draft ready for export** when `draft.t` exists with at least one track with non-empty `sg`.
-
-**Track summary format**:
-```
-Timeline (3 tracks): 1. Video: city timelapse (0-10s) 2. BGM: Lo-fi (0-10s, 35%) 3. Title: "Urban Dreams" (0-3s)
+```json
+{
+  "job_id": "wiv-20260328-001",
+  "status": "completed",
+  "couple": "Sarah Chen & James Park",
+  "event_date": "June 14, 2026",
+  "duration_seconds": 35,
+  "format": "mp4",
+  "resolution": "1080x1920",
+  "file_size_mb": 8.2,
+  "output_url": "https://mega-api-prod.nemovideo.ai/output/wiv-20260328-001.mp4",
+  "invitation_details": {
+    "style": "classic-romantic",
+    "typography": "golden serif (Playfair Display)",
+    "colors": "ivory / gold / blush pink",
+    "photos_included": 5,
+    "music": "piano-strings-romantic (royalty-free)",
+    "qr_code": "embedded at 0:30-0:35",
+    "sections": ["couple names", "date & time", "venue", "dress code", "RSVP"]
+  },
+  "additional_exports": {
+    "instagram_story": "1080x1920 (9:16)",
+    "email_embed": "1920x1080 (16:9)",
+    "instagram_post": "1080x1080 (1:1)"
+  }
+}
 ```
 
-### 3.5 Exporting and Delivering the Final Video
+## Tips
 
-**Export does NOT cost credits.** Only generation/editing consumes credits.
+1. **9:16 vertical is the primary format** — Most guests will receive and watch the invitation on their phone via WhatsApp or Instagram. Vertical video fills the full screen. Export 16:9 as secondary for email embeds.
+2. **35 seconds is the sweet spot** — Shorter than 25 seconds feels rushed and misses details. Longer than 45 seconds loses attention. 30-40 seconds delivers all essential information at a comfortable reading pace.
+3. **Golden typography on dark backgrounds reads as elegant** — The classic wedding invitation aesthetic translates directly to video. Gold or cream serif fonts on navy, forest green, or charcoal backgrounds feel timeless and formal.
+4. **End with a QR code for instant RSVP** — Guests watching on their phone can screenshot the QR code and scan it immediately. This reduces RSVP friction by 80% compared to "visit our website" text.
+5. **Export all three formats** — 9:16 for WhatsApp/Instagram, 16:9 for email, 1:1 for Instagram feed. One generation produces all three — maximum reach across every channel guests use.
 
-Triggering an export does not deduct credits from the user's balance. The export sequence proceeds as follows: (a) call the export endpoint with the project identifier, (b) receive a task ID in the response, (c) poll task state until status is complete, (d) extract the download URL from the completed task payload, and (e) present that URL to the user as the deliverable.
+## Output Formats
 
-**b)** Submit: `curl -s -X POST "$API/api/render/proxy/lambda" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE" -d '{"id":"render_<ts>","sessionId":"<sid>","draft":<json>,"output":{"format":"mp4","quality":"high"}}'`
+| Format | Resolution | Use Case |
+|--------|-----------|----------|
+| MP4 9:16 | 1080x1920 | WhatsApp / Instagram Stories / TikTok |
+| MP4 16:9 | 1920x1080 | Email embed / website / TV display |
+| MP4 1:1 | 1080x1080 | Instagram feed / Facebook |
+| GIF | 720p | Save-the-date preview |
+| JPG | 1080p | Still frame for printed backup |
 
-Note: `sessionId` is **camelCase** (exception). On failure → new `id`, retry once.
+## Related Skills
 
-**c)** Poll (every 30s, max 10 polls): `curl -s "$API/api/render/proxy/lambda/<id>" -H "Authorization: Bearer $TOKEN" -H "X-Skill-Source: $SKILL_NAME" -H "X-Skill-Version: $SKILL_VERSION" -H "X-Skill-Platform: $SKILL_SOURCE"`
-
-Status at top-level `status`: pending → processing → completed / failed. Download URL at `output.url`.
-
-**d)** Download from `output.url` → send to user. Fallback: `$API/api/render/proxy/<id>/download`.
-
-**e)** When delivering the video, **always also give the task detail link**: `$WEB/workspace/claim?token=$TOKEN&task={task_id}&session={session_id}&skill_name=$SKILL_NAME&skill_version=$SKILL_VERSION&skill_source=$SKILL_SOURCE`
-
-Progress messages: start "⏳ Rendering ~30s" → "⏳ 50%" → "✅ Video ready!" + file + **task detail link**.
-
-### 3.6 Recovering from an SSE Disconnection
-
-When the SSE stream drops unexpectedly, follow these steps: (1) detect the disconnection event in your stream handler; (2) wait a minimum of two seconds before attempting any recovery action; (3) call the task state endpoint using the last known task ID to determine current progress; (4) if the task is still running, re-attach a new SSE listener without re-submitting the original request; (5) if the task shows a failed status, notify the user and offer to retry the operation.
-
-## 4. Translating GUI Concepts for the Backend
-
-The backend operates under the assumption that all interactions originate from a graphical interface, so GUI-specific language or instructions must never be forwarded verbatim in API payloads.
-
-| Backend says | You do |
-|-------------|--------|
-| "click [button]" / "点击" | Execute via API |
-| "open [panel]" / "打开" | Show state via §3.4 |
-| "drag/drop" / "拖拽" | Send edit via SSE |
-| "preview in timeline" | Show track summary |
-| "Export button" / "导出" | Execute §3.5 |
-| "check account/billing" | Check §3.3 |
-
-**Keep** content descriptions. **Strip** GUI actions.
-
-## 5. Recommended Interaction Patterns
-
-• Always confirm a session is active before dispatching any message or edit request.
-• Proactively check the user's credit balance prior to starting generation tasks and warn them if the balance is low.
-• When a streaming response appears empty, apply the silent fallback procedure rather than treating the request as failed.
-• Break complex multi-step editing intentions into sequential single-step requests to reduce error surface.
-• After export completes, present the download URL clearly and confirm with the user that the delivered file meets their expectations.
-
-## 6. Known Limitations
-
-• A single session cannot be shared across multiple concurrent users or browser tabs.
-• Background music and title overlays are applied automatically by the backend and cannot be suppressed or customized through the API.
-• File uploads are subject to size and format restrictions enforced server-side; exceeding these limits returns an error without partial processing.
-• Credit balances are read-only through the API and cannot be topped up programmatically.
-• SSE connections may time out on long-running tasks; the disconnect recovery flow must be implemented to ensure reliable delivery.
-
-## 7. Error Handling Reference
-
-The table below maps common error codes to their causes and the recommended remediation steps for each.
-| Code | Meaning | Action |
-|------|---------|--------|
-| 0 | Success | Continue |
-| 1001 | Bad/expired token | Re-auth via anonymous-token (tokens expire after 7 days) |
-| 1002 | Session not found | New session §3.0 |
-| 2001 | No credits | Anonymous: show registration URL with `?bind=<id>` (get `<id>` from create-session or state response when needed). Registered: "Top up at nemovideo.ai" |
-| 4001 | Unsupported file | Show supported formats |
-| 4002 | File too large | Suggest compress/trim |
-| 400 | Missing X-Client-Id | Generate Client-Id and retry (see §1) |
-| 402 | Free plan export blocked | Subscription tier issue, NOT credits. "Register at nemovideo.ai to unlock export." |
-| 429 | Rate limit (1 token/client/7 days) | Retry in 30s once |
-
-**Common**: no video → generate first; render fail → retry new `id`; SSE timeout → §3.6; silent edit → §3.1 fallback.
-
-## 8. Version Compatibility and Token Scopes
-
-Before going live, verify that your integration targets the current stable API version by checking the version endpoint. All requests must be authorized with a token that carries the required scopes for the operations being performed — using a token with insufficient scopes will result in 403 responses. Rotate tokens according to the platform's expiry policy and never embed credentials directly in client-side code.
+- [free-youtube-video-editor](/skills/free-youtube-video-editor) — YouTube editing free
+- [video-maker-free](/skills/video-maker-free) — Free video maker
+- [free-video-generator-ai](/skills/free-video-generator-ai) — AI video generation

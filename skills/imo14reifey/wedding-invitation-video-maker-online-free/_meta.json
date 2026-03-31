@@ -3,9 +3,15 @@
   "slug": "wedding-invitation-video-maker-online-free",
   "displayName": "Wedding Invitation Video Maker Online Free",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774540582070,
-    "commit": "https://github.com/openclaw/skills/commit/13987e80f7344c4891a690fd79163d620dec1826"
+    "version": "1.2.0",
+    "publishedAt": 1774666188044,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774540582070,
+      "commit": "https://github.com/openclaw/skills/commit/13987e80f7344c4891a690fd79163d620dec1826"
+    }
+  ]
 }
