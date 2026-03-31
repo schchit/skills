@@ -7,7 +7,7 @@ description: Create tokens on-chain, check fee earnings, check Kibi Credit balan
 
 Create tokens on-chain, earn trading fees, and use KibiBot's Kibi LLM Gateway — all from natural language commands.
 
-**Version:** 1.5.0  
+**Version:** 1.5.2  
 **Provider:** [KibiBot](https://kibi.bot)  
 **Auth:** API key required — get yours at [kibi.bot/settings/api-keys](https://kibi.bot/settings/api-keys)  
 **Install:** `install the kibibot skill from https://github.com/KibiAgent/skills/tree/main/kibibot`
@@ -47,12 +47,6 @@ Minimum $1 to start. Credits are consumed per token used.
           { "id": "kibi-sonnet-4-6",            "name": "Claude Sonnet 4.6",        "api": "anthropic-messages", "contextWindow": 1000000,  "maxTokens": 128000 },
           { "id": "kibi-sonnet-4-5",            "name": "Claude Sonnet 4.5",        "api": "anthropic-messages", "contextWindow": 1000000,  "maxTokens": 64000  },
           { "id": "kibi-haiku-4-5",             "name": "Claude Haiku 4.5",         "api": "anthropic-messages", "contextWindow": 200000,   "maxTokens": 4096   },
-          { "id": "kibi-gemini-3-1-pro",        "name": "Gemini 3.1 Pro",           "contextWindow": 1048576,    "maxTokens": 16384 },
-          { "id": "kibi-gemini-3-1-flash-lite", "name": "Gemini 3.1 Flash Lite",    "contextWindow": 1048576,    "maxTokens": 16384 },
-          { "id": "kibi-gemini-3-pro",          "name": "Gemini 3 Pro",             "contextWindow": 1048576,    "maxTokens": 16384 },
-          { "id": "kibi-gemini-3-flash",        "name": "Gemini 3 Flash",           "contextWindow": 1048576,    "maxTokens": 16384 },
-          { "id": "kibi-gemini-2-5-pro",        "name": "Gemini 2.5 Pro",           "contextWindow": 1048576,    "maxTokens": 8192  },
-          { "id": "kibi-gemini-2-5-flash",      "name": "Gemini 2.5 Flash",         "contextWindow": 1048576,    "maxTokens": 8192  },
           { "id": "kibi-gpt-5-4-pro",           "name": "GPT 5.4 Pro",              "contextWindow": 1050000,    "maxTokens": 16384 },
           { "id": "kibi-gpt-5-4",               "name": "GPT 5.4",                  "contextWindow": 1050000,    "maxTokens": 16384 },
           { "id": "kibi-gpt-5-4-mini",          "name": "GPT 5.4 Mini",             "contextWindow": 400000,     "maxTokens": 16384 },
@@ -60,16 +54,27 @@ Minimum $1 to start. Credits are consumed per token used.
           { "id": "kibi-gpt-5-2-pro",           "name": "GPT 5.2 Pro",              "contextWindow": 400000,     "maxTokens": 16384 },
           { "id": "kibi-gpt-5-2",               "name": "GPT 5.2",                  "contextWindow": 400000,     "maxTokens": 16384 },
           { "id": "kibi-gpt-5-2-codex",         "name": "GPT 5.2 Codex",            "contextWindow": 400000,     "maxTokens": 16384 },
+          { "id": "kibi-gpt-5-2-chat",          "name": "GPT 5.2 Chat",             "contextWindow": 128000,     "maxTokens": 16384 },
+          { "id": "kibi-gemini-3-1-pro",        "name": "Gemini 3.1 Pro",           "contextWindow": 1048576,    "maxTokens": 16384 },
+          { "id": "kibi-gemini-3-1-flash-lite", "name": "Gemini 3.1 Flash Lite",    "contextWindow": 1048576,    "maxTokens": 16384 },
+          { "id": "kibi-gemini-3-flash",        "name": "Gemini 3 Flash",           "contextWindow": 1048576,    "maxTokens": 16384 },
+          { "id": "kibi-gemini-2-5-pro",        "name": "Gemini 2.5 Pro",           "contextWindow": 1048576,    "maxTokens": 8192  },
+          { "id": "kibi-gemini-2-5-flash",      "name": "Gemini 2.5 Flash",         "contextWindow": 1048576,    "maxTokens": 8192  },
           { "id": "kibi-grok-4-1",              "name": "Grok 4.1 Fast",            "contextWindow": 2000000,    "maxTokens": 16384 },
-          { "id": "kibi-deepseek-v3-2",         "name": "DeepSeek V3.2",            "contextWindow": 163840,     "maxTokens": 16384 },
+          { "id": "kibi-deepseek-v3-2",         "name": "DeepSeek V3.2",            "contextWindow": 164000,     "maxTokens": 16384 },
+          { "id": "kibi-kimi-k2-5",             "name": "Kimi K2.5",                "contextWindow": 262144,     "maxTokens": 16384 },
+          { "id": "kibi-mimo-v2-pro",           "name": "MiMo-V2-Pro",              "contextWindow": 1048576,    "maxTokens": 16384 },
+          { "id": "kibi-mimo-v2-omni",          "name": "MiMo-V2-Omni",             "contextWindow": 262144,     "maxTokens": 16384 },
+          { "id": "kibi-mimo-v2-flash",         "name": "MiMo-V2-Flash",            "contextWindow": 262144,     "maxTokens": 16384 },
+          { "id": "kibi-seed-2-0-lite",         "name": "Seed 2.0 Lite",            "contextWindow": 262144,     "maxTokens": 16384 },
+          { "id": "kibi-seed-2-0-mini",         "name": "Seed 2.0 Mini",            "contextWindow": 262144,     "maxTokens": 16384 },
           { "id": "kibi-qwen-3-coder",          "name": "Qwen3 Coder",              "contextWindow": 262144,     "maxTokens": 16384 },
           { "id": "kibi-qwen-3-5-plus",         "name": "Qwen3.5 Plus",             "contextWindow": 1000000,    "maxTokens": 16384 },
           { "id": "kibi-qwen-3-5-flash",        "name": "Qwen3.5 Flash",            "contextWindow": 1000000,    "maxTokens": 16384 },
-          { "id": "kibi-kimi-k2-5",             "name": "Kimi K2.5",                "contextWindow": 262144,     "maxTokens": 16384 },
           { "id": "kibi-minimax-m2-7",          "name": "MiniMax M2.7",             "contextWindow": 204800,     "maxTokens": 16384 },
           { "id": "kibi-minimax-m2-5",          "name": "MiniMax M2.5",             "contextWindow": 196608,     "maxTokens": 16384 },
-          { "id": "kibi-seed-2-0-lite",         "name": "Seed 2.0 Lite",            "contextWindow": 262144,     "maxTokens": 16384 },
-          { "id": "kibi-seed-2-0-mini",         "name": "Seed 2.0 Mini",            "contextWindow": 262144,     "maxTokens": 16384 }
+          { "id": "kibi-glm-5-turbo",           "name": "GLM 5 Turbo",              "contextWindow": 202752,     "maxTokens": 16384 },
+          { "id": "kibi-glm-5",                 "name": "GLM 5",                    "contextWindow": 80000,      "maxTokens": 16384 }
         ]
       }
     }
@@ -82,12 +87,6 @@ Minimum $1 to start. Credits are consumed per token used.
         "kibi/kibi-sonnet-4-6":            { "alias": "kibi-sonnet-4-6" },
         "kibi/kibi-sonnet-4-5":            { "alias": "kibi-sonnet-4-5" },
         "kibi/kibi-haiku-4-5":             { "alias": "kibi-haiku-4-5" },
-        "kibi/kibi-gemini-3-1-pro":        { "alias": "kibi-gemini-3-1-pro" },
-        "kibi/kibi-gemini-3-1-flash-lite": { "alias": "kibi-gemini-3-1-flash-lite" },
-        "kibi/kibi-gemini-3-pro":          { "alias": "kibi-gemini-3-pro" },
-        "kibi/kibi-gemini-3-flash":        { "alias": "kibi-gemini-3-flash" },
-        "kibi/kibi-gemini-2-5-pro":        { "alias": "kibi-gemini-2-5-pro" },
-        "kibi/kibi-gemini-2-5-flash":      { "alias": "kibi-gemini-2-5-flash" },
         "kibi/kibi-gpt-5-4-pro":           { "alias": "kibi-gpt-5-4-pro" },
         "kibi/kibi-gpt-5-4":               { "alias": "kibi-gpt-5-4" },
         "kibi/kibi-gpt-5-4-mini":          { "alias": "kibi-gpt-5-4-mini" },
@@ -95,16 +94,27 @@ Minimum $1 to start. Credits are consumed per token used.
         "kibi/kibi-gpt-5-2-pro":           { "alias": "kibi-gpt-5-2-pro" },
         "kibi/kibi-gpt-5-2":               { "alias": "kibi-gpt-5-2" },
         "kibi/kibi-gpt-5-2-codex":         { "alias": "kibi-gpt-5-2-codex" },
+        "kibi/kibi-gpt-5-2-chat":          { "alias": "kibi-gpt-5-2-chat" },
+        "kibi/kibi-gemini-3-1-pro":        { "alias": "kibi-gemini-3-1-pro" },
+        "kibi/kibi-gemini-3-1-flash-lite": { "alias": "kibi-gemini-3-1-flash-lite" },
+        "kibi/kibi-gemini-3-flash":        { "alias": "kibi-gemini-3-flash" },
+        "kibi/kibi-gemini-2-5-pro":        { "alias": "kibi-gemini-2-5-pro" },
+        "kibi/kibi-gemini-2-5-flash":      { "alias": "kibi-gemini-2-5-flash" },
         "kibi/kibi-grok-4-1":              { "alias": "kibi-grok-4-1" },
         "kibi/kibi-deepseek-v3-2":         { "alias": "kibi-deepseek-v3-2" },
+        "kibi/kibi-kimi-k2-5":             { "alias": "kibi-kimi-k2-5" },
+        "kibi/kibi-mimo-v2-pro":           { "alias": "kibi-mimo-v2-pro" },
+        "kibi/kibi-mimo-v2-omni":          { "alias": "kibi-mimo-v2-omni" },
+        "kibi/kibi-mimo-v2-flash":         { "alias": "kibi-mimo-v2-flash" },
+        "kibi/kibi-seed-2-0-lite":         { "alias": "kibi-seed-2-0-lite" },
+        "kibi/kibi-seed-2-0-mini":         { "alias": "kibi-seed-2-0-mini" },
         "kibi/kibi-qwen-3-coder":          { "alias": "kibi-qwen-3-coder" },
         "kibi/kibi-qwen-3-5-plus":         { "alias": "kibi-qwen-3-5-plus" },
         "kibi/kibi-qwen-3-5-flash":        { "alias": "kibi-qwen-3-5-flash" },
-        "kibi/kibi-kimi-k2-5":             { "alias": "kibi-kimi-k2-5" },
         "kibi/kibi-minimax-m2-7":          { "alias": "kibi-minimax-m2-7" },
         "kibi/kibi-minimax-m2-5":          { "alias": "kibi-minimax-m2-5" },
-        "kibi/kibi-seed-2-0-lite":         { "alias": "kibi-seed-2-0-lite" },
-        "kibi/kibi-seed-2-0-mini":         { "alias": "kibi-seed-2-0-mini" }
+        "kibi/kibi-glm-5-turbo":           { "alias": "kibi-glm-5-turbo" },
+        "kibi/kibi-glm-5":                 { "alias": "kibi-glm-5" }
       }
     }
   }
@@ -153,16 +163,6 @@ Switch models using the dropdown picker or `/model` command:
 | `claude-sonnet-4-5` | 1M |
 | `claude-haiku-4-5` | 200k |
 
-**Google**
-| Model ID | Context |
-|---|---|
-| `gemini-3.1-pro` | 1M |
-| `gemini-3.1-flash-lite` | 1M |
-| `gemini-3-pro` | 1M |
-| `gemini-3-flash` | 1M |
-| `gemini-2.5-pro` | 1M |
-| `gemini-2.5-flash` | 1M |
-
 **OpenAI**
 | Model ID | Context |
 |---|---|
@@ -173,6 +173,16 @@ Switch models using the dropdown picker or `/model` command:
 | `gpt-5.2-pro` | 400k |
 | `gpt-5.2` | 400k |
 | `gpt-5.2-codex` | 400k |
+| `gpt-5.2-chat` | 128k |
+
+**Google**
+| Model ID | Context |
+|---|---|
+| `gemini-3.1-pro` | 1M |
+| `gemini-3.1-flash-lite` | 1M |
+| `gemini-3-flash` | 1M |
+| `gemini-2.5-pro` | 1M |
+| `gemini-2.5-flash` | 1M |
 
 **xAI**
 | Model ID | Context |
@@ -184,6 +194,24 @@ Switch models using the dropdown picker or `/model` command:
 |---|---|
 | `deepseek-v3.2` | 164k |
 
+**Moonshot**
+| Model ID | Context |
+|---|---|
+| `kimi-k2.5` | 262k |
+
+**Xiaomi**
+| Model ID | Context |
+|---|---|
+| `mimo-v2-pro` | 1M |
+| `mimo-v2-omni` | 262k |
+| `mimo-v2-flash` | 262k |
+
+**ByteDance**
+| Model ID | Context |
+|---|---|
+| `seed-2.0-lite` | 262k |
+| `seed-2.0-mini` | 262k |
+
 **Alibaba**
 | Model ID | Context |
 |---|---|
@@ -191,22 +219,17 @@ Switch models using the dropdown picker or `/model` command:
 | `qwen3.5-plus` | 1M |
 | `qwen3.5-flash` | 1M |
 
-**Moonshot**
-| Model ID | Context |
-|---|---|
-| `kimi-k2.5` | 262k |
-
 **MiniMax**
 | Model ID | Context |
 |---|---|
 | `minimax-m2.7` | 205k |
 | `minimax-m2.5` | 197k |
 
-**ByteDance**
+**Z.ai**
 | Model ID | Context |
 |---|---|
-| `seed-2.0-lite` | 262k |
-| `seed-2.0-mini` | 262k |
+| `glm-5-turbo` | 203k |
+| `glm-5` | 80k |
 
 Verify by asking your agent: *"what's my KibiBot Kibi Credit balance?"*
 
