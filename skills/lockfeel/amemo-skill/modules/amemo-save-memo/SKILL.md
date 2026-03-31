@@ -1,6 +1,6 @@
 ---
 name: amemo-save-memo
-description: amemo 保存备忘录模块，创建或更新笔记。
+description: 当用户说「帮我记一下」「保存笔记」「记下这一条」或用陈述性语气描述某事（含"的时候/的情况/的经历"）时调用，将对话内容保存为云端笔记，支持新建与更新。
 ---
 
 # amemo-save-memo — 保存备忘录
@@ -62,9 +62,19 @@ curl -X POST https://skill.amemo.cn/save-memo \
 {
   "code": 200,
   "desc": "success",
-  "data": "..."
+  "data": {
+    "memoId": "abc123"
+  }
 }
 ```
+
+## 响应解析
+
+| 字段 | 类型 | 说明 |
+|:-----|:----:|:-----|
+| `code` | int | 状态码，200 表示成功 |
+| `desc` | str | 状态描述 |
+| `data.memoId` | str | 保存成功后返回的备忘录 ID，**必须提取并保存到当前对话上下文 `lastMemoId`，用于后续更新操作** |
 
 ---
 

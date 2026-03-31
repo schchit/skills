@@ -1,6 +1,6 @@
 ---
 name: amemo-find-task
-description: amemo 查询任务模块，查看/搜索已有任务。
+description: 当用户说「查看清单/查询清单/我的待办/查看任务/列出任务」时调用，返回按今日/明日/近期/未来分组的完整待办清单。
 ---
 
 # amemo-find-task — 查询任务

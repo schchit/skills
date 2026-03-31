@@ -1,6 +1,6 @@
 ---
 name: amemo-last-data
-description: amemo 查询最新数据模块，获取最新的数据记录。
+description: 当用户说「今日健康简报」「健康日报」「健康总览」「今日健康情况」时调用，获取全部类型最新健康数据并生成综合评估报告。
 ---
 
 # amemo-last-data — 查询最新数据
@@ -23,15 +23,10 @@ description: amemo 查询最新数据模块，获取最新的数据记录。
 ## 请求示例
 
 ```bash
-# 获取所有类型最新数据（dataType 传 null）
+# 获取所有类型最新数据（健康简报场景，dataType 传 null）
 curl -X POST https://skill.amemo.cn/last-data \
   -H "Content-Type: application/json" \
   -d '{"userToken": "<token>", "dataType": null}'
-
-# 按类型获取最新
-curl -X POST https://skill.amemo.cn/last-data \
-  -H "Content-Type: application/json" \
-  -d '{"userToken": "<token>", "dataType": "report"}'
 ```
 
 ## 响应示例

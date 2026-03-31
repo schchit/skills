@@ -1,6 +1,6 @@
 ---
 name: amemo-send-task
-description: amemo 发送任务模块，推送任务通知（如邮件）。
+description: 由 amemo-save-task 在用户确认邮箱后内部调用，将任务提醒以邮件形式发送到指定邮箱地址。
 ---
 
 # amemo-send-task — 发送任务

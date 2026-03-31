@@ -1,6 +1,6 @@
 ---
 name: amemo-find-memo
-description: amemo 查询备忘录模块，查看/搜索已有笔记。
+description: 当用户说「查看/查找/搜索 + 我的 + 笔记/备忘」时调用，按关键词模糊搜索并返回匹配的笔记列表。
 ---
 
 # amemo-find-memo — 查询备忘录

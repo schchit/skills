@@ -1,6 +1,6 @@
 ---
 name: amemo-send-code
-description: amemo 发送验证码模块，登录前获取验证码。
+description: 当用户输入 11 位手机号时调用，向该手机号发送短信验证码，完成后等待用户回复验证码进入登录流程。
 ---
 
 # amemo-send-code — 发送验证码

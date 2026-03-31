@@ -1,6 +1,6 @@
 ---
 name: amemo-login
-description: amemo 用户登录模块，获取 userToken。
+description: 当用户输入 4-6 位短信验证码时调用，完成麦小记登录并将 userToken/userName 写入主 SKILL.md 配置区域。
 ---
 
 # amemo-login — 用户登录
