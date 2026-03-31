@@ -60,49 +60,21 @@ The script prints a single image URL to stdout on success.
 
 ---
 
-## About Neta
+## Token setup
 
-[Neta](https://www.neta.art/) (by TalesofAI) is an AI image and video generation platform with a powerful open API. It uses a **credit-based system (AP — Action Points)** where each image generation costs a small number of credits. Subscriptions are available for heavier usage.
+The script resolves your `NETA_TOKEN` in this order:
 
-### Register & Get Token
+1. `--token` CLI flag
+2. `NETA_TOKEN` environment variable
 
-| Region | Sign up | Get API token |
-|--------|---------|---------------|
-| Global | [neta.art](https://www.neta.art/) | [neta.art/open](https://www.neta.art/open/) |
-| China  | [nieta.art](https://app.nieta.art/) | [nieta.art/security](https://app.nieta.art/security) |
-
-New accounts receive free credits to get started. No credit card required to try.
-
-### Pricing
-
-Neta uses a pay-per-generation credit model. View current plans on the [pricing page](https://www.neta.art/pricing).
-
-- **Free tier:** limited credits on signup — enough to test
-- **Subscription:** monthly AP allowance via Stripe
-- **Credit packs:** one-time top-up as needed
-
-### Set up your token
-
+**Recommended:** add to your shell profile or `.env` file:
 ```bash
-# Step 1 — get your token:
-#   Global: https://www.neta.art/open/
-#   China:  https://app.nieta.art/security
-
-# Step 2 — set it
 export NETA_TOKEN=your_token_here
-
-# Step 3 — run
-node yearbookphoto.js "your prompt"
 ```
 
-Or pass it inline:
-```bash
-node yearbookphoto.js "your prompt" --token your_token_here
 ```
-
-> **API endpoint:** defaults to `api.talesofai.com` (Open Platform tokens).  
-> China users: set `NETA_API_BASE_URL=https://api.talesofai.com` to use the China endpoint.
-
+NETA_TOKEN=your_token_here
+```
 
 ---
 
@@ -112,6 +84,6 @@ node yearbookphoto.js "your prompt" --token your_token_here
 1990s high school yearbook portrait photo of {subject}, professional school photography studio, neutral background, soft studio lighting, formal attire, genuine smile, film grain texture, classic yearbook aesthetic
 ```
 
----
+## Example Output
 
-Built with [Claude Code](https://claude.ai/claude-code) · Powered by [Neta](https://www.neta.art/) · [Open Portal](https://www.neta.art/open/)
+![Generated example](https://oss.talesofai.cn/picture/db2a00dc-ad39-4024-bf47-173f9f4f268e.webp)
