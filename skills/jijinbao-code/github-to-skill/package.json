@@ -1,34 +1,20 @@
 {
   "name": "github-to-skill",
-  "version": "1.0.3",
-  "description": "Convert GitHub projects to OpenClaw skills automatically - analyze source code and generate skill structure",
-  "main": "index.js",
-  "scripts": {
-    "test": "python test_security.py",
-    "analyze": "node index.js --analyze-only",
-    "convert": "node index.js"
-  },
+  "version": "2.0.1",
+  "description": "GitHub 项目转 OpenClaw 技能参考指南 - 纯文档，无可执行代码",
+  "type": "documentation",
+  "main": "SKILL.md",
   "keywords": [
     "github",
     "openclaw",
     "skill-generator",
-    "code-analysis",
-    "automation",
+    "documentation",
+    "guide",
     "meta-skill"
   ],
   "author": "SuperMike",
-  "license": "MIT",
+  "license": "MIT-0",
   "dependencies": {},
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "runtime": {
-    "python": {
-      "version": ">=3.8.0",
-      "required": true,
-      "description": "Python 3.8+ required for source code analysis via analyzer.py"
-    }
-  },
   "repository": {
     "type": "git",
     "url": "https://github.com/openclaw/openclaw"

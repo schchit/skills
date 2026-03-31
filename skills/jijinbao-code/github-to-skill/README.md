@@ -1,261 +1,198 @@
-# GitHub to Skill - 开源项目转换器
+# GitHub 项目转 OpenClaw 技能参考指南
 
-**自动将 GitHub 下载的.zip 源代码转换成 OpenClaw 技能**
+**纯文档技能 - 提供转换流程参考说明**
 
----
-
-## 🎯 用途
-
-看到好的开源软件 → 下载.zip → 一键转换成 OpenClaw 技能 → 立即使用
+**Documentation-Only Skill - Provides conversion process reference**
 
 ---
 
-## 🚀 快速开始
+## ⚠️ 重要说明 / Important Notice
 
-### 方式 1: 直接对 SuperMike 说
+**本技能为纯文档指南，不包含任何自动化工具或可执行代码。**
 
-```
-把这个.zip 转成技能：Y:\Downloads\youtube-dl-master.zip
-```
+**This skill is documentation-only, containing no automation tools or executable code.**
 
-### 方式 2: 命令行
-
-```bash
-cd D:\Personal\OpenClaw\skills\github-to-skill
-
-# 仅分析
-python analyzer.py Y:\Downloads\project.zip
-
-# 完整转换
-python analyzer.py Y:\Downloads\project.zip -o D:\Personal\OpenClaw\skills
-```
+- 📚 仅提供转换流程参考 / Provides conversion process reference only
+- 🔒 无自动执行功能 / No automation features
+- 🎯 用户自行操作所有步骤 / User performs all steps manually
+- ✅ 所有决定需用户确认 / All decisions require user confirmation
 
 ---
 
-## 📋 使用流程
+## 📖 用途 / Purpose
 
-```
-1. 从 GitHub 下载项目.zip
-   ↓
-2. 调用 github-to-skill 技能
-   ↓
-3. 自动分析（语言、结构、功能）
-   ↓
-4. 生成技能文件（SKILL.md, index.js 等）
-   ↓
-5. 安装依赖
-   ↓
-6. 完成！可以使用了
-```
+**中文：** 本指南帮助理解将 GitHub 项目转换为 OpenClaw 技能时需要考虑的各个环节，提供系统化的参考流程。
+
+**English:** This guide helps understand the considerations involved in converting GitHub projects to OpenClaw skills, providing a systematic reference process.
+
+**适用场景 / Use Cases:**
+- 学习如何封装开源代码为 OpenClaw 技能 / Learn how to package open-source code as OpenClaw skills
+- 理解 OpenClaw 技能结构和规范 / Understand OpenClaw skill structure and standards
+- 参考转换流程中的注意事项 / Reference considerations in conversion process
 
 ---
 
-## 🎯 适用项目
+## 📋 转换流程参考 / Conversion Process Reference
 
-### ✅ 适合转换
-- CLI 工具（youtube-dl, httpie 等）
-- Python 库（数据处理、工具库）
-- JavaScript 库
-- API 客户端
-- 自动化脚本
+### 阶段 1：项目评估 / Project Evaluation
 
-### ❌ 不适合
-- 大型框架（Django, React 等）
-- GUI 应用（依赖图形界面）
-- 数据库系统
-- 操作系统级工具
+**评估因素 / Evaluation Factors:**
+
+| 因素 / Factor | 说明 / Description |
+|--------------|-------------------|
+| 许可证检查 / License check | 确认是否允许复用（MIT/Apache/BSD 通常可以）/ Verify reuse is allowed |
+| 项目规模 / Project size | 评估工作量 / Estimate effort |
+| 依赖复杂度 / Dependency complexity | 评估依赖安装难度 / Assess dependency difficulty |
+| 代码质量 / Code quality | 检查代码规范性 / Check code quality |
 
 ---
 
-## 📁 生成的文件
+### 阶段 2：文件分析 / File Analysis
 
-```
-skills/[project-name]/
-├── SKILL.md          # OpenClaw 技能说明
-├── index.js          # 技能入口
-├── package.json      # 包配置
-├── config.json       # 配置
-├── README.md         # 使用指南
-└── src/              # 原始项目代码
-```
+**识别关键文件 / Identify Key Files:**
+
+| 类别 / Category | 文件示例 / Examples |
+|----------------|-------------------|
+| 技能定义 / Skill definition | SKILL.md |
+| 入口文件 / Entry point | index.js, main.py |
+| 依赖配置 / Dependency config | package.json, requirements.txt |
+| 文档 / Documentation | README.md |
+| 源代码 / Source code | src/, lib/, *.js, *.py |
+
+**排除敏感文件 / Exclude Sensitive Files:**
+
+| 文件 / File | 原因 / Reason |
+|------------|--------------|
+| .env | 可能含 API Key / May contain API keys |
+| *.key, *.pem | 密钥文件 / Key files |
+| credentials | 凭据 / Credentials |
 
 ---
 
-## 💡 使用示例
+### 阶段 3：技能创建 / Skill Creation
 
-### 示例 1: 转换 YouTube 下载工具
+**参考结构 / Reference Structure:**
+
 ```
-输入：Y:\Downloads\youtube-dl-master.zip
-
-输出：skills/youtube-dl/
-
-使用：
-"使用 youtube-dl: 下载这个视频 https://youtube.com/watch?v=xxx"
-```
-
-### 示例 2: 转换数据处理库
-```
-输入：Y:\Downloads\pandas-extension.zip
-
-输出：skills/pandas-extension/
-
-使用：
-"使用 pandas-extension: 处理这个 Excel 文件"
-```
-
-### 示例 3: 转换 API 客户端
-```
-输入：Y:\Downloads\github-api-client.zip
-
-输出：skills/github-api-client/
-
-使用：
-"使用 github-api-client: 获取我的 issues"
+新技能目录/
+├── SKILL.md          # 技能定义（必需）
+├── package.json      # Node.js 元数据
+├── README.md         # 使用说明
+├── index.js          # 入口文件（如适用）
+└── src/              # 源代码目录
 ```
 
 ---
 
-## 🔧 高级用法
+### 阶段 4：依赖处理 / Dependency Handling
 
-### 自定义输出目录
-```
-python analyzer.py project.zip -o D:\MySkills
-```
+**依赖类型参考 / Dependency Types Reference:**
 
-### 仅分析不生成
-```
-python analyzer.py project.zip --analyze-only
-```
+| 类型 / Type | 配置文件 / Config | 安装参考 / Installation Reference |
+|------------|------------------|----------------------------------|
+| Python | requirements.txt | pip install -r requirements.txt |
+| Node.js | package.json | npm install |
 
-### 批量转换
-```
-扫描 Y:\github-downloads\ 目录下所有.zip
-逐个转换
-生成批量报告
+**⚠️ 注意 / Notes:**
+- 检查依赖可信度 / Verify dependency trustworthiness
+- 评估冲突风险 / Assess conflict risks
+- 考虑隔离环境 / Consider isolated environments
+
+---
+
+### 阶段 5：验证 / Verification
+
+**验证步骤参考 / Verification Steps Reference:**
+
+1. **技能识别检查 / Skill recognition check**
+   - 确认 SKILL.md 格式 / Verify SKILL.md format
+   - 重启 OpenClaw / Restart OpenClaw
+
+2. **功能测试 / Functionality test**
+   - 测试基本功能 / Test basic functionality
+   - 检查错误 / Check for errors
+
+3. **依赖验证 / Dependency verification**
+   - 确认依赖安装 / Verify dependencies installed
+   - 测试导入 / Test imports
+
+---
+
+## 🔒 安全考虑 / Security Considerations
+
+### 许可证合规 / License Compliance
+
+| 许可证 / License | 是否可用 / Usable | 注意事项 / Notes |
+|-----------------|------------------|-----------------|
+| MIT | ✅ 是 / Yes | 保留版权声明 / Retain copyright |
+| Apache-2.0 | ✅ 是 / Yes | 含专利授权 / Includes patent grant |
+| BSD | ✅ 是 / Yes | 类似 MIT / Similar to MIT |
+| GPL | ⚠️ 注意 / Caution | 衍生作品需开源 / Derivatives must be open |
+| 专有 / Proprietary | ❌ 否 / No | 禁止复用 / Reuse prohibited |
+
+---
+
+## 📝 SKILL.md 模板 / SKILL.md Template
+
+```markdown
+---
+name: 技能名
+version: 1.0.0
+description: 技能功能描述
+license: MIT
+metadata:
+    skill-author: 作者名
+    source: GitHub 仓库链接
+---
+
+# 技能名称
+
+## 功能说明
+（描述功能）
+
+## 使用方式
+（说明使用方法）
+
+## 依赖
+（列出需要的包）
 ```
 
 ---
 
-## 📊 分析内容
+## ❓ 常见问题 / FAQ
 
-| 分析项 | 说明 |
-|--------|------|
-| **项目名称** | 从 package.json/setup.py 提取 |
-| **编程语言** | Python/JavaScript/TypeScript等 |
-| **项目类型** | CLI/库/Web/API |
-| **入口文件** | main.py, index.js 等 |
-| **依赖列表** | requirements.txt, package.json |
-| **功能函数** | 公共函数和类 |
-| **文档说明** | README 描述 |
+### Q: 如何确定项目是否可以转换？
+**A:** 检查许可证。MIT/Apache/BSD 通常允许，GPL 需开源衍生作品，专有许可证禁止。
 
----
+### Q: 转换后技能不显示怎么办？
+**A:** 检查 SKILL.md 格式，重启 OpenClaw，查看日志。
 
-## ⚠️ 注意事项
-
-### 转换前
-- ✅ 确认.zip 文件完整
-- ✅ 检查项目许可证（是否允许复用）
-- ✅ 查看原始文档
-
-### 转换后
-- ✅ 安装依赖
-- ✅ 测试基本功能
-- ✅ 检查与 OpenClaw 兼容性
-- ✅ 阅读生成的 SKILL.md
-
-### 法律合规
-- ✅ 遵守原项目许可证
-- ✅ 保留原作者版权信息
-- ✅ 不用于商业用途（除非许可证允许）
+### Q: 如何处理依赖冲突？
+**A:** 使用虚拟环境（Python）或本地 node_modules（Node.js）隔离。
 
 ---
 
-## 🐛 故障排除
+## 📄 版本历史 / Version History
 
-### 问题：分析失败
-```
-解决：
-1. 检查.zip 是否完整
-2. 确认是标准 GitHub 导出格式
-3. 查看错误日志
-```
-
-### 问题：依赖冲突
-```
-解决：
-1. 使用虚拟环境
-2. 检查 requirements.txt
-3. 解决版本冲突
-```
-
-### 问题：功能缺失
-```
-解决：
-1. 手动调整 index.js
-2. 补充配置参数
-3. 添加必要的包装代码
-```
+| 版本 / Version | 日期 / Date | 更新内容 / Changes |
+|---------------|-------------|-------------------|
+| 2.0.1 | 2026-03-31 | 纯文档参考指南，移除所有自动化描述 / Documentation-only reference guide, removed all automation claims |
+| 2.0.0 | 2026-03-31 | 改为纯文档技能 / Converted to documentation-only |
+| 1.x | 2026-03-27 | 历史版本（已弃用）/ Historical versions (deprecated) |
 
 ---
 
-## 🎯 实际案例
+## 🔗 相关资源 / Related Resources
 
-### 案例 1: youtube-dl 转换
-```
-时间：2 分钟
-难度：⭐
-结果：完美运行
-使用："下载这个 YouTube 视频"
-```
-
-### 案例 2: 数据清洗工具
-```
-时间：5 分钟
-难度：⭐⭐
-结果：需要手动调整配置
-使用："清洗这个 Excel 文件"
-```
-
-### 案例 3: GitHub API 客户端
-```
-时间：3 分钟
-难度：⭐⭐
-结果：需要配置 API Key
-使用："获取我的 GitHub repos"
-```
+- [OpenClaw 技能规范](https://agentskills.io/specification)
+- [OpenClaw 文档](https://docs.openclaw.ai)
+- [ClawHub 技能市场](https://clawhub.ai)
 
 ---
 
-## 📈 转换质量评估
+**作者 / Author:** OpenClaw Community  
+**更新日期 / Updated:** 2026-03-31  
+**版本 / Version:** 2.0.1  
+**类型 / Type:** 纯文档参考指南 / Documentation-Only Reference Guide
 
-| 等级 | 分数 | 说明 |
-|------|------|------|
-| **A** | 90-100 | 完美转换，直接使用 |
-| **B** | 75-89 | 良好，少量优化 |
-| **C** | 60-74 | 可用，需要改进 |
-| **D** | <60 | 需要大量修改 |
-
----
-
-## 🚀 未来改进
-
-- [ ] 自动测试生成
-- [ ] 智能依赖解决
-- [ ] GUI 项目适配
-- [ ] 批量转换优化
-- [ ] 技能质量评分
-- [ ] 自动发布到 ClawHub
-
----
-
-## 📚 参考
-
-- **OpenClaw 文档:** https://docs.openclaw.ai
-- **ClawHub:** https://clawhub.com
-- **GitHub API:** https://docs.github.com/en/rest
-
----
-
-**创建时间:** 2026-03-27  
-**维护者:** SuperMike  
-**理念:** 让开源软件复用变得简单！
+**⚠️ 声明 / Disclaimer:** 本指南仅供参考，所有操作需用户自行决定和执行。/ This guide is for reference only; all operations are at user's discretion.
