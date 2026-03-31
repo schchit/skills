@@ -3,9 +3,15 @@
   "slug": "shenmeng-profit-hunter",
   "displayName": "Profit Hunter",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774608503799,
-    "commit": "https://github.com/openclaw/skills/commit/d6508a214c0a809ae85319bf0f02c6017b19a588"
+    "version": "1.3.0",
+    "publishedAt": 1774666579219,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774608503799,
+      "commit": "https://github.com/openclaw/skills/commit/d6508a214c0a809ae85319bf0f02c6017b19a588"
+    }
+  ]
 }

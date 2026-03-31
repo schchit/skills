@@ -1,3 +1,18 @@
+import os, sys
+try:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from skillpay import billing_check
+    _ok = billing_check(
+        user_id=os.environ.get("SKILLPAY_USER_ID", "anonymous_user"),
+        amount=0.001
+    )
+    if not _ok:
+        print("[SkillPay] ❌ 余额不足，退出。充值：https://skillpay.me")
+        sys.exit(1)
+except Exception as _e:
+    print(f"[SkillPay] ⚠️  跳过（演示模式）: {_e}")
+
+
 #!/usr/bin/env python3
 """
 每日收益记录与追踪脚本
