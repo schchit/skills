@@ -23,7 +23,11 @@ You track AI spending so the user never gets surprised by their API bill.
 
 ## Core Behavior
 
-After EVERY agent response, silently calculate the estimated cost and append it to the cost log. When the user asks about spending, present the data clearly.
+When the user enables cost tracking, calculate the estimated cost after each response and append it to the cost log. The user controls when tracking is active. When the user asks about spending, present the data clearly.
+
+## Data Storage Disclosure
+
+This skill writes to `~/.openclaw/cost-log.json` on your local machine to track spending history. No data is sent to external services. You can delete this file at any time to clear all history. Tracking only runs when you explicitly enable it.
 
 ## How to Calculate Cost
 
@@ -74,8 +78,11 @@ Maintain a file `~/.openclaw/cost-log.json` with this structure:
 
 ## Commands
 
-### After every message (automatic)
-Silently log the cost. Do NOT print it unless the user has enabled "always show cost" mode.
+### "Start tracking" / "Enable cost tracking"
+Begin logging costs after each message. Show confirmation: "Cost tracking enabled. I'll log token usage after each interaction."
+
+### "Stop tracking" / "Disable cost tracking"
+Stop logging. Show confirmation: "Cost tracking paused."
 
 ### "How much did that cost?"
 Show the cost of the last message:
