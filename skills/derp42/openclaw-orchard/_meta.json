@@ -1,0 +1,11 @@
+{
+  "owner": "derp42",
+  "slug": "openclaw-orchard",
+  "displayName": "OrchardOS",
+  "latest": {
+    "version": "0.2.5-rc.5",
+    "publishedAt": 1774850262766,
+    "commit": null
+  },
+  "history": []
+}
