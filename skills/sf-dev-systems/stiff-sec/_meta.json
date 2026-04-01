@@ -1,0 +1,11 @@
+{
+  "owner": "sf-dev-systems",
+  "slug": "stiff-sec",
+  "displayName": "Stiff-Sec — OpenClaw Security Hardener",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774734178418,
+    "commit": null
+  },
+  "history": []
+}
