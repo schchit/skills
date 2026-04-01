@@ -1,0 +1,11 @@
+{
+  "owner": "cohnen",
+  "slug": "pixcli",
+  "displayName": "Pixcli Skill",
+  "latest": {
+    "version": "2.2.1",
+    "publishedAt": 1775025935841,
+    "commit": null
+  },
+  "history": []
+}
