@@ -1,6 +1,6 @@
 ---
 name: smart-api-connector
-description: "Connect to any REST API without writing code. Provide an endpoint and API key, and the agent handles authentication, request formatting, error parsing, retries, and rate limiting. API keys are session-only — never persisted to disk, shell config, or environment variables. Use when: user wants to query an API, test an endpoint, automate API calls, parse API responses, or integrate with external services. Supports GET, POST, PUT, DELETE with JSON payloads. Homepage: https://clawhub.ai/skills/smart-api-connector"
+description: "Connect to any REST API without writing code. Provide an endpoint and API key, and the agent handles authentication, request formatting, error parsing, retries, and rate limiting. Use when: user wants to query an API, test an endpoint, automate API calls, parse API responses, or integrate with external services. Supports GET, POST, PUT, DELETE with JSON payloads. Homepage: https://clawhub.ai/skills/smart-api-connector"
 ---
 
 # Smart API Connector
@@ -25,31 +25,104 @@ Detect from the user's message language. Default: English.
 
 User provides:
 1. **API base URL** (e.g., `https://api.example.com/v1`)
-2. **API key** (session-only, never stored)
+2. **API key** (used in-session only — see Security below)
 3. **What they want to do** in natural language
 
 Agent does everything else.
+
+## Security & Credentials
+
+### ⚠️ API Key Handling — Read This
+
+**This skill does NOT persist API keys.** However, the following is true:
+
+- The agent's **conversation history and logs may retain keys** that were typed or used in requests
+- If the key appears in command arguments (e.g., curl commands), it may appear in process listings (`ps aux`)
+- This depends on your **platform configuration**, not this skill
+
+**Recommendations:**
+- Use **scoped or test API keys** when possible — never long-lived production secrets
+- After sensitive API work, consider clearing conversation history if your platform supports it
+- For permanent storage, use your OS keychain (1Password, Bitwarden, Windows Credential Manager)
+
+### Safe Key Supply Patterns (Required)
+
+**The agent MUST use one of these methods to pass API keys. Never pass keys as plain command-line arguments.**
+
+#### Method 1: Environment Variable (Preferred)
+
+Set the key as an env var for the command, then reference it:
+
+```bash
+# Bash
+API_KEY="your_key_here" curl -s -H "Authorization: Bearer $API_KEY" "https://api.example.com/v1/endpoint"
+
+# PowerShell
+$env:API_KEY="your_key_here"; Invoke-WebRequest -Headers @{Authorization="Bearer $env:API_KEY"} "https://api.example.com/v1/endpoint"
+```
+
+Keys in env vars do NOT appear in process listings visible to other users.
+
+#### Method 2: Stdin / Heredoc (For file-based payloads)
+
+```bash
+# Pass key via env var, body via stdin
+echo '{"key":"value"}' | API_KEY="your_key" curl -s -X POST -H "Authorization: Bearer $API_KEY" -H "Content-Type: application/json" -d @- "https://api.example.com/v1/endpoint"
+```
+
+#### Method 3: Netrc File (For frequent API use)
+
+```bash
+# Create ~/.netrc (permissions: 600)
+machine api.example.com
+  login your_api_key
+  password x-oauth-basic
+
+# curl automatically picks up .netrc
+curl -s -n "https://api.example.com/v1/endpoint"
+```
+
+#### Method 4: PowerShell -SecureString (Windows)
+
+```powershell
+$secureKey = ConvertTo-SecureString "your_key_here" -AsPlainText -Force
+$headers = @{ Authorization = "Bearer $($secureKey | ConvertFrom-SecureString -AsPlainText)" }
+Invoke-WebRequest -Headers $headers "https://api.example.com/v1/endpoint"
+```
+
+#### ❌ Never Do This
+
+```bash
+# BAD: Key visible in process listings and shell history
+curl -s -H "Authorization: Bearer sk_live_abc123def456..." "https://api.example.com/v1/endpoint"
+```
+
+### HTTP Client
+
+This skill uses the agent's **built-in exec tool** to run HTTP requests. No external binaries are required.
+
+If `curl` is available on the system, it will be used for its superior header/formatting support. If not, the agent falls back to `Invoke-WebRequest` (PowerShell) or `python3 -c` with urllib — all of which are standard in modern environments.
+
+**Regardless of HTTP client, always use env vars or headers — never inline secrets in command arguments.**
 
 ## Connection Setup
 
 ### Step 1: Handle API Key
 
-When user provides an API key, use it in-session for the current request chain. **Do NOT persist API keys anywhere** — no shell config files, no environment variables, no file writes.
+When user provides an API key, use it in-session for the current request chain:
 
 - Use the key only within the current conversation/session
-- NEVER display the full key back or log it
-- After the session ends, the key is gone — user must provide it again next time
+- Store in an **environment variable** for the duration of the request chain — never in command arguments
+- NEVER display the full key back or log it
+- After the session ends, the user must provide it again
 
-If the user asks to store a key permanently, recommend they use their OS keychain or a secret manager (1Password, Bitwarden, Windows Credential Manager) instead.
+If the user asks to store a key permanently, recommend their OS keychain or a secret manager.
 
 ### Step 2: Verify Connection
 
-Test with a simple request before any real work:
+Test with a simple request before any real work.
 
-```bash
-curl -s -o /dev/null -w "%{http_code}" --max-time 10 -H "Authorization: Bearer YOUR_API_KEY" "https://api.example.com/v1/health"
-```
-
+Expected responses:
 - HTTP 200 → ✅ Connected
 - HTTP 401 → ❌ Invalid key — ask user to verify
 - HTTP 403 → ⚠️ Valid key, insufficient permissions
@@ -57,49 +130,25 @@ curl -s -o /dev/null -w "%{http_code}" --max-time 10 -H "Authorization: Bearer Y
 
 ### Step 3: Discover Endpoints (optional)
 
-If user says "explore" or "what can I do":
+If user says "explore" or "what can I do", fetch the OpenAPI spec:
 
-```bash
-curl -s -H "Authorization: Bearer YOUR_API_KEY" "https://api.example.com/v1/openapi.json"
-```
-
-Parse the OpenAPI spec and list available endpoints with descriptions.
+- Try `{base_url}/openapi.json` or `{base_url}/openapi.yaml`
+- Parse the spec and list available endpoints with descriptions
 
 ## Making Requests
 
-### GET (Read Data)
+### HTTP Methods
 
-When user says "get X" or "fetch Y" or "list Z":
+| Method | Use When | Notes |
+|--------|----------|-------|
+| GET | "get X", "fetch Y", "list Z" | Read-only, safe |
+| POST | "create X", "send Y", "add Z" | Include JSON body |
+| PUT/PATCH | "update X", "change Y" | Include JSON body |
+| DELETE | "delete X", "remove Y" | ⚠️ ALWAYS confirm first |
 
-```bash
-curl -s --max-time 30 -H "Authorization: Bearer YOUR_API_KEY" -H "Content-Type: application/json" "BASE_URL/endpoint?param=value"
-```
-
-### POST (Create Data)
-
-When user says "create X" or "send Y" or "add Z":
-
-```bash
-curl -s --max-time 30 -X POST -H "Authorization: Bearer YOUR_API_KEY" -H "Content-Type: application/json" -d '{"key": "value"}' "BASE_URL/endpoint"
-```
-
-### PUT/PATCH (Update Data)
-
-When user says "update X" or "change Y":
-
-```bash
-curl -s --max-time 30 -X PUT -H "Authorization: Bearer YOUR_API_KEY" -H "Content-Type: application/json" -d '{"key": "new_value"}' "BASE_URL/endpoint/id"
-```
-
-### DELETE (Remove Data)
-
-When user says "delete X" or "remove Y":
+### DELETE Safety
 
 **⚠️ ALWAYS confirm before DELETE.** Show exactly what will be deleted and get explicit "yes" / "ja" before proceeding.
-
-```bash
-curl -s --max-time 30 -X DELETE -H "Authorization: Bearer YOUR_API_KEY" "BASE_URL/endpoint/id"
-```
 
 ## Authentication Methods
 
@@ -171,11 +220,6 @@ If response is large (> 50 items), summarize:
 
 Always extract and show the error message from the response body:
 
-```json
-{"error": {"message": "Rate limit exceeded", "code": "rate_limit"}}
-```
-
-Present as:
 > ❌ **Rate limit exceeded** (rate_limit) — Too many requests. Waiting 5s before retry...
 
 ### Non-JSON Responses
@@ -192,28 +236,12 @@ Track configured APIs in the current session:
 ```markdown
 ## Configured APIs
 
-| Name | Base URL | Auth | Env Var | Last Tested |
-|------|----------|------|---------|-------------|
-| Example API | https://api.example.com/v1 | Bearer | session-only | today |
-
+| Name | Base URL | Auth | Last Tested |
+|------|----------|------|-------------|
+| Example API | https://api.example.com/v1 | Bearer | today |
 ```
 
 When user asks to list APIs — show configured connections from this session.
-
-## Free vs Pro Limits
-
-### Free (this skill)
-- Up to 3 saved API connections
-- Basic retry logic (3 retries)
-- Standard response parsing
-
-### Pro (future)
-- Unlimited API connections
-- Advanced retry with custom backoff strategies
-- Response caching
-- Request history and replay
-- Batch operations with progress tracking
-- Webhook support
 
 ## Output Format
 

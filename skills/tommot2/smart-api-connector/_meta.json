@@ -3,9 +3,15 @@
   "slug": "smart-api-connector",
   "displayName": "Smart Api Connector",
   "latest": {
-    "version": "1.6.0",
-    "publishedAt": 1774768575108,
-    "commit": "https://github.com/openclaw/skills/commit/316d8324d4060b0864165558ce7ba2df3f476c99"
+    "version": "2.1.0",
+    "publishedAt": 1774936903574,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.6.0",
+      "publishedAt": 1774768575108,
+      "commit": "https://github.com/openclaw/skills/commit/316d8324d4060b0864165558ce7ba2df3f476c99"
+    }
+  ]
 }
