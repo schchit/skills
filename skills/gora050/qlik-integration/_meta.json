@@ -1,0 +1,11 @@
+{
+  "owner": "gora050",
+  "slug": "qlik-integration",
+  "displayName": "Qlik",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774760667762,
+    "commit": null
+  },
+  "history": []
+}
