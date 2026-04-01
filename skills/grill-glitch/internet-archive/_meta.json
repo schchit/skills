@@ -1,0 +1,11 @@
+{
+  "owner": "grill-glitch",
+  "slug": "internet-archive",
+  "displayName": "Internet Archive Skill",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774786843419,
+    "commit": null
+  },
+  "history": []
+}
