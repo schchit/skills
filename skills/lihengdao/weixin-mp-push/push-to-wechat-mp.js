@@ -1,16 +1,13 @@
 #!/usr/bin/env node
 /**
- * 推送到公众号。config.json 和此脚本应在同一目录；支持HTML和图片模式，HTML 模式时 HTML 应该放在同目录。
+ * 推送到公众号。config.json 和此脚本应在同一目录；支持 HTML 和图片模式，HTML 应放在同目录。
  *
- * HTML：
- *   node push-to-wechat-mp.js html <HTML 文件名> [sendMode]
- * 示例：node push-to-wechat-mp.js html 你的文件.html draft
- * sendMode 缺省为 draft；亦可选 send、masssend。
- *
- * 图片（第二参为 JSON 数组整段字符串，shell 下请用单引号包住）：
- *   node push-to-wechat-mp.js img <JSON数组> <title> <content> [sendMode]
- * 示例：node push-to-wechat-mp.js img '["https://example.com/a.png"]' "标题" "正文" draft
- * sendMode 同上。
+ * 首参为目标公众号 AppID（default、- 或空字符串表示系统默认；wx 开头为自定义号），第二参为 html 或 img：
+ *   node push-to-wechat-mp.js <targetAppId> html <HTML 文件名> [sendMode]
+ *   node push-to-wechat-mp.js <targetAppId> img '<JSON数组>' <title> <content> [sendMode]
+ * 示例：
+ *   node push-to-wechat-mp.js default html 你的文件.html draft
+ *   node push-to-wechat-mp.js wxabcdef0123456789 img '["https://example.com/a.png"]' "标题" "正文" draft
  */
 
 const https = require('https');
@@ -165,11 +162,44 @@ function postJson(urlStr, body, timeoutMs = 120000) {
   });
 }
 
+function isDefaultAppIdTarget(s) {
+  const t = String(s ?? '').trim().toLowerCase();
+  return t === '' || t === 'default' || t === '-';
+}
+
+/** @returns {string|undefined} appId 传给接口：appId；系统默认返回 undefined */
+function resolvePushAppId(cfg, targetAppIdFromCli) {
+  if (isDefaultAppIdTarget(targetAppIdFromCli)) {
+    return undefined;
+  }
+  const tid = String(targetAppIdFromCli).trim();
+  if (cfg.accounts && Array.isArray(cfg.accounts)) {
+    const found = cfg.accounts.some(
+      (a) =>
+        a &&
+        a.appId &&
+        String(a.appId).toLowerCase() === tid.toLowerCase()
+    );
+    if (!found) {
+      console.error(
+        '提示: 传入的 AppID 未出现在 config.accounts 中，仍将按接口规则推送。'
+      );
+    }
+  }
+  return tid;
+}
+
 async function main() {
   const args = process.argv.slice(2);
-  if (args.length === 0) {
+  if (args.length < 2) {
     throw new Error(
-      '用法:\n  HTML: node push-to-wechat-mp.js html <文件名.html> [sendMode]\n  图片: node push-to-wechat-mp.js img \'<JSON图片链接数组>\' <title> <content> [sendMode]'
+      '用法:\n  node push-to-wechat-mp.js <targetAppId> html <文件名.html> [sendMode]\n  node push-to-wechat-mp.js <targetAppId> img \'<JSON>\' <title> <content> [sendMode]\n  targetAppId：default、- 或空字符串表示系统默认；wx 开头为自定义公众号。'
+    );
+  }
+
+  if (args[0] === 'html' || args[0] === 'img') {
+    throw new Error(
+      '首参须为目标公众号 AppID（系统默认请写 default）。示例:\n  node push-to-wechat-mp.js default html 你的文件.html draft'
     );
   }
 
@@ -179,29 +209,37 @@ async function main() {
   }
 
   const apiBase = cfg.apiBase || DEFAULT_API;
-  const first = args[0].toLowerCase();
+  const targetAppIdFromCli = args[0];
+  const mode = String(args[1] || '').toLowerCase();
   let title;
   let content;
   let sendMode;
   /** @type {string[]|undefined} */
   let imgUrls;
 
-  if (first === 'img') {
-    if (args.length < 4) {
+  if (mode === 'img') {
+    if (args.length < 5) {
       throw new Error(
-        '图片模式参数不足。示例: node push-to-wechat-mp.js img \'["https://example.com/a.png"]\' "标题" "正文说明" draft'
+        '图片模式参数不足。示例: node push-to-wechat-mp.js default img \'["https://example.com/a.png"]\' "标题" "正文说明" draft'
       );
     }
-    imgUrls = parseImgUrlsArg(args[1]);
-    title = String(args[2] || '').trim() || '未命名';
-    content = String(args[3] != null ? args[3] : '图文卡片');
-    sendMode = (args[4] && args[4].trim()) || 'draft';
-  } else if (first === 'html') {
-    const fileName = path.basename((args[1] || '').trim());
-    if (!fileName) {
-      throw new Error('请传入 HTML 文件名（与脚本同目录）。例如: node push-to-wechat-mp.js html 你的文件.html draft');
+    imgUrls = parseImgUrlsArg(args[2]);
+    title = String(args[3] || '').trim() || '未命名';
+    content = String(args[4] ? args[4] : '图文卡片');
+    sendMode = (args[5] && args[5].trim()) || 'draft';
+  } else if (mode === 'html') {
+    if (args.length < 3) {
+      throw new Error(
+        'HTML 模式须传入文件名。示例: node push-to-wechat-mp.js default html 你的文件.html draft'
+      );
     }
-    sendMode = (args[2] && args[2].trim()) || 'draft';
+    const fileName = path.basename((args[2] || '').trim());
+    if (!fileName) {
+      throw new Error(
+        '请传入 HTML 文件名（与脚本同目录）。例如: node push-to-wechat-mp.js default html 你的文件.html draft'
+      );
+    }
+    sendMode = (args[3] && args[3].trim()) || 'draft';
 
     const htmlPath = path.join(DIR, fileName);
     if (!fs.existsSync(htmlPath)) {
@@ -212,9 +250,11 @@ async function main() {
     title = titleFromHtml(content);
   } else {
     throw new Error(
-      '首参须为 html 或 img。示例:\n  node push-to-wechat-mp.js html 你的文件.html draft\n  node push-to-wechat-mp.js img \'["https://..."]\' "标题" "正文" draft'
+      '第二参须为 html 或 img。示例:\n  node push-to-wechat-mp.js default html 你的文件.html draft'
     );
   }
+
+  const appId = resolvePushAppId(cfg, targetAppIdFromCli);
 
   const body = {
     action: 'sendToWechat',
@@ -226,14 +266,18 @@ async function main() {
   if (imgUrls && imgUrls.length > 0) {
     body.imgUrls = imgUrls;
   }
-  if (cfg.pushMode === 'custom' && cfg.accountId != null && cfg.accountId !== '') {
-    body.accountId = cfg.accountId;
+  if (appId) {
+    body.appId = appId;
   }
+
+  const accLabel = appId ? String(appId) : 'default';
 
   if (imgUrls && imgUrls.length > 0) {
     console.error(
       '推送中（图片）…',
       apiBase,
+      '| 账号',
+      accLabel,
       '| 标题',
       title.slice(0, 30) + (title.length > 30 ? '…' : ''),
       '| 图',
@@ -246,6 +290,8 @@ async function main() {
     console.error(
       '推送中（HTML）…',
       apiBase,
+      '| 账号',
+      accLabel,
       '| 标题',
       title.slice(0, 30) + (title.length > 30 ? '…' : ''),
       '| 正文长度',

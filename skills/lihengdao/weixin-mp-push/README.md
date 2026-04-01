@@ -2,11 +2,11 @@
 
 [ClawHub](https://clawhub.ai/skills/weixin-mp-push)
 
-支持通过AI生成符合公众号规范的图文（文章和贴图），并推送到公众号草稿箱或直接发布，兼容其它SKILL生成的图文、图片进行推送。通过配置向导扫码授权，无需泄露公众号Secret密钥，无需配置公众号IP白名单。
+支持通过AI生成符合公众号规范的图文（文章和贴图），并推送到公众号草稿箱或直接发布，兼容其它SKILL生成的图文、图片进行推送。通过配置向导扫码授权，支持多账号。无需泄露公众号Secret密钥，无需配置公众号IP白名单。
 
 ## ✨ 功能特性
 
-- 🔒 **扫码授权** - 通过配置向导扫码授权，无需泄露公众号Secret密钥，无需配置公众号IP白名单
+- 🔒 **扫码授权** - 通过配置向导扫码授权，支持多账号。无需泄露公众号Secret密钥，无需配置公众号IP白名单
 - 📝 **图文生成** - 按照 design.md 规范生成标准的 HTML 文件，会自动适配公众号格式
 - 🚀 **一键推送** - 支持 HTML 与图片链接两种推送方式，推送成功后有服务通知
 
@@ -41,39 +41,42 @@ AI将用户发送的配置保存到技能目录下的 `config.json` 文件中。
 
 ### 3. 写公众号图文
 
-用户发送图文创作要求给AI，AI根据 `design.md` 规范生成标准的 HTML 文件。后续在推送图文的时候，标准的 HTML 会自动适配公众号格式。
+用户发送图文创作要求给AI，AI必须根据 `design.md` 规范生成标准的 HTML 文件。有二种创作类型：
+- **文章**：通用类型，页面默认宽度 677px
+- **贴图**：图文卡片类型（俗称小绿书，类似小红书），页面默认宽度 375px，固定分页比例（默认 3:4）。推送到公众号时， 后台会自动把 HTML 内容转换为图片
 
-- **文章或通用**：默认宽度 677px，适合文章或通用类型
-- **图文卡片**：宽度 375px，固定分页比例（默认 3:4），适合贴图类型（俗称小绿书，类似小红书图文卡片），可截图分发至朋友圈、小红书或其它社群
+**⚠️ 注意：** 不管是创作 **文章** 还是 **贴图** ，必须先阅读 `design.md`，按其规范生成标准的 HTML 文件。后续在推送图文过程中，标准的 HTML 会自动适配公众号格式。 
 
 ### 4. 推送到公众号
 
-推送方式：`html` 模式传入生成的 HTML 文件（本技能或外部产出均可，其它素材可先按 `design.md` 整理成 HTML）；`img` 模式传入已是公网可访问的图片 URL 数组及标题、正文。
+推送方式：`html` 模式传入生成的 HTML 文件（本技能在第三步生成的HTML，也可以是用户或其它技能能提供的HTML，非HTML内容可先按 `design.md` 整理成 HTML）；`img` 模式传入公网可访问的图片 URL 数组及标题、正文。**注意** 此模式仅适合用户或其它技能能提供准备好的图片让本技能直接推送，相比通过生成贴图类型的HTML再转换为图片，此模式省去了HTML环节，只需要提供图片链接即可
 
 #### 推送 HTML
 
-AI 调用脚本，首参为 `html`，再传与脚本同目录下的 HTML 文件名，再传 `sendMode`（可选）：
+AI 调用脚本：首参为目标公众号 AppID（`default` 表示系统默认），第二参为 `html`，再传与脚本同目录下的 HTML 文件名，再传 `sendMode`（可选）：
 
 ```bash
 cd weixin-mp-push
-node push-to-wechat-mp.js html 你的文件.html draft
+node push-to-wechat-mp.js default html 你的文件.html draft
 ```
 
 #### 推送图片链接
 
-AI 调用脚本，首参为 `img`，第二参为**图片链接的 JSON 数组字符串**（整段一个参数；Bash 与 PowerShell 都可用单引号包住整段 JSON，例如 `'["https://...","https://..."]'`）。再依次传标题、正文、`sendMode`（可选）。
+AI 调用脚本：首参为目标公众号 AppID（`default` 表示系统默认），第二参为 `img`，第三参为**图片链接的 JSON 数组字符串**（整段一个参数；Bash 与 PowerShell 都可用单引号包住整段 JSON，例如 `'["https://...","https://..."]'`）。再依次传标题、正文、`sendMode`（可选）。
 
 ```bash
 cd weixin-mp-push
-node push-to-wechat-mp.js img '["https://cdn.example.com/1.png","https://cdn.example.com/2.png"]' "标题" "正文" draft
+node push-to-wechat-mp.js default img '["https://cdn.example.com/1.png","https://cdn.example.com/2.png"]' "标题" "正文" draft
 ```
 
 **标题、正文**（命令行各一个参数，含空格时用英文双引号）：标题和正文可为空。
 
 #### 说明
 
-**sendMode**：`draft` 推送到草稿箱（缺省）；发布用 `send`；群发用 `masssend`（需已认证号等条件）。
- 
+**目标公众号 AppID**：`default`、`-` 或空字符串表示系统默认公众号；`wx` 开头为已授权的公众号的 AppID（可与 `config.json` 中 `accounts` 对照）。
+
+**sendMode**：`draft` 推送到草稿箱（缺省）；发布用 `send`；群发用 `masssend`（需已认证号等条件）。 
+
 ## 📖 详细文档
 
 - **SKILL.md** - 完整技能说明
@@ -90,10 +93,8 @@ node push-to-wechat-mp.js img '["https://cdn.example.com/1.png","https://cdn.exa
 
 配置文件 `config.json` 包含以下关键字段:
 
-- `openId` - 微信用户 openId(必填)
-- `pushMode` - 推送模式: `default`（系统默认公众号） 或 `custom`（用户自定义公众号）
-- `isBindPhoneNumber` - 仅 pushMode=default 时有意义：boolean。用户配置向导中，用户选择是否绑定手机号。true → AI/脚本应用 sendMode可以是send（正式发布，链接长期有效）或draft（草稿预览链接12小时后失效）；false 或缺省 → sendMode仅可以是 draft。pushMode=custom 时为 null，可忽略
-- `accountId` - 公众号账号 ID(custom 模式必填)
+- `openId` - 微信用户 openId（必填）
+- `accounts` - 账号列表（必填）：首项为向导固定的系统默认；从第二项起是授权的公众号列表 
 
 ## 🚨 注意事项
 

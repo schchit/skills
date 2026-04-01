@@ -7,7 +7,7 @@ alwaysApply: true
 
 ## 1. 基础结构
 
-**单 html 文件，文件名 YYYYMMDD_related_name.html**
+**单 html 文件，文件名 YYYYMMDD_HHMMSS_related_name.html**
 
 ```html
 <!DOCTYPE html>
@@ -58,7 +58,7 @@ alwaysApply: true
 }
 ```
 
-### 图文卡片容器（宽度 375px）
+### 图文卡片（贴图、小绿书、小红书）容器（宽度 375px）
 
 ```css
 .card-container {
@@ -283,7 +283,7 @@ p, h1, h2, h3, section {
 
 ---
 
-## 8. 图文卡片（分页）规范
+## 8. 图文卡片（贴图、小绿书、小红书）（分页）规范
 
 **宽度 375px，默认 3:4 竖图比例，高度 500px**
 
