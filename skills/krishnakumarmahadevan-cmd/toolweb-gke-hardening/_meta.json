@@ -1,0 +1,11 @@
+{
+  "owner": "krishnakumarmahadevan-cmd",
+  "slug": "toolweb-gke-hardening",
+  "displayName": "GKE Hardening",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774988485465,
+    "commit": null
+  },
+  "history": []
+}
