@@ -1,7 +1,7 @@
 ---
 name: ssh-remote-control
 description: SSH远程控制电脑 - 让AI Agent通过SSH连接和操作远程Mac/Linux电脑，无需在被控电脑上安装任何agent工具。一个服务器上的AI，触手伸向多台远程设备。
-metadata: {"openclaw": {"homepage": "https://github.com/openclaw/skill-ssh-remote-control"}}
+metadata: {"openclaw": {"homepage": "https://github.com/lixiang92229/skill-ssh-remote-control"}}
 ---
 
 # SSH Remote Control - 远程控制技能
@@ -180,6 +180,12 @@ ssh -i $SSH_KEY_PATH -p $SSH_TARGET_PORT $SSH_TARGET_USER@$SSH_TARGET_HOST 'dock
    - **密钥认证**：即使穿透端口暴露，没有正确密钥也无法登录
    - **关闭即安全**：关闭穿透工具后，任何外部设备都无法访问你的电脑
 
+   > 💡 **为什么"关闭穿透"是真正的安全？**
+   >
+   > 服务器的安全靠"规则"——端口持续开放，靠防火墙规则防护。
+   > 个人电脑 + 穿透工具的安全靠"开关"——穿透工具不运行，外部根本找不到你。
+   > 这不是"防护"，这是**物理隔离**。关闭穿透 = 攻击面归零。
+
    **使用建议：**
    - 仅在需要AI远程控制时才开启穿透
    - 使用完毕立即关闭穿透工具
@@ -196,9 +202,12 @@ ssh -i $SSH_KEY_PATH -p $SSH_TARGET_PORT $SSH_TARGET_USER@$SSH_TARGET_HOST 'dock
 2. **配置SSH**
    ```bash
    sudo nano /etc/ssh/sshd_config
-   # 确保有：PasswordAuthentication yes
-   #         PubkeyAuthentication yes
+   # 确保有：
+   PasswordAuthentication no
+   PubkeyAuthentication yes
    ```
+
+   > ⚠️ **安全建议**：禁用密码认证，只允许密钥认证
 
 3. **重启SSH服务**
    ```bash
@@ -213,6 +222,7 @@ ssh -i $SSH_KEY_PATH -p $SSH_TARGET_PORT $SSH_TARGET_USER@$SSH_TARGET_HOST 'dock
 - 私钥文件权限必须是600
 - 不要将私钥分享给他人
 - 定期更换密钥
+- ⚠️ **重要**：SSH私钥路径被AI获取后，AI理论上可访问任何使用该密钥的服务器。务必使用**专用密钥对**，不要使用日常登录密钥。
 
 ### 2. 防火墙
 - SSH端口不要暴露给0.0.0.0
@@ -225,6 +235,36 @@ ssh -i $SSH_KEY_PATH -p $SSH_TARGET_PORT $SSH_TARGET_USER@$SSH_TARGET_HOST 'dock
   ```
   command="/usr/local/bin/limited.sh",no-pty,permitopen="*",ssh-ed25519 AAAA...
   ```
+
+### 4. 最小权限原则
+
+**使用专用受限账户**（而非 root/管理员）：
+- 在远程电脑上创建专用账户，如 `aiagent`
+- 只授权必要的操作权限
+- 避免 AI 使用管理员权限
+
+**密钥权限限制**：
+- 使用 `from=` 限制连接来源 IP
+- 使用 `command=` 限制可执行命令
+- 使用 `no-pty` 禁止分配伪终端
+- 使用 `permitopen=` 限制端口转发
+
+示例（`~/.ssh/authorized_keys`）：
+```
+from="你的服务器IP",no-pty,command="/bin/false",ssh-ed25519 AAAA...
+```
+
+### 5. 密钥保护建议
+
+- **passphrase 保护**：为私钥设置密码，防止密钥泄露被直接使用
+- **专用密钥**：为本技能创建单独的 SSH 密钥对，可随时 revocation
+- **定期轮换**：定期更换 SSH 密钥对
+
+### 6. 监控与审计
+
+- 定期查看 SSH 登录日志
+- 监控异常的登录时间和来源
+- 记录 AI 执行的关键命令（本地日志）
 
 ## 故障排除
 
@@ -265,9 +305,15 @@ ssh -i $SSH_KEY_PATH -p $SSH_TARGET_PORT $SSH_TARGET_USER@$SSH_TARGET_HOST 'dock
 ## 项目地址 | Project Links
 
 - **ClawHub**: https://clawhub.com/skill/ssh-remote-control
-- **GitHub**: https://github.com/openclaw/skill-ssh-remote-control
+- **GitHub**: https://github.com/lixiang92229/skill-ssh-remote-control
 
 ## 版本历史 | Changelog
 
+- 1.0.9 (2026-03-31): 修复 homepage URL 与 GitHub 一致，强化私钥安全警告
+- 1.0.6 (2026-03-31): 修复 Metadata 不匹配，修复 PasswordAuthentication yes 问题，强化安全建议
+- 1.0.5 (2026-03-31): 重写 README 为整段中英双语格式
+- 1.0.4 (2026-03-31): README 格式修正
+- 1.0.3 (2026-03-31): 修复 GitHub 链接
+- 1.0.2 (2026-03-31): 添加项目链接
 - 1.0.1 (2026-03-31): 强调安全性，通用内网穿透工具，本地完全可控
 - 1.0.0 (2026-03-30): 初始版本，支持macOS/Linux远程控制
