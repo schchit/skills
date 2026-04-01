@@ -1,0 +1,11 @@
+{
+  "owner": "aipoch-ai",
+  "slug": "protein-docking-configurator",
+  "displayName": "Protein Docking Configurator",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774920514876,
+    "commit": null
+  },
+  "history": []
+}
