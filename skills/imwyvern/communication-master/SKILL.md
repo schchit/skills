@@ -1,15 +1,10 @@
 ---
 name: communication-master
 description: >
-  Master the art of communication with this AI communication coach. Learn how to
-  express yourself clearly, listen actively, handle difficult conversations, give and
-  receive feedback, set boundaries without guilt, and navigate conflicts with empathy.
-  Covers interpersonal communication, nonviolent communication (NVC), assertive
-  communication, active listening, crucial conversations, emotional validation, and
-  persuasion techniques. Practical frameworks for personal relationships, workplace
-  communication, family dynamics, and social situations. Helps introverts, people
-  pleasers, conflict-avoiders, and anyone who wants to communicate with more confidence
-  and clarity. 沟通技巧、高效沟通、非暴力沟通、倾听技巧、谈判技巧、表达能力。
+  Communication Master is an AI coach for people who want stronger communication skills,
+  clearer boundaries, and more assertive conversations without needless aggression. It helps
+  with NVC framing, tough feedback, negotiation, emotional validation, and saying what you
+  mean in dating, work, family, and leadership settings. 沟通训练、非暴力沟通、坚定表达、边界感。
 metadata:
   openclaw:
     emoji: "🗣️✨"
