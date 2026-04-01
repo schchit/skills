@@ -4,7 +4,15 @@ description: "Automate Instagram comment-to-DM funnels using the Upload-Post API
 version: "1.0.0"
 metadata:
   author: "Upload-Post"
-  last-updated: "2026-03-28"
+  last-updated: "2026-03-29"
+  openclaw:
+    requires:
+      env:
+        - UPLOAD_POST_API_KEY
+      bins:
+        - curl
+    primaryEnv: UPLOAD_POST_API_KEY
+    homepage: "https://upload-post.com"
 ---
 
 # Comment-to-DM Funnel — Upload-Post API
@@ -73,7 +81,7 @@ Parameters:
 - `reply_message` (required): The DM message to send to matching commenters
 - `profile_username` (required): Upload-Post profile name with Instagram connected
 - `monitoring_interval` (optional): Minutes between checks. Default: 15. Minimum: 15 (values below 15 are auto-clamped)
-- `trigger_keywords` (optional): Array of keywords to filter comments. Only comments containing at least one keyword receive a DM. Case-insensitive and accent-insensitive ("guía" matches "guia"). If omitted, ALL commenters receive a DM.
+- `trigger_keywords` (optional but strongly recommended): Array of keywords to filter comments. Only comments containing at least one keyword receive a DM. Case-insensitive and accent-insensitive ("guía" matches "guia"). **If omitted, ALL commenters receive a DM — use with caution.**
 
 Returns a `monitor_id` you'll need for managing the monitor.
 
@@ -84,6 +92,8 @@ Returns a `monitor_id` you'll need for managing the monitor.
 - Daily DM limits apply per plan (free: 10 DMs/day, paid: 500 DMs/day). When the limit is reached, the monitor pauses and resumes the next day.
 
 **Important**: This monitor sends a fixed `reply_message` — it does not do semantic filtering or personalization. If `trigger_keywords` is set, it only replies to comments containing those words (case and accent insensitive). If omitted, it replies to ALL commenters. For smart semantic filtering, use one-shot mode instead.
+
+> ⚠️ **Safety**: Persistent monitors run on Upload-Post's servers for up to 15 days, even after the agent session ends. Always confirm with the user before starting a monitor, and prefer setting `trigger_keywords` to avoid mass-replying to every commenter. Use `POST /autodms/stop` or `POST /autodms/delete` to cancel.
 
 #### Check Monitor Status
 
