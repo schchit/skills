@@ -1,0 +1,11 @@
+{
+  "owner": "diagnostikon",
+  "slug": "polymarket-candle-cross-asset-divergence-trader",
+  "displayName": "Candle Cross-Asset Divergence Trader",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774768544493,
+    "commit": null
+  },
+  "history": []
+}
