@@ -28,6 +28,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
+    # WARNING: wildcard CORS is for local development only.
+    # In production, replace "*" with your specific frontend origin(s).
     allow_origins=["*"],
     allow_methods=["POST", "GET"],
     allow_headers=["*"],

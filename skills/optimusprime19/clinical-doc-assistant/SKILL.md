@@ -1,20 +1,23 @@
 ---
 name: clinical-doc-assistant
-version: "1.0.0"
+version: "1.0.4"
 description: "Use this skill when a clinician, practice manager, or healthcare developer needs to draft, structure, or retrieve clinical documentation — including SOAP notes, referral letters, prior authorization forms, discharge summaries, and care plan narratives. Connects to FHIR R4-compliant APIs (Epic, Cerner, Azure Health Data Services, HAPI FHIR) to pull structured patient data and generate documentation drafts. Also supports manual input when no EHR connection is available. DO NOT use for direct diagnosis, prescribing decisions, or any task requiring a licensed clinical judgment — this skill assists with documentation only."
 tags: ["healthcare", "fhir", "clinical", "ehr", "documentation", "soap", "prior-auth", "referral", "discharge"]
-author: "your-clawhub-handle"
+author: "optimusprime19"
 license: "MIT"
+homepage: https://github.com/optimusprime19/clinical-doc-assistant
+repository: https://github.com/optimusprime19/clinical-doc-assistant
 requiredEnv:
-  - FHIR_BASE_URL        # e.g. https://your-ehr.example.com/fhir/R4
+  - FHIR_BASE_URL        # e.g. https://your-ehr.example.com/fhir/R4 (not needed if FHIR_SANDBOX_MODE=true)
   - FHIR_CLIENT_ID       # OAuth2 client ID from your EHR app registration
   - FHIR_CLIENT_SECRET   # OAuth2 client secret
   - FHIR_TOKEN_URL       # Token endpoint for SMART on FHIR auth
-  - CLINICAL_DOC_API_URL # Optional: your hosted backend for credit-based generation
-  - CLINICAL_DOC_API_KEY # Optional: API key for the hosted backend
 optionalEnv:
-  - FHIR_TENANT_ID       # Required for Azure Health Data Services
-  - FHIR_SANDBOX_MODE    # Set to "true" to use public HAPI sandbox (no credentials needed)
+  - FHIR_TENANT_ID       # Required for Azure Health Data Services only
+  - FHIR_SANDBOX_MODE    # Set to "true" to use public HAPI sandbox — no credentials needed
+  - CLINICAL_DOC_API_URL # Hosted backend URL for credit-based generation (see backend.py)
+  - CLINICAL_DOC_API_KEY # API key for the hosted backend
+  - ANTHROPIC_API_KEY    # Required server-side if you self-host backend.py. When the hosted backend is used, patient_context is forwarded to Anthropic's API to generate documents. Do NOT use with real PHI unless you have a BAA with Anthropic and your backend is deployed in a HIPAA-eligible environment.
 ---
 
 # Clinical Documentation Assistant
@@ -39,6 +42,8 @@ This skill enables an OpenClaw agent to connect to any FHIR R4-compliant EHR, re
 - Any R4-compliant server
 
 > ⚠️ **Clinical Disclaimer:** All output is a documentation *draft* intended to be reviewed, edited, and signed by a licensed clinician. This skill does not provide clinical advice, diagnoses, or prescriptions.
+
+> 🔒 **Privacy / PHI Warning:** FHIR data is fetched into the agent's context for the session only and is not written to disk by this skill. If you use the hosted backend (`CLINICAL_DOC_API_URL`), patient context is transmitted to that server — only use a backend you control in a HIPAA-eligible environment. **Do not use a third-party hosted backend with real patient data unless a BAA is in place.** For development and testing, always use `FHIR_SANDBOX_MODE=true` with synthetic data only.
 
 ---
 
@@ -387,6 +392,8 @@ Agent: [Pulls active conditions, labs (HbA1c), current meds]
 
 | Version | Date       | Changes                              |
 |---------|------------|--------------------------------------|
+| 1.0.4   | 2026-03-29 | Fixed misleading ANTHROPIC_API_KEY comment; clarified patient_context is forwarded to Anthropic when backend is used; added CORS production warning. |
+| 1.0.3   | 2026-03-29 | Fixed env var declarations (moved optional vars out of requiredEnv); added ANTHROPIC_API_KEY to optionalEnv with context; added PHI/privacy warning. |
 | 1.0.0   | 2026-03-29 | Initial release. SOAP, referral, prior auth, discharge, AVS. SMART on FHIR auth. Sandbox mode. |
 
 ---
