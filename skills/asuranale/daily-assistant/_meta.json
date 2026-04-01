@@ -1,0 +1,11 @@
+{
+  "owner": "asuranale",
+  "slug": "daily-assistant",
+  "displayName": "日常小助手 MCP Server",
+  "latest": {
+    "version": "2.2.0",
+    "publishedAt": 1775010525584,
+    "commit": null
+  },
+  "history": []
+}

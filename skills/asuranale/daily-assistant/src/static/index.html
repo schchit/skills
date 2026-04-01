@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Assistant</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- 顶部栏 -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <span class="logo">📅</span>
+                <h1 id="app-title">日常小助手</h1>
+            </div>
+            <div class="topbar-right">
+                <select id="lang-select" title="Language">
+                    <option value="zh">中文</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
+        </header>
+
+        <!-- 主体 -->
+        <main class="main-layout">
+            <!-- 左侧：任务面板 -->
+            <section class="panel tasks-panel">
+                <div class="panel-header">
+                    <h2 id="lbl-tasks">📥 今日任务</h2>
+                    <div class="date-nav">
+                        <button id="btn-prev" class="icon-btn" title="Previous day">&larr;</button>
+                        <input type="date" id="date-picker">
+                        <button id="btn-next" class="icon-btn" title="Next day">&rarr;</button>
+                        <button id="btn-today" class="text-btn" data-zh="今天" data-en="Today">今天</button>
+                    </div>
+                </div>
+
+                <!-- 任务列表 -->
+                <div id="task-list" class="task-list">
+                    <div class="empty-state" id="empty-state">
+                        <p id="empty-msg">加载中...</p>
+                    </div>
+                </div>
+
+                <!-- 新增任务 -->
+                <div class="add-task-bar">
+                    <input type="text" id="new-task-input" data-placeholder-zh="添加新任务..." data-placeholder-en="Add new task..." placeholder="添加新任务...">
+                    <input type="number" id="new-task-time" min="5" max="480" step="5" data-placeholder-zh="分钟" data-placeholder-en="min" placeholder="分钟">
+                    <select id="new-task-priority">
+                        <option value="medium" data-zh="普通" data-en="Normal">普通</option>
+                        <option value="highest" data-zh="最高 ⏫" data-en="Highest ⏫">最高 ⏫</option>
+                        <option value="high" data-zh="高 🔼" data-en="High 🔼">高 🔼</option>
+                        <option value="low" data-zh="低 🔽" data-en="Low 🔽">低 🔽</option>
+                    </select>
+                    <button id="btn-add" class="primary-btn" data-zh="添加" data-en="Add">添加</button>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="action-bar">
+                    <button id="btn-inherit" class="action-btn" data-zh="📥 继承昨日任务" data-en="📥 Inherit yesterday's tasks">📥 继承昨日任务</button>
+                    <button id="btn-review" class="action-btn" data-zh="📊 生成回顾" data-en="📊 Generate review">📊 生成回顾</button>
+                </div>
+            </section>
+
+            <!-- 右侧：Dashboard -->
+            <aside class="panel dashboard-panel">
+                <!-- 统计卡片 -->
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-number" id="stat-done">0</div>
+                        <div class="stat-label" data-zh="已完成" data-en="Done" id="lbl-done">已完成</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="stat-todo">0</div>
+                        <div class="stat-label" data-zh="未完成" data-en="To do" id="lbl-todo">未完成</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="stat-rate">—</div>
+                        <div class="stat-label" data-zh="完成率" data-en="Rate" id="lbl-rate">完成率</div>
+                    </div>
+                </div>
+
+                <!-- 超期 -->
+                <div class="dash-section">
+                    <h3 id="lbl-overdue">🔴 超期任务</h3>
+                    <div id="overdue-list" class="mini-list">
+                        <span class="muted" id="overdue-empty" data-zh="无超期" data-en="No overdue">无超期</span>
+                    </div>
+                </div>
+
+                <!-- 7 天趋势 -->
+                <div class="dash-section">
+                    <h3 id="lbl-history">📈 7 天趋势</h3>
+                    <div id="history-chart" class="history-chart"></div>
+                </div>
+
+                <!-- 拆分提醒 -->
+                <div class="dash-section">
+                    <h3 id="lbl-split">✂️ 拆分提醒</h3>
+                    <div id="split-list" class="mini-list">
+                        <span class="muted" id="split-empty" data-zh="无需拆分" data-en="All good">无需拆分</span>
+                    </div>
+                </div>
+            </aside>
+        </main>
+
+        <!-- Toast -->
+        <div id="toast" class="toast hidden"></div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
