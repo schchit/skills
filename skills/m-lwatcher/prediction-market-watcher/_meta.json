@@ -1,0 +1,11 @@
+{
+  "owner": "m-lwatcher",
+  "slug": "prediction-market-watcher",
+  "displayName": "Prediction Market Watcher",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774966298782,
+    "commit": null
+  },
+  "history": []
+}
