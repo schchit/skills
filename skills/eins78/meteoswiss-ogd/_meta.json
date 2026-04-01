@@ -1,0 +1,11 @@
+{
+  "owner": "eins78",
+  "slug": "meteoswiss-ogd",
+  "displayName": "MeteoSwiss Open Data",
+  "latest": {
+    "version": "1.0.0-rc.1",
+    "publishedAt": 1774817497239,
+    "commit": null
+  },
+  "history": []
+}
