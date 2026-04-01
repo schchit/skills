@@ -1,0 +1,11 @@
+{
+  "owner": "twinsgeeks",
+  "slug": "homelab-ai",
+  "displayName": "Home Lab AI — Turn Spare Macs Into a Local AI Cluster",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774940074359,
+    "commit": null
+  },
+  "history": []
+}
