@@ -1,0 +1,11 @@
+{
+  "owner": "terryds",
+  "slug": "x-trends-api",
+  "displayName": "X Trends (using official API)",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774874174265,
+    "commit": null
+  },
+  "history": []
+}
