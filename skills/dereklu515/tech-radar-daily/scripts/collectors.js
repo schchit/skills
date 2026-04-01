@@ -7,15 +7,17 @@
  */
 
 const fetch = require('node-fetch');
+const ProxyAgent = require('proxy-agent');
 const { parseGitHubTrending, parseProductHunt, parseHackerNews, parseAwesomeList } = require('./html-parser');
 
-// 代理配置
-// 注意：必须显式设置 HTTP_PROXY 环境变量，否则不使用代理
-// 注意：node-fetch 通过 HttpProxyAgent 支持代理
-const PROXY = process.env.HTTP_PROXY || null;
+// ============ 全局代理配置 ============
+// 自动识别 http/https 协议，无需手动配置
+// 读取 https_proxy 或 HTTPS_PROXY 环境变量
+const globalAgent = new ProxyAgent(process.env.https_proxy || process.env.HTTPS_PROXY || process.env.http_proxy || process.env.HTTP_PROXY);
 
 // 如果需要使用代理，请在运行前设置：
-// export HTTP_PROXY=http://your-proxy:port
+// export https_proxy=http://127.0.0.1:7897
+// ====================================
 
 /**
  * 情报源 1: GitHub Trending
@@ -24,7 +26,7 @@ async function collectGitHubTrending() {
   console.log('  📡 抓取 GitHub Trending...');
   
   try {
-    const response = await fetch('https://github.com/trending?since=daily');
+    const response = await fetch('https://github.com/trending?since=daily', { agent: globalAgent });
     const html = await response.text();
     
     const projects = parseGitHubTrending(html);
@@ -67,7 +69,7 @@ async function collectProductHunt() {
   console.log('  📡 抓取 Product Hunt...');
   
   try {
-    const response = await fetch('https://www.producthunt.com');
+    const response = await fetch('https://www.producthunt.com', { agent: globalAgent });
     await response.text(); // 需要时解析 HTML
     
     // 简化：返回模拟数据（实际需解析 HTML）
@@ -97,13 +99,13 @@ async function collectHackerNews() {
   console.log('  📡 抓取 Hacker News...');
   
   try {
-    const response = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json');
+    const response = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json', { agent: globalAgent });
     const storyIds = (await response.json()).slice(0, 10);
     const stories = [];
     
     for (const id of storyIds.slice(0, 5)) {
       try {
-        const storyResponse = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`);
+        const storyResponse = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`, { agent: globalAgent });
         const story = await storyResponse.json();
         
         if (story && story.url && isRelevant(story.title)) {

@@ -5,8 +5,14 @@
  */
 
 const fetch = require('node-fetch');
+const ProxyAgent = require('proxy-agent');
 const fs = require('fs');
 const path = require('path');
+
+// ============ 全局代理配置 ============
+// 自动识别 http/https 协议，无需手动配置
+const globalAgent = new ProxyAgent(process.env.https_proxy || process.env.HTTPS_PROXY || process.env.http_proxy || process.env.HTTP_PROXY);
+// ====================================
 
 const CACHE_PATH = path.join(__dirname, '../data/github_cache.json');
 
@@ -50,7 +56,8 @@ async function getStars(repo, cache) {
  const options = {
  headers: process.env.GITHUB_TOKEN
  ? { 'Authorization': `token ${process.env.GITHUB_TOKEN}` }
- : {}
+ : {},
+ agent: globalAgent
  };
 
  const response = await fetch(url, options);
@@ -171,7 +178,7 @@ async function collectAwesomeLists() {
  console.log(`📖 读取 ${list.name}...`);
 
  // 使用 fetch 替代 curl
- const response = await fetch(list.url);
+ const response = await fetch(list.url, { agent: globalAgent });
  const readme = await response.text();
 
  const projects = parseAwesomeList(readme, list.name);
