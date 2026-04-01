@@ -1,0 +1,11 @@
+{
+  "owner": "synapsefirm-cmd",
+  "slug": "excel-generator",
+  "displayName": "Excel Generator",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774962006361,
+    "commit": null
+  },
+  "history": []
+}
