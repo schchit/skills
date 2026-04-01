@@ -1,0 +1,11 @@
+{
+  "owner": "panthrocorp",
+  "slug": "panthrocorp-zoho-mail",
+  "displayName": "Zoho Mail",
+  "latest": {
+    "version": "0.2.1",
+    "publishedAt": 1774882230420,
+    "commit": null
+  },
+  "history": []
+}
