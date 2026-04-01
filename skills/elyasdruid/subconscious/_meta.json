@@ -3,9 +3,15 @@
   "slug": "subconscious",
   "displayName": "Subconscious",
   "latest": {
-    "version": "1.7.0",
-    "publishedAt": 1774957928340,
-    "commit": "https://github.com/openclaw/skills/commit/0378025e8f50193c848f1fbe16d3a990c9f879de"
+    "version": "1.8.0",
+    "publishedAt": 1774958099271,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.7.0",
+      "publishedAt": 1774957928340,
+      "commit": "https://github.com/openclaw/skills/commit/0378025e8f50193c848f1fbe16d3a990c9f879de"
+    }
+  ]
 }
