@@ -1,0 +1,11 @@
+{
+  "owner": "membranedev",
+  "slug": "checkmarx",
+  "displayName": "Checkmarx",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775001766846,
+    "commit": null
+  },
+  "history": []
+}
