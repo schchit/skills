@@ -1,0 +1,11 @@
+{
+  "owner": "cmu4hlee",
+  "slug": "auto-upgrade",
+  "displayName": "Auto Upgrade",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775112844450,
+    "commit": null
+  },
+  "history": []
+}
