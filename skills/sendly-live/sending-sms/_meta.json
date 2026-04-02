@@ -1,0 +1,11 @@
+{
+  "owner": "sendly-live",
+  "slug": "sending-sms",
+  "displayName": "Sending SMS",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775081360079,
+    "commit": null
+  },
+  "history": []
+}
