@@ -1,0 +1,11 @@
+{
+  "owner": "yozu",
+  "slug": "exec-security",
+  "displayName": "Exec Security",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775042370865,
+    "commit": null
+  },
+  "history": []
+}
