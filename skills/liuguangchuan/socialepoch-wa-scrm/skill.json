@@ -1,0 +1,49 @@
+{
+  "slug": "socialepoch-wa-scrm",
+  "name": "SocialEpoch WhatsApp SCRM 智能助手",
+  "version": "1.0.1",
+  "author": "SocialEpoch",
+  "description": "官方原生对接 SocialEpoch WhatsApp SCRM API，零代码实现文字/图片/音频/文件/视频/名片/名片超链/分流超链全类型消息收发、客户管理、聊天记录查询、WebHook回调、账号&消息状态监控，支持国内/印尼双环境自动切换。",
+  "category": "营销/客服/海外/AI工具",
+  "tags": ["whatsapp", "wa","ws", "AI","scrm", "socialepoch", "消息推送", "客户管理", "聊天记录", "webhook", "图片", "视频", "文件", "名片", "超链", "海外营销", "客服系统"],
+  "icon": "📱",
+  "permissions": ["network", "config"],
+  "configSchema": {
+    "tenantId": {
+      "type": "string",
+      "label": "tenantId（租户ID）",
+      "required": true,
+      "placeholder": "请填写平台分配的 tenantId"
+    },
+    "ApiKey": {
+      "type": "string",
+      "label": "ApiKey（API密钥）",
+      "required": true,
+      "secret": true,
+      "placeholder": "请填写平台分配的 ApiKey"
+    },
+    "API_BASE": {
+      "type": "string",
+      "label": "API网关地址（默认国内）",
+      "required": false,
+      "default": "https://api.socialepoch.com",
+      "placeholder": "国内：https://api.socialepoch.com\n印尼：http://id.wascrm.socialepoch.com"
+    },
+    "mediaTips": {
+      "type": "string",
+      "label": "多媒体使用说明",
+      "required": false,
+      "default": "图片/音频/文件/视频最大支持25MB，仅支持公网可访问链接；名片超链/分流超链封面图建议640*640px",
+      "readonly": true
+    }
+  },
+  "triggers": [
+    "发送WA消息", "发WhatsApp", "发送文字", "发送图片", "发送音频", "发送文件", "发送视频", "发送名片", "发送名片超链", "发送分流超链",
+    "查询聊天记录", "获取客户列表", "设置客户标签", "设置客户备注", "查询账号状态", "查询消息状态", "设置WebHook回调"
+  ],
+  "metadata": {
+    "requires": {
+      "config": ["tenantId", "ApiKey", "API_BASE"]
+    }
+  }
+}
