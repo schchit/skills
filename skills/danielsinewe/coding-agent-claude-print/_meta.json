@@ -1,0 +1,11 @@
+{
+  "owner": "danielsinewe",
+  "slug": "coding-agent-claude-print",
+  "displayName": "Coding Agent (Claude Print + PTY Rules)",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1775028456390,
+    "commit": null
+  },
+  "history": []
+}
