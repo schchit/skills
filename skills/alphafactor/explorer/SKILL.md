@@ -5,99 +5,97 @@ description: Search and analyze trending GitHub repositories by topics, star cou
 
 # GitHub Projects Explorer
 
-发现并分析 GitHub 上的热门开源项目，支持多维度搜索和筛选。
+Discover and analyze trending open-source projects on GitHub, with support for multi-dimensional search and filtering.
 
-发现并分析 GitHub 上的热门开源项目，支持多维度搜索和筛选。
+## Features
 
-## 功能特性
+- 🏷️ **Multi-Tag Filtering** - Support for one or more project topics/tags
+- ⭐ **Star Count Filtering** - Filter by a minimum number of stars
+- 📅 **Time Range** - Filter projects created within the last N days
+- 🔤 **Programming Language** - Filter by specific programming language
+- 📊 **Smart Sorting** - Sort by Stars, Forks, or Updated Time
 
-- 🏷️ **多标签筛选** - 支持一个或多个项目标签
-- ⭐ **Star 数量过滤** - 按最低 Star 数筛选
-- 📅 **时间范围** - 筛选最近 N 天内创建的项目
-- 🔤 **编程语言** - 按编程语言筛选
-- 📊 **智能排序** - 支持 Stars/Forks/更新时间排序
+## Prerequisites
 
-## 前提条件
+### Optional: Configure GitHub Token
 
-### 可选：配置 GitHub Token
-
-GitHub API 有请求限制（未认证 60次/小时，认证 5000次/小时）。
+The GitHub API has rate limits (60 requests/hour unauthenticated, 5000 requests/hour authenticated).
 
 ```bash
-# 获取 Token: https://github.com/settings/tokens
+# Get a Token: https://github.com/settings/tokens
 export GITHUB_TOKEN="your_github_token"
 ```
 
-添加到 `~/.zshrc`：
+To add it permanently to `~/.zshrc`:
 ```bash
 echo 'export GITHUB_TOKEN="your-token"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-## 使用方法
+## Usage
 
-### 基础搜索
+### Basic Search
 
-**按标签搜索：**
+**Search by Topic:**
 ```bash
 python3 scripts/github_projects.py --topic python
 ```
 
-**多个标签（与关系）：**
+**Multiple Topics (AND relation):**
 ```bash
 python3 scripts/github_projects.py --topic python --topic machine-learning
 ```
 
-### 按 Star 数量筛选
+### Filter by Star Count
 
 ```bash
-# 查找 Star > 1000 的 Python 项目
+# Find Python projects with Stars > 1000
 python3 scripts/github_projects.py --topic python --stars 1000
 
-# 查找 Star > 10000 的 AI 项目
+# Find AI projects with Stars > 10000
 python3 scripts/github_projects.py --topic ai --stars 10000
 ```
 
-### 按时间筛选（最近 N 天）
+### Filter by Time (Last N Days)
 
 ```bash
-# 最近 30 天内创建的 Python 项目
+# Python projects created in the last 30 days
 python3 scripts/github_projects.py --topic python --days 30
 
-# 最近 7 天内创建的高 Star AI 项目
+# High-star AI projects created in the last 7 days
 python3 scripts/github_projects.py --topic ai --stars 100 --days 7
 ```
 
-### 按编程语言筛选
+### Filter by Programming Language
 
 ```bash
-# Rust 语言的项目
+# Rust projects
 python3 scripts/github_projects.py --lang rust --stars 1000
 
-# Go 语言的项目
+# Go projects
 python3 scripts/github_projects.py --lang go --stars 500 --days 30
 
-# TypeScript 项目
+# TypeScript projects
 python3 scripts/github_projects.py --lang typescript --topic react --stars 500
 ```
 
-### 综合示例
+### Comprehensive Examples
 
 ```bash
-# AI 项目：最近30天、Python、Star>500
+# AI Projects: Last 30 days, Python, Stars > 500
 python3 scripts/github_projects.py \
   --topic ai --topic python \
   --stars 500 \
   --days 30
 
-# Rust 工具：高 Star、最近90天
+# Rust Tools: High stars, Last 90 days
 python3 scripts/github_projects.py \
   --topic rust \
   --stars 5000 \
   --days 90 \
   --limit 50
 
-# 前端框架：JavaScript、Star>1000
+# Frontend Frameworks: JavaScript, Stars > 1000
 python3 scripts/github_projects.py \
   --topic frontend \
   --lang javascript \
@@ -105,11 +103,11 @@ python3 scripts/github_projects.py \
   --sort updated
 ```
 
-## 输出格式
+## Output Format
 
-示例输出：
+Example Output:
 ```
-🔥 找到 30 个热门项目:
+🔥 Found 30 trending projects:
 
 1. 🌟 facebook/react
    📝 A declarative, efficient, and flexible JavaScript library...
@@ -125,84 +123,84 @@ python3 scripts/github_projects.py \
    ...
 ```
 
-## 命令参数
+## Command Arguments
 
-| 参数 | 简写 | 说明 | 示例 |
-|------|------|------|------|
-| `--topic` | `-t` | 项目标签（可多次使用） | `-t python -t ai` |
-| `--stars` | `-s` | 最少 Star 数量 | `--stars 1000` |
-| `--days` | `-d` | 最近 N 天内创建 | `--days 30` |
-| `--lang` | `-l` | 编程语言 | `--lang rust` |
-| `--limit` | - | 返回数量（默认30） | `--limit 50` |
-| `--sort` | - | 排序方式 | `--sort stars` |
+| Argument | Short | Description | Example |
+|----------|-------|-------------|---------|
+| `--topic` | `-t` | Project topic/tag (can be used multiple times) | `-t python -t ai` |
+| `--stars` | `-s` | Minimum number of stars | `--stars 1000` |
+| `--days` | `-d` | Created within the last N days | `--days 30` |
+| `--lang` | `-l` | Programming language | `--lang rust` |
+| `--limit` | - | Number of results to return (default: 30) | `--limit 50` |
+| `--sort` | - | Sorting method | `--sort stars` |
 
-### 排序选项
+### Sorting Options
 
-- `stars` - 按 Star 数量（默认，降序）
-- `forks` - 按 Fork 数量
-- `updated` - 按最近更新时间
-- `created` - 按创建时间
+- `stars` - By star count (default, descending)
+- `forks` - By fork count
+- `updated` - By recent update time
+- `created` - By creation time
 
-## 热门标签推荐
+## Recommended Trending Tags
 
-| 领域 | 推荐标签 |
-|------|----------|
+| Domain | Recommended Tags |
+|--------|------------------|
 | AI/ML | `ai`, `machine-learning`, `deep-learning`, `nlp`, `computer-vision` |
-| 前端 | `frontend`, `react`, `vue`, `angular`, `javascript`, `typescript` |
-| 后端 | `backend`, `api`, `microservices`, `nodejs`, `python` |
-| 移动开发 | `mobile`, `ios`, `android`, `flutter`, `react-native` |
-|  DevOps | `devops`, `docker`, `kubernetes`, `ci-cd`, `terraform` |
-| 数据 | `database`, `big-data`, `analytics`, `sql`, `nosql` |
-| 安全 | `security`, `cybersecurity`, `penetration-testing` |
-| 工具 | `cli`, `tools`, `productivity`, `automation` |
+| Frontend | `frontend`, `react`, `vue`, `angular`, `javascript`, `typescript` |
+| Backend | `backend`, `api`, `microservices`, `nodejs`, `python` |
+| Mobile Dev | `mobile`, `ios`, `android`, `flutter`, `react-native` |
+| DevOps | `devops`, `docker`, `kubernetes`, `ci-cd`, `terraform` |
+| Data | `database`, `big-data`, `analytics`, `sql`, `nosql` |
+| Security | `security`, `cybersecurity`, `penetration-testing` |
+| Tools | `cli`, `tools`, `productivity`, `automation` |
 
-## 常见问题
+## FAQ
 
-**错误：API 请求限制 reached**
-→ 设置 GITHUB_TOKEN 提高限制：
+**Error: API rate limit exceeded**
+→ Set GITHUB_TOKEN to increase limits:
 ```bash
 export GITHUB_TOKEN="your-token"
 ```
 
-**没有返回结果**
-→ 尝试放宽条件：
-- 降低 `--stars` 数值
-- 增加 `--days` 天数
-- 减少 `--topic` 标签数量
+**No results returned**
+→ Try loosening your search criteria:
+- Lower the `--stars` threshold
+- Increase the `--days` count
+- Reduce the number of `--topic` tags
 
-**搜索结果不准确**
-→ 使用更具体的标签：
-- 用 `machine-learning` 而不是 `ml`
-- 用 `natural-language-processing` 而不是 `nlp`
+**Inaccurate search results**
+→ Use more specific tags:
+- Use `machine-learning` instead of `ml`
+- Use `natural-language-processing` instead of `nlp`
 
-## 使用场景
+## Use Cases
 
-### 场景1：追踪新兴技术
+### Scenario 1: Track Emerging Tech
 ```bash
-# 最近30天的热门 AI 项目
+# Trending AI projects from the last 30 days
 python3 scripts/github_projects.py --topic ai --stars 100 --days 30 --limit 50
 ```
 
-### 场景2：学习优秀项目
+### Scenario 2: Learn from Top Projects
 ```bash
-# 高星 Python 项目
+# High-star Python projects
 python3 scripts/github_projects.py --topic python --stars 10000 --limit 20
 ```
 
-### 场景3：发现新工具
+### Scenario 3: Discover New Tools
 ```bash
-# 最近7天的开发者工具
+# Developer tools from the last 7 days
 python3 scripts/github_projects.py --topic developer-tools --topic cli --days 7 --stars 50
 ```
 
-### 场景4：技术调研
+### Scenario 4: Tech Research
 ```bash
-# 对比不同语言的 Web 框架
+# Compare web frameworks across different languages
 python3 scripts/github_projects.py --topic web-framework --lang rust --stars 1000
 python3 scripts/github_projects.py --topic web-framework --lang go --stars 1000
 ```
 
-## 参考
+## References
 
 - GitHub Search API: [references/github_api.md](references/github_api.md)
-- GitHub 官方文档: https://docs.github.com/en/rest/search
+- Official GitHub Docs: https://docs.github.com/en/rest/search
