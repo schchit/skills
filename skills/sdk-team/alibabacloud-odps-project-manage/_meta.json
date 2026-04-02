@@ -1,0 +1,11 @@
+{
+  "owner": "sdk-team",
+  "slug": "alibabacloud-odps-project-manage",
+  "displayName": "Alibabacloud Odps Project Manage",
+  "latest": {
+    "version": "0.0.1",
+    "publishedAt": 1775032302287,
+    "commit": null
+  },
+  "history": []
+}
