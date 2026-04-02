@@ -130,7 +130,7 @@ source ~/.bashrc
 | 文生图（Qwen） | `npx deepminer-claw-canvas gen --prompt "..."` |
 | 文生图（Gemini） | `npx deepminer-claw-canvas gen --prompt "..." --provider gemini` |
 | 标记编辑（消息含画布图片文件 URL） | `npx deepminer-claw-canvas edit --prompt "..." --markers-file "<画布图片文件URL>"` |
-| 自由编辑 / 图生图 / 多图融合 | `npx deepminer-claw-canvas edit --prompt "..." --raw-image <URL>` |
+| 自由编辑 / 图生图 / 多图融合 | `npx deepminer-claw-canvas edit --prompt "..." --raw-image <图片URL>` |
 | 推送已有图片到画布 | `npx deepminer-claw-canvas push --url "..."` |
 | 查看画布当前状态 | `Invoke-RestMethod -Uri "http://localhost:<端口>/api/canvas/sync/debug"` |
 
@@ -152,6 +152,28 @@ Qwen 脚本是 **MVP 样板**，不是统一 provider 框架。
 2. 使用目标模型自己的 SDK；
 3. 定义该模型自己的 ENV；
 4. 保持相同的调用风格与输出 JSON（尽量一致）。
+
+### 工具模块
+
+脚本目录下提供了可复用的工具模块，用户构建自定义脚本时可直接导入使用：
+
+| 模块 | 用途 |
+| --- | --- |
+| `image_to_base64.py` | 将图片地址（网络 URL 或本地路径）转为 base64 data URL |
+| `push_to_canvas.py` | 将图片推送到画布（远程 URL 会自动下载转为本地 URL） |
+
+**使用示例**（在自定义脚本中）：
+
+```python
+from image_to_base64 import image_to_base64
+from push_to_canvas import push_to_canvas
+
+# 图片转 base64，用于传给 AI 模型
+base64_url = image_to_base64("https://example.com/image.png")
+
+# 推送图片到画布（远程 URL 自动转本地，避免跨域问题）
+element_id, local_url = push_to_canvas("https://example.com/result.png")
+```
 
 ### 1) 文生图脚本
 
@@ -202,17 +224,18 @@ npx deepminer-claw-canvas push --url "https://example.com/image.png"
 
 ### 输出约定
 
-两个脚本都输出 JSON，格式尽量一致：
+脚本输出 JSON，格式尽量一致：
 
 ```json
-{"status":"ok","url":"https://...","pushed":true}
+{"status":"ok","url":"https://...","local_url":"http://localhost:39301/uploads/...","element_id":"gen_xxx","pushed":true}
 ```
 
 说明：
 
-- `url` 为 Qwen 返回的结果图 URL；
-- **不上传 OSS，不做二次持久化**；
-- `pushed: false` 表示推送画布失败，但图片生成/编辑本身已成功。
+- `url`：AI 模型返回的原始图片 URL（可能是远程 OSS 地址）
+- `local_url`：推送到画布的本地 URL（远程图片会自动下载转存）
+- `element_id`：画布上的元素 ID
+- `pushed`：是否成功推送到画布，`false` 表示推送失败但图片生成/编辑本身已成功
 
 ## 画布操作 API
 

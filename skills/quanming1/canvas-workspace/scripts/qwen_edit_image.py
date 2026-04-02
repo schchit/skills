@@ -23,12 +23,9 @@ SECURITY MANIFEST:
 - Local files written: none
 """
 import argparse
-import base64
 import json
-import mimetypes
 import os
 import urllib.request
-import uuid
 
 QWEN_BASE_URL = os.environ.get("QWEN_BASE_URL", "https://dashscope.aliyuncs.com/api/v1")
 QWEN_EDIT_IMAGE_API_KEY = os.environ.get("QWEN_EDIT_IMAGE_API_KEY", "")
@@ -65,21 +62,8 @@ def load_file(path: str) -> dict:
 
 def download_as_base64(image_ref: str) -> str:
     """下载图片并转为 base64 data URL。"""
-    if image_ref.startswith("data:"):
-        return image_ref
-    if image_ref.startswith(("http://", "https://")):
-        with urllib.request.urlopen(image_ref, timeout=30) as resp:
-            data = resp.read()
-            content_type = resp.headers.get("Content-Type", "image/png")
-            encoded = base64.b64encode(data).decode("utf-8")
-            return f"data:{content_type};base64,{encoded}"
-    if os.path.isfile(image_ref):
-        mime_type, _ = mimetypes.guess_type(image_ref)
-        mime_type = mime_type or "image/png"
-        with open(image_ref, "rb") as f:
-            encoded = base64.b64encode(f.read()).decode("utf-8")
-        return f"data:{mime_type};base64,{encoded}"
-    raise RuntimeError(f"无法识别图片输入: {image_ref}")
+    from image_to_base64 import image_to_base64
+    return image_to_base64(image_ref)
 
 
 def call_qwen(prompt: str, image_refs: list[str]) -> str:
@@ -123,20 +107,12 @@ def call_qwen(prompt: str, image_refs: list[str]) -> str:
     raise RuntimeError("Qwen 编辑图返回中没有图片 URL")
 
 
-def push_to_canvas(image_url: str) -> dict:
+def _push_to_canvas(image_url: str) -> dict:
     """推送图片到画布，返回结果。"""
-    element_id = f"gen_{uuid.uuid4().hex[:12]}"
-    payload = json.dumps({"url": image_url, "element_id": element_id}).encode("utf-8")
-    req = urllib.request.Request(
-        f"{CANVAS_SERVER}/api/canvas/sync/gen_image",
-        data=payload,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            resp.read()
-        return {"pushed": True, "element_id": element_id}
+        from push_to_canvas import push_to_canvas
+        element_id, local_url = push_to_canvas(image_url)
+        return {"pushed": True, "element_id": element_id, "local_url": local_url}
     except Exception as e:
         return {"pushed": False, "push_error": str(e)}
 
@@ -159,7 +135,7 @@ def run_marker_edit(prompt: str, markers_file: str) -> list[dict]:
         image_url = call_qwen(final_prompt, [raw_image, marked_image])
 
         result = {"id": item.get("id"), "markers": item.get("markers", []), "status": "ok", "url": image_url}
-        result.update(push_to_canvas(image_url))
+        result.update(_push_to_canvas(image_url))
         results.append(result)
 
     return results
@@ -169,7 +145,7 @@ def run_free_edit(prompt: str, raw_images: list[str]) -> list[dict]:
     """自由编辑模式：直接用用户 prompt + 原图。"""
     image_url = call_qwen(prompt, raw_images)
     result = {"status": "ok", "url": image_url}
-    result.update(push_to_canvas(image_url))
+    result.update(_push_to_canvas(image_url))
     return [result]
 
 

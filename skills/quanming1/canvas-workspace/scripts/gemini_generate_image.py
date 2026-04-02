@@ -127,7 +127,7 @@ def _upload_base64_to_canvas(b64_data: str, mime_type: str) -> str:
     ).encode("utf-8") + image_bytes + f"\r\n--{boundary}--\r\n".encode("utf-8")
 
     req = urllib.request.Request(
-        f"{CANVAS_SERVER}/api/upload",
+        f"{CANVAS_SERVER}/api/upload/image",
         data=body,
         headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
         method="POST",
@@ -141,19 +141,6 @@ def _upload_base64_to_canvas(b64_data: str, mime_type: str) -> str:
         return f"data:{mime_type};base64,{b64_data}"
 
 
-def push_to_canvas(image_url: str) -> None:
-    element_id = f"gen_{uuid.uuid4().hex[:12]}"
-    payload = json.dumps({"url": image_url, "element_id": element_id}).encode("utf-8")
-    req = urllib.request.Request(
-        f"{CANVAS_SERVER}/api/canvas/sync/gen_image",
-        data=payload,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        resp.read()
-
-
 def main():
     parser = argparse.ArgumentParser(description="Gemini 文生图（默认推送到画布）")
     parser.add_argument("--prompt", required=True, help="文生图提示词")
@@ -164,8 +151,11 @@ def main():
     result = {"status": "ok", "url": image_url}
 
     try:
-        push_to_canvas(image_url)
+        from push_to_canvas import push_to_canvas
+        element_id, local_url = push_to_canvas(image_url)
         result["pushed"] = True
+        result["local_url"] = local_url
+        result["element_id"] = element_id
     except Exception as e:
         result["pushed"] = False
         result["push_error"] = str(e)

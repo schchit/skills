@@ -3,9 +3,15 @@
   "slug": "canvas-workspace",
   "displayName": "Canvas Workspace",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775029642585,
-    "commit": "https://github.com/openclaw/skills/commit/4d3fee634011d4b43d3cebda2feea83cdcd4aa4a"
+    "version": "1.4.1",
+    "publishedAt": 1775105512701,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775029642585,
+      "commit": "https://github.com/openclaw/skills/commit/4d3fee634011d4b43d3cebda2feea83cdcd4aa4a"
+    }
+  ]
 }

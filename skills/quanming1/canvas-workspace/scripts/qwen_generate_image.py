@@ -61,19 +61,6 @@ def generate_image(prompt: str, size: str | None = None) -> str:
     raise RuntimeError("Qwen 文生图返回中没有图片 URL")
 
 
-def push_to_canvas(image_url: str) -> None:
-    element_id = f"gen_{uuid.uuid4().hex[:12]}"
-    payload = json.dumps({"url": image_url, "element_id": element_id}).encode("utf-8")
-    req = urllib.request.Request(
-        f"{CANVAS_SERVER}/api/canvas/sync/gen_image",
-        data=payload,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        resp.read()
-
-
 def main():
     parser = argparse.ArgumentParser(description="Qwen 文生图（默认推送到画布）")
     parser.add_argument("--prompt", required=True, help="文生图提示词")
@@ -84,8 +71,11 @@ def main():
     result = {"status": "ok", "url": image_url}
 
     try:
-        push_to_canvas(image_url)
+        from push_to_canvas import push_to_canvas
+        element_id, local_url = push_to_canvas(image_url)
         result["pushed"] = True
+        result["local_url"] = local_url
+        result["element_id"] = element_id
     except Exception as e:
         result["pushed"] = False
         result["push_error"] = str(e)
