@@ -1,0 +1,11 @@
+{
+  "owner": "connectcoinw",
+  "slug": "coinw-spot-skill",
+  "displayName": "Coinw Spot Skill",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1775032759175,
+    "commit": null
+  },
+  "history": []
+}
