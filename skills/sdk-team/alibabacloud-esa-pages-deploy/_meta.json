@@ -1,0 +1,11 @@
+{
+  "owner": "sdk-team",
+  "slug": "alibabacloud-esa-pages-deploy",
+  "displayName": "Alibabacloud Esa Pages Deploy",
+  "latest": {
+    "version": "0.0.1",
+    "publishedAt": 1775032509034,
+    "commit": null
+  },
+  "history": []
+}
