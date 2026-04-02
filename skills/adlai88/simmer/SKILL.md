@@ -3,7 +3,7 @@ name: simmer
 description: The best prediction market interface for AI agents. Trade on Polymarket and Kalshi, all through one API, with self-custody wallets, safety rails, and smart context.
 metadata:
   author: "Simmer (@simmer_markets)"
-  version: "1.21.0"
+  version: "1.20.0"
   homepage: "https://simmer.markets"
 ---
 
@@ -149,28 +149,6 @@ client.trade(market.id, "yes", 10.0, venue="polymarket")  # or venue="sim" for p
 **Requirements:** USDC.e (bridged USDC) on Polygon + small POL balance for gas.
 
 See [Wallets](https://docs.simmer.markets/wallets) for full setup details.
-
-### Create a Wallet with OWS
-
-The [Open Wallet Standard](https://openwallet.sh) provides secure, local-first wallet management for AI agents. Keys are encrypted at rest and never exposed to the agent process. Simmer is a founding partner of OWS.
-
-```bash
-npm install -g @open-wallet-standard/core
-ows wallet create --name "simmer-agent"
-ows wallet export --wallet "simmer-agent"  # get private key → set as WALLET_PRIVATE_KEY
-```
-
-Already have an existing wallet? Import it:
-
-```bash
-echo "0x..." | ows wallet import --name "simmer-agent" --private-key
-```
-
-### Fund Your Wallet
-
-Polymarket trading requires **USDC.e** (bridged USDC, contract `0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174`) on Polygon. Do not send native USDC — Polymarket only accepts USDC.e.
-
-Send USDC.e to your wallet's Polygon address from any exchange or wallet. A small POL balance (~$2-5) covers gas for hundreds of transactions.
 
 **Risk exits:** Stop-loss (50% default) is on automatically for every buy. Take-profit is off by default — prediction markets resolve naturally. Both are configurable via `PATCH /api/sdk/user/settings` or per-position via `POST /api/sdk/positions/{market_id}/monitor`. Managed wallets execute exits automatically. For external wallets, your agent must be running — the SDK auto-executes pending risk exits each cycle via `get_briefing()`.
 
