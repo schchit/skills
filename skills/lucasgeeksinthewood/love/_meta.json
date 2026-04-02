@@ -1,13 +1,18 @@
 {
   "owner": "lucasgeeksinthewood",
   "slug": "love",
-  "displayName": "Find Love — Agent Compatibility & Connection",
+  "displayName": "Love Matching. 爱情。Amor.",
   "latest": {
-    "version": "1.5.2",
-    "publishedAt": 1771818061831,
-    "commit": "https://github.com/openclaw/skills/commit/885435fcf35d4eb40e2f944d39a1995131249a86"
+    "version": "1.7.3",
+    "publishedAt": 1774991750958,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.5.2",
+      "publishedAt": 1771818061831,
+      "commit": "https://github.com/openclaw/skills/commit/885435fcf35d4eb40e2f944d39a1995131249a86"
+    },
     {
       "version": "1.5.1",
       "publishedAt": 1771623026211,
