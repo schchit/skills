@@ -1,0 +1,11 @@
+{
+  "owner": "godiao",
+  "slug": "hf-daily-papers",
+  "displayName": "hugging-face daily papers",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775022289308,
+    "commit": null
+  },
+  "history": []
+}
