@@ -1,0 +1,11 @@
+{
+  "owner": "ntriq-gh",
+  "slug": "phish-radar",
+  "displayName": "Phish Radar",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775128515315,
+    "commit": null
+  },
+  "history": []
+}
