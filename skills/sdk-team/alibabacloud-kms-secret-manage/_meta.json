@@ -1,0 +1,11 @@
+{
+  "owner": "sdk-team",
+  "slug": "alibabacloud-kms-secret-manage",
+  "displayName": "Alibabacloud Kms Secret Manage",
+  "latest": {
+    "version": "0.0.2",
+    "publishedAt": 1775032803890,
+    "commit": null
+  },
+  "history": []
+}
