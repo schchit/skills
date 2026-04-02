@@ -1,0 +1,11 @@
+{
+  "owner": "zw008",
+  "slug": "vmware-avi",
+  "displayName": "Vmware Avi",
+  "latest": {
+    "version": "1.4.4",
+    "publishedAt": 1775058569769,
+    "commit": null
+  },
+  "history": []
+}
