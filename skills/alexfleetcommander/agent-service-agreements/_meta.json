@@ -1,0 +1,11 @@
+{
+  "owner": "alexfleetcommander",
+  "slug": "agent-service-agreements",
+  "displayName": "Agent Service Agreements",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1775089033174,
+    "commit": null
+  },
+  "history": []
+}
