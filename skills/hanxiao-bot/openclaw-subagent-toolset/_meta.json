@@ -1,0 +1,11 @@
+{
+  "owner": "hanxiao-bot",
+  "slug": "openclaw-subagent-toolset",
+  "displayName": "OpenClaw Subagent Toolset",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775059436364,
+    "commit": null
+  },
+  "history": []
+}
