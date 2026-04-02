@@ -1,0 +1,11 @@
+{
+  "owner": "weistiger",
+  "slug": "ptrade-strategy",
+  "displayName": "PTRADE量化策略生成器",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775140851090,
+    "commit": null
+  },
+  "history": []
+}
