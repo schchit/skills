@@ -1,13 +1,18 @@
 {
   "owner": "longjf25",
   "slug": "baidu-nearby",
-  "displayName": "Baidu Nearby",
+  "displayName": "Baidu Nearby / 百度能力集合",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1774018445106,
-    "commit": "https://github.com/openclaw/skills/commit/78d79d609d408b1cf1cdeb6b7e3a56fb4819c40d"
+    "version": "1.0.4",
+    "publishedAt": 1774795498909,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1774018445106,
+      "commit": "https://github.com/openclaw/skills/commit/78d79d609d408b1cf1cdeb6b7e3a56fb4819c40d"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1773408119955,
