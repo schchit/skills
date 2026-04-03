@@ -1,0 +1,11 @@
+{
+  "owner": "pandarey0130-lab",
+  "slug": "community-os-v2",
+  "displayName": "CommunityOS",
+  "latest": {
+    "version": "1.1.0",
+    "publishedAt": 1775199055248,
+    "commit": null
+  },
+  "history": []
+}
