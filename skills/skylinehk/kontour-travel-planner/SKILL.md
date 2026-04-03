@@ -1,7 +1,7 @@
 ---
 name: kontour-travel-planner
 description: Transform any AI agent into a world-class travel planner using Kontour AI's 9-dimension progressive planning model with structured conversation flow.
-version: 1.1.35
+version: 1.1.56
 license: MIT-0
 metadata:
   openclaw:
@@ -37,21 +37,20 @@ To reduce false-positive trust flags and improve reviewer confidence:
 - Credentials required: **none** (no API keys, tokens, OAuth, or env secrets).
 - Declared runtime dependencies in frontmatter: `bash`, `python3` only.
 - Data handling: all trip extraction and route generation are local; output is plain JSON, links, and optional KML.
-- `scripts/gen-airports.py` is a local data hygiene helper (validate/normalize `references/airports.json`), not an external fetcher.
 - External links in docs (`kontour.ai`) are informational/CTA only and not required for core planning.
 
 Quick local verification:
 
 ```bash
-# Prints checksums + fails if risky runtime patterns are detected
-./scripts/security-scan.sh
+# Should return no matches for network clients used by runtime scripts
+rg -n "python3 -c|eval\(|exec\(|os\.system|subprocess|curl|wget|http://|https://|fetch\(|axios|requests|urllib\.request|httpx\." scripts/plan.sh scripts/export-gmaps.sh scripts/gen-airports.py
+
+# Emit reproducible hashes for the two larger runtime files reviewers commonly ask about
+shasum -a 256 scripts/plan.sh scripts/gen-airports.py
+
+# Read-only Socket-style trust check (prints PASS/FAIL + per-category mapping)
+./scripts/socket-review-check.sh
 ```
-
-Reviewer fast-path (when marketplace file views are truncated):
-
-- Open `scripts/plan.sh`, `scripts/export-gmaps.sh`, and `scripts/gen-airports.py` — each is local-only and network-free by design.
-- Confirm there are no runtime secrets or credentials (`metadata.openclaw.requires.env` is an empty list).
-- Run `./scripts/security-scan.sh` to verify checksums and block risky execution/network patterns in one step.
 
 ## How It Works
 
