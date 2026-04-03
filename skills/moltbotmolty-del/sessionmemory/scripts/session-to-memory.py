@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-session-to-memory.py — Convert OpenClaw JSONL session logs to searchable Markdown.
+session-to-memory.py - Convert OpenClaw JSONL session logs to searchable Markdown.
 
 Reads all session JSONL files, converts them to clean Markdown transcripts,
 saves them to memory/sessions/, and triggers re-indexing by OpenClaw's
@@ -28,48 +28,24 @@ def load_state():
     if os.path.exists(STATE_FILE):
         with open(STATE_FILE) as f:
             return json.load(f)
-    return {}
+    return {"processed": {}}
 
 def save_state(state):
+    os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
     with open(STATE_FILE, "w") as f:
         json.dump(state, f, indent=2)
 
 def file_hash(path):
-    """Quick hash based on size + mtime to detect changes."""
-    st = os.stat(path)
-    return f"{st.st_size}:{st.st_mtime_ns}"
+    h = hashlib.md5()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
-def extract_text_content(content):
-    """Extract readable text from message content (string or array)."""
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        parts = []
-        for item in content:
-            if isinstance(item, dict):
-                if item.get("type") == "text":
-                    parts.append(item.get("text", ""))
-                elif item.get("type") == "image_url":
-                    parts.append("[image]")
-                elif item.get("type") == "tool_use":
-                    name = item.get("name", "tool")
-                    parts.append(f"[tool: {name}]")
-                elif item.get("type") == "tool_result":
-                    # Skip verbose tool results — just note it happened
-                    parts.append(f"[tool result]")
-            elif isinstance(item, str):
-                parts.append(item)
-        return "\n".join(parts)
-    return str(content)
-
-def convert_session(jsonl_path):
-    """Convert a JSONL session file to a Markdown transcript."""
-    entries = []
-    session_info = {}
+def parse_session(jsonl_path):
     messages = []
-    compactions = []
-    
-    with open(jsonl_path) as f:
+    metadata = {}
+    with open(jsonl_path, "r") as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -78,172 +54,140 @@ def convert_session(jsonl_path):
                 entry = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            
-            etype = entry.get("type")
-            
-            if etype == "session":
-                session_info = entry
-            elif etype == "message":
-                msg = entry.get("message", {})
-                role = msg.get("role", "unknown")
-                content = extract_text_content(msg.get("content", ""))
-                timestamp = entry.get("timestamp", "")
-                
-                # Skip empty messages, pure thinking, and tool-only messages
-                if not content.strip() or content.strip() in ["", "\n\n"]:
+
+            role = entry.get("role", "")
+            content = entry.get("content", "")
+
+            # Extract text from content (can be string or list)
+            if isinstance(content, list):
+                text_parts = []
+                for part in content:
+                    if isinstance(part, dict):
+                        if part.get("type") == "text":
+                            text_parts.append(part.get("text", ""))
+                    elif isinstance(part, str):
+                        text_parts.append(part)
+                text = "\n".join(text_parts)
+            elif isinstance(content, str):
+                text = content
+            else:
+                text = str(content) if content else ""
+
+            if not text.strip():
+                continue
+
+            # Skip tool calls and system messages for readability
+            if role == "tool":
+                continue
+
+            # Extract sender info from metadata
+            sender = ""
+            if role == "user":
+                # Try to find sender name in the text
+                if "Sender (untrusted metadata)" in text:
+                    try:
+                        sender_match = text.split('"name": "')[1].split('"')[0]
+                        sender = sender_match
+                    except (IndexError, KeyError):
+                        pass
+
+                # Clean up the text - remove metadata blocks
+                clean_text = text
+                # Remove JSON metadata blocks
+                import re
+                clean_text = re.sub(r'Conversation info \(untrusted metadata\):.*?```\n', '', clean_text, flags=re.DOTALL)
+                clean_text = re.sub(r'Sender \(untrusted metadata\):.*?```\n', '', clean_text, flags=re.DOTALL)
+                clean_text = clean_text.strip()
+                if not clean_text:
                     continue
-                # Skip system messages (usually injected context)
-                if role == "system":
-                    continue
-                    
-                messages.append({
-                    "role": role,
-                    "content": content.strip(),
-                    "timestamp": timestamp,
-                })
-            elif etype == "compaction":
-                summary = entry.get("summary", "")
-                if summary:
-                    compactions.append({
-                        "timestamp": entry.get("timestamp", ""),
-                        "summary": summary[:500],  # Keep compaction summaries brief
-                    })
-    
-    if len(messages) < MIN_MESSAGES:
-        return None
-    
-    # Determine session date from first message
-    first_ts = session_info.get("timestamp") or (messages[0]["timestamp"] if messages else "")
-    try:
-        session_dt = datetime.fromisoformat(first_ts.replace("Z", "+00:00"))
-    except (ValueError, AttributeError):
-        session_dt = datetime.now(timezone.utc)
-    
-    session_id = session_info.get("id", os.path.basename(jsonl_path).replace(".jsonl", ""))
-    date_str = session_dt.strftime("%Y-%m-%d")
-    time_str = session_dt.strftime("%H%M")
-    
-    # Build markdown
+                text = clean_text
+
+            messages.append({
+                "role": role,
+                "sender": sender,
+                "text": text[:5000],  # Truncate very long messages
+            })
+
+            # Track session metadata
+            if not metadata.get("first_timestamp"):
+                # Try to extract timestamp
+                if "timestamp" in text:
+                    try:
+                        ts = text.split('"timestamp": "')[1].split('"')[0]
+                        metadata["first_timestamp"] = ts
+                    except (IndexError, KeyError):
+                        pass
+
+    return messages, metadata
+
+def convert_to_markdown(messages, session_id, metadata):
     lines = []
-    lines.append(f"# Session {date_str} {session_dt.strftime('%H:%M')} UTC")
-    lines.append(f"")
-    lines.append(f"- **Session ID:** {session_id[:8]}")
-    lines.append(f"- **Date:** {date_str}")
-    lines.append(f"- **Messages:** {len(messages)}")
-    if compactions:
-        lines.append(f"- **Compactions:** {len(compactions)}")
-    lines.append(f"")
-    
-    # Add compaction summaries as context headers
-    if compactions:
-        lines.append("## Compaction Summaries")
-        lines.append("")
-        for c in compactions[:3]:  # Max 3 to keep size reasonable
-            lines.append(f"### {c['timestamp'][:19]}")
-            lines.append(f"{c['summary']}")
-            lines.append("")
-    
-    lines.append("## Conversation")
-    lines.append("")
-    
-    prev_role = None
+    ts = metadata.get("first_timestamp", "unknown")
+    lines.append(f"# Session: {session_id}")
+    lines.append(f"_Started: {ts}_\n")
+
     for msg in messages:
         role = msg["role"]
-        content = msg["content"]
-        
-        # Clean up system notifications in user messages
-        # Keep them but mark them
-        if content.startswith("System:"):
-            # Trim long system notifications
-            if len(content) > 300:
-                content = content[:300] + "..."
-            lines.append(f"*[System notification]*: {content}")
-            lines.append("")
-            continue
-        
-        # Format based on role
+        sender = msg.get("sender", "")
+        text = msg["text"]
+
         if role == "user":
-            # Try to extract just the human text (after timestamps)
-            lines.append(f"**Dirk:** {content}")
+            label = f"**{sender}**" if sender else "**User**"
         elif role == "assistant":
-            # Truncate very long assistant responses (tool outputs, code, etc.)
-            if len(content) > 2000:
-                content = content[:2000] + "\n\n[...truncated...]"
-            lines.append(f"**Faya:** {content}")
+            label = "**Assistant**"
+        elif role == "system":
+            label = "**System**"
         else:
-            lines.append(f"**{role}:** {content}")
-        
-        lines.append("")
-        prev_role = role
-    
-    return {
-        "markdown": "\n".join(lines),
-        "date_str": date_str,
-        "time_str": time_str,
-        "session_id": session_id,
-        "message_count": len(messages),
-    }
+            label = f"**{role}**"
+
+        lines.append(f"{label}: {text}\n")
+
+    return "\n".join(lines)
 
 def main():
     force = "--force" in sys.argv
     new_only = "--new" in sys.argv
-    
+
     os.makedirs(MEMORY_DIR, exist_ok=True)
-    
-    state = load_state() if not force else {}
-    
-    jsonl_files = sorted(glob.glob(os.path.join(SESSIONS_DIR, "*.jsonl")), key=os.path.getmtime)
-    
+    state = load_state()
+
+    if not os.path.isdir(SESSIONS_DIR):
+        print(f"Sessions directory not found: {SESSIONS_DIR}")
+        sys.exit(1)
+
+    jsonl_files = glob.glob(os.path.join(SESSIONS_DIR, "*.jsonl"))
     print(f"Found {len(jsonl_files)} session files")
-    
+
     converted = 0
-    skipped_small = 0
-    skipped_unchanged = 0
-    errors = 0
-    
-    for jsonl_path in jsonl_files:
-        basename = os.path.basename(jsonl_path)
-        current_hash = file_hash(jsonl_path)
-        
-        # Skip if unchanged
-        if new_only and basename in state and state[basename] == current_hash:
-            skipped_unchanged += 1
+    skipped = 0
+
+    for jsonl_path in sorted(jsonl_files):
+        session_id = os.path.basename(jsonl_path).replace(".jsonl", "")
+        output_path = os.path.join(MEMORY_DIR, f"session-{session_id[:30]}.md")
+
+        # Check if already processed (unless force)
+        if not force:
+            current_hash = file_hash(jsonl_path)
+            if state["processed"].get(session_id) == current_hash:
+                skipped += 1
+                continue
+
+        messages, metadata = parse_session(jsonl_path)
+
+        if len(messages) < MIN_MESSAGES:
+            skipped += 1
             continue
-        
-        try:
-            result = convert_session(jsonl_path)
-        except Exception as e:
-            print(f"  ERROR {basename[:12]}: {e}")
-            errors += 1
-            continue
-        
-        if result is None:
-            skipped_small += 1
-            state[basename] = current_hash
-            continue
-        
-        # Write markdown file
-        out_name = f"session-{result['date_str']}-{result['time_str']}-{result['session_id'][:8]}.md"
-        out_path = os.path.join(MEMORY_DIR, out_name)
-        
-        with open(out_path, "w") as f:
-            f.write(result["markdown"])
-        
-        state[basename] = current_hash
+
+        markdown = convert_to_markdown(messages, session_id, metadata)
+
+        with open(output_path, "w") as f:
+            f.write(markdown)
+
+        state["processed"][session_id] = file_hash(jsonl_path)
         converted += 1
-        
-        size_kb = len(result["markdown"]) // 1024
-        print(f"  ✓ {out_name} ({result['message_count']} msgs, {size_kb}KB)")
-    
+
     save_state(state)
-    
-    print(f"\nDone: {converted} converted, {skipped_small} too small, {skipped_unchanged} unchanged, {errors} errors")
-    print(f"Markdown files in: {MEMORY_DIR}")
-    
-    # Count total files
-    md_files = glob.glob(os.path.join(MEMORY_DIR, "*.md"))
-    total_size = sum(os.path.getsize(f) for f in md_files)
-    print(f"Total: {len(md_files)} transcripts, {total_size // 1024}KB")
+    print(f"Converted: {converted}, Skipped: {skipped}")
 
 if __name__ == "__main__":
     main()

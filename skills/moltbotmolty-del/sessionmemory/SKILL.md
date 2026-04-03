@@ -21,7 +21,7 @@ Solve the #1 problem with long-running AI agents: **knowledge loss after context
 
 When sessions compact (summarize old messages to free context), specific details are lost:
 names, decisions, file paths, reasoning. The agent retains a summary but loses the ability
-to recall "What exactly did Annika say?" or "When did we decide to use v6 format?"
+to recall "What exactly did Sarah say?" or "When did we decide on that approach?"
 
 Most memory skills on ClawHub are just SKILL.md instructions — "write stuff to MEMORY.md."
 That's not a solution. **This skill ships real scripts that do real work.**
