@@ -5,10 +5,17 @@ Usage: statsfm.py <command> [args...]
 """
 
 import sys
+import io
 import json
 import argparse
 import os
 import time
+
+# Ensure UTF-8 output
+if sys.stdout.encoding != "utf-8":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+if sys.stderr.encoding != "utf-8":
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 from typing import Optional, Dict, Any
 from urllib.parse import quote
 from urllib.request import urlopen, Request
@@ -292,8 +299,6 @@ def print_table(rows, max_width=40):
 
 RANGE_MAP = {
     # Explicit aliases → API range values
-    # Legacy ambiguous names removed: "weeks" (unclear if 1 or 4),
-    # "months" (unclear if 1 or 6), "lifetime" (use "all")
     "today": "today",
     "1d": "today",
     "4w": "weeks",
@@ -301,6 +306,7 @@ RANGE_MAP = {
     "6m": "months",
     "6months": "months",
     "all": "lifetime",
+    "lifetime": "lifetime"
 }
 
 # Relative duration ranges (resolved to custom timestamp pairs)
@@ -314,7 +320,7 @@ DURATION_RANGES = {
 RANGE_HELP = "Time range: today/1d, 7d, 14d, 30d, 90d, 4w/4weeks (4 weeks), 6m/6months (6 months), all (lifetime)"
 
 
-def resolve_range(value: str) -> str | None:
+def resolve_range(value: str) -> Optional[str]:
     """Resolve a CLI range alias to the API range value, or None for duration ranges."""
     lower = value.lower()
     if lower in DURATION_RANGES:
@@ -334,13 +340,6 @@ def build_duration_params(days: int) -> str:
     before_ms = int(now.timestamp() * 1000)
     return f"after={after_ms}&before={before_ms}"
 
-
-def range_to_params(value: str | None, default: str = "4w") -> str:
-    """Convert a range value to full query parameters string."""
-    val = (value or default).lower()
-    if val in DURATION_RANGES:
-        return build_duration_params(DURATION_RANGES[val])
-    return f"range={resolve_range(val)}"
 
 
 def build_date_params(args, default_range: str = "4w") -> str:
@@ -411,127 +410,73 @@ def cmd_profile(api: StatsAPI, args):
         print(f"Spotify: {name_str}{product_str}sync={sp_sync}  imported={sp_imported}")
 
 
-def cmd_top_artists(api: StatsAPI, args):
-    """Show top artists"""
-    user = args.user or DEFAULT_USER
-    if not user:
-        print("Error: No user specified. Set STATSFM_USER or pass --user", file=sys.stderr)
-        sys.exit(1)
-    user = quote(user, safe='')
-
+def cmd_top(api: StatsAPI, args):
+    """Unified top command: top {artists|tracks|albums|genres}"""
+    user = get_user_or_exit(args)
     date_params = build_date_params(args)
     limit = args.limit or DEFAULT_LIMIT
+    top_type = args.type
 
-    data = api.request(f"/users/{user}/top/artists?{date_params}&limit={limit}")
-    items = data.get("items", [])
+    from_artist = getattr(args, 'from_artist', None)
+    from_album = getattr(args, 'from_album', None)
 
-    if not items:
-        print("No data found.")
+    # Handle --from-artist / --from-album variants
+    if from_artist is not None:
+        if top_type == "tracks":
+            show_top_items(api, f"/users/{user}/top/artists/{from_artist}/tracks?{date_params}", "track", limit, show_album=True, show_id=True)
+        elif top_type == "albums":
+            show_top_items(api, f"/users/{user}/top/artists/{from_artist}/albums?{date_params}", "album", limit, show_id=True)
+        else:
+            print(f"Error: --from-artist not supported for '{top_type}'", file=sys.stderr)
+            sys.exit(1)
         return
 
-    has_stats = items[0].get("playedMs", 0) and (items[0].get("streams") or "?") != "?"
-    rows = []
-    for item in items:
-        artist = item["artist"]
-        genres = f"[{', '.join(artist.get('genres', [])[:2])}]"
-        row = [f"{item['position']:>3}.", artist["name"]]
-        if has_stats:
-            row += [f"{item['streams']} plays", f"({format_time(item['playedMs'])})"]
-        row += [genres, f"#{artist.get('id', '?')}"]
-        rows.append(row)
-    print_table(rows)
-
-
-def cmd_top_tracks(api: StatsAPI, args):
-    """Show top tracks"""
-    user = args.user or DEFAULT_USER
-    if not user:
-        print("Error: No user specified. Set STATSFM_USER or pass --user", file=sys.stderr)
-        sys.exit(1)
-    user = quote(user, safe='')
-
-    date_params = build_date_params(args)
-    limit = args.limit or DEFAULT_LIMIT
-
-    data = api.request(f"/users/{user}/top/tracks?{date_params}&limit={limit}")
-    items = data.get("items", [])
-
-    if not items:
-        print("No data found.")
+    if from_album is not None:
+        if top_type == "tracks":
+            show_top_items(api, f"/users/{user}/top/albums/{from_album}/tracks?{date_params}", "track", limit or 100)
+        else:
+            print(f"Error: --from-album not supported for '{top_type}'", file=sys.stderr)
+            sys.exit(1)
         return
 
-    has_stats = items[0].get("playedMs", 0) and (items[0].get("streams") or "?") != "?"
-    rows = []
-    for item in items:
-        track = item["track"]
-        row = [f"{item['position']:>3}.", track["name"], track["artists"][0]["name"]]
-        if args.album:
-            row.append(get_album_name(track))
-        if has_stats:
-            row += [f"{item['streams']} plays", f"({format_time(item['playedMs'])})"]
-        row.append(f"#{track.get('id', '?')}")
-        rows.append(row)
-    print_table(rows)
+    # Standard top commands
+    endpoint = f"/users/{user}/top/{top_type}?{date_params}&limit={limit}"
 
-
-def cmd_top_albums(api: StatsAPI, args):
-    """Show top albums"""
-    user = args.user or DEFAULT_USER
-    if not user:
-        print("Error: No user specified. Set STATSFM_USER or pass --user", file=sys.stderr)
-        sys.exit(1)
-    user = quote(user, safe='')
-
-    date_params = build_date_params(args)
-    limit = args.limit or DEFAULT_LIMIT
-
-    data = api.request(f"/users/{user}/top/albums?{date_params}&limit={limit}")
-    items = data.get("items", [])
-
-    if not items:
-        print("No data found.")
-        return
-
-    has_stats = items[0].get("playedMs", 0) and (items[0].get("streams") or "?") != "?"
-    rows = []
-    for item in items:
-        album = item["album"]
-        artists = album.get("artists", [])
-        artist = artists[0]["name"] if artists else "?"
-        row = [f"{item['position']:>3}.", album["name"], artist]
-        if has_stats:
-            row += [f"{item['streams']} plays", f"({format_time(item['playedMs'])})"]
-        row.append(f"#{album.get('id', '?')}")
-        rows.append(row)
-    print_table(rows)
-
-
-def cmd_top_genres(api: StatsAPI, args):
-    """Show top genres"""
-    user = args.user or DEFAULT_USER
-    if not user:
-        print("Error: No user specified. Set STATSFM_USER or pass --user", file=sys.stderr)
-        sys.exit(1)
-    user = quote(user, safe='')
-
-    date_params = build_date_params(args)
-    limit = args.limit or DEFAULT_LIMIT
-
-    data = api.request(f"/users/{user}/top/genres?{date_params}&limit={limit}")
-    items = data.get("items", [])
-
-    if not items:
-        print("No data found.")
-        return
-
-    has_stats = items[0].get("playedMs", 0) and (items[0].get("streams") or "?") != "?"
-    rows = []
-    for item in items:
-        row = [f"{item['position']:>3}.", item["genre"]["tag"]]
-        if has_stats:
-            row += [f"{item['streams']} plays", f"({format_time(item['playedMs'])})"]
-        rows.append(row)
-    print_table(rows)
+    if top_type == "tracks":
+        show_top_items(api, endpoint, "track", limit, show_album=True, show_id=True)
+    elif top_type == "albums":
+        show_top_items(api, endpoint, "album", limit, show_id=True)
+    elif top_type == "artists":
+        data = api.request(endpoint)
+        items = data.get("items", [])
+        if not items:
+            print("No data found.")
+            return
+        has_stats = items[0].get("playedMs", 0) and (items[0].get("streams") or "?") != "?"
+        rows = []
+        for item in items:
+            artist = item["artist"]
+            genres = f"[{', '.join(artist.get('genres', [])[:2])}]"
+            row = [f"{item['position']:>3}.", artist["name"]]
+            if has_stats:
+                row += [f"{item['streams']} plays", f"({format_time(item['playedMs'])})"]
+            row += [genres, f"#{artist.get('id', '?')}"]
+            rows.append(row)
+        print_table(rows)
+    elif top_type == "genres":
+        data = api.request(endpoint)
+        items = data.get("items", [])
+        if not items:
+            print("No data found.")
+            return
+        has_stats = items[0].get("playedMs", 0) and (items[0].get("streams") or "?") != "?"
+        rows = []
+        for item in items:
+            row = [f"{item['position']:>3}.", item["genre"]["tag"]]
+            if has_stats:
+                row += [f"{item['streams']} plays", f"({format_time(item['playedMs'])})"]
+            rows.append(row)
+        print_table(rows)
 
 
 def cmd_now_playing(api: StatsAPI, args):
@@ -553,21 +498,24 @@ def cmd_now_playing(api: StatsAPI, args):
     artists = format_artists(track["artists"])
     name = track["name"]
     album = track["albums"][0]["name"] if track.get("albums") else "?"
+    album_id = track["albums"][0].get("id", "?") if track.get("albums") else "?"
     progress = item["progressMs"] // 1000
     duration = track["durationMs"] // 1000
     device = item.get("deviceName", "?")
-    icon = "▶" if item.get("isPlaying") else "⏸"
+    status = "playing" if item.get("isPlaying") else "paused"
     track_id = track.get("id", "?")
     artist_id = track["artists"][0].get("id", "?") if track.get("artists") else "?"
 
-    print(f"{icon} {name}")
-    print(f"   by {artists}  •  {album}")
-    print(f"   {progress//60}:{progress%60:02d} / {duration//60}:{duration%60:02d}  •  {device}")
-    print(f"   IDs: track={track_id}, artist={artist_id}")
+    print(f"Status: {status}")
+    print(f"Track: {name} (#{track_id})")
+    print(f"Artist: {artists} (#{artist_id})")
+    print(f"Album: {album} (#{album_id})")
+    print(f"Progress: {progress//60}:{progress%60:02d} / {duration//60}:{duration%60:02d}")
+    print(f"Device: {device}")
 
 
 def cmd_recent(api: StatsAPI, args):
-    """Show recently played tracks"""
+    """Show recently played tracks, with now-playing at the top if active"""
     user = args.user or DEFAULT_USER
     if not user:
         print("Error: No user specified. Set STATSFM_USER or pass --user", file=sys.stderr)
@@ -576,14 +524,26 @@ def cmd_recent(api: StatsAPI, args):
 
     limit = args.limit or DEFAULT_LIMIT
 
-    data = api.request(f"/users/{user}/streams/recent?limit={limit}")
-    items = data.get("items", [])
+    # Check now playing
+    np_data = api.request(f"/users/{user}/streams/current")
+    np_item = np_data.get("item")
 
-    if not items:
+    rows = []
+    if np_item:
+        track = np_item["track"]
+        label = "NOW" if np_item.get("isPlaying") else "PAUSED"
+        album = get_album_name(track)[:25]
+        row = [label, track.get("name", "?"), track.get("artists", [{}])[0].get("name", "?"), album, f"#{track.get('id', '?')}"]
+        rows.append(row)
+
+    data = api.request(f"/users/{user}/streams/recent")
+    all_items = data.get("items", [])
+    items = all_items[:limit]
+
+    if not items and not np_item:
         print("No recent streams found.")
         return
 
-    rows = []
     for stream in items:
         track = stream.get("track", {})
         end_time = stream.get("endTime", "")
@@ -596,11 +556,13 @@ def cmd_recent(api: StatsAPI, args):
         else:
             time_str = "??:??"
 
-        row = [time_str, track.get("name", "?"), track.get("artists", [{}])[0].get("name", "?")]
-        if args.album:
-            row.append(get_album_name(track))
+        album = get_album_name(track)[:25]
+        row = [time_str, track.get("name", "?"), track.get("artists", [{}])[0].get("name", "?"), album, f"#{track.get('id', '?')}"]
         rows.append(row)
     print_table(rows)
+    remaining = len(all_items) - limit
+    if remaining > 0:
+        print(f"  ({remaining} more)")
 
 
 def cmd_artist_stats(api: StatsAPI, args):
@@ -636,6 +598,7 @@ def cmd_artist_stats(api: StatsAPI, args):
 def cmd_track_stats(api: StatsAPI, args):
     """Show stats for a specific track"""
     user = get_user_or_exit(args)
+    timezone = quote(get_local_timezone(), safe='')
 
     if not args.track_id:
         print("Error: Track ID required", file=sys.stderr)
@@ -646,15 +609,16 @@ def cmd_track_stats(api: StatsAPI, args):
     track = track_data.get("item", {})
     track_name = track.get("name", "?")
     artists = format_artists(track.get("artists", []))
-    album = get_album_name(track) if track.get("albums") else "?"
+    album = track["albums"][0] if track.get("albums") else {}
 
-    print(f"{track_name} by {artists}")
-    print(f"Album: {album}")
+    print(f"Track: {track_name}")
+    print(f"Artist: {artists}")
+    print(f"Album: {album.get("name")} (#{album.get("id")})")
     print()
 
     date_params = build_date_params(args, "lifetime")
     days, total_count, total_ms = get_per_day_stats_with_totals(
-        api, f"/users/{user}/streams/tracks/{args.track_id}/stats/per-day?timeZone={quote(get_local_timezone(), safe='')}&{date_params}"
+        api, f"/users/{user}/streams/tracks/{args.track_id}/stats/per-day?timeZone={timezone}&{date_params}"
     )
 
     print(f"Total: {total_count} plays  ({format_time(total_ms)})")
@@ -729,7 +693,170 @@ def cmd_stream_stats(api: StatsAPI, args):
             print(f"Unique: {', '.join(parts)}")
 
 
-def show_top_items(api: StatsAPI, endpoint: str, item_key: str, limit: int, show_album=False):
+def cmd_listening_history(api: StatsAPI, args):
+    """Show listening history with monthly/weekly/daily breakdown"""
+    user = get_user_or_exit(args)
+
+    date_params = build_date_params(args, "lifetime")
+    tz = get_local_timezone()
+    days, total_count, total_ms = get_per_day_stats_with_totals(
+        api, f"/users/{user}/streams/stats/per-day?timeZone={quote(tz, safe='')}&{date_params}"
+    )
+
+    print(f"Total: {total_count:,} streams  ({format_time(total_ms)})")
+    print()
+
+    granularity = getattr(args, 'granularity', 'monthly') or 'monthly'
+    if granularity == 'daily':
+        show_daily_breakdown(days, getattr(args, 'limit', None))
+    elif granularity == 'weekly':
+        show_weekly_breakdown(days, getattr(args, 'limit', None))
+    elif granularity == 'monthly':
+        show_monthly_breakdown(days, getattr(args, 'limit', None))
+    else:
+        show_yearly_breakdown(days, getattr(args, 'limit', None))
+
+
+def cmd_first_listen(api: StatsAPI, args):
+    """Show first time a track/artist/album was played"""
+    user = get_user_or_exit(args)
+    entity_type = args.type
+    entity_id = args.entity_id
+    limit = getattr(args, 'limit', 5) or 5
+
+    if entity_type == "artist":
+        url = f"/users/{user}/streams/artists/{entity_id}?limit={limit}&order=asc"
+    elif entity_type == "track":
+        url = f"/users/{user}/streams/tracks/{entity_id}?limit={limit}&order=asc"
+    elif entity_type == "album":
+        url = f"/users/{user}/streams/albums/{entity_id}?limit={limit}&order=asc"
+    else:
+        print(f"Unknown type: {entity_type}")
+        sys.exit(1)
+
+    data = api.request(url)
+    items = data.get("items", [])
+
+    if not items:
+        print("No streams found.")
+        return
+
+    # Get entity name for header
+    if entity_type == "artist":
+        try:
+            artist_data = api.request(f"/artists/{entity_id}")
+            name = artist_data.get("item", {}).get("name", f"Artist #{entity_id}")
+        except Exception:
+            name = f"Artist #{entity_id}"
+    elif entity_type == "track":
+        try:
+            track_data = api.request(f"/tracks/{entity_id}")
+            track_info = track_data.get("item", {})
+            artists = ", ".join(a["name"] for a in track_info.get("artists", []))
+            name = f"{track_info.get('name', f'Track #{entity_id}')} by {artists}" if artists else track_info.get("name", f"Track #{entity_id}")
+        except Exception:
+            name = items[0].get("trackName", f"Track #{entity_id}")
+    elif entity_type == "album":
+        try:
+            album_data = api.request(f"/albums/{entity_id}")
+            name = album_data.get("item", {}).get("name", f"Album #{entity_id}")
+        except Exception:
+            name = f"Album #{entity_id}"
+
+    print(f"First streams: {name}")
+    print()
+
+    # Resolve album names for artist queries (not in streams response)
+    album_names = {}
+    if entity_type == "artist":
+        album_ids = list(set(str(s.get("albumId", "")) for s in items if s.get("albumId")))
+        if album_ids:
+            try:
+                ids_str = ",".join(album_ids)
+                albums_data = api.request(f"/albums/list?ids={ids_str}")
+                for a in albums_data.get("items", []):
+                    album_names[a["id"]] = a.get("name", "")
+            except Exception:
+                pass
+
+    for i, stream in enumerate(items, 1):
+        end_time = stream.get("endTime", "")
+        played_ms = stream.get("playedMs", 0)
+        track_name = stream.get("trackName", "Unknown")
+        album_name = album_names.get(stream.get("albumId"), "")
+
+        # Parse and convert to local time
+        if end_time:
+            dt = datetime.fromisoformat(end_time.replace("Z", "+00:00")).astimezone()
+            time_str = dt.strftime("%b %d, %Y at %I:%M %p")
+        else:
+            time_str = "Unknown"
+
+        duration = format_time(played_ms) if played_ms else "?"
+        if entity_type == "artist":
+            album_str = f"  [{album_name}]" if album_name else ""
+            print(f"  {i}. {track_name}{album_str}  —  {time_str}  ({duration})  #{stream.get('trackId', '')}")
+        elif entity_type == "album":
+            print(f"  {i}. {track_name}  —  {time_str}  ({duration})  #{stream.get('trackId', '')}")
+        else:
+            print(f"  {i}. {time_str}  ({duration})")
+
+
+def cmd_hourly_breakdown(api: StatsAPI, args):
+    """Show listening distribution by hour of day"""
+    user = get_user_or_exit(args)
+
+    date_params = build_date_params(args)
+    range_val = args.range if hasattr(args, 'range') and args.range else "4w"
+
+    tz = get_local_timezone()
+    data = api.request(f"/users/{user}/streams/stats/dates?{date_params}&timeZone={tz}")
+    items = data.get("items", {})
+    hours = items.get("hours", {})
+
+    if not hours:
+        print("No hourly data found. Try a wider date range.")
+        return
+
+    # Find peak for scaling
+    max_count = max(int(v.get("count", 0)) for v in hours.values()) or 1
+
+    print(f"Hourly listening distribution ({range_val}):")
+    print(f"{'Hour':<8} {'Plays':>6}   {'Bar'}")
+    print("-" * 50)
+
+    total_plays = 0
+    hour_data = []
+    for h in range(24):
+        h_data = hours.get(str(h), {})
+        count = h_data.get("count", 0)
+        total_plays += count
+        hour_data.append((h, count))
+
+    peak_hours = sorted(hour_data, key=lambda x: x[1], reverse=True)[:3]
+    peak_set = {h for h, _ in peak_hours}
+
+    for h, count in hour_data:
+        label = f"{h:02d}:00"
+        bar_len = int((count / max_count) * 25)
+        bar = "█" * bar_len
+        peak_marker = " ← peak" if h == peak_hours[0][0] else ""
+        print(f"{label:<8} {count:>6}   {bar}{peak_marker}")
+
+    print("-" * 50)
+    print(f"Total: {total_plays:,} plays")
+    if peak_hours:
+        top3 = ", ".join(f"{h:02d}:00 ({c} plays)" for h, c in peak_hours)
+        print(f"Top hours: {top3}")
+
+    # Night owl score: plays between 23:00-05:00 vs total
+    night_plays = sum(c for h, c in hour_data if h >= 23 or h <= 5)
+    if total_plays > 0:
+        night_pct = night_plays / total_plays * 100
+        print(f"Night owl score: {night_pct:.0f}% of plays between 23:00–05:00")
+
+
+def show_top_items(api: StatsAPI, endpoint: str, item_key: str, limit: int, show_album=False, show_id=False):
     """Shared logic for top-tracks-from-artist, top-tracks-from-album, top-albums-from-artist"""
     data = api.request(endpoint)
     items = data.get("items", [])
@@ -745,10 +872,14 @@ def show_top_items(api: StatsAPI, endpoint: str, item_key: str, limit: int, show
     for item in items:
         entry = item[item_key]
         row = [f"{item['position']:>3}.", entry["name"]]
+        if item_key == "track":
+            row.append(format_artists(entry.get("artists", [])))
         if show_album:
             row.append(get_album_name(entry))
         if has_stats:
             row += [f"{item['streams']} plays", f"({format_time(item['playedMs'])})"]
+        if show_id:
+            row.append(f"#{entry.get('id', '?')}")
         rows.append(row)
     print_table(rows)
     remaining = total - limit
@@ -756,105 +887,41 @@ def show_top_items(api: StatsAPI, endpoint: str, item_key: str, limit: int, show
         print(f"  ({remaining} more)")
 
 
-def cmd_top_tracks_from_artist(api: StatsAPI, args):
-    """Show top tracks from a specific artist"""
-    user = get_user_or_exit(args)
-    if not args.artist_id:
-        print("Error: Artist ID required", file=sys.stderr)
-        sys.exit(1)
-    date_params = build_date_params(args)
+def cmd_charts(api: StatsAPI, args):
+    """Unified charts command: charts {tracks|artists|albums}"""
+    date_params = build_date_params(args, "today")
     limit = args.limit or DEFAULT_LIMIT
-    show_top_items(api, f"/users/{user}/top/artists/{args.artist_id}/tracks?{date_params}", "track", limit, show_album=args.album)
+    charts_type = args.type
 
-
-def cmd_top_tracks_from_album(api: StatsAPI, args):
-    """Show top tracks from a specific album"""
-    user = get_user_or_exit(args)
-    if not args.album_id:
-        print("Error: Album ID required", file=sys.stderr)
-        sys.exit(1)
-    date_params = build_date_params(args)
-    limit = args.limit or 100
-    show_top_items(api, f"/users/{user}/top/albums/{args.album_id}/tracks?{date_params}", "track", limit)
-
-
-def cmd_top_albums_from_artist(api: StatsAPI, args):
-    """Show top albums from a specific artist"""
-    user = get_user_or_exit(args)
-    if not args.artist_id:
-        print("Error: Artist ID required", file=sys.stderr)
-        sys.exit(1)
-    date_params = build_date_params(args)
-    limit = args.limit or DEFAULT_LIMIT
-    show_top_items(api, f"/users/{user}/top/artists/{args.artist_id}/albums?{date_params}", "album", limit)
-
-
-def cmd_charts_top_tracks(api: StatsAPI, args):
-    """Show global top tracks chart"""
-    params = range_to_params(args.range, "today")
-    limit = args.limit or DEFAULT_LIMIT
-
-    data = api.request(f"/charts/top/tracks?{params}")
-    items = data.get("items", [])[:limit]  # Apply limit in software
-
-    if not items:
-        print("No chart data found.")
-        return
-
-    print(f"Global Top Tracks ({range_val}):")
-    rows = []
-    for item in items:
-        track = item.get("track", {})
-        artists = track.get("artists", [])
-        artist = artists[0].get("name", "?") if artists else "?"
-        row = [f"{item.get('position', '?'):>3}.", track.get("name", "?"), artist]
-        if args.album:
-            row.append(get_album_name(track))
-        row.append(f"{item.get('streams', 0)} streams")
-        rows.append(row)
-    print_table(rows)
-
-
-def cmd_charts_top_artists(api: StatsAPI, args):
-    """Show global top artists chart"""
-    params = range_to_params(args.range, "today")
-    limit = args.limit or DEFAULT_LIMIT
-
-    data = api.request(f"/charts/top/artists?{params}")
+    data = api.request(f"/charts/top/{charts_type}?{date_params}")
     items = data.get("items", [])[:limit]
 
     if not items:
         print("No chart data found.")
         return
 
-    print(f"Global Top Artists ({range_val}):")
     rows = []
-    for item in items:
-        artist = item.get("artist", {})
-        genres = f"[{', '.join(artist.get('genres', [])[:2])}]"
-        rows.append([f"{item.get('position', '?'):>3}.", artist.get("name", "?"), f"{item.get('streams', 0)} streams", genres])
-    print_table(rows)
+    if charts_type == "tracks":
+        for item in items:
+            track = item.get("track", {})
+            artists = track.get("artists", [])
+            artist = artists[0].get("name", "?") if artists else "?"
+            row = [f"{item.get('position', '?'):>3}.", track.get("name", "?"), artist, get_album_name(track), f"{item.get('streams', 0)} streams"]
+            rows.append(row)
 
+    elif charts_type == "artists":
+        for item in items:
+            artist = item.get("artist", {})
+            genres = f"[{', '.join(artist.get('genres', [])[:2])}]"
+            rows.append([f"{item.get('position', '?'):>3}.", artist.get("name", "?"), f"{item.get('streams', 0)} streams", genres])
 
-def cmd_charts_top_albums(api: StatsAPI, args):
-    """Show global top albums chart"""
-    params = range_to_params(args.range, "today")
-    limit = args.limit or DEFAULT_LIMIT
+    elif charts_type == "albums":
+        for item in items:
+            album = item.get("album", {})
+            artists = album.get("artists", [])
+            artist = artists[0].get("name", "?") if artists else "?"
+            rows.append([f"{item.get('position', '?'):>3}.", album.get("name", "?"), artist, f"{item.get('streams', 0)} streams"])
 
-    data = api.request(f"/charts/top/albums?{params}")
-    items = data.get("items", [])[:limit]
-
-    if not items:
-        print("No chart data found.")
-        return
-
-    print(f"Global Top Albums ({range_val}):")
-    rows = []
-    for item in items:
-        album = item.get("album", {})
-        artists = album.get("artists", [])
-        artist = artists[0].get("name", "?") if artists else "?"
-        rows.append([f"{item.get('position', '?'):>3}.", album.get("name", "?"), artist, f"{item.get('streams', 0)} streams"])
     print_table(rows)
 
 
@@ -870,13 +937,9 @@ def cmd_artist(api: StatsAPI, args):
     popularity = artist.get("spotifyPopularity", 0)
 
     print(f"{name}  #{args.artist_id}")
-    info_parts = []
     if genres:
-        info_parts.append(genres)
-    info_parts.append(f"{follower_str} followers")
-    if popularity:
-        info_parts.append(f"popularity {popularity}")
-    print("  " + "  |  ".join(info_parts))
+        print(f"Genre: {genres}")
+    print(f"Followers: {follower_str}")
 
     albums_data = api.request(f"/artists/{args.artist_id}/albums?limit=500")
     items = albums_data.get("items", [])
@@ -892,7 +955,7 @@ def cmd_artist(api: StatsAPI, args):
     for a in unique:
         groups.setdefault(a.get("type", "other"), []).append(a)
 
-    album_type = getattr(args, 'type', 'all') or 'all'
+    album_type = getattr(args, 'type', 'album') or 'album'
     type_order = [("album", "Albums"), ("single", "Singles & EPs"), ("compilation", "Compilations")]
     show_types = type_order if album_type == "all" else [(album_type, dict(type_order)[album_type])]
     limit = args.limit or DEFAULT_LIMIT
@@ -927,13 +990,14 @@ def cmd_album(api: StatsAPI, args):
     label = album.get("label", "")
     genres = ", ".join(album.get("genres", []))
 
-    print(f"{name} by {artists}  #{args.album_id}")
-    info_parts = [release_date, f"{album.get('totalTracks', '?')} tracks"]
+    print(f"{name}  #{args.album_id}")
+    for a in album.get("artists", []):
+        print(f"Artist: {a.get('name', '?')}  #{a.get('id', '?')}")
+    print(f"Released: {release_date}  {album.get('totalTracks', '?')} tracks")
     if label:
-        info_parts.append(label)
+        print(f"Label: {label}")
     if genres:
-        info_parts.append(genres)
-    print("  " + "  |  ".join(info_parts))
+        print(f"Genre: {genres}")
     print()
 
     tracks_data = api.request(f"/albums/{args.album_id}/tracks")
@@ -953,6 +1017,166 @@ def cmd_album(api: StatsAPI, args):
             f"#{track.get('id', '?')}",
         ])
     print_table(rows)
+
+
+def cmd_track(api: StatsAPI, args):
+    """Show track info"""
+    data = api.request(f"/tracks/{args.track_id}")
+    track = data.get("item", {})
+
+    name = track.get("name", "?")
+    album = track["albums"][0] if track.get("albums") else {}
+    album_name = album.get("name", "?")
+    album_id = album.get("id", "?")
+    duration = track.get("durationMs", 0)
+    explicit = " [E]" if track.get("explicit") else ""
+
+    spotify_ids = track.get("externalIds", {}).get("spotify", [])
+    spotify_url = f"https://open.spotify.com/track/{spotify_ids[0]}" if spotify_ids else None
+
+    print(f"{name}{explicit}  #{args.track_id}")
+    for a in track.get("artists", []):
+        print(f"Artist: {a.get('name', '?')}  #{a.get('id', '?')}")
+    print(f"Album: {album_name}  #{album_id}")
+    print(f"Duration: {format_duration(duration)}")
+    if spotify_url:
+        print(f"Spotify: {spotify_url}")
+
+
+def cmd_track_features(api: StatsAPI, args):
+    """Show Spotify audio features for a track"""
+    track_ids = args.track_ids
+    results = []
+
+    KEY_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+
+    # Batch fetch all track metadata in one call
+    ids_param = ",".join(str(tid) for tid in track_ids)
+    tracks_data = api.request(f"/tracks/list?ids={ids_param}")
+    tracks = tracks_data.get("items", [])
+
+    # Build lookup by track ID
+    track_map = {}
+    for t in tracks:
+        track_map[t.get("id")] = t
+
+    # Collect Spotify IDs and fetch audio features individually
+    # (stats.fm doesn't support batch audio features)
+    for track_id in track_ids:
+        track = track_map.get(track_id, {})
+        name = track.get("name", f"Track #{track_id}")
+        artists = ", ".join(a["name"] for a in track.get("artists", []))
+        spotify_ids = track.get("externalIds", {}).get("spotify", [])
+        if not spotify_ids:
+            print(f"{name}: no Spotify ID found")
+            continue
+
+        f_data = api.request(f"/SPOTIFY/audio-features/{spotify_ids[0]}")
+        f = f_data.get("item", {})
+        results.append((name, artists, f))
+
+    for name, artists, f in results:
+        if len(results) > 1:
+            print(f"\n{name}  by {artists}")
+            print("─" * 50)
+        else:
+            print(f"{name}  by {artists}\n")
+
+        def bar(val, width=20):
+            filled = int(round(val * width))
+            return "█" * filled + "░" * (width - filled)
+
+        energy = f.get("energy", 0)
+        dance = f.get("danceability", 0)
+        valence = f.get("valence", 0)
+        acoust = f.get("acousticness", 0)
+        speech = f.get("speechiness", 0)
+        liveness = f.get("liveness", 0)
+        tempo = f.get("tempo", 0)
+        loud = f.get("loudness", 0)
+        key = f.get("key", -1)
+        mode = f.get("mode", 1)
+        sig = f.get("time_signature", 4)
+
+        key_name = KEY_NAMES[key] if 0 <= key <= 11 else "?"
+        mode_name = "major" if mode == 1 else "minor"
+
+        print(f"  Energy      {bar(energy)} {energy:.2f}")
+        print(f"  Danceability{bar(dance)} {dance:.2f}")
+        print(f"  Valence     {bar(valence)} {valence:.2f}  ({'happy' if valence > 0.5 else 'sad'})")
+        print(f"  Acousticness{bar(acoust)} {acoust:.2f}")
+        print(f"  Speechiness {bar(speech)} {speech:.2f}")
+        print(f"  Liveness    {bar(liveness)} {liveness:.2f}")
+        print()
+        print(f"  Tempo    {tempo:.1f} BPM   Loudness {loud:.1f} dB")
+        print(f"  Key      {key_name} {mode_name}   Time sig {sig}/4")
+        print()
+
+
+def cmd_album_breakdown(api: StatsAPI, args):
+    """Show per-track play counts for an album (your personal listening breakdown).
+
+    Uses two API calls: album tracklist + user top tracks from album.
+    Tracks with no plays show as 0 (visible gaps in listening).
+    """
+    user = get_user_or_exit(args)
+
+    album_data = api.request(f"/albums/{args.album_id}")
+    album = album_data.get("item", {})
+    album_name = album.get("name", "?")
+    artists = format_artists(album.get("artists", []))
+    release_ms = album.get("releaseDate", 0) or 0
+    year = datetime.fromtimestamp(release_ms / 1000).year if release_ms else "?"
+
+    tracks_data = api.request(f"/albums/{args.album_id}/tracks")
+    tracks = tracks_data.get("items", [])
+
+    if not tracks:
+        print("No tracks found.")
+        return
+
+    # Batch fetch: get all played tracks in one call
+    date_params = build_date_params(args, "lifetime")
+    played_data = api.request(f"/users/{user}/top/albums/{args.album_id}/tracks?{date_params}")
+    played_items = played_data.get("items", [])
+
+    # Build lookup: track_id -> {streams, playedMs}
+    played_map = {}
+    for item in played_items:
+        track = item.get("track", {})
+        tid = track.get("id")
+        if tid:
+            played_map[tid] = {
+                "streams": item.get("streams", 0) or 0,
+                "playedMs": item.get("playedMs", 0) or 0,
+            }
+
+    print(f"{album_name} by {artists}  ({year})  #{args.album_id}")
+    print(f"Listening breakdown for: {user}\n")
+
+    rows = []
+    total_plays = 0
+    total_ms = 0
+
+    for i, track in enumerate(tracks, 1):
+        track_id = track.get("id")
+        track_name = track.get("name", "?")
+        stats = played_map.get(track_id, {"streams": 0, "playedMs": 0})
+        plays = stats["streams"]
+        dur_ms = stats["playedMs"]
+        total_plays += plays
+        total_ms += dur_ms
+        rows.append((i, track_name, plays, dur_ms))
+
+    for i, name, plays, dur_ms in rows:
+        mins = dur_ms // 60000
+        h, m = divmod(mins, 60)
+        time_str = f"{h}h {m:02d}m" if h else f"{m}m" if mins else "—"
+        print(f"  {i:<3} {name:<40} {plays:>6,}  {time_str:>7}")
+
+    total_h = total_ms / 3600000
+    avg = total_plays / len(tracks) if tracks else 0
+    print(f"\n  Total: {total_plays:,} plays  |  {total_h:.0f}h listened  |  {avg:.1f} avg/track")
 
 
 def cmd_search(api: StatsAPI, args):
@@ -1024,14 +1248,15 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s top-artists
-  %(prog)s top-tracks --range lifetime --limit 20
+  %(prog)s top artists
+  %(prog)s top tracks --range lifetime --limit 20
+  %(prog)s top tracks --from-artist 123
+  %(prog)s top albums --from-artist 123
+  %(prog)s top tracks --from-album 456
+  %(prog)s charts tracks
   %(prog)s now-playing --user <username>
   %(prog)s search "madison beer"
-  %(prog)s search "madison beer" --type artist
-  %(prog)s track-stats 70714270 --range lifetime
-  %(prog)s album-stats 16211936
-  %(prog)s stream-stats --range weeks
+  %(prog)s track-history 70714270 --range lifetime
 
 Ranges: today/1d, 4w/weeks (4 weeks), 6m/months (6 months), lifetime/all
 Set STATSFM_USER environment variable for default user
@@ -1044,38 +1269,16 @@ Set STATSFM_USER environment variable for default user
     profile_parser = subparsers.add_parser("profile", help="Show user profile")
     profile_parser.add_argument("--user", "-u", help="stats.fm username")
 
-    # Top artists command
-    artists_parser = subparsers.add_parser("top-artists", help="Show top artists")
-    artists_parser.add_argument("--range", "-r", help=RANGE_HELP)
-    artists_parser.add_argument("--start", help="Start date (YYYY, YYYY-MM, or YYYY-MM-DD)")
-    artists_parser.add_argument("--end", help="End date (YYYY, YYYY-MM, or YYYY-MM-DD)")
-    artists_parser.add_argument("--limit", "-l", type=int, help="Number of results (default: 10)")
-    artists_parser.add_argument("--user", "-u", help="stats.fm username")
-
-    # Top tracks command
-    tracks_parser = subparsers.add_parser("top-tracks", help="Show top tracks")
-    tracks_parser.add_argument("--range", "-r", help=RANGE_HELP)
-    tracks_parser.add_argument("--start", help="Start date (YYYY, YYYY-MM, or YYYY-MM-DD)")
-    tracks_parser.add_argument("--end", help="End date (YYYY, YYYY-MM, or YYYY-MM-DD)")
-    tracks_parser.add_argument("--limit", "-l", type=int, help="Number of results (default: 10)")
-    tracks_parser.add_argument("--user", "-u", help="stats.fm username")
-    tracks_parser.add_argument("--no-album", dest="album", action="store_false", help="Hide album name")
-
-    # Top albums command
-    albums_parser = subparsers.add_parser("top-albums", help="Show top albums")
-    albums_parser.add_argument("--range", "-r", help=RANGE_HELP)
-    albums_parser.add_argument("--start", help="Start date (YYYY, YYYY-MM, or YYYY-MM-DD)")
-    albums_parser.add_argument("--end", help="End date (YYYY, YYYY-MM, or YYYY-MM-DD)")
-    albums_parser.add_argument("--limit", "-l", type=int, help="Number of results (default: 10)")
-    albums_parser.add_argument("--user", "-u", help="stats.fm username")
-
-    # Top genres command
-    genres_parser = subparsers.add_parser("top-genres", help="Show top genres")
-    genres_parser.add_argument("--range", "-r", help=RANGE_HELP)
-    genres_parser.add_argument("--start", help="Start date (YYYY, YYYY-MM, or YYYY-MM-DD)")
-    genres_parser.add_argument("--end", help="End date (YYYY, YYYY-MM, or YYYY-MM-DD)")
-    genres_parser.add_argument("--limit", "-l", type=int, help="Number of results (default: 10)")
-    genres_parser.add_argument("--user", "-u", help="stats.fm username")
+    # Top command (artists, tracks, albums, genres)
+    top_parser = subparsers.add_parser("top", help="Show top artists/tracks/albums/genres")
+    top_parser.add_argument("type", choices=["artists", "tracks", "albums", "genres"], help="What to show")
+    top_parser.add_argument("--range", "-r", help=RANGE_HELP)
+    top_parser.add_argument("--start", help="Start date (YYYY, YYYY-MM, or YYYY-MM-DD)")
+    top_parser.add_argument("--end", help="End date (YYYY, YYYY-MM, or YYYY-MM-DD)")
+    top_parser.add_argument("--limit", "-l", type=int, help="Number of results (default: 15)")
+    top_parser.add_argument("--user", "-u", help="stats.fm username")
+    top_parser.add_argument("--from-artist", type=int, metavar="ID", help="Show top tracks/albums from a specific artist")
+    top_parser.add_argument("--from-album", type=int, metavar="ID", help="Show top tracks from a specific album")
 
     # Now playing command
     now_parser = subparsers.add_parser("now-playing", aliases=["now", "np"], help="Show currently playing")
@@ -1085,37 +1288,41 @@ Set STATSFM_USER environment variable for default user
     recent_parser = subparsers.add_parser("recent", help="Show recently played tracks")
     recent_parser.add_argument("--limit", "-l", type=int, help="Number of results (default: 10)")
     recent_parser.add_argument("--user", "-u", help="stats.fm username")
-    recent_parser.add_argument("--no-album", dest="album", action="store_false", help="Hide album name")
 
-    # Artist stats command
-    artist_stats_parser = subparsers.add_parser("artist-stats", help="Show stats for a specific artist")
+    # Artist history command
+    artist_stats_parser = subparsers.add_parser("artist-history", aliases=["artist-stats"], help="Show history for a specific artist")
     artist_stats_parser.add_argument("artist_id", type=int, help="Artist ID")
-    artist_stats_parser.add_argument("--range", "-r", help=RANGE_HELP)
     artist_stats_parser.add_argument("--start", help="Start date (YYYY, YYYY-MM, or YYYY-MM-DD)")
     artist_stats_parser.add_argument("--end", help="End date (YYYY, YYYY-MM, or YYYY-MM-DD)")
     artist_stats_parser.add_argument("--limit", "-l", type=int, help="Limit to most recent N periods")
     artist_stats_parser.add_argument("--granularity", "-g", choices=["daily", "weekly", "monthly", "yearly"], default="monthly", help="Breakdown granularity (default: monthly)")
     artist_stats_parser.add_argument("--user", "-u", help="stats.fm username")
 
-    # Track stats command
-    track_stats_parser = subparsers.add_parser("track-stats", help="Show stats for a specific track")
+    # Track history command
+    track_stats_parser = subparsers.add_parser("track-history", aliases=["track-stats"], help="Show history for a specific track")
     track_stats_parser.add_argument("track_id", type=int, help="Track ID")
-    track_stats_parser.add_argument("--range", "-r", help=RANGE_HELP)
     track_stats_parser.add_argument("--start", help="Start date (YYYY, YYYY-MM, or YYYY-MM-DD)")
     track_stats_parser.add_argument("--end", help="End date (YYYY, YYYY-MM, or YYYY-MM-DD)")
     track_stats_parser.add_argument("--limit", "-l", type=int, help="Limit to most recent N periods")
     track_stats_parser.add_argument("--granularity", "-g", choices=["daily", "weekly", "monthly", "yearly"], default="monthly", help="Breakdown granularity (default: monthly)")
     track_stats_parser.add_argument("--user", "-u", help="stats.fm username")
 
-    # Album stats command
-    album_stats_parser = subparsers.add_parser("album-stats", help="Show stats for a specific album")
+    # Album history command
+    album_stats_parser = subparsers.add_parser("album-history", aliases=["album-stats"], help="Show history for a specific album")
     album_stats_parser.add_argument("album_id", type=int, help="Album ID")
-    album_stats_parser.add_argument("--range", "-r", help=RANGE_HELP)
     album_stats_parser.add_argument("--start", help="Start date (YYYY, YYYY-MM, or YYYY-MM-DD)")
     album_stats_parser.add_argument("--end", help="End date (YYYY, YYYY-MM, or YYYY-MM-DD)")
     album_stats_parser.add_argument("--limit", "-l", type=int, help="Limit to most recent N periods")
     album_stats_parser.add_argument("--granularity", "-g", choices=["daily", "weekly", "monthly", "yearly"], default="monthly", help="Breakdown granularity (default: monthly)")
     album_stats_parser.add_argument("--user", "-u", help="stats.fm username")
+
+    # Listening history command
+    history_parser = subparsers.add_parser("listening-history", aliases=["history"], help="Show listening history with monthly/weekly/daily breakdown")
+    history_parser.add_argument("--start", help="Start date (YYYY, YYYY-MM, or YYYY-MM-DD)")
+    history_parser.add_argument("--end", help="End date (YYYY, YYYY-MM, or YYYY-MM-DD)")
+    history_parser.add_argument("--granularity", "-g", choices=["daily", "weekly", "monthly", "yearly"], default="yearly", help="Breakdown granularity")
+    history_parser.add_argument("--limit", "-l", type=int, help="Max results")
+    history_parser.add_argument("--user", "-u", help="stats.fm username")
 
     # Stream stats command
     stream_stats_parser = subparsers.add_parser("stream-stats", help="Show overall stream statistics")
@@ -1124,65 +1331,51 @@ Set STATSFM_USER environment variable for default user
     stream_stats_parser.add_argument("--end", help="End date (YYYY, YYYY-MM, or YYYY-MM-DD)")
     stream_stats_parser.add_argument("--user", "-u", help="stats.fm username")
 
-    # Top tracks from artist command
-    top_tracks_artist_parser = subparsers.add_parser("top-tracks-from-artist", help="Show top tracks from a specific artist")
-    top_tracks_artist_parser.add_argument("artist_id", type=int, help="Artist ID")
-    top_tracks_artist_parser.add_argument("--range", "-r", help=RANGE_HELP)
-    top_tracks_artist_parser.add_argument("--start", help="Start date (YYYY, YYYY-MM, or YYYY-MM-DD)")
-    top_tracks_artist_parser.add_argument("--end", help="End date (YYYY, YYYY-MM, or YYYY-MM-DD)")
-    top_tracks_artist_parser.add_argument("--limit", "-l", type=int, help="Number of results (default: 15)")
-    top_tracks_artist_parser.add_argument("--user", "-u", help="stats.fm username")
-    top_tracks_artist_parser.add_argument("--no-album", dest="album", action="store_false", help="Hide album name")
+    # First listen command
+    first_parser = subparsers.add_parser("first-listen", aliases=["first"], help="Show first time a track/artist/album was played")
+    first_parser.add_argument("type", choices=["artist", "track", "album"], help="Entity type")
+    first_parser.add_argument("entity_id", type=int, help="Entity ID")
+    first_parser.add_argument("--limit", "-l", type=int, default=5, help="Number of first streams to show (default: 5)")
+    first_parser.add_argument("--user", "-u", help="stats.fm username")
 
-    # Top tracks from album command
-    top_tracks_album_parser = subparsers.add_parser("top-tracks-from-album", help="Show top tracks from a specific album")
-    top_tracks_album_parser.add_argument("album_id", type=int, help="Album ID")
-    top_tracks_album_parser.add_argument("--range", "-r", help=RANGE_HELP)
-    top_tracks_album_parser.add_argument("--start", help="Start date (YYYY, YYYY-MM, or YYYY-MM-DD)")
-    top_tracks_album_parser.add_argument("--end", help="End date (YYYY, YYYY-MM, or YYYY-MM-DD)")
-    top_tracks_album_parser.add_argument("--limit", "-l", type=int, help="Number of results (default: 15)")
-    top_tracks_album_parser.add_argument("--user", "-u", help="stats.fm username")
+    # Hourly breakdown command
+    hourly_parser = subparsers.add_parser("hourly-breakdown", help="Show listening distribution by hour of day")
+    hourly_parser.add_argument("--range", "-r", help=RANGE_HELP)
+    hourly_parser.add_argument("--start", help="Start date (YYYY, YYYY-MM, or YYYY-MM-DD)")
+    hourly_parser.add_argument("--end", help="End date (YYYY, YYYY-MM, or YYYY-MM-DD)")
+    hourly_parser.add_argument("--user", "-u", help="stats.fm username")
 
-    # Top albums from artist command
-    top_albums_artist_parser = subparsers.add_parser("top-albums-from-artist", help="Show top albums from a specific artist")
-    top_albums_artist_parser.add_argument("artist_id", type=int, help="Artist ID")
-    top_albums_artist_parser.add_argument("--range", "-r", help=RANGE_HELP)
-    top_albums_artist_parser.add_argument("--start", help="Start date (YYYY, YYYY-MM, or YYYY-MM-DD)")
-    top_albums_artist_parser.add_argument("--end", help="End date (YYYY, YYYY-MM, or YYYY-MM-DD)")
-    top_albums_artist_parser.add_argument("--limit", "-l", type=int, help="Number of results (default: 15)")
-    top_albums_artist_parser.add_argument("--user", "-u", help="stats.fm username")
 
     # Artist lookup command
     artist_parser = subparsers.add_parser("artist", help="Show artist info and discography")
     artist_parser.add_argument("artist_id", type=int, help="Artist ID")
-    artist_parser.add_argument("--type", "-t", choices=["album", "single", "all"], default="all", help="Filter by type (default: all)")
+    artist_parser.add_argument("--type", "-t", choices=["album", "single", "all"], default="album", help="Filter by type (default: album, use 'all' to include singles)")
     artist_parser.add_argument("--limit", "-l", type=int, help="Items per section (default: 15)")
 
-    # Alias
-    artist_albums_parser = subparsers.add_parser("artist-albums", help="Alias for artist")
-    artist_albums_parser.add_argument("artist_id", type=int, help="Artist ID")
-    artist_albums_parser.add_argument("--type", "-t", choices=["album", "single", "all"], default="all", help="Filter by type (default: all)")
-    artist_albums_parser.add_argument("--limit", "-l", type=int, help="Items per section (default: 15)")
-
-    # Charts commands
-    charts_tracks_parser = subparsers.add_parser("charts-top-tracks", help="Show global top tracks chart")
-    charts_tracks_parser.add_argument("--limit", "-l", type=int, help="Number of results (default: 15)")
-    charts_tracks_parser.add_argument("--range", "-r", help=RANGE_HELP)
-    charts_tracks_parser.add_argument("--no-album", dest="album", action="store_false", help="Hide album name")
-
-    charts_artists_parser = subparsers.add_parser("charts-top-artists", help="Show global top artists chart")
-    charts_artists_parser.add_argument("--limit", "-l", type=int, help="Number of results (default: 15)")
-    charts_artists_parser.add_argument("--range", "-r", help=RANGE_HELP)
-
-    charts_albums_parser = subparsers.add_parser("charts-top-albums", help="Show global top albums chart")
-    charts_albums_parser.add_argument("--limit", "-l", type=int, help="Number of results (default: 15)")
-    charts_albums_parser.add_argument("--range", "-r", help=RANGE_HELP)
+    # Charts command (global top tracks/artists/albums)
+    charts_parser = subparsers.add_parser("charts", help="Show global top charts")
+    charts_parser.add_argument("type", choices=["tracks", "artists", "albums"], help="What to show")
+    charts_parser.add_argument("--limit", "-l", type=int, help="Number of results (default: 15)")
+    charts_parser.add_argument("--range", "-r", help=RANGE_HELP)
 
     # Album lookup command
     album_parser = subparsers.add_parser("album", help="Show album info and tracklist")
     album_parser.add_argument("album_id", type=int, help="Album ID")
 
+    # Track lookup command
+    track_parser = subparsers.add_parser("track", help="Show track info")
+    track_parser.add_argument("track_id", type=int, help="Track ID")
+
+    # Track features command
+    features_parser = subparsers.add_parser("track-features", aliases=["features"], help="Show Spotify audio features for a track")
+    features_parser.add_argument("track_ids", type=int, nargs="+", help="Track ID(s)")
+
     # Search command
+    breakdown_parser = subparsers.add_parser("album-breakdown", aliases=["breakdown"], help="Show per-track play counts for an album")
+    breakdown_parser.add_argument("album_id", type=int, help="Album ID (from 'album' or 'search' command)")
+    breakdown_parser.add_argument("--user", "-u", default=DEFAULT_USER, help="stats.fm username")
+    breakdown_parser.set_defaults(command="album-breakdown")
+
     search_parser = subparsers.add_parser("search", help="Search for artists, tracks, or albums")
     search_parser.add_argument("query", help="Search query")
     search_parser.add_argument("--type", "-t", choices=["artist", "track", "album"], help="Filter by type (omit to search all)")
@@ -1199,27 +1392,32 @@ Set STATSFM_USER environment variable for default user
     # Route to appropriate command
     commands = {
         "profile": cmd_profile,
-        "top-artists": cmd_top_artists,
-        "top-tracks": cmd_top_tracks,
-        "top-albums": cmd_top_albums,
-        "top-genres": cmd_top_genres,
+        "top": cmd_top,
         "now-playing": cmd_now_playing,
         "now": cmd_now_playing,
         "np": cmd_now_playing,
         "recent": cmd_recent,
         "artist-stats": cmd_artist_stats,
+        "artist-history": cmd_artist_stats,
         "track-stats": cmd_track_stats,
+        "track-history": cmd_track_stats,
         "album-stats": cmd_album_stats,
+        "album-history": cmd_album_stats,
         "stream-stats": cmd_stream_stats,
-        "top-tracks-from-artist": cmd_top_tracks_from_artist,
-        "top-tracks-from-album": cmd_top_tracks_from_album,
-        "top-albums-from-artist": cmd_top_albums_from_artist,
-        "charts-top-tracks": cmd_charts_top_tracks,
-        "charts-top-artists": cmd_charts_top_artists,
-        "charts-top-albums": cmd_charts_top_albums,
+        "listening-history": cmd_listening_history,
+        "history": cmd_listening_history,
+        "first-listen": cmd_first_listen,
+        "first": cmd_first_listen,
+        "hourly-breakdown": cmd_hourly_breakdown,
+        "hourly": cmd_hourly_breakdown,
+        "charts": cmd_charts,
         "album": cmd_album,
         "artist": cmd_artist,
-        "artist-albums": cmd_artist,
+        "track": cmd_track,
+        "track-features": cmd_track_features,
+        "features": cmd_track_features,
+        "album-breakdown": cmd_album_breakdown,
+        "breakdown": cmd_album_breakdown,
         "search": cmd_search,
     }
 
