@@ -3,11 +3,16 @@
   "slug": "polymarket-wallet-xray",
   "displayName": "Polymarket Wallet Xray",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1772506394615,
-    "commit": "https://github.com/openclaw/skills/commit/57182184f8ec00ed90433fdc1fa33c447640a60b"
+    "version": "1.1.1",
+    "publishedAt": 1775184435632,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1772506394615,
+      "commit": "https://github.com/openclaw/skills/commit/57182184f8ec00ed90433fdc1fa33c447640a60b"
+    },
     {
       "version": "1.0.3",
       "publishedAt": 1772187359992,
