@@ -3,11 +3,16 @@
   "slug": "agent-self-assessment",
   "displayName": "Agent Compliance & Security Assessment",
   "latest": {
-    "version": "2.3.0",
-    "publishedAt": 1774787912116,
-    "commit": "https://github.com/openclaw/skills/commit/fa33b45340e7208935389ce60d9365550786a2fa"
+    "version": "2.3.3",
+    "publishedAt": 1774813153837,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.3.0",
+      "publishedAt": 1774787912116,
+      "commit": "https://github.com/openclaw/skills/commit/fa33b45340e7208935389ce60d9365550786a2fa"
+    },
     {
       "version": "2.2.1",
       "publishedAt": 1774467106049,
