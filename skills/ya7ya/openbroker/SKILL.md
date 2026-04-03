@@ -4,8 +4,8 @@ description: Hyperliquid trading plugin with background position monitoring and 
 license: MIT
 compatibility: Requires Node.js 22+, network access to api.hyperliquid.xyz
 homepage: https://www.npmjs.com/package/openbroker
-metadata: {"author": "monemetrics", "version": "1.0.71", "openclaw": {"requires": {"bins": ["openbroker"], "env": ["HYPERLIQUID_PRIVATE_KEY"]}, "primaryEnv": "HYPERLIQUID_PRIVATE_KEY", "install": [{"id": "node", "kind": "node", "package": "openbroker", "bins": ["openbroker"], "label": "Install openbroker (npm)"}]}}
-allowed-tools: ob_account ob_positions ob_funding ob_markets ob_search ob_spot ob_fills ob_orders ob_order_status ob_fees ob_candles ob_funding_history ob_trades ob_rate_limit ob_funding_scan ob_buy ob_sell ob_limit ob_trigger ob_tpsl ob_cancel ob_twap ob_twap_cancel ob_twap_status ob_bracket ob_chase ob_watcher_status ob_auto_run ob_auto_stop ob_auto_list Bash(openbroker:*)
+metadata: {"author": "monemetrics", "version": "1.0.80", "openclaw": {"requires": {"bins": ["openbroker"], "env": ["HYPERLIQUID_PRIVATE_KEY"]}, "primaryEnv": "HYPERLIQUID_PRIVATE_KEY", "install": [{"id": "node", "kind": "node", "package": "openbroker", "bins": ["openbroker"], "label": "Install openbroker (npm)"}]}}
+allowed-tools: ob_account ob_positions ob_funding ob_markets ob_search ob_spot ob_fills ob_orders ob_order_status ob_fees ob_candles ob_funding_history ob_trades ob_rate_limit ob_funding_scan ob_buy ob_sell ob_limit ob_trigger ob_tpsl ob_cancel ob_spot_buy ob_spot_sell ob_twap ob_twap_cancel ob_twap_status ob_bracket ob_chase ob_watcher_status ob_auto_run ob_auto_stop ob_auto_list Bash(openbroker:*)
 ---
 
 # Open Broker - Hyperliquid Trading CLI
@@ -127,8 +127,10 @@ HYPERLIQUID_NETWORK=mainnet
 ```bash
 openbroker account            # Balance, equity, margin
 openbroker account --orders   # Include open orders
+openbroker account --address 0xabc...  # Look up another account
 openbroker positions          # Open positions with PnL
 openbroker positions --coin ETH  # Specific coin
+openbroker positions --address 0xabc...  # Another account's positions
 ```
 
 ### Funding Rates
@@ -164,6 +166,7 @@ openbroker search --query ETH --type perp  # ETH perps only
 openbroker spot                   # Show all spot markets
 openbroker spot --coin PURR       # Show PURR market info
 openbroker spot --balances        # Show your spot balances
+openbroker spot --balances --address 0xabc...  # Another account's spot balances
 openbroker spot --top 20          # Top 20 by volume
 ```
 
@@ -172,6 +175,7 @@ openbroker spot --top 20          # Top 20 by volume
 openbroker fills                          # Recent fills
 openbroker fills --coin ETH               # ETH fills only
 openbroker fills --coin BTC --side buy --top 50
+openbroker fills --address 0xabc...       # Another account's fills
 ```
 
 ### Order History
@@ -181,17 +185,20 @@ openbroker orders --open                  # Currently open orders only
 openbroker orders --open --coin ETH       # Open orders for a specific coin
 openbroker orders --coin ETH --status filled
 openbroker orders --top 50
+openbroker orders --address 0xabc... --open  # Another account's open orders
 ```
 
 ### Order Status
 ```bash
 openbroker order-status --oid 123456789   # Check specific order
 openbroker order-status --oid 0x1234...   # By client order ID
+openbroker order-status --oid 123456789 --address 0xabc...  # On another account
 ```
 
 ### Fee Schedule
 ```bash
 openbroker fees                           # Fee tier, rates, and volume
+openbroker fees --address 0xabc...        # Another account's fees
 ```
 
 ### Candle Data (OHLCV)
@@ -436,15 +443,66 @@ The plugin reads wallet credentials from `~/.openbroker/.env` (set up by `openbr
 
 ### Webhook setup for watcher alerts
 
-For position alerts to reach the agent, enable hooks in your gateway config:
+For the position watcher and automations to send alerts to the agent, you must enable webhooks in your OpenClaw gateway config and add a hook mapping. This is a manual configuration step — plugins cannot auto-configure gateway settings.
 
-```yaml
-hooks:
-  enabled: true
-  token: "your-hooks-secret"   # Must match hooksToken above
+**1. Generate a hook token** — any secure random string:
+```bash
+openssl rand -hex 32
 ```
 
-Without hooks, the watcher still runs and tracks state (accessible via `ob_watcher_status`), but it can't wake the agent.
+**2. Enable hooks and add a mapping** in your `openclaw.json` (or `openclaw.yaml`) deployment config:
+```json
+"hooks": {
+  "enabled": true,
+  "path": "/hooks",
+  "token": "<your-generated-token>",
+  "allowedAgentIds": ["hooks", "main", "openbroker"],
+  "mappings": [
+    {
+      "id": "main",
+      "match": {
+        "path": "openbroker"
+      },
+      "action": "agent",
+      "wakeMode": "now",
+      "name": "Openbroker",
+      "agentId": "main",
+      "deliver": true,
+      "channel": "last",
+      "model": "anthropic/claude-sonnet-4-6"
+    }
+  ]
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `token` | Shared secret — must match `hooksToken` in the plugin config |
+| `allowedAgentIds` | Agent IDs allowed to receive webhook requests |
+| `mappings[].match.path` | Matches the webhook path sent by the plugin (always `"openbroker"`) |
+| `mappings[].wakeMode` | `"now"` triggers an immediate agent turn. `"next-heartbeat"` queues for the next scheduled heartbeat |
+| `mappings[].deliver` | If `true`, the agent's response is delivered to the user via the configured channel |
+| `mappings[].channel` | Delivery channel: `"last"` (most recent), `"slack"`, `"telegram"`, `"discord"`, `"whatsapp"`, etc. |
+| `mappings[].model` | Model override for webhook-triggered turns. Optional — uses deployment default if omitted |
+
+**3. Set the same token in your plugin config:**
+```yaml
+plugins:
+  entries:
+    openbroker:
+      enabled: true
+      config:
+        hooksToken: "<your-generated-token>"   # Same token as hooks.token
+        watcher:
+          enabled: true
+```
+
+**4. Restart the gateway** and verify:
+```bash
+openclaw ob status
+```
+
+The watcher sends alerts to `POST /hooks/agent` with `Authorization: Bearer <token>`. The gateway matches the request against the mapping and triggers an agent turn. Without hooks enabled, the watcher still tracks state (accessible via `ob_watcher_status`), but it can't wake the agent.
 
 ### Using with or without the plugin
 
@@ -470,11 +528,11 @@ To view bundled examples and their config schemas:
 openbroker auto examples    # List examples with config fields
 ```
 
-Available examples: `dca`, `grid`, `funding-arb`, `mm-spread`, `mm-maker`
+Available examples: `dca`, `grid`, `funding-arb`, `mm-spread`, `mm-maker`, `price-alert`
 
 ### How Automations Work
 
-An automation is a `.ts` file that exports a default function. The function receives an `AutomationAPI` with the full Hyperliquid client, typed event subscriptions, persistent state, and a logger. The runtime polls Hyperliquid every 10s (configurable) and dispatches events when changes are detected.
+An automation is a `.ts` file that exports a default function. The function receives an `AutomationAPI` with the full Hyperliquid client, typed event subscriptions, persistent state, and a logger. The runtime connects a WebSocket for real-time price and order events, with REST polling every 30s as a heartbeat for position/margin data. Use `--no-ws` to disable WebSocket and fall back to pure REST polling (every 10s).
 
 ### Writing an Automation
 
@@ -525,9 +583,13 @@ export default function(api) {
 | `api.state.clear()` | Clear all state |
 | `api.publish(message, options?)` | Send a message to the OpenClaw agent via webhook. Triggers an agent turn — the agent receives the message and can notify the user, take action, etc. Returns `true` if delivered. Options: `{ name?, wakeMode?, deliver?, channel? }` |
 | `api.log.info/warn/error/debug(msg)` | Structured logger |
+| `api.audit.record(kind, payload?)` | Add a custom audit note to the local SQLite trail for later reporting |
+| `api.audit.metric(name, value, tags?)` | Add a numeric metric to the local SQLite trail |
 | `api.utils` | `roundPrice`, `roundSize`, `sleep`, `normalizeCoin`, `formatUsd`, `annualizeFundingRate` |
 | `api.id` | Automation ID (filename or `--id` flag) |
 | `api.dryRun` | `true` if running with `--dry` (write methods are intercepted) |
+
+Automations now write a local audit trail automatically to `~/.openbroker/automation-audit.sqlite`. The runtime records run config, logs, state changes, write actions, order updates, fills, user events, and per-poll account snapshots so you can generate performance reports later.
 
 ### Events
 
@@ -722,18 +784,66 @@ api.on('margin_warning', async ({ marginUsedPct, equity }) => {
 });
 ```
 
+#### `order_update` — Real-time order lifecycle (WebSocket)
+Fires instantly when any order changes status: `open`, `filled`, `canceled`, `triggered`, `rejected`, `marginCanceled`, `liquidatedCanceled`, `badAloPxRejected`, and 20+ other statuses. Requires WebSocket (enabled by default).
+
+**Payload:** `{ coin: string, oid: number, side: 'buy' | 'sell', size: number, price: number, origSize: number, status: string, statusTimestamp: number }`
+
+**Example:**
+```typescript
+api.on('order_update', async ({ coin, oid, status, side, size, price }) => {
+  if (status === 'filled') {
+    api.log.info(`Order ${oid} filled: ${side} ${size} ${coin} @ $${price}`);
+  } else if (status === 'canceled' || status.includes('Rejected')) {
+    api.log.warn(`Order ${oid} ${status}: ${coin}`);
+  }
+});
+```
+
+#### `liquidation` — Liquidation alert (WebSocket only)
+Fires when the account is liquidated. This event is **only available via WebSocket** — there is no REST polling equivalent.
+
+**Payload:** `{ lid: number, liquidator: string, liquidatedUser: string, liquidatedNtlPos: number, liquidatedAccountValue: number }`
+
+**Example:**
+```typescript
+api.on('liquidation', async ({ liquidatedNtlPos, liquidatedAccountValue }) => {
+  await api.publish(
+    `LIQUIDATED: $${liquidatedNtlPos.toFixed(2)} notional, account value: $${liquidatedAccountValue.toFixed(2)}`,
+    { name: 'liquidation-alert' },
+  );
+});
+```
+
+### WebSocket Real-Time Data
+
+Automations use **WebSocket by default** for real-time market and account events. The runtime subscribes to:
+- **allMids** — price updates for all assets (drives `price_change` events in real-time)
+- **orderUpdates** — order lifecycle events (drives `order_update` and `order_filled`)
+- **userFills** — trade fill details with PnL and fees
+- **userEvents** — liquidation alerts, funding payments, system cancellations
+
+REST polling continues as a **heartbeat** (every 60s by default) for position/margin/funding events that aren't covered by WebSocket. If the WebSocket connection fails, the runtime falls back to full REST polling (every 10s) automatically.
+
+To disable WebSocket (pure REST polling):
+```bash
+openbroker auto run my-strategy.ts --no-ws
+```
+
 ### Choosing the Right Event — Quick Guide
 
 | Use case | Best event | Why |
 |----------|-----------|-----|
 | Alert when price crosses a fixed level | `tick` | Fires every poll — no minimum change threshold |
-| React to price momentum/volatility | `price_change` | Provides relative change data between polls |
+| React to price momentum/volatility | `price_change` | Real-time via WebSocket, provides relative change data |
 | Funding rate strategy | `funding_update` | Gives annualized rate directly |
 | Auto TP/SL on new positions | `position_opened` | Fires exactly when a new position appears |
 | Log when positions close | `position_closed` | Fires when position disappears |
 | Track position scaling | `position_changed` | Fires on size changes only |
 | Risk management — PnL spikes | `pnl_threshold` | Only fires on large moves (≥5% of position value) |
 | Risk management — margin | `margin_warning` | Fires at 80%+ margin usage |
+| React instantly to order fills/rejects | `order_update` | Real-time via WebSocket — sub-second latency |
+| Liquidation alerts | `liquidation` | WebSocket only — no REST equivalent |
 | Periodic task (DCA, rebalance) | `api.every(ms, fn)` | Better than tick for longer intervals |
 
 ### Client Methods Available
