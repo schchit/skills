@@ -3,11 +3,16 @@
   "slug": "rentahuman",
   "displayName": "Rentahuman",
   "latest": {
-    "version": "1.6.0",
-    "publishedAt": 1774511348587,
-    "commit": "https://github.com/openclaw/skills/commit/00d4fa997f84ac55bb0b5e0a1f3f6b4296469cc6"
+    "version": "1.6.1",
+    "publishedAt": 1775029726946,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.6.0",
+      "publishedAt": 1774511348587,
+      "commit": "https://github.com/openclaw/skills/commit/00d4fa997f84ac55bb0b5e0a1f3f6b4296469cc6"
+    },
     {
       "version": "1.4.3",
       "publishedAt": 1772699018552,

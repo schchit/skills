@@ -1,9 +1,9 @@
 # RentAHuman API Reference
 
-> Auto-generated from `rentahuman-mcp@1.6.0` — do not edit manually.
+> Auto-generated from `rentahuman-mcp@1.6.1` — do not edit manually.
 > Run `node scripts/sync-clawhub.mjs` to regenerate.
 
-Complete reference for all 48 MCP tools available through the `rentahuman-mcp` server.
+Complete reference for all 53 MCP tools available through the `rentahuman-mcp` server.
 
 ## Identity Management
 
@@ -121,7 +121,7 @@ Create a task bounty for humans to apply to. **IMPORTANT: Always call with dryRu
 - `category` (optional) — Task category [`"physical-tasks"` | `"meetings"` | `"errands"` | `"research"` | `"documentation"` | `"food-tasting"` | `"pet-care"` | `"home-services"` | `"transportation"` | `"other"`]
 - `location` (optional) — Location requirements
 - `deadline` (optional) — Deadline (ISO 8601 format)
-- `estimatedHours` (required) — Estimated hours (0.5-168)
+- `estimatedHours` (required) — Estimated duration in hours (min 5min=0.083, max 168)
 - `priceType` (required) — Fixed or hourly pricing [`"fixed"` | `"hourly"`]
 - `price` (required) — Price amount per person (1-1,000,000)
 - `currency` (optional) — Currency (default: USD) [`"USD"` | `"EUR"` | `"ETH"` | `"BTC"` | `"USDC"`]
@@ -155,7 +155,7 @@ Update your bounty details. You can modify the title, description, price, deadli
 - `description` (optional) — New description (20-5000 chars)
 - `price` (optional) — New price
 - `priceType` (optional) — New price type [`"fixed"` | `"hourly"`]
-- `estimatedHours` (optional) — New estimated hours
+- `estimatedHours` (optional) — New estimated duration in hours (min 5min=0.083)
 - `deadline` (optional) — New deadline (ISO 8601, or null to remove)
 - `requirements` (optional) — New requirements
 - `skillsNeeded` (optional) — New skills
@@ -367,6 +367,20 @@ Validate a dashboard-generated linking code to link an existing RentAHuman accou
 - `slack_user_id` (required) — The Slack user ID (e.g. U123). Use the current user's Slack ID from context.
 - `slack_workspace_id` (required) — The Slack workspace/team ID (e.g. T123). Use the current workspace ID from context.
 
+### `create_crypto_escrow`
+Create a crypto-funded escrow for a bounty. Returns a USDC deposit address on Solana or Base chain. The agent sends USDC to this address to fund the escrow. Requires RENTAHUMAN_API_KEY to be set.
+
+**Parameters:**
+- `bountyId` (required) — The bounty ID.
+- `applicationId` (required) — The application ID to accept.
+- `chain` (required) — Blockchain to use for USDC deposit.
+
+### `check_crypto_escrow_status`
+Check the status of a crypto-funded escrow deposit. Returns deposit address, expected amount, actual amount received, and confirmation status. Requires RENTAHUMAN_API_KEY to be set.
+
+**Parameters:**
+- `escrowId` (required) — The escrow ID to check.
+
 ### `create_personal_bounty`
 Create a personal bounty targeted at a specific human. Pre-funds the bounty with escrow via Stripe Checkout. The money auto-releases to the human 2 days after the deadline if you don't act (release early or dispute). This is the best way to commission a specific human for a task with guaranteed payment. Use this after messaging a human and agreeing on terms. Requires RENTAHUMAN_API_KEY to be set.
 
@@ -432,4 +446,22 @@ Get details of a specific transfer by ID. Shows amount, status, payout status, s
 
 **Parameters:**
 - `transferId` (required) — The transfer ID to look up.
+
+### `get_wallet_balance`
+Check your wallet balance. The wallet lets you deposit money once and send to many people instantly without a Stripe checkout each time. Requires RENTAHUMAN_API_KEY.
+
+**Parameters:** None
+
+### `deposit_wallet`
+Deposit money into your wallet via a single Stripe checkout. Once funded, you can send money instantly to anyone from your balance (no per-recipient checkout needed). Requires RENTAHUMAN_API_KEY.
+
+**Parameters:**
+- `amount` (required) — Amount in USD dollars to deposit (1–10000). Example: 100 to deposit $100.00
+
+### `bulk_send_money`
+Send money to multiple recipients at once from your wallet balance. Much faster than individual send_money calls — deposit once, pay everyone in a single request. Requires sufficient wallet balance (use deposit_wallet first). Requires RENTAHUMAN_API_KEY.
+
+**Parameters:**
+- `recipients` (required) — Array of recipients to pay.
+- `description` (optional) — Default description applied to all payments (individual descriptions override this).
 
