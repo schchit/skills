@@ -1,38 +1,61 @@
 ---
 name: eve-esi
 description: "Query and manage EVE Online characters via the ESI (EVE Swagger Interface) REST API. Use when the user asks about EVE Online character data, wallet balance, ISK transactions, assets, skill queue, skill points, clone locations, implants, fittings, contracts, market orders, mail, industry jobs, killmails, planetary interaction, loyalty points, or any other EVE account management task."
+type: scripts
+includes:
+  - scripts/auth_flow.py
+  - scripts/get_token.py
+  - scripts/esi_query.py
+  - scripts/validate_config.py
+  - config/schema.json
+  - config/example-config.json
+  - config/esi_endpoints.json
+  - references/authentication.md
+  - references/endpoints.md
+auth:
+  method: oauth2_pkce
+  provider: EVE SSO (login.eveonline.com)
+  credential_storage: "~/.openclaw/eve-tokens.json"
+  setup: "Run scripts/auth_flow.py once per character with a valid EVE Client ID. Tokens are stored locally and auto-refreshed by scripts/get_token.py."
+  required_for: "All authenticated ESI endpoints (wallet, assets, skills, PI, industry, etc.). Public endpoints work without auth."
 env:
   - name: EVE_CLIENT_ID
-    description: "EVE Developer Application Client ID (from https://developers.eveonline.com/applications). Optional: only needed if using $ENV: references in your dashboard config instead of passing --client-id to auth_flow.py directly."
+    description: "EVE Developer Application Client ID (from https://developers.eveonline.com/applications). Not needed at runtime — pass directly to auth_flow.py via --client-id. Only set as env var if using $ENV: references in your dashboard config."
     required: false
     sensitive: false
   - name: EVE_TOKEN_MAIN
-    description: "ESI OAuth2 access token for the main character. Optional: scripts auto-manage tokens via ~/.openclaw/eve-tokens.json (written by auth_flow.py). Only set this if using $ENV: references in your dashboard config."
+    description: "ESI OAuth2 access token for the main character. Not needed at runtime — scripts auto-manage tokens via ~/.openclaw/eve-tokens.json (created by auth_flow.py). Only set as env var if using $ENV: references in your dashboard config."
     required: false
     sensitive: true
   - name: EVE_REFRESH_MAIN
-    description: "ESI OAuth2 refresh token for automatic access token renewal. Optional: scripts auto-manage tokens via ~/.openclaw/eve-tokens.json. Only set this if using $ENV: references in your dashboard config."
+    description: "ESI OAuth2 refresh token for automatic access token renewal. Not needed at runtime — scripts auto-manage tokens via ~/.openclaw/eve-tokens.json. Only set as env var if using $ENV: references in your dashboard config."
     required: false
     sensitive: true
   - name: TELEGRAM_BOT_TOKEN
-    description: "Telegram Bot API token for sending alerts and reports."
+    description: "Telegram Bot API token for sending alerts and reports. Only needed if Telegram notifications are configured."
     required: false
     sensitive: true
   - name: TELEGRAM_CHAT_ID
-    description: "Telegram chat ID where notifications are sent."
+    description: "Telegram chat ID where notifications are sent. Only needed if Telegram notifications are configured."
     required: false
     sensitive: false
   - name: DISCORD_WEBHOOK_URL
-    description: "Discord webhook URL for sending alerts and reports."
+    description: "Discord webhook URL for sending alerts and reports. Only needed if Discord notifications are configured."
     required: false
     sensitive: true
 ---
 
 # Data Handling
 
-This skill communicates exclusively with the official EVE Online ESI API (`esi.evetech.net`) and EVE SSO (`login.eveonline.com`).
-No character data is exfiltrated to third-party servers.
-Optional integrations (Telegram, Discord) are user-configured via environment variables and only transmit alerts defined by the user.
+This skill communicates with the following external services:
+
+- **EVE Online ESI API** (`esi.evetech.net`) — all character and universe data queries
+- **EVE SSO** (`login.eveonline.com`) — OAuth2 authentication and token refresh
+- **zKillboard API** (`zkillboard.com/api/`) — optional, for PVP threat assessment data (public, no auth required)
+- **Telegram Bot API** — optional, user-configured via `TELEGRAM_BOT_TOKEN` for alert notifications
+- **Discord Webhooks** — optional, user-configured via `DISCORD_WEBHOOK_URL` for alert notifications
+
+No character data is sent to third-party servers beyond the above. Telegram/Discord only transmit alerts defined by the user.
 
 # EVE Online ESI
 
@@ -230,8 +253,11 @@ python scripts/validate_config.py --schema
 
 ```bash
 SKILL=~/.openclaw/workspace/skills/eve-esi
+# Replace 'main' with your --char-name if you authenticated under a different name.
 TOKEN=$(python3 $SKILL/scripts/get_token.py --char main)
-CHAR_ID=$(python3 $SKILL/scripts/get_token.py --char main --json | python3 -c "import sys,json; print(json.load(sys.stdin))" 2>/dev/null)
+# get_token.py --char-id prints just the character ID for the named character.
+CHAR_ID=$(python3 $SKILL/scripts/get_token.py --char main --char-id 2>/dev/null) || \
+CHAR_ID=$(python3 -c "import json, os, pathlib; p = pathlib.Path(os.environ.get('OPENCLAW_STATE_DIR', os.path.expanduser('~/.openclaw'))) / 'eve-tokens.json'; d = json.loads(p.read_text(encoding='utf-8')); chars = d.get('characters', {}); char = chars.get('main') or next(iter(chars.values()), None); print(char['character_id'] if char else '')")
 
 # Simple query
 python3 $SKILL/scripts/esi_query.py --token "$TOKEN" --endpoint "/characters/$CHAR_ID/wallet/" --pretty
@@ -252,6 +278,83 @@ python3 $SKILL/scripts/esi_query.py --token "$TOKEN" --endpoint "/characters/$CH
 - **Rate limits**: some endpoints (mail, contracts) have internal rate limits returning HTTP 520.
 - **Pagination**: check the `X-Pages` response header; iterate with `?page=N`.
 - **Versioning**: use `/latest/` for current stable routes. `/dev/` may change without notice.
+
+## Threat Assessment & Route Planning
+
+The skill provides threat intelligence for PI systems in low/null-sec space. Data sources: ESI (kills, jumps, FW, incursions) and zKillboard (PVP activity).
+
+### ESI Threat Endpoints
+
+```bash
+SKILL=~/.openclaw/workspace/skills/eve-esi
+
+# System kills (last hour) — all or filtered
+python3 $SKILL/scripts/esi_query.py --action system_kills --pretty
+python3 $SKILL/scripts/esi_query.py --action system_kills --system-ids 30002537,30045337 --pretty
+
+# System jump traffic (last hour)
+python3 $SKILL/scripts/esi_query.py --action system_jumps --system-ids 30045337 --pretty
+
+# System info (name, security status)
+python3 $SKILL/scripts/esi_query.py --action system_info --system-id 30002537 --pretty
+
+# Route planning (flags: secure, shortest, insecure)
+python3 $SKILL/scripts/esi_query.py --action route_plan --origin 30000142 --destination 30002537 --route-flag secure --pretty
+
+# Character location (requires auth)
+TOKEN=$(python3 $SKILL/scripts/get_token.py --char main)
+python3 $SKILL/scripts/esi_query.py --action character_location --token "$TOKEN" --character-id $CHAR_ID --pretty
+
+# Faction warfare systems
+python3 $SKILL/scripts/esi_query.py --action fw_systems --pretty
+
+# Active incursions
+python3 $SKILL/scripts/esi_query.py --action incursions --pretty
+```
+
+### Threat Assessment Scripts (Workspace)
+
+> **Hinweis:** Die Workspace-Skripte (`threat_query.py`, `cache_threat_data.py`, `cache_market_prices.py`) sind Referenz-Beschreibungen und müssen erst im Agent-Workspace erstellt werden, bevor sie genutzt werden können.
+
+These scripts live in `~/.openclaw/workspace/scripts/` (not in the skill repo):
+
+```bash
+# Threat level for specific systems
+python3 ~/.openclaw/workspace/scripts/threat_query.py --action threat_assessment --system-ids 30002537,30045337
+
+# Threat for all PI systems across all characters
+python3 ~/.openclaw/workspace/scripts/threat_query.py --action threat_assessment_pi
+
+# Route with per-system threat annotation
+python3 ~/.openclaw/workspace/scripts/threat_query.py --action route_annotated --origin 30000142 --destination 30002537
+
+# Route from character's current location
+python3 ~/.openclaw/workspace/scripts/threat_query.py --action route_annotated --character main --destination 30045337
+
+# Full PI + Threat morning briefing
+python3 ~/.openclaw/workspace/scripts/threat_query.py --action pi_briefing
+```
+
+### Threat Levels
+
+| Level | Score | Meaning |
+|-------|-------|---------|
+| `low` | 0-15 | Normaler PI-Betrieb |
+| `medium` | 15-40 | Schnell rein, schnell raus |
+| `high` | 40-80 | Nur mit Scout/Cloak |
+| `critical` | 80+ | NICHT reinfliegen |
+
+### Threat Cache
+
+Threat data is cached in Redis (30min TTL for ESI, 1h for zKillboard). The cache is updated every 30 minutes via cron:
+
+```bash
+# Update cache manually
+python3 ~/.openclaw/workspace/scripts/cache_threat_data.py
+
+# Show cached threat data
+python3 ~/.openclaw/workspace/scripts/cache_threat_data.py --check
+```
 
 ## Resolving type IDs
 

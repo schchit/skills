@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """EVE ESI token refresh helper.
 
-Reads refresh_token from ~/.openclaw/eve-tokens.json and returns a fresh access_token.
+Reads refresh_token from $OPENCLAW_STATE_DIR/eve-tokens.json (default: ~/.openclaw/) and returns a fresh access_token.
 
 Usage:
     python get_token.py --char main          # prints access token to stdout
@@ -12,19 +12,15 @@ import argparse
 import json
 import os
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 
-TOKENS_FILE = os.path.expanduser("~/.openclaw/eve-tokens.json")
+from token_store import get_tokens_file, load_tokens, save_tokens_unlocked, token_file_lock
 
 
-def load_tokens():
-    if not os.path.exists(TOKENS_FILE):
-        print(f"ERROR: Tokens file not found: {TOKENS_FILE}", file=sys.stderr)
-        print("Run auth_flow.py first to authenticate.", file=sys.stderr)
-        sys.exit(1)
-    with open(TOKENS_FILE) as f:
-        return json.load(f)
+class TokenError(Exception):
+    """Raised when token operations fail (missing file, refresh failure, etc.)."""
 
 
 def refresh_access_token(refresh_token, client_id):
@@ -40,18 +36,34 @@ def refresh_access_token(refresh_token, client_id):
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req) as resp:
+        with urllib.request.urlopen(req, timeout=30) as resp:
             return json.loads(resp.read())
     except urllib.error.HTTPError as e:
-        body = e.read().decode()
-        print(f"ERROR: Token refresh failed ({e.code}): {body}", file=sys.stderr)
-        sys.exit(1)
+        body = e.read().decode("utf-8", errors="replace")
+        raise TokenError(f"Token refresh failed ({e.code}): {body}")
+    except urllib.error.URLError as e:
+        raise TokenError(f"Could not connect to EVE login server: {e.reason}")
 
 
-def save_tokens(data):
-    with open(TOKENS_FILE, "w") as f:
-        json.dump(data, f, indent=2)
-    os.chmod(TOKENS_FILE, 0o600)
+def load_tokens_or_raise():
+    tokens_file = get_tokens_file()
+    if not os.path.exists(tokens_file):
+        raise TokenError(f"Tokens file not found: {tokens_file}. Run auth_flow.py first to authenticate.")
+    return load_tokens()
+
+
+def validate_character_metadata(char_name, char_data):
+    missing_fields = [
+        field
+        for field in ("refresh_token", "client_id")
+        if not char_data.get(field)
+    ]
+    if missing_fields:
+        fields = ", ".join(missing_fields)
+        raise TokenError(
+            f"Character '{char_name}' is missing required token metadata: {fields}. "
+            f"Re-run auth_flow.py --char-name {char_name} to refresh the stored entry."
+        )
 
 
 def main():
@@ -64,7 +76,7 @@ def main():
                         help="List all stored characters")
     args = parser.parse_args()
 
-    tokens = load_tokens()
+    tokens = load_tokens_or_raise()
     chars = tokens.get("characters", {})
 
     if args.list:
@@ -76,18 +88,34 @@ def main():
         return
 
     if args.char not in chars:
-        print(f"ERROR: Character '{args.char}' not found.", file=sys.stderr)
-        print(f"Available: {', '.join(chars.keys()) or 'none'}", file=sys.stderr)
-        print("Run auth_flow.py --char-name <name> to authenticate.", file=sys.stderr)
-        sys.exit(1)
+        raise TokenError(
+            f"Character '{args.char}' not found. "
+            f"Available: {', '.join(chars.keys()) or 'none'}. "
+            f"Run auth_flow.py --char-name <name> to authenticate."
+        )
 
-    char = chars[args.char]
-    token_data = refresh_access_token(char["refresh_token"], char["client_id"])
+    # Lock the token file for the entire read-refresh-write cycle.
+    # EVE SSO rotates refresh tokens on each use, so concurrent processes
+    # must not read the same token before the new one is persisted.
+    with token_file_lock():
+        # Re-read under lock to get the freshest state
+        tokens = load_tokens_or_raise()
+        chars = tokens.get("characters", {})
+        char = chars.get(args.char)
+        if char is None:
+            raise TokenError(
+                f"Character '{args.char}' was removed before the lock could be acquired."
+            )
+        validate_character_metadata(args.char, char)
 
-    # Save updated refresh_token (EVE rotates it on each refresh)
-    if "refresh_token" in token_data:
-        chars[args.char]["refresh_token"] = token_data["refresh_token"]
-        save_tokens(tokens)
+        token_data = refresh_access_token(char["refresh_token"], char["client_id"])
+        if not token_data.get("access_token"):
+            raise TokenError("Token refresh response did not include an access_token.")
+
+        # Save updated refresh_token (EVE rotates it on each refresh)
+        if "refresh_token" in token_data:
+            chars[args.char]["refresh_token"] = token_data["refresh_token"]
+            save_tokens_unlocked(tokens)
 
     if args.json:
         print(json.dumps(token_data, indent=2))
@@ -96,4 +124,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except TokenError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)

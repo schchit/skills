@@ -4,7 +4,7 @@
 Usage:
     python auth_flow.py --client-id <CLIENT_ID> [--char-name <NAME>] [--port 8080]
 
-Stores refresh token to ~/.openclaw/eve-tokens.json
+Stores refresh token to $OPENCLAW_STATE_DIR/eve-tokens.json (default: ~/.openclaw/)
 """
 import argparse
 import base64
@@ -13,11 +13,17 @@ import http.server
 import json
 import os
 import secrets
+import sys
 import threading
+import urllib.error
 import urllib.parse
 import urllib.request
 
-TOKENS_FILE = os.path.expanduser("~/.openclaw/eve-tokens.json")
+from token_store import get_tokens_file, load_tokens, save_tokens_unlocked, token_file_lock
+
+class AuthFlowError(Exception):
+    """Raised when the OAuth authentication flow fails."""
+
 
 SCOPES = " ".join([
     "esi-wallet.read_character_wallet.v1",
@@ -61,8 +67,14 @@ def exchange_code(code, verifier, client_id, redirect_uri):
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         method="POST",
     )
-    with urllib.request.urlopen(req) as resp:
-        return json.loads(resp.read())
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        raise AuthFlowError(f"Token exchange failed ({e.code}): {body}")
+    except urllib.error.URLError as e:
+        raise AuthFlowError(f"Could not connect to EVE login server: {e.reason}")
 
 
 def verify_token(access_token):
@@ -70,22 +82,14 @@ def verify_token(access_token):
         "https://login.eveonline.com/oauth/verify",
         headers={"Authorization": f"Bearer {access_token}"},
     )
-    with urllib.request.urlopen(req) as resp:
-        return json.loads(resp.read())
-
-
-def load_tokens():
-    if os.path.exists(TOKENS_FILE):
-        with open(TOKENS_FILE) as f:
-            return json.load(f)
-    return {"characters": {}}
-
-
-def save_tokens(data):
-    os.makedirs(os.path.dirname(TOKENS_FILE), exist_ok=True)
-    with open(TOKENS_FILE, "w") as f:
-        json.dump(data, f, indent=2)
-    os.chmod(TOKENS_FILE, 0o600)
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        raise AuthFlowError(f"Token verification failed ({e.code}): {body}")
+    except urllib.error.URLError as e:
+        raise AuthFlowError(f"Could not connect to EVE login server: {e.reason}")
 
 
 def main():
@@ -96,6 +100,8 @@ def main():
                         help="Short name to save this character as (e.g. 'main', 'alt1')")
     parser.add_argument("--port", type=int, default=8080,
                         help="Local callback port (default: 8080)")
+    parser.add_argument("--timeout", type=int, default=300,
+                        help="Seconds to wait for browser callback (default: 300)")
     args = parser.parse_args()
 
     verifier, challenge = pkce_pair()
@@ -116,7 +122,6 @@ def main():
     )
 
     result = {}
-    server_ready = threading.Event()
 
     class CallbackHandler(http.server.BaseHTTPRequestHandler):
         def log_message(self, fmt, *args):
@@ -146,7 +151,12 @@ def main():
             result["code"] = code
             threading.Thread(target=self.server.shutdown).start()
 
-    httpd = http.server.HTTPServer(("127.0.0.1", args.port), CallbackHandler)
+    try:
+        httpd = http.server.HTTPServer(("127.0.0.1", args.port), CallbackHandler)
+    except OSError as e:
+        raise AuthFlowError(
+            f"Could not start callback server on 127.0.0.1:{args.port}: {e}"
+        ) from e
 
     print(f"\n{'='*60}")
     print("EVE SSO Auth Flow")
@@ -155,14 +165,17 @@ def main():
     print(f"  ssh -L {args.port}:127.0.0.1:{args.port} user@your-server -N")
     print(f"\nThen open this URL in your browser:")
     print(f"\n  {auth_url}\n")
-    print(f"Waiting for callback on port {args.port}...")
+    print(f"Waiting for callback on port {args.port} (timeout: {args.timeout}s)...")
     print(f"{'='*60}\n")
 
+    timeout_timer = threading.Timer(args.timeout, httpd.shutdown)
+    timeout_timer.daemon = True
+    timeout_timer.start()
     httpd.serve_forever()
+    timeout_timer.cancel()
 
     if not result.get("code"):
-        print("ERROR: No auth code received.")
-        return
+        raise AuthFlowError("Timed out waiting for browser callback.")
 
     print("Auth code received. Exchanging for tokens...")
     token_data = exchange_code(result["code"], verifier, args.client_id, redirect_uri)
@@ -173,21 +186,26 @@ def main():
     char_id = char_info["CharacterID"]
     char_name = char_info["CharacterName"]
 
-    tokens = load_tokens()
-    tokens["characters"][args.char_name] = {
-        "character_id": char_id,
-        "character_name": char_name,
-        "client_id": args.client_id,
-        "refresh_token": token_data["refresh_token"],
-    }
-    save_tokens(tokens)
+    with token_file_lock():
+        tokens = load_tokens()
+        tokens["characters"][args.char_name] = {
+            "character_id": char_id,
+            "character_name": char_name,
+            "client_id": args.client_id,
+            "refresh_token": token_data["refresh_token"],
+        }
+        save_tokens_unlocked(tokens)
 
     print(f"\n✓ Authenticated as: {char_name} (ID: {char_id})")
     print(f"✓ Saved as key: '{args.char_name}'")
-    print(f"✓ Tokens stored in: {TOKENS_FILE}")
+    print(f"✓ Tokens stored in: {get_tokens_file()}")
     print(f"\nUsage:")
     print(f"  python get_token.py --char {args.char_name}")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except AuthFlowError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
