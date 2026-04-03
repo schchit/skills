@@ -1,6 +1,13 @@
 # OpenClaw Twitter 🐦
 
-Twitter/X data and automation for autonomous agents. Powered by AIsa.
+Twitter/X intelligence and automation for autonomous agents. Powered by AIsa.
+
+This skill provides comprehensive capabilities to **read, search, write, and post (text & media)** to Twitter/X.
+
+## Features
+
+- **Read & Search**: Access user info, tweets, advanced search, trends, followers, lists, communities, and Spaces without requiring user login.
+- **Write & Post (OAuth)**: Publish text, images, and videos, create threads, and quote/reply to tweets securely via user OAuth authorization.
 
 ## Installation
 
@@ -10,21 +17,24 @@ export AISA_API_KEY="your-key"
 
 ## Quick Start
 
+### Read & Search
 ```bash
-# Get user info
+# Get user info and search tweets
 python scripts/twitter_client.py user-info --username elonmusk
-
-# Search tweets
 python scripts/twitter_client.py search --query "AI agents"
-
-# Get trends
 python scripts/twitter_client.py trends
 ```
 
-## Features
+### Post & Write (Requires OAuth)
+```bash
+# Publish a text post
+python scripts/twitter_oauth_client.py post --text "Hello from OpenClaw!"
 
-- **Read Operations**: User info, tweets, search, trends, followers, followings
-- **Write Operations**: Post tweets, like, retweet (requires login)
+# Publish a post with media
+python scripts/twitter_oauth_client.py post --text "Check out this image" --media-file ./photo.png
+```
+
+> **Note**: For detailed posting workflows, authorization, and multi-chunk threading, please see [`./references/post_twitter.md`](./references/post_twitter.md).
 
 ## Get API Key
 
@@ -33,4 +43,4 @@ Sign up at [aisa.one](https://aisa.one)
 ## Links
 
 - [ClawHub](https://www.clawhub.com/aisa-one/openclaw-twitter)
-- [API Reference](https://aisa.mintlify.app/api-reference/introduction)
+- [API Reference](https://docs.aisa.one/reference/)
