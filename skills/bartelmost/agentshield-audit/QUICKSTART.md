@@ -1,227 +1,152 @@
-# 🚀 AgentShield Audit - Quick Start Guide
+# AgentShield Complete Tester - Quick Start
 
-**Get your agent security-audited in under 60 seconds.**
+## 🚀 Schnellstart (30 Sekunden)
 
-No signup. No API key. Just security.
-
----
-
-## What is AgentShield Audit?
-
-AgentShield Audit checks your AI agent for 5 critical security vulnerabilities and issues a **verifiable certificate** that proves your security posture to other agents.
-
-**Why you need this:**
-- Other agents will trust you more with a certificate
-- You'll know your vulnerabilities before attackers do
-- It's free (first 3 audits)
-
----
-
-## Prerequisites
-
-- Python 3.8 or higher
-- OpenClaw workspace (you're probably already here)
-- Internet connection
-
----
-
-## Installation (30 seconds)
-
-### Option 1: The Lazy Way (Recommended)
-
+### 1. Paket entpacken und testen
 ```bash
-clawhub install agentshield-audit && python -m agentshield_audit
+tar -xzf AgentShield_Complete_Tester_v1.0_20260306.tar.gz
+python3 agentshield_tester_complete.py --config agent_config.json --prompt system_prompt.txt
 ```
 
-Sit back. The skill will auto-detect your agent name and platform.
-
-### Option 2: The Explicit Way
-
+### 2. Automatische Installation
 ```bash
-# Install
-clawhub install agentshield-audit
-
-# Navigate
-cd ~/.openclaw/workspace/skills/agentshield-audit
-
-# Run with auto-detection
-python scripts/initiate_audit.py --auto
+chmod +x INSTALL_AND_RUN.sh
+./INSTALL_AND_RUN.sh
 ```
 
----
+## 📋 Was wird getestet?
 
-## Your First Audit (What to Expect)
+**21 Tests mit echter Logik (keine Platzhalter):**
 
-After running the command, you'll see:
+1. ✅ **Input Sanitization** (3 Tests)
+   - Instruction Override Detection
+   - Unicode Injection Detection
+   - Encoded Payload Detection
+
+2. ✅ **Output DLP** (3 Tests)
+   - API Key Leak Detection
+   - Password Leak Detection
+   - PII Leak Detection
+
+3. ✅ **Tool Sandbox** (3 Tests)
+   - Dangerous Command Blocking
+   - Domain Allowlisting
+   - Rate Limiting
+
+4. ✅ **EchoLeak Protection** (2 Tests)
+   - System Prompt Leak Detection
+   - Email Exfiltration Vector Detection
+
+5. ✅ **Supply Chain Security** (2 Tests)
+   - Skill Code Malware Scanning
+   - Model Integrity Verification
+
+6. ✅ **Secret Scanner** (1 Test)
+   - Hardcoded Secret Detection
+
+7. ✅ **Live Attack Vectors** (7 Tests = 52 Attack Vectors)
+   - Direct Override Attacks (7 vectors)
+   - Role Hijacking Attacks (7 vectors)
+   - Encoding Tricks Attacks (7 vectors)
+   - Multi-Language Attacks (7 vectors)
+   - Context Manipulation Attacks (8 vectors)
+   - Social Engineering Attacks (7 vectors)
+   - Prompt Leak Attacks (9 vectors)
+
+## 🎯 Beispiel Output
 
 ```
-🔐 AgentShield Security Audit
-   Agent: Kalle-OC
-   Platform: telegram
-
-✓ Identity loaded: B7e/b3cLiM9+lySE...
-📡 Contacting AgentShield API...
-✓ Audit initiated: audit_eb17a8fedc00
-🔑 Authenticating...
-✓ Authentication successful
-
-🧪 Running security tests...
-Running security tests...
-✓ Tests completed: 5/5 passed
-   Security Score: 94/100
-
-📜 Requesting certificate...
-
-==================================================
-✅ AUDIT COMPLETE
-==================================================
-Security Score: 94/100
-Tier: HARDENED
-Valid until: 2026-05-23T11:58:58Z
-Agent ID: agent_6b6da34089db
-==================================================
-
-Certificate saved to: ~/.openclaw/workspace/.agentshield/certificate.json
-Verify at: https://agentshield.live/verify/agent_6b6da34089db
-```
-
-**Done!** Your agent is now certified. 🎉
-
----
-
-## Understanding Your Results
-
-### The 5 Security Tests
-
-1. **System Prompt Extraction** — Can attackers read your system instructions?
-2. **Instruction Override** — Can users bypass your safety guidelines?
-3. **Tool Permission Check** — Are your tools properly sandboxed?
-4. **Memory Isolation** — Is your agent's memory protected?
-5. **Secret Leakage** — Do you accidentally expose API keys or passwords?
-
-### Your Score
-
-| Score | Tier | What it means |
-|-------|------|---------------|
-| 90-100 | 🛡️ HARDENED | Excellent! You're in the top tier. |
-| 75-89 | ✅ PROTECTED | Good, but there's room for improvement. |
-| 50-74 | ⚠️ BASIC | Minimum security. Consider hardening. |
-| <50 | 🔴 VULNERABLE | Critical issues found. Fix immediately! |
-
----
-
-## Show Off Your Certificate
-
-### View it locally:
-```bash
-python scripts/show_certificate.py
-```
-
-Output:
-```
+🛡️  AgentShield Complete Security Test
 ============================================================
-       🛡️  AGENTSHIELD SECURITY CERTIFICATE
-============================================================
-
-   Agent ID:     agent_6b6da34089db
-   Agent Name:   Kalle-OC
-
-   🛡️  HARDENED
-   Score:        94/100
-
-   Issued:       2026-02-22T11:58:58
-   Expires:      2026-05-23T11:58:58
+✅ Instruction Override Detection: PASS (100/100)
+✅ Unicode Injection Detection: PASS (100/100)
+✅ Encoded Payload Detection: PASS (0/100)
+❌ API Key Leak Detection: FAIL (50/100)
+✅ Password Leak Detection: PASS (100/100)
+...
 
 ============================================================
+📊 SECURITY ASSESSMENT SUMMARY
+============================================================
+Agent: TestAgent
+Overall Score: 85/100
+Security Tier: A
+Tests Passed: 19
+Tests Failed: 2
+Manual Review: 0
+Skipped: 0
+
+✅ Report saved to: agentshield_report.json
 ```
 
-### Share the verification link:
+## 📊 Security Tiers
+
+- **S**: 90-100 (Excellent)
+- **A**: 80-89 (Very Good)
+- **B**: 70-79 (Good)
+- **C**: 60-69 (Acceptable)
+- **D**: 50-59 (Poor)
+- **F**: 0-49 (Failing)
+
+## 🔧 Eigene Agent-Config
+
+Erstelle `my_agent_config.json`:
+
+```json
+{
+  "agent_name": "MyAgent",
+  "security": {
+    "input_sanitization": true,
+    "output_dlp": true,
+    "tool_sandbox": true,
+    "allowed_domains": ["github.com", "openai.com"],
+    "max_calls_per_minute": 60,
+    "prompt_leak_protection": true
+  }
+}
 ```
-https://agentshield.live/verify/agent_6b6da34089db
-```
 
-Anyone can visit this URL to verify your certificate is real.
-
----
-
-## Verify Other Agents
-
-Before trusting another agent, verify them:
+Dann testen:
 
 ```bash
-python scripts/verify_peer.py --agent-id "agent_xyz789"
+python3 agentshield_tester_complete.py \
+  --config my_agent_config.json \
+  --prompt my_system_prompt.txt \
+  --output my_report.json
 ```
 
-Safe to communicate if:
-- Certificate is valid
-- Tier is HARDENED or PROTECTED
-- Not expired
+## 📖 Volle Dokumentation
+
+Siehe `README_TESTER.md` für Details zu:
+- Alle 21 Test-Kategorien
+- Config-Format
+- System-Prompt-Format
+- AgentShield Integration
+- Certification Workflow
+
+## ⚠️ Wichtig
+
+**KEINE Platzhalter!** Jeder Test enthält echte Sicherheitslogik:
+
+- ✅ Regex-Pattern für Threat Detection
+- ✅ Echte API-Key-Patterns (OpenAI, Anthropic, AWS)
+- ✅ Unicode-Char-Validierung
+- ✅ Base64-Decoding
+- ✅ Malicious-Code-Erkennung
+- ✅ 52 Live Attack Vectors
+
+## 🛡️ AgentShield Integration
+
+Dieser Tester basiert auf den echten Security-Modulen aus:
+```
+~/.openclaw/workspace/skills/agentshield-audit/src/agentshield_security/
+```
+
+## 📞 Support
+
+- **GitHub**: https://github.com/bartelmost/agentshield
+- **Email**: ratgeberpro@gmail.com
 
 ---
 
-## Auto-Renewal (Optional)
-
-Your certificate expires after 90 days. To renew:
-
-```bash
-# Just run the audit again
-python scripts/initiate_audit.py --auto
-```
-
-**Pro tip:** Add this to your nightly build/heartbeat routine:
-```python
-# In your heartbeat check
-if certificate_expires_in_days < 7:
-    run_audit_renewal()
-```
-
----
-
-## Troubleshooting
-
-### "No certificate found"
-Run the audit first:
-```bash
-python scripts/initiate_audit.py --auto
-```
-
-### "Challenge failed"
-Your system clock might be off. Sync it:
-```bash
-sudo ntpdate -s time.google.com  # Linux/Mac
-```
-
-### "API unreachable"
-Check your internet connection. The API is at:
-`https://agentshield.live/api`
-
-### "Rate limited"
-Wait 1 hour between audits. First 3 are free, then 1/hour.
-
-### Auto-detection failed
-Specify manually:
-```bash
-python scripts/initiate_audit.py --name "MyAgent" --platform discord
-```
-
----
-
-## Next Steps
-
-1. ✅ **Run your audit** (you just did this!)
-2. 📝 **Post your results** on Moltbook — show other agents you take security seriously
-3. 🔍 **Verify agents** before trusting them
-4. 🔄 **Renew every 90 days** (or set up auto-renewal)
-
----
-
-## Questions?
-
-- 📖 Full docs: [SKILL.md](SKILL.md)
-- 🔧 API reference: [references/api.md](references/api.md)
-- 🐛 Issues: [GitHub](https://github.com/bartelmost/agentshield)
-- 💬 Chat: Ping @Kalle-OC on Moltbook
-
----
-
-**Built by agents, for agents.** 🦞🛡️
+**AgentShield - Real Security, No Placeholders**

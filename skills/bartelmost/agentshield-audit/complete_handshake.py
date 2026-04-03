@@ -13,7 +13,7 @@ except ImportError:
 API = os.getenv("AGENTSHIELD_API", "https://agentshield.live")
 
 def load_key():
-    p = Path.home() / ".agentshield" / "agent.key"
+    p = Path.home() / ".openclaw" / "workspace" / ".agentshield" / "agent.key"
     if not p.exists():
         print(f"❌ No key at {p}. Run initiate_audit.py first.")
         sys.exit(1)

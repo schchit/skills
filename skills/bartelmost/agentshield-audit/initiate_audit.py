@@ -39,37 +39,74 @@ def ensure_directory():
     AGENTSHIELD_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def detect_agent_name():
+def detect_agent_name(skip_consent: bool = False):
     """
     Auto-detect agent name from identity files.
     Checks: IDENTITY.md, SOUL.md, AGENTS.md
+    
+    Args:
+        skip_consent: Skip consent prompt (for --yes flag)
+    
     Returns: (name, confidence) tuple
     """
+    # First check: Do files exist?
+    files_found = [f for f in IDENTITY_FILES if f.exists()]
+    if not files_found:
+        # No files - try environment variables
+        env_name = os.environ.get('AGENT_NAME') or os.environ.get('OPENCLAW_AGENT_NAME')
+        if env_name:
+            return env_name, 0.7
+        return None, 0.0
+    
+    # Files exist - ask for consent BEFORE reading
+    if not skip_consent:
+        print("\n" + "="*60)
+        print("🔐 PRIVACY CONSENT")
+        print("="*60)
+        print("AgentShield needs to read workspace files to detect your")
+        print("agent name:")
+        for f in files_found:
+            print(f"  • {f.relative_to(WORKSPACE)}")
+        print("\nThese files will be read locally only - NOT sent to API.")
+        print("You can also use: --name 'YourAgentName' to skip file access.")
+        print("="*60)
+        
+        response = input("\nProceed with file access? [Y/n]: ").strip().lower()
+        if response and response not in ('y', 'yes', ''):
+            print("\n❌ File access declined.")
+            print("   Please run with: --name 'YourAgentName' instead.")
+            sys.exit(0)
+        print("✓ Consent granted\n")
+    
+    # NOW read files after consent
     name_patterns = [
-        r'(?:^|\n)[\s]*[-*]?[\s]*(?:Name|name)[\s]*[:\-]?\s*["\']?([^\n"\']+)["\']?',
-        r'(?:^|\n)[\s]*#+\s*(?:I am|Name is|About)[\s:]+([^\n]+)',
+        # More strict patterns (MULTILINE flag for line start matching)
+        r'^\s*\*\*\s*(?:Name|name)\s*:\*\*\s*(.+)$',  # **Name:** or **name:**
+        r'^\s*-\s*\*\*\s*(?:Name|name)\s*:\*\*\s*(.+)$',  # - **Name:**
+        r'^\s*#+\s*(?:I am|Name is|About)\s+(.+)$',  # ## I am ...
+        # Fallback patterns (less strict)
+        r'(?:^|\n)[\s]*[*_-]*\s*(?:Name|name)\s*[*_]*[\s]*[:\-]?\s*[*_]*\s*([^\n*_"\']+)',
     ]
     
-    for file_path in IDENTITY_FILES:
-        if not file_path.exists():
-            continue
-        
+    for file_path in files_found:
         try:
             with open(file_path, 'r') as f:
                 content = f.read()
             
             for pattern in name_patterns:
-                match = re.search(pattern, content)
+                match = re.search(pattern, content, re.MULTILINE)
                 if match:
                     name = match.group(1).strip()
-                    # Clean up the name
-                    name = re.sub(r'[\*\-\#\`]', '', name).strip()
-                    if len(name) > 1 and len(name) < 50:
-                        return name, 0.9
+                    # Clean up the name (remove markdown formatting)
+                    name = re.sub(r'[\*\-\#\`_:]', '', name).strip()
+                    # Validate: reject if contains sentence markers
+                    if '.' in name or len(name) > 50 or len(name) < 2:
+                        continue
+                    return name, 0.9
         except Exception:
             continue
     
-    # Fallback: try to get from environment
+    # Fallback: environment variables
     env_name = os.environ.get('AGENT_NAME') or os.environ.get('OPENCLAW_AGENT_NAME')
     if env_name:
         return env_name, 0.7
@@ -161,12 +198,16 @@ def detect_openclaw_version():
     return None
 
 
-def auto_detect_all():
+def auto_detect_all(skip_consent: bool = False):
     """
     Auto-detect all agent information.
+    
+    Args:
+        skip_consent: Skip consent prompts (for --yes flag)
+    
     Returns: dict with name, platform, version and confidence scores
     """
-    name, name_conf = detect_agent_name()
+    name, name_conf = detect_agent_name(skip_consent=skip_consent)
     platform, platform_conf = detect_platform()
     version = detect_openclaw_version()
     
@@ -345,9 +386,8 @@ def run_security_tests(audit_id: str) -> dict:
     return results
 
 
-def complete_audit(audit_id: str, test_results: dict) -> dict:
-    """Submit test results and receive certificate."""
-    import requests
+def complete_audit(audit_id: str, test_results: dict, client) -> dict:
+    """Submit test results and receive certificate using client's session."""
     
     # Convert new format (77 tests) to server-compatible summary format
     summary = {
@@ -360,14 +400,19 @@ def complete_audit(audit_id: str, test_results: dict) -> dict:
         "medium_failures": test_results.get('medium_failures', 0)
     }
     
+    # ✅ v1.0.32 FIX: Sanitize detailed results (whitelist approach)
+    # Only send test_id, passed, category - NOT payloads/responses/evidence
     payload = {
         "audit_id": audit_id,
         "test_results": summary,
-        "detailed_results": test_results.get('test_results', [])  # Full details
+        "detailed_results": client._sanitize_test_details(
+            test_results.get('test_results', [])
+        )
     }
     
-    response = requests.post(
-        f"{AGENTSHIELD_API}/api/agent-audit/complete",
+    # ✅ v1.0.32 FIX: Use client's session (maintains auth state from challenge)
+    response = client.session.post(
+        f"{client.api_url}/api/agent-audit/complete",
         json=payload,
         timeout=30
     )
@@ -404,14 +449,41 @@ Examples:
     parser.add_argument("--platform", default="openclaw", help="Platform (telegram, discord, etc.)")
     parser.add_argument("--version", help="Agent/OpenClaw version")
     parser.add_argument("--auto", action="store_true", help="Auto-detect agent info from files only (no env scanning)")
-    parser.add_argument("--yes", "-y", action="store_true", help="Skip confirmations (non-interactive mode)")
+    parser.add_argument("--yes", "-y", action="store_true", help="⚠️ AUTOMATION ONLY: Skip all prompts (use only in pre-audited/sandboxed environments)")
+    parser.add_argument("--dry-run", action="store_true", help="Run tests and show what WOULD be submitted (no API call)")
     
     args = parser.parse_args()
+    
+    # Warning for --yes flag
+    if args.yes and not args.dry_run:
+        print("\n" + "="*70)
+        print("⚠️  AUTOMATION MODE (--yes flag)")
+        print("="*70)
+        print("This flag bypasses ALL consent prompts and confirmations.")
+        print("")
+        print("✅ Safe for:")
+        print("   • Sandboxed test agents (no real secrets)")
+        print("   • CI/CD pipelines (after manual code review)")
+        print("   • Agents you've already audited manually")
+        print("")
+        print("❌ NOT recommended for:")
+        print("   • Production agents with real secrets")
+        print("   • First-time audits (use manual mode first!)")
+        print("   • Agents handling sensitive user data")
+        print("")
+        print("📋 Code transparency: See audit_client.py line 108+ for")
+        print("   submission sanitization (whitelist approach).")
+        print("="*70)
+        print()
+        if not os.environ.get('AGENTSHIELD_YES_ACKNOWLEDGED'):
+            print("Set AGENTSHIELD_YES_ACKNOWLEDGED=1 to skip this warning.")
+            import time
+            time.sleep(3)  # Brief pause for user to read
     
     # Determine mode: auto or manual
     if args.auto:
         print("🔍 Auto-detecting agent information...")
-        detected = auto_detect_all()
+        detected = auto_detect_all(skip_consent=args.yes)
         
         print(f"\n  Detected name: {detected['name'] or 'UNKNOWN'} (confidence: {detected['name_confidence']:.0%})")
         print(f"  Detected platform: {detected['platform']} (confidence: {detected['platform_confidence']:.0%})")
@@ -423,14 +495,11 @@ Examples:
         platform = detected['platform']
         version = detected['version']
         
-        # Always confirm in auto mode (no --yes bypass for privacy)
-        if detected['overall_confidence'] < 0.8:
+        # Confirm in auto mode if low confidence
+        if detected['overall_confidence'] < 0.8 and not args.yes:
             print(f"\n⚠️  Low confidence in auto-detection ({detected['overall_confidence']:.0%})")
-            if not args.yes:
-                response = input(f"Use detected values? [Y/n] ").strip().lower()
-            else:
-                response = "y"
-            if response and response not in ('y', 'yes'):
+            response = input(f"Use detected values? [Y/n] ").strip().lower()
+            if response and response not in ('y', 'yes', ''):
                 print("Please run with --name and --platform flags instead.")
                 sys.exit(0)
         
@@ -457,10 +526,19 @@ Examples:
     public_key_short = keys['public_key'][:16] + "..."
     print(f"✓ Identity loaded: {public_key_short}")
     
-    # Step 2: Initiate audit
+    # ✅ v1.0.32 FIX: Create client instance (maintains session throughout)
+    from audit_client import AgentShieldClient
+    client = AgentShieldClient()
+    
+    # Step 2: Initiate audit (using client)
     print(f"\n📡 Contacting AgentShield API...")
     try:
-        session = initiate_audit(agent_name, platform, version)
+        session = client.initiate_audit(
+            agent_name=agent_name,
+            platform=platform,
+            public_key=keys['public_key'],
+            agent_version=version
+        )
     except SystemExit:
         raise
     except Exception as e:
@@ -472,10 +550,13 @@ Examples:
     
     print(f"✓ Audit initiated: {audit_id}")
     
-    # Step 3: Complete challenge
+    # Step 3: Complete challenge (using client)
     print(f"\n🔑 Authenticating...")
     try:
-        auth_result = complete_challenge(audit_id, challenge, keys['private_key'])
+        # Sign challenge locally
+        signature = sign_challenge(keys['private_key'], challenge)
+        # Submit via client (maintains session)
+        auth_result = client.complete_challenge(audit_id, signature)
         print(f"✓ Authentication successful")
     except Exception as e:
         print(f"✗ Authentication failed: {e}")
@@ -490,10 +571,54 @@ Examples:
     print(f"✓ Tests completed: {tests_passed}/{tests_total} passed")
     print(f"   Security Score: {overall_score}/100")
     
+    # DRY-RUN MODE: Show what would be submitted, then exit
+    if args.dry_run:
+        print("\n" + "="*70)
+        print("🔍 DRY RUN MODE - NO DATA WILL BE SUBMITTED")
+        print("="*70)
+        print("\nThis shows exactly what WOULD be sent to the API.")
+        print("Use this to verify sanitization before real submission.\n")
+        
+        # Use same client instance (already created above)
+        # Show sanitized summary
+        summary = {
+            "security_score": int(test_results.get('security_score', 0)),
+            "tests_passed": int(test_results.get('tests_passed', 0)),
+            "tests_total": int(test_results.get('tests_total', 0)),
+            "tier": str(test_results.get('tier', 'UNKNOWN')),
+            "critical_failures": int(test_results.get('critical_failures', 0)),
+            "high_failures": int(test_results.get('high_failures', 0)),
+            "medium_failures": int(test_results.get('medium_failures', 0))
+        }
+        
+        # Show sanitized detailed results (first 5 tests)
+        detailed = client._sanitize_test_details(
+            test_results.get('test_results', [])
+        )
+        
+        print("📤 WOULD SUBMIT TO API:")
+        print("─" * 70)
+        print(f"\n1. Summary Scores:")
+        print(json.dumps(summary, indent=2))
+        
+        print(f"\n2. Detailed Results (showing first 5 of {len(detailed)}):")
+        for i, test in enumerate(detailed[:5]):
+            print(f"   {i+1}. {test}")
+        
+        if len(detailed) > 5:
+            print(f"   ... and {len(detailed)-5} more test results")
+        
+        print("\n─" * 70)
+        print("✅ Dry run complete. No data sent to API.")
+        print("\n💡 To submit for real: Remove --dry-run flag")
+        print("─" * 70)
+        sys.exit(0)
+    
     # Step 5: Complete and get certificate
     print(f"\n📜 Requesting certificate...")
     try:
-        result = complete_audit(audit_id, test_results)
+        # ✅ v1.0.32 FIX: Pass client instance (for session + sanitization)
+        result = complete_audit(audit_id, test_results, client)
         certificate = result.get('certificate')
         agent_id = result.get('agent_id')
         

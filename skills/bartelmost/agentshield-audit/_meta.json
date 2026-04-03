@@ -3,11 +3,16 @@
   "slug": "agentshield-audit",
   "displayName": "Agentshield Audit",
   "latest": {
-    "version": "1.0.25",
-    "publishedAt": 1774600690257,
-    "commit": "https://github.com/openclaw/skills/commit/7967e7171f0eb195fcc989fd61270e3614c4c7a6"
+    "version": "1.0.32",
+    "publishedAt": 1775050633791,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.25",
+      "publishedAt": 1774600690257,
+      "commit": "https://github.com/openclaw/skills/commit/7967e7171f0eb195fcc989fd61270e3614c4c7a6"
+    },
     {
       "version": "1.0.22",
       "publishedAt": 1773232134008,

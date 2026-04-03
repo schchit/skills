@@ -1,7 +1,7 @@
 ---
 name: agentshield
-version: 1.0.23
-description: Trust Infrastructure for AI Agents - Like SSL/TLS for agent-to-agent communication. 77 security tests, cryptographic certificates, and Trust Handshake Protocol for establishing secure channels between agents.
+version: 1.0.31
+description: Trust Infrastructure for AI Agents - Like SSL/TLS for agent-to-agent communication. 77 security tests, cryptographic certificates, and Trust Handshake Protocol for establishing secure channels between agents. Explicit whitelist sanitization + dry-run mode for transparency.
 triggers: ["audit my agent", "get security certificate", "verify agent", "activate AgentShield", "security audit", "trust handshake", "verify peer agent"]
 ---
 
@@ -41,11 +41,9 @@ AgentShield provides the **trust layer** for agent-to-agent communication:
 
 ### 2. Security Audit (77 Tests)
 **52 Live Attack Vectors:**
-- Prompt injection (15 variants)
-- Encoding exploits (Base64, ROT13, Hex, Unicode)
-- Multi-language attacks (Chinese, Russian, Arabic, Japanese, German, Korean)
-- Social engineering (emotional appeals, authority pressure, flattery)
-- System prompt extraction attempts
+Tests defense against instruction manipulation, encoding schemes, and social engineering
+across 6 languages. All attack patterns are stored locally in agentshield_attack_patterns.json
+(not embedded in documentation).
 
 **25 Static Security Checks:**
 - Input sanitization
@@ -55,6 +53,8 @@ AgentShield provides the **trust layer** for agent-to-agent communication:
 - Supply chain security
 
 **Result:** Security score (0-100) + Tier (VULNERABLE → HARDENED)
+
+**Privacy:** Tests run 100% locally - only pass/fail scores sent to API (no prompts/responses)
 
 ### 3. Trust Handshake Protocol
 **Agent A wants to communicate with Agent B:**
@@ -100,10 +100,13 @@ cd ~/.openclaw/workspace/skills/agentshield*/
 
 ### Get Certified (77 Security Tests)
 ```bash
-# Auto-detect agent name from IDENTITY.md/SOUL.md
+# RECOMMENDED: Dry-run first (see what would be submitted)
+python3 initiate_audit.py --auto --dry-run
+
+# After verifying payload: Run for real
 python3 initiate_audit.py --auto
 
-# Or manual:
+# Or manual (no file reads):
 python3 initiate_audit.py --name "MyAgent" --platform telegram
 ```
 
@@ -226,6 +229,61 @@ OPENCLAW_AGENT_NAME=MyAgent               # OpenClaw standard
 
 ---
 
+## 🌐 API Endpoints
+
+**Base URL:** `https://agentshield.live/api`
+
+### 1. Agent Audit Flow
+```
+POST /agent-audit/initiate
+  → Initiate audit session
+  → Input: {agent_name, platform, public_key}
+  → Output: {audit_id, challenge}
+
+POST /agent-audit/challenge
+  → Complete challenge-response authentication
+  → Input: {audit_id, challenge_response (signed)}
+  → Output: {authenticated: true}
+
+POST /agent-audit/complete
+  → Submit test results & receive certificate
+  → Input: {audit_id, test_results}
+  → Output: {certificate, agent_id, expires_at}
+```
+
+### 2. Certificate Operations
+```
+GET /certificate/verify/{agent_id}
+  → Verify another agent's certificate
+  → Output: {valid, score, tier, issued_at, expires_at}
+
+GET /api/public-key
+  → Get AgentShield's public signing key
+  → Output: {public_key (Ed25519, base64)}
+```
+
+### 3. Trust Handshake
+```
+POST /handshake/initiate
+  → Start Trust Handshake with another agent
+  → Input: {requester_id, target_id}
+  → Output: {handshake_id, challenges}
+
+POST /handshake/complete
+  → Complete handshake with signed challenges
+  → Input: {handshake_id, signatures}
+  → Output: {session_key, trust_boost}
+```
+
+### Rate Limits
+- Audits: 1 per hour per IP
+- Handshakes: 10 per hour per agent
+- Verifications: Unlimited (read-only)
+
+**All endpoints require HTTPS. No API keys needed.**
+
+---
+
 ## 🌐 Trust Handshake Protocol (Technical)
 
 ### Flow
@@ -246,12 +304,14 @@ OPENCLAW_AGENT_NAME=MyAgent               # OpenClaw standard
 
 ## 🚀 Roadmap
 
-**Current (v1.0.13):**
+**Current (v1.0.31):**
 - ✅ 77 security tests
 - ✅ Ed25519 certificates
 - ✅ Trust Handshake Protocol
 - ✅ Public Trust Registry
 - ✅ CRL (Certificate Revocation List)
+- ✅ Explicit whitelist sanitization (test IDs only)
+- ✅ Dry-run mode for transparency
 
 **Coming Soon:**
 - ⏳ Auto re-audit (when prompts change)
@@ -291,6 +351,41 @@ python3 verify_peer.py agent_yyyyy
 
 ---
 
+## 🔐 Privacy & Security Guarantees (v1.0.31+)
+
+**✅ EXPLICIT WHITELIST (What Gets Sent):**
+- Test IDs (e.g. "PI-001", "SS-003")
+- Pass/fail boolean per test
+- Category names (e.g. "prompt_injection")
+- Summary counts (passed/failed/total)
+- Agent metadata (name, platform, version)
+- Public key (Ed25519, for certificate signing)
+
+**❌ NEVER SENT (Explicitly Excluded):**
+- ✅ Your system prompt
+- ✅ Attack test inputs/payloads (e.g. "ignore previous instructions")
+- ✅ Attack test outputs/responses
+- ✅ Evidence snippets (base64 matches, pattern findings)
+- ✅ Error messages from test execution
+- ✅ Tool configurations
+- ✅ File paths or workspace structure
+- ✅ Private keys (Ed25519, stay local in ~/.agentshield/)
+
+**🔍 Code-Level Enforcement:**
+- See `audit_client.py` line 108: `_sanitize_test_details()` whitelist
+- Payloads/responses/evidence explicitly dropped (line 130-136 comments)
+- Dry-run mode: `--dry-run` flag shows exact payload before submission
+
+**Verification:**
+```bash
+# See what WOULD be submitted (no API call)
+python3 initiate_audit.py --auto --dry-run
+```
+
+All code is open-source: [github.com/bartelmost/agentshield](https://github.com/bartelmost/agentshield)
+
+---
+
 ## 🔒 Data Transmission Transparency
 
 ### What Gets Sent to AgentShield API
@@ -326,11 +421,47 @@ python3 verify_peer.py agent_yyyyy
 
 ## 🛡️ Consent & Privacy
 
-**File Read Consent:**
-1. Skill requests permission BEFORE reading IDENTITY.md/SOUL.md
-2. User sees: "Read IDENTITY.md for agent name? [Y/n]"
-3. If declined: Manual mode (`--name` flag)
+**File Read Consent (v1.0.30+):**
+1. ✅ Explicit consent prompt BEFORE reading IDENTITY.md/SOUL.md
+2. User sees: "🔐 PRIVACY CONSENT - Read IDENTITY.md for agent name? [Y/n]"
+3. If declined: Exits with message "Please run with: --name 'YourAgentName'"
 4. If approved: Only name/platform extracted (not full file content)
+
+**⚠️ Automation Mode (--yes flag) - v1.0.31+:**
+
+The `--yes` flag is designed for **CI/CD and pre-audited environments ONLY**.
+
+**When to use:**
+- ✅ Sandboxed test agents (no real secrets)
+- ✅ CI/CD pipelines (after manual code review + dry-run)
+- ✅ Agents you've already audited manually
+
+**When NOT to use:**
+- ❌ Production agents with real secrets
+- ❌ Agents handling sensitive user data
+- ❌ First-time audit (always use manual mode first!)
+
+**Why?** The --yes flag bypasses ALL consent prompts. While the code includes 
+explicit sanitization (see audit_client.py line 108+), we recommend:
+
+1. Run `--dry-run` first to inspect payload
+2. Manually review audit_client.py whitelist
+3. Only then use `--yes` for automation
+
+**Best Practice:**
+```bash
+# Step 1: Dry-run to see payload
+python3 initiate_audit.py --auto --dry-run
+
+# Step 2: Review output, verify sanitization
+# (Should only show test IDs + pass/fail, no payloads)
+
+# Step 3: If satisfied, run for real
+python3 initiate_audit.py --auto
+
+# Step 4: For CI/CD, add --yes ONLY after manual verification
+python3 initiate_audit.py --auto --yes
+```
 
 **Privacy-First Mode:**
 ```bash

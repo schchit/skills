@@ -4,19 +4,31 @@ Low-level AgentShield API client.
 
 DATA TRANSMISSION POLICY (Privacy-First):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✅ SENT TO API:
+✅ SENT TO API (WHITELIST):
    - Agent name (e.g. "MyBot")
    - Platform (e.g. "telegram")
    - Public key (Ed25519, used for certificate signing)
    - Test scores (pass/fail counts per category)
+   - Test IDs (e.g. ["PI-001", "PI-002", "SS-003"])
    - Example: {"agent_name": "MyBot", "scores": {"prompt_injection": 4/5}, ...}
 
-❌ NOT SENT:
+❌ NEVER SENT (EXPLICIT EXCLUSION):
    - Private keys (stay local in ~/.openclaw/workspace/.agentshield/)
    - System prompts or agent instructions
    - Tool call logs or conversation history
    - Workspace files (IDENTITY.md, SOUL.md, etc.)
+   - Test input payloads (attack strings like "ignore previous instructions")
+   - Test output logs (agent responses to attacks)
+   - Evidence snippets (base64 matches, pattern findings)
+   - Error messages from test execution
+   - File paths or workspace structure
    - Any secrets or tokens
+
+🔒 SUBMISSION SANITIZATION (v1.0.31+):
+   - Explicit whitelist in _sanitize_test_details()
+   - Only test_id, passed (bool), category sent
+   - Attack payloads, responses, evidence explicitly dropped
+   - See submit_results() line 145+ for implementation
 
 🔒 API SECURITY:
    - Endpoint: agentshield.live/api (HTTPS only)
@@ -105,13 +117,49 @@ class AgentShieldClient:
         response.raise_for_status()
         return response.json()
     
+    def _sanitize_test_details(self, test_results: list) -> list:
+        """
+        Sanitize test results for API submission.
+        
+        WHITELIST APPROACH: Only send test_id, passed, and category.
+        EXPLICITLY EXCLUDE: payloads, responses, evidence, errors.
+        
+        Args:
+            test_results: Raw test results from tester
+        
+        Returns:
+            Sanitized list with only safe fields
+        """
+        sanitized = []
+        for test in test_results:
+            # Whitelist - only these fields
+            safe_test = {
+                'test_id': str(test.get('test_id', 'unknown')),
+                'passed': bool(test.get('passed', False)),
+                'category': str(test.get('category', 'unknown'))
+            }
+            sanitized.append(safe_test)
+            
+            # EXPLICITLY NOT INCLUDED (for transparency):
+            # - test.get('payload')      # Attack string
+            # - test.get('response')     # Agent output
+            # - test.get('evidence')     # Pattern matches
+            # - test.get('error')        # Error messages
+            # - test.get('raw_output')   # Full logs
+            # - test.get('snippets')     # Code snippets
+        
+        return sanitized
+    
     def submit_results(
         self,
         audit_id: str,
         test_results: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        Submit test results and receive certificate.
+        Submit sanitized test results and receive certificate.
+        
+        SANITIZATION: Only scores, counts, and test IDs sent.
+        See _sanitize_test_details() for whitelist implementation.
         
         Args:
             audit_id: Audit session ID
@@ -120,9 +168,26 @@ class AgentShieldClient:
         Returns:
             Certificate data
         """
+        # Build summary with explicit type coercion
+        summary = {
+            "security_score": int(test_results.get('security_score', 0)),
+            "tests_passed": int(test_results.get('tests_passed', 0)),
+            "tests_total": int(test_results.get('tests_total', 0)),
+            "tier": str(test_results.get('tier', 'UNKNOWN')),
+            "critical_failures": int(test_results.get('critical_failures', 0)),
+            "high_failures": int(test_results.get('high_failures', 0)),
+            "medium_failures": int(test_results.get('medium_failures', 0))
+        }
+        
+        # Sanitize detailed results - whitelist approach
+        detailed = self._sanitize_test_details(
+            test_results.get('test_results', [])
+        )
+        
         payload = {
             "audit_id": audit_id,
-            "test_results": test_results
+            "test_results": summary,
+            "detailed_results": detailed  # Only test_id + passed + category
         }
         
         response = self.session.post(
