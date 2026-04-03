@@ -1,17 +1,63 @@
 ---
 name: gate-news-listing
-version: "2026.3.13-1"
-updated: "2026-03-13"
+version: "2026.4.1-1"
+updated: "2026-04-01"
 description: "Exchange listing tracker. Use this skill whenever the user asks about exchange listing, delisting, or maintenance announcements. Trigger phrases include: any new coins listed recently, what did Binance list, new listings, delisted. MCP tools: news_feed_get_exchange_announcements, info_coin_get_coin_info, info_marketsnapshot_get_market_snapshot."
+required_credentials: []
+required_env_vars: []
+required_permissions: []
 ---
 
 # gate-news-listing
+
+## General Rules
+
+⚠️ STOP — You MUST read and strictly follow the shared runtime rules before proceeding.
+Do NOT select or call any tool until all rules are read. These rules have the highest priority.
+→ Read [gate-runtime-rules.md](https://github.com/gate/gate-skills/blob/master/skills/gate-runtime-rules.md)
+→ Also read [info-news-runtime-rules.md](https://github.com/gate/gate-skills/blob/master/skills/info-news-runtime-rules.md) for **gate-info** / **gate-news**-specific rules (tool degradation, report standards, security, routing degradation, and per-skill version checks when `scripts/` is present).
+- **Only call MCP tools explicitly listed in this skill.** Tools not documented here must NOT be called, even if they
+  exist in the MCP server.
 
 > Listing radar Skill. The user queries exchange listing/delisting/maintenance announcements, the system first calls the exchange announcements Tool, then supplements high-interest coins with fundamentals and market data. The LLM aggregates everything into a structured exchange activity report.
 
 **Trigger Scenarios**: User mentions an exchange name + listing/delisting keywords, or asks "any new coins listed recently" or "any new projects".
 
+**Per-skill updates:** This skill may include `scripts/update-skill.sh` and, in full source trees, `scripts/update-skill.ps1` for optional maintenance checks against the official Gate Skills repository. The shared policy is defined in [info-news-runtime-rules.md](https://github.com/gate/gate-skills/blob/master/skills/info-news-runtime-rules.md).
+
+**Maintenance flow:**
+- Use `check` only when you need to compare the installed skill with the official repo.
+- In interactive sessions, `check` never rewrites files.
+- If `update_available`, ask the user before `apply`.
+- If update scripts are unavailable or the version check cannot run, continue with the current installed version.
+- `apply` rewrites only this skill's local directory under the active skills root.
+- Do not download replacement updater scripts during the session; use the official repo for manual repair when needed.
+
 ---
+
+## MCP Dependencies
+
+### Required MCP Servers
+| MCP Server | Status |
+|------------|--------|
+| Gate-News | ✅ Required |
+
+### MCP Tools Used
+
+**Query Operations (Read-only)**
+
+- info_coin_get_coin_info
+- info_coin_get_coin_rankings
+- info_marketsnapshot_get_market_snapshot
+- news_feed_get_exchange_announcements
+
+### Authentication
+- API Key Required: No
+- Credentials Source: None; this skill uses read-only Gate Info / Gate News MCP access only.
+
+### Installation Check
+- Required: Gate-News
+- Install: `gate-mcp-installer` — `bash skills/gate-mcp-installer/scripts/install.sh` (use `--platform cursor|claude|codex|openclaw` if multiple dev environments exist)
 
 ## Routing Rules
 
@@ -45,7 +91,7 @@ Extract from user input:
 
 | Step | MCP Tool | Parameters | Retrieved Data | Parallel |
 |------|----------|------------|----------------|----------|
-| 1 | `news_feed_get_exchange_announcements` | `exchange={exchange}, coin={coin}, announcement_type={type}, limit={limit}` | Announcement list: exchange, coin, type, time, details | — |
+| 1 | `news_feed_get_exchange_announcements` | `exchange={exchange}, coin={coin}, announcement_type={announcement_type}, limit={limit}` | Announcement list: exchange, coin, type, time, details | — |
 
 ### Step 3: Supplement Key Coins with Data (Parallel)
 
@@ -150,7 +196,7 @@ Pass announcement data and supplementary info to the LLM to generate the exchang
 | news_feed_get_exchange_announcements timeout | Return error message; suggest trying again later |
 | Coin supplementary info (coin_info / market_snapshot) fails | Skip detailed analysis for that coin; display announcement info only |
 | User asks when a coin will be listed (future) | Inform "Currently only published announcements can be queried — future listing plans cannot be predicted" |
-| Too many results | Default to showing the most recent 10; inform user they can specify an exchange or time range to narrow results |
+| Too many results | Default to showing the most recent 10; inform the user they can specify an exchange or time range to narrow results |
 
 ---
 
