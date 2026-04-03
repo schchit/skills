@@ -3,11 +3,16 @@
   "slug": "soundcloud-watcher",
   "displayName": "SoundCloud Watcher",
   "latest": {
-    "version": "2.3.1",
-    "publishedAt": 1771764438988,
-    "commit": "https://github.com/openclaw/skills/commit/59dcc43fc89eabc0cd55081c04d09587ce28ed16"
+    "version": "2.4.0",
+    "publishedAt": 1774897513800,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.3.1",
+      "publishedAt": 1771764438988,
+      "commit": "https://github.com/openclaw/skills/commit/59dcc43fc89eabc0cd55081c04d09587ce28ed16"
+    },
     {
       "version": "2.2.5",
       "publishedAt": 1771422754662,
