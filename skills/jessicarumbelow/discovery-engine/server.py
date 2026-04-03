@@ -16,6 +16,7 @@ import os
 import httpx
 from mcp.server.fastmcp import FastMCP
 from mcp.server.streamable_http import TransportSecuritySettings
+from mcp.types import ToolAnnotations
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +28,49 @@ DASHBOARD_URL = os.getenv("DISCOVERY_DASHBOARD_URL") or os.getenv(
 # where they'd be logged by MCP clients.
 _ENV_API_KEY = os.getenv("DISCOVERY_API_KEY")
 
-# File safety: allowed extensions and max size for uploads
+# OAuth signing secret — enables OAuth 2.0 auth when set.
+# Shared between MCP server and Dashboard for stateless token signing.
+_OAUTH_SECRET = os.getenv("MCP_OAUTH_SECRET")
+
+# MCP server's public URL (for OAuth callback routing)
+_SERVER_URL = os.getenv("MCP_SERVER_URL", "")
 
 _VALID_VISIBILITY = {"public", "private"}
+
+# ---------------------------------------------------------------------------
+# OAuth setup (only when MCP_OAUTH_SECRET is configured)
+# ---------------------------------------------------------------------------
+
+_oauth_provider = None
+_oauth_auth_settings = None
+
+if _OAUTH_SECRET and _SERVER_URL:
+    from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions, RevocationOptions
+
+    from .auth import DiscoOAuthProvider, create_callback_routes
+
+    _oauth_provider = DiscoOAuthProvider(
+        signing_secret=_OAUTH_SECRET,
+        dashboard_url=DASHBOARD_URL,
+        server_url=_SERVER_URL,
+    )
+
+    _oauth_auth_settings = AuthSettings(
+        issuer_url=_SERVER_URL,
+        service_documentation_url="https://docs.disco.leap-labs.com",
+        client_registration_options=ClientRegistrationOptions(
+            enabled=True,
+            valid_scopes=["discovery"],
+            default_scopes=["discovery"],
+        ),
+        revocation_options=RevocationOptions(enabled=True),
+        required_scopes=[],
+        resource_server_url=_SERVER_URL,
+    )
+
+# ---------------------------------------------------------------------------
+# FastMCP instance
+# ---------------------------------------------------------------------------
 
 mcp = FastMCP(
     "Disco",
@@ -37,9 +78,16 @@ mcp = FastMCP(
         "Not another AI data analyst. Disco is a discovery pipeline "
         "that finds novel, statistically validated patterns in tabular data — "
         "feature interactions, subgroup effects, and conditional relationships "
-        "you wouldn't think to look for."
+        "you wouldn't think to look for. "
+        "When displaying results, render interactive visualizations following "
+        "the Disco style guide at https://disco.leap-labs.com/visualization-spec"
     ),
-    stateless_http=True,  # Enable stateless mode for edge deployments (Modal, Vercel)
+    stateless_http=True,
+    # Pass OAuth provider for /authorize, /token, /register, /revoke endpoints.
+    # We do NOT set token_verifier — our DualAuthMiddleware handles bearer
+    # validation permissively (allows unauthenticated API key requests through).
+    auth_server_provider=_oauth_provider,
+    auth=_oauth_auth_settings,
     transport_security=TransportSecuritySettings(
         enable_dns_rebinding_protection=True,
         allowed_hosts=[
@@ -51,6 +99,10 @@ mcp = FastMCP(
         ],
     ),
 )
+
+# Add OAuth callback route if OAuth is enabled
+if _oauth_provider:
+    mcp._custom_starlette_routes.extend(create_callback_routes())
 
 
 # ---------------------------------------------------------------------------
@@ -73,7 +125,19 @@ async def _get_dashboard_client() -> httpx.AsyncClient:
 
 
 def _resolve_api_key(api_key: str | None) -> str | None:
-    """Resolve API key: prefer explicit param, fall back to env var."""
+    """Resolve API key: OAuth bearer token first, then explicit param, then env var.
+
+    When a Claude.ai user connects via OAuth, their API key is embedded in
+    the bearer token. This function checks for it automatically so tool
+    functions don't need OAuth-specific logic.
+    """
+    # Check OAuth context (set by DualAuthMiddleware when bearer token is present)
+    if _OAUTH_SECRET:
+        from mcp.server.auth.middleware.auth_context import get_access_token
+
+        token = get_access_token()
+        if token and hasattr(token, "api_key") and token.api_key:
+            return token.api_key
     return api_key or _ENV_API_KEY
 
 
@@ -161,7 +225,7 @@ def _build_result_hints(data: dict) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 async def discovery_list_plans() -> str:
     """List available Disco plans with pricing.
 
@@ -177,12 +241,12 @@ async def discovery_list_plans() -> str:
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 async def discovery_estimate(
     file_size_mb: float,
     num_columns: int,
     num_rows: int | None = None,
-    depth_iterations: int = 2,
+    analysis_depth: int = 2,
     visibility: str = "public",
     api_key: str | None = None,
 ) -> str:
@@ -196,7 +260,7 @@ async def discovery_estimate(
         file_size_mb: Size of the dataset in megabytes.
         num_columns: Number of columns in the dataset.
         num_rows: Number of rows (optional, improves time estimate).
-        depth_iterations: Search depth (1=fast, higher=deeper). Default 1.
+        analysis_depth: Search depth (1=fast, higher=deeper). Default 1.
         visibility: "public" (free, results published) or "private" (costs credits).
         api_key: Disco API key (disco_...). Optional if DISCOVERY_API_KEY env var is set.
     """
@@ -213,7 +277,7 @@ async def discovery_estimate(
     payload: dict = {
         "file_size_mb": file_size_mb,
         "num_columns": num_columns,
-        "depth_iterations": depth_iterations,
+        "analysis_depth": analysis_depth,
         "visibility": visibility,
     }
     if num_rows is not None:
@@ -237,7 +301,7 @@ _MIME_TYPES = {
 }
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False))
 async def discovery_upload(
     file_content: str | None = None,
     file_name: str = "data.csv",
@@ -413,11 +477,11 @@ async def discovery_upload(
     )
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(destructiveHint=True, idempotentHint=False))
 async def discovery_analyze(
     target_column: str,
     file_ref: str | dict | None = None,
-    depth_iterations: int = 2,
+    analysis_depth: int = 2,
     visibility: str = "public",
     title: str | None = None,
     description: str | None = None,
@@ -449,7 +513,7 @@ async def discovery_analyze(
     Args:
         target_column: The column to analyze — what drives it, beyond what's obvious.
         file_ref: The file reference returned by discovery_upload.
-        depth_iterations: Search depth (1=fast, higher=deeper). Default 1.
+        analysis_depth: Search depth (1=fast, higher=deeper). Default 1.
         visibility: "public" (free) or "private" (costs credits). Default "public".
         title: Optional title for the analysis.
         description: Optional description of the dataset.
@@ -498,7 +562,7 @@ async def discovery_analyze(
         },
         "columns": columns,
         "targetColumn": target_column,
-        "depthIterations": depth_iterations,
+        "analysisDepth": analysis_depth,
         "isPublic": visibility == "public",
     }
     if title:
@@ -552,7 +616,7 @@ async def discovery_analyze(
     return json.dumps(result, indent=2)
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 async def discovery_status(run_id: str, api_key: str | None = None) -> str:
     """Check the status of a Disco run.
 
@@ -597,13 +661,21 @@ async def discovery_status(run_id: str, api_key: str | None = None) -> str:
     return json.dumps(result, indent=2)
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 async def discovery_get_results(run_id: str, api_key: str | None = None) -> str:
     """Fetch the full results of a completed Disco run.
 
     Returns discovered patterns (with conditions, p-values, novelty scores,
     citations), feature importance scores, a summary with key insights, column
-    statistics, a shareable report URL, and suggestions for what to explore next.
+    statistics, and suggestions for what to explore next.
+
+    The response includes a `dashboard_urls` object with direct links to each
+    page of the interactive report — use these to direct the user to the most
+    relevant view:
+    - **summary**: AI-generated overview with key insights, novel findings, and plain-language explanation of the most important findings
+    - **patterns**: Full list of discovered patterns with conditions, effect sizes, p-values, novelty scores, citations, and interactive visualisations
+    - **features**: Feature importances, feature statistics and distribution plots, and correlation matrix
+    - **territory**: Interactive 3D map showing how patterns select different regions of the data
 
     Only call this after discovery_status returns "completed".
 
@@ -628,7 +700,7 @@ async def discovery_get_results(run_id: str, api_key: str | None = None) -> str:
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 async def discovery_account(api_key: str | None = None) -> str:
     """Check your Disco account status.
 
@@ -649,7 +721,7 @@ async def discovery_account(api_key: str | None = None) -> str:
     return json.dumps(result, indent=2)
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(destructiveHint=False, idempotentHint=True))
 async def discovery_signup(email: str, name: str = "") -> str:
     """Create a Disco account and get an API key.
 
@@ -672,7 +744,7 @@ async def discovery_signup(email: str, name: str = "") -> str:
     return json.dumps(result, indent=2)
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(destructiveHint=False, idempotentHint=True))
 async def discovery_signup_verify(email: str, code: str) -> str:
     """Complete Disco signup using an email verification code.
 
@@ -692,7 +764,7 @@ async def discovery_signup_verify(email: str, code: str) -> str:
     return json.dumps(result, indent=2)
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(destructiveHint=False, idempotentHint=True))
 async def discovery_add_payment_method(payment_method_id: str, api_key: str | None = None) -> str:
     """Attach a Stripe payment method to your Disco account.
 
@@ -723,7 +795,7 @@ async def discovery_add_payment_method(payment_method_id: str, api_key: str | No
     return json.dumps(result, indent=2)
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(destructiveHint=True, idempotentHint=False))
 async def discovery_purchase_credits(packs: int = 1, api_key: str | None = None) -> str:
     """Purchase Disco credit packs using a stored payment method.
 
@@ -750,7 +822,7 @@ async def discovery_purchase_credits(packs: int = 1, api_key: str | None = None)
     return json.dumps(result, indent=2)
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(destructiveHint=True, idempotentHint=True))
 async def discovery_subscribe(plan: str, api_key: str | None = None) -> str:
     """Subscribe to or change your Disco plan.
 
@@ -783,6 +855,26 @@ async def discovery_subscribe(plan: str, api_key: str | None = None) -> str:
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+
+
+def create_app():
+    """Create the ASGI app with OAuth middleware if configured.
+
+    Returns a Starlette app suitable for Modal's @modal.asgi_app().
+    When MCP_OAUTH_SECRET is set, wraps the app with DualAuthMiddleware
+    for bearer token validation. Otherwise returns the plain MCP app.
+    """
+    starlette_app = mcp.streamable_http_app()
+
+    if _oauth_provider:
+        from .auth import DualAuthMiddleware
+
+        # Store provider on the Starlette app so the callback route can access it
+        starlette_app.state.oauth_provider = _oauth_provider
+        # Wrap with middleware that validates bearer tokens permissively
+        return DualAuthMiddleware(starlette_app, _oauth_provider)
+
+    return starlette_app
 
 
 def main():

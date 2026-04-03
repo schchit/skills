@@ -49,7 +49,7 @@ result = await engine.discover(
     file="data.csv",               # str | Path | pd.DataFrame
     target_column="outcome",       # column to analyze
     visibility="public",           # "public" (free) | "private" (credits)
-    depth_iterations=2,            # higher = deeper analysis
+    analysis_depth=2,              # higher = deeper analysis
 )
 
 for pattern in result.patterns:
@@ -94,7 +94,7 @@ Estimate before running:
 estimate = await engine.estimate(
     file_size_mb=10.5,
     num_columns=25,
-    depth_iterations=2,
+    analysis_depth=2,
     visibility="private",
 )
 # estimate["cost"]["credits"]              → 21
@@ -110,6 +110,17 @@ Before running, use `excluded_columns` to remove columns that would produce taut
 2. **Data leakage** — the target column renamed or reformatted
 3. **Tautological columns** — alternative encodings of the same construct as the target (e.g., if target is `serious`, exclude `serious_outcome`, `not_serious`, `death` — they're all part of the same classification system; if target is `profit`, exclude `revenue` and `cost` which compose it)
 
+
+## Expected Data Format
+
+Disco expects a flat table — columns for features, rows for samples.
+
+- One row per observation (a patient, a sample, a transaction, a measurement, etc.)
+- One column per feature (numeric, categorical, datetime, or free text)
+- One target column — the outcome to analyze. Must have at least 2 distinct values.
+- Missing values are OK — Disco handles them automatically. Don't drop rows or impute beforehand.
+
+Not supported: images, raw text documents, nested/hierarchical JSON, multi-sheet Excel.
 
 ## Supported File Formats
 
