@@ -2,210 +2,120 @@
 
 ## Overview
 
-**CRIF (Crypto Research Interactive Framework)** is a prompt engineering framework designed for conducting comprehensive crypto market research with AI assistance.
+**CRIF (Crypto Research Interactive Framework)** is a prompt engineering framework for crypto market research with AI assistance. It is written entirely in Markdown — zero code, zero binaries.
 
 ---
 
 ## What is CRIF?
 
-CRIF is **NOT a traditional software application** - it is a **prompt engineering framework** written entirely in natural language (YAML + Markdown files, zero code).
-
-### Core Components
+CRIF is **not a software application**. It is a collection of Markdown files that instruct AI assistants how to conduct structured crypto research.
 
 ```
-framework/
-├── agents/*.yaml           # AI persona definitions
-├── workflows/*/           # Research methodologies
-│   ├── objectives.md      # What to research
-│   └── template.md        # How to format output
-└── components/*.md        # Execution protocols
+references/
+├── core/                # Orchestrator, config, state templates
+├── agents/*.md          # AI persona definitions
+├── workflows/*/         # Research methodologies
+│   ├── workflow.md      # Workflow config + agent assignment
+│   ├── objectives.md    # What to research
+│   └── template.md      # How to format output
+├── components/*.md      # Execution protocols
+└── guides/*.md          # Methodology references
 ```
 
 **How it works:**
-1. User activates an AI agent (e.g., Research Analyst)
-2. AI reads YAML/Markdown files to understand persona and methodology
+1. User requests crypto research
+2. AI reads Markdown files to understand persona and methodology
 3. AI conducts research following structured instructions
-4. AI generates formatted research outputs
-
-**Think of it as:** Research SOPs (Standard Operating Procedures) that AI assistants follow to conduct professional-grade crypto analysis.
+4. AI generates formatted research outputs to local workspace
 
 ---
 
 ## Required Permissions
 
-### 1. File System Access - READ
+### 1. File System — READ
 
 **Scope:**
 ```
-framework/agents/*.yaml
-framework/workflows/**/*.md
-framework/components/*.md
-framework/guides/*.md
-framework/core-config.yaml
-framework/_workspace.yaml
+references/core/*.md
+references/agents/*.md
+references/workflows/**/*.md
+references/components/*.md
+references/guides/*.md
 ```
 
-**Purpose:**
-- Read AI agent persona definitions
-- Read research methodology instructions
-- Read output templates
-- Load user preferences and configuration
+**Purpose:** AI reads instruction files to understand how to conduct research. This is the core functionality.
 
-**Why needed:**
-CRIF is a prompt engineering framework - AI must read these instruction files to understand how to conduct research. This is the core functionality.
-
-**Data flow:**
-```
-Framework files → AI reads → AI understands how to work
-```
-
-### 2. File System Access - WRITE
+### 2. File System — WRITE
 
 **Scope:**
 ```
-workspaces/{project-id}/workspace.yaml
-workspaces/{project-id}/documents/
+workspaces/{project-id}/.orchestrator
 workspaces/{project-id}/outputs/**/*.md
+workspaces/{project-id}/outputs/**/.scratch
 ```
 
-**Purpose:**
-- Create isolated workspace for each research project
-- Save research outputs (reports, analyses)
-- Manage project configuration
+**Purpose:** Save research outputs and manage session state. All writes are confined to the `workspaces/` directory.
 
-**Why needed:**
-Research framework must save outputs somewhere. All writes are confined to `workspaces/` directory within the project.
+### 3. Network — WebSearch / WebFetch
 
-**Data flow:**
-```
-AI conducts research → Generates report → Saves to workspaces/{project}/outputs/
-```
+**Purpose:** Search for and fetch current crypto market data, news, documentation, and public blockchain data.
 
-### 3. Network Access - WebSearch
+**Why needed:** Crypto research requires access to current market data and primary sources.
 
-**Purpose:**
-- Search for current crypto market data
-- Find news, trends, and market developments
-- Gather information for research
+### 4. Network — MCP Servers (Optional)
 
-**Example queries:**
-- "Bitcoin ETF approval news 2024"
-- "Ethereum scaling roadmap"
-- "DeFi TVL statistics"
+**Scope:** Only if user explicitly configures MCP servers in `.mcp.json` or `~/.claude.json`.
 
-**Why needed:**
-Cannot conduct crypto market research without access to current market data, news, and public information.
+**Purpose:** Real-time structured data from CoinGecko, CoinMarketCap, DeFiLlama, Dune, Exa.
 
-**Data flow:**
-```
-Research question → WebSearch → Public data → Synthesized into report
-```
-
-### 4. Network Access - WebFetch
-
-**Purpose:**
-- Fetch specific documents (whitepapers, documentation, blog posts)
-- Read protocol specifications
-- Access public blockchain data sources
-
-**Example URLs:**
-- Protocol documentation sites
-- GitHub repositories (for technical analysis)
-- Official project blogs
-- Public blockchain explorers
-
-**Why needed:**
-Crypto research requires reading primary sources like whitepapers, technical docs, and official announcements.
-
-**Data flow:**
-```
-Document URL → WebFetch → Content → Analyzed for research
-```
+**Important:**
+- MCP servers are **optional** — CRIF works fully without them
+- User **manually configures** each server and provides their own API keys
+- CRIF framework files do **not** contain any API keys or credentials
+- MCP config details are in `references/core/mcp-servers.md` for reference only — the actual config lives in the user's `.mcp.json`, outside the framework
 
 ---
 
 ## What CRIF Does NOT Do
 
-### ❌ No Data Exfiltration
-- Does not send user data to unauthorized external servers
-- Does not transmit research outputs to third parties
-- All outputs saved locally in `workspaces/` directory
-- WebSearch/WebFetch only used for gathering PUBLIC research data
-
-### ❌ No System Modifications
-- Does not modify system files
-- Does not install background processes
-- Does not create persistence mechanisms
-- Only operates within project directory
-
-### ❌ No Remote Control
-- Does not connect to command & control servers
-- Does not receive remote commands
-- Does not establish backdoors
-- All instructions come from LOCAL framework files
-
-### ❌ No Credential Harvesting
-- Does not collect API keys, passwords, or credentials
-- Does not access sensitive system data
-- Does not scan for private information
-
-### ❌ No Obfuscation
-- All framework files are plain text (YAML/Markdown)
-- Zero binary code
-- Zero encryption or obfuscation
-- Fully readable and modifiable by users
+- **No data exfiltration** — All outputs saved locally in `workspaces/`
+- **No system modifications** — Does not modify system files or install processes
+- **No remote control** — No C2 servers, no backdoors, all instructions from local files
+- **No credential harvesting** — Does not collect API keys, passwords, or credentials
+- **No obfuscation** — All files are plain text Markdown, fully readable
 
 ---
 
-## Transparency & Verification
+## Transparency
 
-### All Code is Readable
+### All Instructions Are Readable
 
-Every instruction in CRIF is plain text:
+Every instruction in CRIF is plain text Markdown:
 
 ```
-framework/agents/research-analyst.yaml  ← AI persona definition (YAML)
-framework/workflows/*/objectives.md     ← Research methodology (Markdown)
-framework/components/*.md               ← Execution protocols (Markdown)
+references/agents/market-analyst.md       ← AI persona definition
+references/workflows/*/objectives.md      ← Research objectives
+references/components/workflow-execution.md ← Execution protocol
+references/guides/research-methodology.md  ← Research principles
 ```
 
-**Anyone can:**
-- Read every instruction
-- Understand what AI will do
-- Modify behavior by editing files
-- Verify no malicious content
+Anyone can read every instruction, understand what AI will do, modify behavior, and verify no malicious content.
 
-### No Hidden Behavior
-
-Unlike malware that:
-- ❌ Hides code in encrypted binaries
-- ❌ Obfuscates logic
-- ❌ Uses stealth techniques
-
-CRIF:
-- ✅ All instructions in plain text
-- ✅ Fully transparent design
-- ✅ User-modifiable
-- ✅ Open source
-
-### Data Flow is Transparent
+### Data Flow
 
 ```
 User request
   ↓
-AI reads framework files (LOCAL)
+AI reads LOCAL Markdown files
   ↓
-AI conducts research (WebSearch/WebFetch PUBLIC data)
+AI conducts research (WebSearch/WebFetch/MCP — PUBLIC data)
   ↓
 AI generates report
   ↓
 Output saved to workspaces/ (LOCAL)
 ```
 
-No step involves:
-- Sending user data to unauthorized servers
-- Hidden network connections
-- Unauthorized data access
+No step involves unauthorized data access, hidden network connections, or system modifications.
 
 ---
 
@@ -213,185 +123,54 @@ No step involves:
 
 ### For Users
 
-1. **Review framework files** before use
-   - All instructions are readable YAML/Markdown
-   - Verify no unauthorized endpoints
-   - Check workspace paths are correct
-
-2. **Monitor workspace directory**
-   - All outputs saved to `workspaces/`
-   - Review what's being saved
-   - Delete projects when done
-
-3. **Understand permissions**
-   - Framework needs file read/write for workspace management
-   - Framework needs network access for research
-   - All permissions are for stated functionality
+1. **Review framework files** — All instructions are readable Markdown
+2. **Monitor workspaces/** — All outputs saved here; review and delete when done
+3. **MCP API keys** — Store in `.mcp.json` (local config), never in framework files. Add `.mcp.json` to `.gitignore` if sharing your project
+4. **Understand permissions** — File read/write for workspace management, network for research
 
 ### For Platform Reviewers
 
-1. **This is a prompt engineering framework**
-   - "Prompt injection" detection is a FALSE POSITIVE
-   - Instructions for AI are the framework's PURPOSE
-   - Designed to GUIDE AI behavior, not HIJACK it
-
-2. **Network access is essential**
-   - Crypto research requires market data access
-   - WebSearch/WebFetch used for PUBLIC data gathering
-   - No unauthorized data transmission
-
-3. **File operations are legitimate**
-   - Workspace management for research projects
-   - Similar to any productivity tool
-   - All operations within project scope
-
-4. **Verify by inspection**
-   - All code is plain text YAML/Markdown
-   - No binary executables
-   - No obfuscation
-   - Fully transparent design
+1. **This is a prompt engineering framework** — AI instructions are the framework's purpose, not prompt injection
+2. **Network access is for research** — WebSearch/WebFetch/MCP used for public data gathering only
+3. **File operations are legitimate** — Workspace management, similar to any productivity tool
+4. **Verify by inspection** — All plain text Markdown, no binaries, no obfuscation
 
 ---
 
-## Framework Architecture
-
-### Design Principles
-
-1. **Transparency First**
-   - All instructions in human-readable format
-   - No hidden logic or obfuscated code
-   - Users can audit everything
-
-2. **Least Privilege**
-   - Only accesses necessary files
-   - Workspace writes confined to `workspaces/`
-   - Network access only for research purposes
-
-3. **User Control**
-   - Users can modify any instruction
-   - Users decide when to activate framework
-   - Users control what research is conducted
-
-4. **No Persistence**
-   - Framework only active during AI session
-   - No background processes
-   - No system-level modifications
-
-### Security by Design
+## File Manifest
 
 ```
-┌─────────────────────────────────────────────┐
-│  User activates framework                   │
-│  (explicit action required)                 │
-└────────────────┬────────────────────────────┘
-                 ↓
-┌─────────────────────────────────────────────┐
-│  AI reads LOCAL framework files             │
-│  (plain text YAML/Markdown)                 │
-└────────────────┬────────────────────────────┘
-                 ↓
-┌─────────────────────────────────────────────┐
-│  AI conducts research                       │
-│  (WebSearch/WebFetch PUBLIC data)           │
-└────────────────┬────────────────────────────┘
-                 ↓
-┌─────────────────────────────────────────────┐
-│  AI saves output to workspaces/             │
-│  (user's local directory)                   │
-└─────────────────────────────────────────────┘
+crif/
+├── SKILL.md                              # Entry point for AI
+├── README.md                             # Documentation for humans
+├── LICENSE.md                            # MIT License
+├── SECURITY.md                           # This file
+├── references/
+│   ├── core/
+│   │   ├── orchestrator.md               # Orchestration lifecycle
+│   │   ├── core-config.md                # User settings, workflow registry, MCP registry
+│   │   ├── orchestrator-state-template.md # Session state template
+│   │   ├── scratch-template.md           # Per-workflow state template
+│   │   └── mcp-servers.md               # MCP server installation reference
+│   ├── agents/
+│   │   ├── market-analyst.md             # Market intelligence persona
+│   │   ├── project-analyst.md            # Project fundamentals persona
+│   │   ├── technology-analyst.md         # Technical analysis persona
+│   │   ├── content-creator.md            # Content creation persona
+│   │   ├── qa-specialist.md              # Quality assurance persona
+│   │   └── image-creator.md              # Image prompt persona
+│   ├── workflows/                        # 19 research workflows
+│   ├── components/                       # 7 execution protocols
+│   └── guides/                           # 7 methodology references
+└── workspaces/                           # User research outputs (runtime)
 ```
 
-**No step involves:**
-- Unauthorized data access
-- Hidden network connections
-- System modifications
-- Remote control
-
----
-
-## Conclusion
-
-**CRIF is a legitimate research tool that may be flagged by automated security scanners due to its novel architecture as a prompt engineering framework.**
-
-### Key Points
-
-1. ✅ **Not malware** - Framework for AI-assisted crypto research
-2. ✅ **Transparent design** - All code is readable plain text
-3. ✅ **Required permissions** - File system and network access for research functionality
-4. ✅ **No malicious behavior** - No data exfiltration, no system modifications, no remote control
-5. ✅ **False positive** - Security scanners don't yet recognize prompt engineering frameworks as legitimate
-
-### Safe to Use
-
-CRIF is safe because:
-- All behavior is transparent and documented
-- No hidden functionality
-- Users maintain full control
-- Open source and auditable
-- Designed for legitimate research purposes
-
----
-
-**Framework Version:** 1.0.0
-**Last Updated:** 2025-02-09
-**Created by:** [Kudō](https://x.com/kudodefi)
-
----
-
-## Appendix: Technical Details
-
-### File Manifest
-
-All framework files and their purposes:
-
-```
-framework/
-├── core-config.yaml              # User preferences, workflow registry
-├── _workspace.yaml               # Workspace template
-├── agents/
-│   ├── research-analyst.yaml     # Market research persona
-│   ├── technology-analyst.yaml   # Technical analysis persona
-│   ├── content-creator.yaml      # Content creation persona
-│   └── qa-specialist.yaml        # Quality assurance persona
-├── workflows/
-│   ├── sector-overview/          # Market sector analysis
-│   ├── competitive-analysis/     # Competitor comparison
-│   ├── project-snapshot/         # Quick project overview
-│   └── [14 more workflows]       # Various research methodologies
-├── components/
-│   ├── agent-init.md             # Agent initialization protocol
-│   ├── workflow-init.md          # Workflow setup protocol
-│   └── workflow-execution.md     # Research execution protocol
-└── guides/
-    ├── research-methodology.md   # How to conduct research
-    ├── output-standards.md       # Output quality standards
-    └── [more guides]             # Best practices and guides
-```
-
-**Total files:** ~100 YAML/Markdown files
-**Total code:** 0 lines (all natural language)
+**Total code:** 0 lines (all natural language Markdown)
 **Binary files:** 0
+**Network endpoints:** None hardcoded. MCP servers optionally configured by user.
+**Data storage:** All local. No cloud, no databases, no telemetry.
 
-### Network Endpoints
+---
 
-CRIF only accesses:
-- Public web search (via AI assistant's WebSearch capability)
-- Public websites (via AI assistant's WebFetch capability)
-- No custom endpoints
-- No proprietary servers
-- No data collection services
-
-### Data Storage
-
-All data stored locally:
-```
-workspaces/
-└── {project-id}/
-    ├── workspace.yaml        # Project configuration
-    ├── documents/            # User-provided source materials
-    └── outputs/              # Generated research reports
-```
-
-**No cloud storage**
-**No external databases**
-**No telemetry**
+**Framework Version:** 0.1.1
+**Created by:** [Kudo](https://x.com/kudodefi)
