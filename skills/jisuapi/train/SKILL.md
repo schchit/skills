@@ -1,6 +1,6 @@
 ---
-name: jisu-train
-description: 使用极速数据火车查询 API，支持站站时刻查询、车次经停查询和余票查询，返回出发到达时间、用时、票价与余票数量等信息。
+name: "Train Ticket Inquiry - 火车查询"
+description: 支持站站、车次、余票查询，返回时刻、票价与余票等。当用户说：北京到上海今天还有高铁票吗？帮我查一下 G1 次列车经停站，或类似火车票、余票问题时，使用本技能。
 metadata: { "openclaw": { "emoji": "🚆", "requires": { "bins": ["python3"], "env": ["JISU_API_KEY"] }, "primaryEnv": "JISU_API_KEY" } }
 ---
 
@@ -15,7 +15,7 @@ metadata: { "openclaw": { "emoji": "🚆", "requires": { "bins": ["python3"], "e
 ## 前置配置：获取 API Key
 
 1. 前往 [极速数据官网](https://www.jisuapi.com/) 注册账号
-2. 进入 [对应接口页面](https://www.jisuapi.com/api/train/) 页面，点击「申请数据」
+2. 进入 [火车查询 API](https://www.jisuapi.com/api/train/) 页面，点击「申请数据」
 3. 在会员中心获取 **AppKey**
 4. 配置 Key：
 

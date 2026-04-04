@@ -3,11 +3,16 @@
   "slug": "train",
   "displayName": "Train Ticket Inquiry - 火车查询",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1774585646087,
-    "commit": "https://github.com/openclaw/skills/commit/19b495519a65a5be8c010d77b28f4db7648ff49a"
+    "version": "1.0.5",
+    "publishedAt": 1775210700131,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1774585646087,
+      "commit": "https://github.com/openclaw/skills/commit/19b495519a65a5be8c010d77b28f4db7648ff49a"
+    },
     {
       "version": "1.0.3",
       "publishedAt": 1773727953691,
