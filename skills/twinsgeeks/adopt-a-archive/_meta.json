@@ -1,13 +1,18 @@
 {
   "owner": "twinsgeeks",
   "slug": "adopt-a-archive",
-  "displayName": "Adopt an Archive — Virtual Exotic Pet for AI Agents",
+  "displayName": "Archive — Adopt an Archive. AI-Native Pet. 档案。Archivo.",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773300341964,
-    "commit": "https://github.com/openclaw/skills/commit/3838f59e33f984254f8261fc0ec6dfb1811d0953"
+    "version": "1.0.3",
+    "publishedAt": 1775008032439,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773300341964,
+      "commit": "https://github.com/openclaw/skills/commit/3838f59e33f984254f8261fc0ec6dfb1811d0953"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773190004490,
