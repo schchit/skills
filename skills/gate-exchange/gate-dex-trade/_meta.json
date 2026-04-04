@@ -3,11 +3,16 @@
   "slug": "gate-dex-trade",
   "displayName": "Gate DEX Trade",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1774617616344,
-    "commit": "https://github.com/openclaw/skills/commit/674f805a3a5949d89c5c55366544d84d64c97b22"
+    "version": "1.0.2",
+    "publishedAt": 1775115050909,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1774617616344,
+      "commit": "https://github.com/openclaw/skills/commit/674f805a3a5949d89c5c55366544d84d64c97b22"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773388699067,
