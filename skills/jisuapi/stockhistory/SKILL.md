@@ -1,6 +1,6 @@
 ---
-name: jisu-stockhistory
-description: 使用极速数据股票历史行情查询 API，按股票代码与时间范围获取历史日线数据，或查列表与单只详情，可用于 K 线及走势分析。
+name: "Stock Historical Data Query - 股票历史行情查询"
+description: 按代码与时间范围查历史日线，或查列表与详情，便于 K 线与走势分析。当用户说：宁德时代最近一年 K 线数据？这只股票过去一年最高最低价？或类似历史行情问题时，使用本技能。
 metadata: { "openclaw": { "emoji": "📊", "requires": { "bins": ["python3"], "env": ["JISU_API_KEY"] }, "primaryEnv": "JISU_API_KEY" } }
 ---
 
