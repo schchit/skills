@@ -3,11 +3,16 @@
   "slug": "slack-integration",
   "displayName": "Slack",
   "latest": {
-    "version": "1.0.5",
-    "publishedAt": 1772585086262,
-    "commit": "https://github.com/openclaw/skills/commit/66521aa760f1431f72bdbf8ff666e3975258b63a"
+    "version": "1.0.7",
+    "publishedAt": 1775161516520,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.5",
+      "publishedAt": 1772585086262,
+      "commit": "https://github.com/openclaw/skills/commit/66521aa760f1431f72bdbf8ff666e3975258b63a"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1772580660006,
