@@ -3,9 +3,15 @@
   "slug": "outreach-integration",
   "displayName": "Outreach",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1772629427732,
-    "commit": "https://github.com/openclaw/skills/commit/fd30850d224626c29f292e0a3991e4f3b41d8850"
+    "version": "1.0.2",
+    "publishedAt": 1775162348316,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1772629427732,
+      "commit": "https://github.com/openclaw/skills/commit/fd30850d224626c29f292e0a3991e4f3b41d8850"
+    }
+  ]
 }
