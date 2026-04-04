@@ -3,9 +3,15 @@
   "slug": "mailjet",
   "displayName": "Mailjet",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773352981132,
-    "commit": "https://github.com/openclaw/skills/commit/5eafe13c5ce5a8cdaf890342875d7455e70061bf"
+    "version": "1.0.2",
+    "publishedAt": 1775163603701,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773352981132,
+      "commit": "https://github.com/openclaw/skills/commit/5eafe13c5ce5a8cdaf890342875d7455e70061bf"
+    }
+  ]
 }
