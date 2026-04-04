@@ -3,11 +3,16 @@
   "slug": "gws-docs-write",
   "displayName": "Gws Docs Write",
   "latest": {
-    "version": "1.0.10",
-    "publishedAt": 1774550973254,
-    "commit": "https://github.com/openclaw/skills/commit/6a986268920205a8daf2a5994c9aa53c05760015"
+    "version": "1.0.12",
+    "publishedAt": 1774982016146,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.10",
+      "publishedAt": 1774550973254,
+      "commit": "https://github.com/openclaw/skills/commit/6a986268920205a8daf2a5994c9aa53c05760015"
+    },
     {
       "version": "1.0.5",
       "publishedAt": 1774385810637,
