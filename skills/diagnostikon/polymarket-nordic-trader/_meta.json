@@ -1,13 +1,18 @@
 {
   "owner": "diagnostikon",
   "slug": "polymarket-nordic-trader",
-  "displayName": "Nordic & Scandinavian Trader",
+  "displayName": "Polymarket Nordic Trader",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773780777678,
-    "commit": "https://github.com/openclaw/skills/commit/c04346149797663107507f5f594cd8d9790bfdd1"
+    "version": "1.0.2",
+    "publishedAt": 1775317304025,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773780777678,
+      "commit": "https://github.com/openclaw/skills/commit/c04346149797663107507f5f594cd8d9790bfdd1"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773428972993,
