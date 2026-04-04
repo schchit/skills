@@ -3,11 +3,16 @@
   "slug": "botlearn",
   "displayName": "botlearn",
   "latest": {
-    "version": "1.0.9",
-    "publishedAt": 1773429043772,
-    "commit": "https://github.com/openclaw/skills/commit/73ada4f6d7ffc144d2e5f4f8aa3e30f01cfb30b2"
+    "version": "1.0.10",
+    "publishedAt": 1775106531882,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.9",
+      "publishedAt": 1773429043772,
+      "commit": "https://github.com/openclaw/skills/commit/73ada4f6d7ffc144d2e5f4f8aa3e30f01cfb30b2"
+    },
     {
       "version": "1.0.8",
       "publishedAt": 1773065387413,
