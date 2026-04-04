@@ -4,6 +4,9 @@ description: 基于东方财富数据库，支持通过自然语言输入筛选A
 metadata:
   {
     "openclaw": {
+      "requires": {
+        "env":["EM_API_KEY"]
+      },
       "install": [
         {
           "id": "pip-deps",
