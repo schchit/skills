@@ -3,11 +3,16 @@
   "slug": "driverexam",
   "displayName": "Driver's License Exam - 驾考题库",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773727678145,
-    "commit": "https://github.com/openclaw/skills/commit/db6c9b59042f56a51252a2a3d5c943a34f0749bc"
+    "version": "1.0.2",
+    "publishedAt": 1775209789789,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773727678145,
+      "commit": "https://github.com/openclaw/skills/commit/db6c9b59042f56a51252a2a3d5c943a34f0749bc"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1772607195840,
