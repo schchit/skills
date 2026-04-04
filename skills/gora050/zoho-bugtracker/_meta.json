@@ -3,9 +3,15 @@
   "slug": "zoho-bugtracker",
   "displayName": "Zoho Bugtracker",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1772812966056,
-    "commit": "https://github.com/openclaw/skills/commit/7e080574d18d05c9ccd53a73565e9a0ea50a54ed"
+    "version": "1.0.2",
+    "publishedAt": 1775162538105,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1772812966056,
+      "commit": "https://github.com/openclaw/skills/commit/7e080574d18d05c9ccd53a73565e9a0ea50a54ed"
+    }
+  ]
 }
