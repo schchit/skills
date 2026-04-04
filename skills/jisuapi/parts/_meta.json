@@ -3,11 +3,16 @@
   "slug": "parts",
   "displayName": "Auto Parts OE Inquiry - 汽车配件OE信息查询",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1773721207659,
-    "commit": "https://github.com/openclaw/skills/commit/c15e58835c614fd973dceeba74f2b19823a25290"
+    "version": "1.0.4",
+    "publishedAt": 1775210665578,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1773721207659,
+      "commit": "https://github.com/openclaw/skills/commit/c15e58835c614fd973dceeba74f2b19823a25290"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1772534127765,
