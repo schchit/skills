@@ -3,11 +3,16 @@
   "slug": "oil",
   "displayName": "Today's Oil Price - 今日油价",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1774585451976,
-    "commit": "https://github.com/openclaw/skills/commit/09298aca492d58f453c613b4c177636964765891"
+    "version": "1.0.3",
+    "publishedAt": 1775209494641,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1774585451976,
+      "commit": "https://github.com/openclaw/skills/commit/09298aca492d58f453c613b4c177636964765891"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1773721155173,

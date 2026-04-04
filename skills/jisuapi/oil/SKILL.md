@@ -1,6 +1,6 @@
 ---
-name: jisu-oil
-description: 使用极速数据今日油价 API 查询各省市汽油、柴油实时价格，并支持获取全部省市列表。
+name: "Today's Oil Price - 今日油价"
+description: 查询各省市汽柴油参考价，可查省市列表。当用户说：今天北京 92 号油价多少？山东柴油什么价？或类似油价问题时，使用本技能。
 metadata: { "openclaw": { "emoji": "⛽", "requires": { "bins": ["python3"], "env": ["JISU_API_KEY"] }, "primaryEnv": "JISU_API_KEY" } }
 ---
 
@@ -16,7 +16,7 @@ metadata: { "openclaw": { "emoji": "⛽", "requires": { "bins": ["python3"], "en
 ## 前置配置：获取 API Key
 
 1. 前往 [极速数据官网](https://www.jisuapi.com/) 注册账号
-2. 进入 [对应接口页面](https://www.jisuapi.com/api/oil/) 页面，点击「申请数据」
+2. 进入 [今日油价 API](https://www.jisuapi.com/api/oil/) 页面，点击「申请数据」
 3. 在会员中心获取 **AppKey**
 4. 配置 Key：
 
