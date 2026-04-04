@@ -1,11 +1,17 @@
 {
   "owner": "diagnostikon",
   "slug": "polymarket-twitter-cross-contagion-trader",
-  "displayName": "Twitter Cross-Contagion Trader",
+  "displayName": "Polymarket Twitter Cross Contagion Trader",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775135203500,
-    "commit": "https://github.com/openclaw/skills/commit/fe212563b8a071f280d9ae2486df39ca84b648ce"
+    "version": "1.0.1",
+    "publishedAt": 1775317375454,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775135203500,
+      "commit": "https://github.com/openclaw/skills/commit/fe212563b8a071f280d9ae2486df39ca84b648ce"
+    }
+  ]
 }
