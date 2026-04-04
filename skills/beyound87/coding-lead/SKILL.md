@@ -1,6 +1,6 @@
 ---
 name: coding-lead
-description: Coding execution skill for fullstack-dev. Current production path is claude-only with simple tasks direct, medium tasks preferring ACP run or direct acpx, and complex tasks handled via existing agent continuity plus context files instead of ACP session persistence. Integrates with qmd and smart-agent-memory when available.
+description: Coding execution skill for any implementation-focused agent. Current production path is claude-only with simple tasks direct, medium tasks preferring ACP run or direct acpx, and complex tasks handled via existing agent continuity plus context files instead of ACP session persistence. Integrates with qmd and smart-agent-memory when available.
 ---
 
 # Coding Lead
@@ -9,7 +9,7 @@ description: Coding execution skill for fullstack-dev. Current production path i
 > It defines **how coding work runs**, not **who should own the task**.
 > In multi-agent teams, routing may be handled elsewhere; in single-agent use, this skill still works directly.
 
-Route by complexity. Current production path is claude-only. Do not depend on ACP session persistence in IM threads; use direct execution, direct acpx, and existing fullstack-dev session continuity instead.
+Route by complexity. Current production path is claude-only. Do not depend on ACP session persistence in IM threads; use direct execution, direct acpx, and existing implementation session continuity instead.
 
 ## Task Classification
 
@@ -17,7 +17,7 @@ Route by complexity. Current production path is claude-only. Do not depend on AC
 |-------|----------|--------|
 | **Simple** | Single file, <60 lines, clear local scope | Direct: read/write/edit/exec |
 | **Medium** | 2-5 files, clear scope, likely follow-up questions | Prefer Claude ACP `mode:"run"` or direct acpx → fallback direct |
-| **Complex** | Multi-module, architecture, needs continuity | Use existing fullstack-dev session continuity + context files + direct acpx/direct execution |
+| **Complex** | Multi-module, architecture, needs continuity | Use existing implementation session continuity + context files + direct acpx/direct execution |
 
 When in doubt, go one level up.
 
@@ -27,6 +27,12 @@ When in doubt, go one level up.
 - **Complex**: preserve continuity through the existing implementation session, on-disk context files, and serial follow-ups; do not make IM-bound ACP `session` the default path
 - **ACP unavailable**: medium/complex fall back to direct acpx or direct execution; simple tasks were already direct by default
 - **Never block on ACP availability**: ACP is an accelerator, not a hard dependency
+
+### Multi-agent dispatch rule (when dispatching to other agents)
+- Dispatch to **ACP-configured agents** (agents with `runtime.type: "acp"` in openclaw.json): use `sessions_spawn(runtime="acp")`, may include `streamTo="parent"`
+- Dispatch to **standard agents** (all others): use `sessions_spawn(runtime="subagent")`, **never include `streamTo`**
+- Results from subagent spawns arrive via auto-announce, not polling
+- How to tell which is which: check the target agent's config in openclaw.json — if it has `runtime.type: "acp"`, use ACP; otherwise use subagent
 
 ## Tech Stack (New Projects)
 
@@ -206,7 +212,7 @@ When done: openclaw system event --text "Done: <summary>" --mode now
 sessions_spawn(runtime: "acp", agentId: "claude", task: <prompt>, cwd: <project-dir>, mode: "run")
 
 # Complex task primary path:
-Use the existing fullstack-dev session + context file + serial follow-ups.
+Use the existing implementation session + context file + serial follow-ups.
 If ACP is helpful, prefer bounded Claude `run` invocations or direct acpx commands inside the project directory.
 
 # ACP_MODE = "acpx":
@@ -218,7 +224,7 @@ Skip spawn, execute directly with read/write/edit/exec
 
 ### run vs sustained execution
 - **run**: one-shot, bounded Claude ACP coding task
-- **sustained execution**: for repeated follow-up on the same code chain, keep working in the existing `fullstack-dev` conversation/session and persist context on disk; do not rely on IM-bound ACP thread/session support
+- **sustained execution**: for repeated follow-up on the same code chain, keep working in the existing implementation conversation/session and persist context on disk; do not rely on IM-bound ACP thread/session support
 - **direct fallback**: when ACP is unavailable or unstable, execute directly with read/write/edit/exec instead of stalling
 
 ### Step 4: Fallback Detection
@@ -249,8 +255,8 @@ Read [references/complex-tasks.md](references/complex-tasks.md) **only for Compl
 - **Context file on disk** instead of prompt embedding → major token savings per spawn
 - **Simple tasks stay direct**: don't pay ACP/session overhead for tiny edits
 - **Medium tasks use `run`**: cheaper than opening a persistent session
-- **Complex tasks use sustained session continuity**: preserve continuity through the existing fullstack-dev session plus context files
-- **Serial follow-ups**: continue in the same fullstack-dev conversation and refresh the on-disk context file as the task evolves
+- **Complex tasks use sustained session continuity**: preserve continuity through the existing implementation session plus context files
+- **Serial follow-ups**: continue in the same implementation conversation and refresh the on-disk context file as the task evolves
 - **[qmd]**: precision search → only relevant snippets in context file
 - **No standards in ACP prompts**: Claude Code reads its own CLAUDE.md/.cursorrules — don't duplicate
 - **ACP prompt stays lean**: task + acceptance criteria + context file path. No generic rules
@@ -275,7 +281,7 @@ Parallelism is allowed in the current production path, but only with explicit bo
 - If boundaries are fuzzy, collapse back to sequential execution
 
 Recommended shape:
-- 1 coordinating `fullstack-dev` session
+- 1 coordinating implementation session
 - up to 4 additional bounded work units (Claude ACP `run`, direct acpx, or direct execution)
 
 Good parallel cases:

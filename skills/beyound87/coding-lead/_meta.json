@@ -3,11 +3,16 @@
   "slug": "coding-lead",
   "displayName": "Coding Lead",
   "latest": {
-    "version": "3.0.1",
-    "publishedAt": 1774750935369,
-    "commit": "https://github.com/openclaw/skills/commit/5678d7937974ae4745384ec0ce2b0f6e572a7cbc"
+    "version": "3.0.6",
+    "publishedAt": 1774831566153,
+    "commit": null
   },
   "history": [
+    {
+      "version": "3.0.1",
+      "publishedAt": 1774750935369,
+      "commit": "https://github.com/openclaw/skills/commit/5678d7937974ae4745384ec0ce2b0f6e572a7cbc"
+    },
     {
       "version": "1.1.2",
       "publishedAt": 1773942161484,
