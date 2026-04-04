@@ -6,15 +6,30 @@ metadata:
   openclaw:
     emoji: ⚖️
     tags: [governance, harness, multi-agent, audit, constitution, safety]
-    version: 0.5.3
+    version: 0.5.4
     depends:
       - coverify
     env:
-      - MOSES_OPERATOR_SECRET
-      - REFEREE_URL
-      - REFEREE_KEY
-      - REFEREE_ENABLED
-      - MOSES_WITNESS_ENABLED
+      - name: MOSES_OPERATOR_SECRET
+        required: false
+        sensitive: true
+        purpose: "Optional local HMAC attestation and signing gate. Never transmitted."
+      - name: REFEREE_URL
+        required: false
+        sensitive: false
+        purpose: "Optional blind-review endpoint. Only used if REFEREE_ENABLED=1."
+      - name: REFEREE_KEY
+        required: false
+        sensitive: true
+        purpose: "API key for optional referee endpoint. Only used if REFEREE_ENABLED=1."
+      - name: REFEREE_ENABLED
+        required: false
+        sensitive: false
+        purpose: "Opt-in flag for external blind-review. Off by default."
+      - name: MOSES_WITNESS_ENABLED
+        required: false
+        sensitive: false
+        purpose: "Opt-in flag for Moltbook witness logger. Off by default."
     bins:
       - python3
     stateDirs:
@@ -91,7 +106,7 @@ All network features require explicit opt-in. Nothing is transmitted without ope
 
 | Feature | Env var to enable | What gets sent | What stays local |
 |---|---|---|---|
-| External witness log | `MOSES_WITNESS_ENABLED=1` + `MOLTBOOK_API_KEY` | Event type, governance state, event hash | Raw task content, agent identity |
+| External witness log | `MOSES_WITNESS_ENABLED=1` + `MOLTBOOK_API_KEY` (`MOLTBOOK_SUBMOLT` optional) | Event type, governance state, event hash | Raw task content, agent identity |
 | Outside referee | `REFEREE_ENABLED=1` + `REFEREE_URL` + `REFEREE_KEY` | Commitment kernels + hashes only | Raw text, agent identity, session data |
 
 Both features are **off by default**. Neither raw text nor agent identity leaves the system. The blind envelope sent to the outside referee contains commitment kernels and SHA-256 hashes only — by design.

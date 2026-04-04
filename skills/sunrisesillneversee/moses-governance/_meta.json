@@ -3,11 +3,16 @@
   "slug": "moses-governance",
   "displayName": "Moses Governance",
   "latest": {
-    "version": "0.5.6",
-    "publishedAt": 1773666315024,
-    "commit": "https://github.com/openclaw/skills/commit/414396148f3af497c902efaf123e5697622e3656"
+    "version": "0.5.10",
+    "publishedAt": 1775116863220,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.5.6",
+      "publishedAt": 1773666315024,
+      "commit": "https://github.com/openclaw/skills/commit/414396148f3af497c902efaf123e5697622e3656"
+    },
     {
       "version": "0.5.3",
       "publishedAt": 1773428197681,
