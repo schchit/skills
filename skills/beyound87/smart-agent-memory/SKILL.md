@@ -148,6 +148,16 @@ node $CLI session-end "本次讨论了XX，决定了YY"    # 会话摘要
 - 不要忽略 `index` 直接 `recall`（除非你确切知道要搜什么）
 - 不要把记忆操作全堆到对话结束时
 
+### 🔗 多 Agent 调度经验记忆
+当 spawn 子 agent 成功/失败时，立即记录经验：
+```bash
+node $CLI remember "spawn 子 agent 用 runtime=subagent 成功，不能带 streamTo" --skill multi-agent-dispatch --tags spawn,subagent
+```
+关键经验已沉淀：
+- `runtime="subagent"` 模式**禁止**带 `streamTo` 参数（会直接报错）
+- `runtime="acp"` 模式可带 `streamTo="parent"`（仅限 openclaw.json 中配置了 `runtime.type: "acp"` 的 agent）
+- 子 agent 结果通过 auto-announce 自动推送，不需要轮询
+
 ## Storage Layout
 
 ```
