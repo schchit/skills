@@ -3,11 +3,16 @@
   "slug": "gws-chat-send",
   "displayName": "Gws Chat Send",
   "latest": {
-    "version": "1.0.10",
-    "publishedAt": 1774550961928,
-    "commit": "https://github.com/openclaw/skills/commit/a2dedd34c582e81863c9132f32fd56738e5ea3a7"
+    "version": "1.0.12",
+    "publishedAt": 1774982009418,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.10",
+      "publishedAt": 1774550961928,
+      "commit": "https://github.com/openclaw/skills/commit/a2dedd34c582e81863c9132f32fd56738e5ea3a7"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1774300431580,
