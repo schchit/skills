@@ -3,11 +3,16 @@
   "slug": "tencentcloud-ocr-idcard",
   "displayName": "TencentCloud IDCard OCR",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1773226384740,
-    "commit": "https://github.com/openclaw/skills/commit/8cfe139a5a901c7f3b8512ec286f631b71e4fc68"
+    "version": "1.0.4",
+    "publishedAt": 1775024492671,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1773226384740,
+      "commit": "https://github.com/openclaw/skills/commit/8cfe139a5a901c7f3b8512ec286f631b71e4fc68"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1772961595787,

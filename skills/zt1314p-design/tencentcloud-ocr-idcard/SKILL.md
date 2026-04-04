@@ -1,7 +1,6 @@
 ---
 name: tencentcloud-ocr-idcard
 description: 腾讯云身份证识别(IDCardOCR)接口调用技能。当用户需要识别身份证图片中中国大陆居民二代身份证正反面信息（姓名、性别、民族、出生日期、住址、身份证号、签发机关、有效期限等）时,应使用此技能。支持图片Base64和URL两种输入方式,同时支持身份证图片照片裁剪和多种告警功能。
-metadata: {"openclaw":{"requires":{"env":["TENCENTCLOUD_SECRET_ID","TENCENTCLOUD_SECRET_KEY"]},"auth_config":{"title":"腾讯云密钥配置","fields":[{"name":"TENCENTCLOUD_SECRET_ID","label":"SecretId","type":"password","required":true,"placeholder":"请输入腾讯云SecretId"},{"name":"TENCENTCLOUD_SECRET_KEY","label":"SecretKey","type":"password","required":true,"placeholder":"请输入腾讯云SecretKey"}]},"primaryEnv":"TENCENTCLOUD_SECRET_ID","category":"cloud","emoji":"☁️"}}
 ---
 
 # 腾讯云身份证识别 (IDCardOCR)
@@ -48,24 +47,22 @@ metadata: {"openclaw":{"requires":{"env":["TENCENTCLOUD_SECRET_ID","TENCENTCLOUD
 | EnableRecognitionRectify | bool | 否 | 默认true，开启身份证号/出生日期/性别的矫正补齐 |
 | EnableReflectDetail | bool | 否 | 默认false，需配合ReflectWarn使用 |
 | CardWarnType | str | 否 | `Basic`(默认) / `Advanced`(进阶PS告警) |
-| **Channel** | **str** | **否** | **请求来源标识(可选)，用于追踪调用来源，未传递时默认为`agent`** |
+| **UserAgent** | **str** | **否** | **请求来源标识(可选)，用于追踪调用来源，统一固定为`Skills`** |
 
 **Config JSON 可选开关**：`CropIdCard`、`CropPortrait`、`CopyWarn`、`BorderCheckWarn`、`ReshootWarn`、`DetectPsWarn`、`TempIdWarn`、`InvalidDateWarn`、`Quality`、`MultiCardDetect`、`ReflectWarn`
 
-### ⚠️ Channel参数使用指南
+### ⚠️ UserAgent参数使用指南
 
-**`Channel`参数是可选参数**,未传递时默认为`agent`。用于标识API调用来源,便于追踪和统计。根据调用框架选择对应的值:
+**`--user-agent`参数是可选参数**,统一固定为`Skills`，无需手动传递。用于标识API调用来源,便于追踪和统计:
 
-| 调用框架 | Channel 参数值 | 说明 |
+| 调用框架 | --user-agent 参数值 | 说明 |
 |---------|--------------|------|
-| OpenClaw | `OpenClaw` | OpenClaw框架调用时使用 |
-| Claude Code | `claude-code` | Claude Code框架调用时使用 |
-| 其他/未知 | `agent` | 不传递时的默认值 |
+| 所有框架 | `Skills` | 统一固定值，不传递时也默认为此值 |
 
 **实现说明**:
-- `Channel`参数通过`--channel`命令行参数传递
-- 未传递时,脚本内部的`X-TC-Source`请求头默认为`agent`
-- 确保每次调用都能准确追踪来源
+- 通过`--user-agent`命令行参数传递，SDK 会将其拼接为 `SDK_PYTHON_x.x.x; Skills` 注入到请求中
+- 统一固定为`Skills`，未传递时也默认为此值
+- 该标识会记录在ES日志的 `ReqBody.RequestClient` 字段中，可用于追踪来源
 
 ### 输出格式
 
@@ -113,24 +110,17 @@ metadata: {"openclaw":{"requires":{"env":["TENCENTCLOUD_SECRET_ID","TENCENTCLOUD
 ### 调用示例
 
 ```bash
-# OpenClaw框架调用示例
-python scripts/main.py --image-url "https://example.com/idcard.jpg" --card-side FRONT --channel "OpenClaw"
+# 基础调用示例（--user-agent 默认为 Skills，可不传）
+python scripts/main.py --image-url "https://example.com/idcard.jpg" --card-side FRONT
 
-# Claude Code框架调用示例
-python scripts/main.py --image-base64 "/path/to/base64.txt" --channel "claude-code"
-
-# 不传递channel参数时,默认使用agent
-python scripts/main.py --image-url "https://example.com/idcard.jpg"
-
-# 其他框架/不明来源调用示例(显式传递agent)
-python scripts/main.py --image-url "https://example.com/idcard.jpg" --channel "agent"
+# 使用 Base64 文件调用
+python scripts/main.py --image-base64 "/path/to/base64.txt"
 
 # 开启告警检测和照片裁剪
 python scripts/main.py --image-url "https://example.com/idcard.jpg" \
-  --config '{"CropIdCard":true,"CopyWarn":true,"ReshootWarn":true}' \
-  --channel "OpenClaw"
+  --config '{"CropIdCard":true,"CopyWarn":true,"ReshootWarn":true}'
 
 # 使用进阶PS告警
 python scripts/main.py --image-url "https://example.com/idcard.jpg" \
-  --card-warn-type Advanced --channel "claude-code"
+  --card-warn-type Advanced
 ```

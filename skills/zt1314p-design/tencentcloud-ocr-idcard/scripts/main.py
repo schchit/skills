@@ -11,10 +11,10 @@
 """
 
 import argparse
+import base64
 import json
 import os
 import sys
-import base64
 
 # SDK 最大图片限制 (10MB)
 MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
@@ -71,7 +71,7 @@ def load_image_base64(value: str) -> str:
             raw_str = raw.decode("utf-8").strip()
             base64.b64decode(raw_str, validate=True)
             return raw_str
-        except Exception:
+        except (UnicodeDecodeError, ValueError):
             pass
         # 否则将二进制文件编码为Base64
         encoded = base64.b64encode(raw).decode("utf-8")
@@ -86,7 +86,7 @@ def load_image_base64(value: str) -> str:
             if len(decoded) > MAX_IMAGE_SIZE_BYTES:
                 print(f"错误: 图片大小超过 {MAX_IMAGE_SIZE_BYTES // (1024 * 1024)}MB 限制", file=sys.stderr)
                 sys.exit(1)
-        except Exception:
+        except ValueError:
             print("错误: 提供的 ImageBase64 不是合法的 Base64 编码，也不是有效的文件路径", file=sys.stderr)
             sys.exit(1)
         return value
@@ -115,16 +115,21 @@ def validate_config(config_str: str) -> str:
     return config_str
 
 
-def parse_warn_infos(advanced_info: str) -> list:
-    """解析 AdvancedInfo 中的告警信息并附加中文描述。"""
+def parse_warn_infos(advanced_info) -> list:
+    """
+    Parse warning info from AdvancedInfo and attach Chinese descriptions.
+
+    Args:
+        advanced_info: AdvancedInfo string from SDK response object.
+    """
     if not advanced_info:
         return []
     try:
-        info = json.loads(advanced_info)
+        info = json.loads(advanced_info) if isinstance(advanced_info, str) else advanced_info
     except (json.JSONDecodeError, TypeError):
         return []
 
-    warn_infos = info.get("WarnInfos", [])
+    warn_infos = info.get("WarnInfos", []) if isinstance(info, dict) else []
     result = []
     for code in warn_infos:
         code_int = int(code) if not isinstance(code, int) else code
@@ -135,30 +140,41 @@ def parse_warn_infos(advanced_info: str) -> list:
     return result
 
 
-def format_response(resp_json: dict) -> dict:
-    """格式化响应结果，增加告警码的中文描述。"""
+def format_response(resp) -> dict:
+    """
+    Format SDK response object, attach Chinese descriptions for warning codes.
+
+    Args:
+        resp: IDCardOCRResponse object from SDK.
+    """
     output = {}
 
-    # 人像面字段
+    # Front side fields (人像面)
     front_fields = ["Name", "Sex", "Nation", "Birth", "Address", "IdNum"]
-    # 国徽面字段
+    # Back side fields (国徽面)
     back_fields = ["Authority", "ValidDate"]
-    # 公共字段
+    # Common fields
     common_fields = ["AdvancedInfo", "RequestId"]
 
     for field in front_fields + back_fields + common_fields:
-        if field in resp_json and resp_json[field]:
-            output[field] = resp_json[field]
+        val = getattr(resp, field, None)
+        if val:
+            output[field] = val
 
-    # 解析告警信息
-    if "AdvancedInfo" in resp_json:
-        warnings = parse_warn_infos(resp_json["AdvancedInfo"])
+    # Parse warning info
+    advanced_info = getattr(resp, "AdvancedInfo", None)
+    if advanced_info:
+        warnings = parse_warn_infos(advanced_info)
         if warnings:
             output["Warnings"] = warnings
 
-    # 反光详情
-    if "ReflectDetailInfos" in resp_json and resp_json["ReflectDetailInfos"]:
-        output["ReflectDetailInfos"] = resp_json["ReflectDetailInfos"]
+    # Reflect detail info
+    reflect_details = getattr(resp, "ReflectDetailInfos", None)
+    if reflect_details:
+        output["ReflectDetailInfos"] = [
+            {"Position": item.Position, "Tag": item.Tag}
+            for item in reflect_details
+        ] if reflect_details else []
 
     return output
 
@@ -167,10 +183,12 @@ def call_idcard_ocr(args: argparse.Namespace) -> None:
     """调用腾讯云 IDCardOCR 接口。"""
     try:
         from tencentcloud.common import credential
+        from tencentcloud.common.exception.tencent_cloud_sdk_exception import (
+            TencentCloudSDKException,
+        )
         from tencentcloud.common.profile.client_profile import ClientProfile
         from tencentcloud.common.profile.http_profile import HttpProfile
-        from tencentcloud.common.exception.tencent_cloud_sdk_exception import TencentCloudSDKException
-        from tencentcloud.ocr.v20181119 import ocr_client, models
+        from tencentcloud.ocr.v20181119 import models, ocr_client
     except ImportError:
         print("错误: 缺少依赖 tencentcloud-sdk-python，请执行: pip install tencentcloud-sdk-python", file=sys.stderr)
         sys.exit(1)
@@ -183,6 +201,7 @@ def call_idcard_ocr(args: argparse.Namespace) -> None:
     http_profile.endpoint = "ocr.tencentcloudapi.com"
     client_profile = ClientProfile()
     client_profile.httpProfile = http_profile
+    client_profile.request_client = args.user_agent
     region = args.region if args.region else "ap-guangzhou"
     client = ocr_client.OcrClient(cred, region, client_profile)
 
@@ -219,21 +238,17 @@ def call_idcard_ocr(args: argparse.Namespace) -> None:
             sys.exit(1)
         req.CardWarnType = args.card_warn_type
 
-    # ⚠️ 设置请求来源标识请求头
-    req.headers = {"X-TC-Source": args.channel}
-
-    # 发起请求
+    # Send request (using SDK high-level interface, type-safe with auto-deserialization)
     try:
         resp = client.IDCardOCR(req)
-        resp_json = json.loads(resp.to_json_string())
     except TencentCloudSDKException as e:
         print(f"API调用失败 [{e.code}]: {e.message}", file=sys.stderr)
         if e.requestId:
             print(f"RequestId: {e.requestId}", file=sys.stderr)
         sys.exit(1)
 
-    # 格式化输出
-    result = format_response(resp_json)
+    # Format output
+    result = format_response(resp)
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
@@ -244,22 +259,18 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
-  # OpenClaw框架调用
-  python main.py --image-url "https://example.com/idcard.jpg" --card-side FRONT --channel "OpenClaw"
+  # 基础调用(--user-agent 默认为 Skills，可不传)
+  python main.py --image-url "https://example.com/idcard.jpg" --card-side FRONT
 
-  # Claude Code框架调用
-  python main.py --image-base64 ./idcard.jpg --channel "claude-code"
-
-  # 不传递--channel参数时,默认使用agent
-  python main.py --image-url "https://example.com/idcard.jpg"
+  # 使用 Base64 文件调用
+  python main.py --image-base64 ./idcard.jpg
 
   # 开启告警检测
   python main.py --image-url "https://example.com/idcard.jpg" \\
-    --config '{"CopyWarn":true,"ReshootWarn":true,"DetectPsWarn":true}' \\
-    --channel "OpenClaw"
+    --config '{"CopyWarn":true,"ReshootWarn":true,"DetectPsWarn":true}'
 
   # 使用进阶PS告警
-  python main.py --image-url "https://example.com/idcard.jpg" --card-warn-type Advanced --channel "claude-code"
+  python main.py --image-url "https://example.com/idcard.jpg" --card-warn-type Advanced
         """,
     )
 
@@ -316,10 +327,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="腾讯云地域，默认 ap-guangzhou",
     )
     parser.add_argument(
-        "--channel",
+        "--user-agent",
         type=str,
-        default="agent",
-        help="请求来源标识(channel),将通过 X-TC-Source 请求头传递给腾讯云。默认值: agent",
+        default="Skills",
+        help="客户端标识，用于统计调用来源，统一固定为 Skills",
     )
 
     return parser
