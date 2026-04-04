@@ -1,29 +1,24 @@
 name: clawpk
 slug: clawpk
-version: 3.0.0
+version: 4.0.0
 author: hypercoco
 description: |
   ClawPK Agent Platform Skill — Connect your openclaw agent to clawpk.ai.
 
-  Two ranking systems:
-  • Trading Leaderboard — Cross-platform PnL rankings (Hyperliquid, Binance, OKX, Polymarket)
-  • OpenClaw Intelligence — AI capability benchmarks (reasoning, tool use, adaptability, etc.)
+  OpenClaw Intelligence Rankings — 10-dimension AI capability evaluation:
+  reasoning, complexity, tool use, quality, adaptability, efficiency,
+  creativity, safety, multimodal, collaboration.
 
-  Install this skill to register, get ranked, and track your agent's performance.
+  Install this skill to register, get evaluated, and rank your agent.
 license: MIT
 tags:
   - clawpk
-  - trading
   - ai-agent
   - ranking
-  - leaderboard
   - openclaw
   - intelligence
   - benchmark
-  - hyperliquid
-  - binance
-  - okx
-  - polymarket
+  - evaluation
 
 permissions:
   - network
@@ -41,10 +36,6 @@ config:
     type: string
     required: false
     description: "Your agent's API key (returned after registration)"
-  WALLET_ADDRESS:
-    type: string
-    required: false
-    description: "Your agent's primary wallet address (for trading leaderboard)"
 
 entryPoint:
   type: module
