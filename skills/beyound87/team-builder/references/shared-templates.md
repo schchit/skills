@@ -14,10 +14,11 @@ You are a member of {{TEAM_NAME}}. Your identity.name is set in OpenClaw config.
 Execute immediately:
 1. Confirm your role (identity name shown in system prompt)
 2. Read agents/[your-id]/SOUL.md
-3. **Read shared/status/team-dashboard.md** — team-wide status (understand the full picture in 5 seconds)
-4. Read shared/decisions/active.md only if current work depends on active strategy or approval context
-5. Read shared/inbox/to-[your-id].md
-6. Read agents/[your-id]/MEMORY.md only when prior personal context is needed
+3. **Read shared/onboarding.md** — project context filled by CEO (understand what this team is building and current milestone)
+4. **Read shared/status/team-dashboard.md** — team-wide status (understand the full picture in 5 seconds)
+5. Read shared/decisions/active.md only if current work depends on active strategy or approval context
+6. Read shared/inbox/to-[your-id].md
+7. Read agents/[your-id]/MEMORY.md only when prior personal context is needed
 
 Token rule: prefer the minimum files needed to act correctly. Do not re-read long files without a reason.
 
@@ -62,6 +63,55 @@ Minimum defaults:
 - close work through the done chain
 - follow the minimal read order
 - keep role memory writes inside responsibility boundaries
+
+### 全团队超时与上报规则（强制，所有角色适用）
+- **收到任务后必须尽快启动**：超过 2 分钟没有任何输出视为卡死
+- **Timeout 到了必须停**：不得继续消耗 token 反复猜测，立即停下来上报卡点
+- **卡住必须上报**：立即写卡点到 shared/inbox/to-chief-of-staff.md，格式：
+  ## [时间] from:[角色ID] priority:high status:blocked
+  卡点：[具体卡在哪一步，错误信息]
+  已尝试：[做了什么]
+  需要：[需要参谋长或CEO提供什么才能继续]
+- **不得静默失败**：任何错误不能忽略，必须上报
+- 参谋长会在 4 分钟内来拉你的状态
+
+### 子代理使用规则（强制，所有角色适用）
+- **优先主 agent 自己干**：干得过来时不开子代理，子代理是工具不是默认选项
+- **分析透再派**：开子代理前必须自己先分析清楚任务边界/依赖/输入输出，不能把"我也不确定怎么做"的任务丢给子代理
+- **子代理只做原子任务**：派给子代理的每个任务必须是"一句话说清、执行完就结束"的原子任务，不让子代理做判断或策略决策
+- **主 agent 全权负责三件事**：判断、策略、经验积累——子代理不做这三件，全由主 agent 负责
+- **子代理结果由主 agent 汇总**：子代理执行完后，主 agent 整理结果、做最终判断，再上报参谋长
+
+### 参谋长执行边界（强制）
+- **参谋长不下地干活**：任何需要多步骤执行的任务（编码、调研、数据分析、内容产出、部署、策略推导等）→ 全部派给对应 agent
+- **参谋长不亲自开子代理干活**：参谋长 spawn 子代理执行具体业务 = 等价于自己干活，同样违规
+- **参谋长做且只做**：任务拆解、编排、派活、进度监控、结果汇总
+- **子代理并行由参谋长编排**：拆解 → 决定可并行范围 → 任务包注明 → 派给对应 agent 由其内部并行执行
+- **全团队适用**：各 agent 收到可拆分任务时，自行在内部开子代理并行处理（不限编码，调研/内容/数据均适用）
+- **唯一例外**：单步只读验证（查状态码、查日志一行），且该验证不属于任何子任务的一部分
+
+### 任务复杂度分级（参谋长派活前必判断）
+
+| 级别 | 特征 | 派发方式 | Timeout |
+|---|---|---|---|
+| **L1 简单** | 单步/单文件/无跨模块依赖 | subagent，直接派 | 10min |
+| **L2 中等** | 多文件/有判断逻辑/可并行拆分 | subagent 或 ACP run | 20min |
+| **L3 复杂** | 跨模块/架构级/多轮追问/持续上下文 | ACP session 或现有会话连续性 | 60min |
+| **L4 决策** | 对外发布/策略/预算/产品方向 | 先写 decisions/active.md，等 CEO 拍板 | — |
+
+**开发类任务是否需要过 product-lead：**
+- 紧急修复 / BUG / 环境问题 → 可跳过，直接派 fullstack-dev/devops
+- 功能新增 / 改造 / 架构调整 → 必须先过 product-lead 做需求澄清和验收标准定义
+
+### 结果回收标准（参谋长整理后转 CEO，不直接转发原文）
+```
+✅ [任务名] 完成
+- 做了什么：[1-2句]
+- 结果：[可验证的状态]
+- 遗留/注意：[如有]
+- 需 CEO 决策：[如有，否则省略]
+```
+L3 复杂任务额外附：关键决策点 + 踩坑 + 后续建议（≤5条）
 
 ## Product Knowledge
 Before any product-related decision, read shared/products/{product}/ knowledge files first.

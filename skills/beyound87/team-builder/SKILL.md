@@ -1,37 +1,41 @@
 ---
 name: team-builder
-description: Deploy a multi-agent SaaS growth team on OpenClaw with shared workspace, async inbox communication, cron-scheduled tasks, deep project code scanning (Deep Dive), and optional Telegram integration. Use when building or upgrading multi-agent teams for SaaS/product-matrix work. Supports dual-development tracks by default: `devops` for delivery/deploy/environment/acceptance and `fullstack-dev` for implementation/module deep-dive/claude-only coding execution using direct acpx or existing session continuity. Includes Project Deep Dive capability so shared product knowledge files (DB schema, routes, models, services, auth, integrations, tech debt, etc.) can be generated and consumed efficiently by all agents. Supports customizable team name, agent roles, models, timezone, and Telegram bots.
+description: 在 OpenClaw 上一键部署多 Agent SaaS 团队工作区。内置双开发轨（devops 交付 + fullstack-dev 实现）、实时 spawn 调度、cron 巡检、Deep Dive 产品知识目录、onboarding 引导。支持自定义角色、模型、时区，可选 Telegram 接入。
 ---
 
 # Team Builder
 
-Deploy a reusable multi-agent SaaS/growth team template on OpenClaw in one shot.
+一条命令部署完整多 Agent 团队骨架，包含角色、信箱、看板、产品知识目录、cron 巡检、双开发轨模板。
 
-## System Impact & Prerequisites
+> 详细安装步骤和首次配置引导见 `README.md`（中文完整版）。
 
-> **Read before running.** This skill creates files and modifies system config.
+## 前置条件
 
-### What it creates
-- A new workspace directory with ~40 files (agent configs, shared knowledge, inboxes, kanban)
-- `apply-config.js` -- script that **modifies `~/.openclaw/openclaw.json`** (adds agents, bindings, agentToAgent config). Auto-backs up before writing.
-- `create-crons.ps1` / `create-crons.sh` -- scripts that **create cron jobs** via `openclaw cron add`
-- After running these scripts you must **restart the gateway** (`openclaw gateway restart`)
+- OpenClaw 已安装并运行
+- Node.js 16+
+- 已配置至少一个模型 provider
 
-### What it does NOT do automatically
-- Does not modify openclaw.json directly -- you run `apply-config.js` yourself
-- Does not create cron jobs directly -- you run the cron script yourself
-- Does not restart the gateway -- you do that manually
+> **此技能会修改系统配置**：`apply-config.js` 会写入 `openclaw.json`，`create-crons.*` 会创建 cron 任务。均需手动执行，不自动运行。
 
-### Optional: Telegram
-- If you provide bot tokens during setup, `apply-config.js` will also add Telegram account configs and bindings
-- Requires: Telegram bot tokens from @BotFather, your Telegram user ID
-- Requires: network access to Telegram API (proxy configurable)
+### Internal Dispatch Protocol (MANDATORY)
+- **Standard agents** (product-lead, growth-lead, intel-analyst, devops, etc.): `sessions_spawn(runtime="subagent", mode="run")` — **禁止带 `streamTo`**
+- **ACP agents** (fullstack-dev): `sessions_spawn(runtime="acp")` — 可带 `streamTo="parent"`
+- 结果通过 auto-announce 推送；不要轮询 `sessions_list` 或 `subagents list`
+- chief-of-staff 是群内唯一入口；其他 agent 内部 spawn，不直接监听群聊
+- 详见 `shared/knowledge/team-workflow.md` 零章
 
-### Optional: ACP / Claude Code
-- The `fullstack-dev` agent is configured as the implementation-focused Claude coding role
-- Current production path is **claude only**
-- Preferred execution modes: simple direct, medium Claude ACP `run` or direct acpx, complex work via existing fullstack-dev continuity + context files
-- Do not assume IM-bound ACP `session` persistence is available
+### 参谋长执行边界（MANDATORY）
+- **参谋长不下地干活**：任何多步骤任务（编码、调研、分析、内容、部署）→ 全部派给对应 agent
+- **参谋长不亲自开子代理干活**：spawn 子代理执行具体业务 = 等价于自己干活
+- **参谋长做且只做**：任务拆解（L1-L4 复杂度判断）、编排、派活、监控、结果汇总
+- 先执行后汇报；默认输出只保留：已做什么 / 拿到什么结果 / 卡在哪里
+
+### 子代理使用规则（MANDATORY，全团队适用）
+- **优先主 agent 自己干**：干得过来时不开子代理
+- **分析透再派**：开子代理前必须先分析清楚边界/依赖/输入输出
+- **子代理只做原子任务**：一句话说清、执行完就结束，不做判断或策略决策
+- **主 agent 全权负责**：判断、策略、经验积累——子代理不做这三件
+- **子代理结果由主 agent 汇总**后再上报参谋长
 
 ### Credentials involved
 - **Telegram bot tokens** (optional) -- stored in openclaw.json, used for agent-to-Telegram binding
@@ -102,7 +106,7 @@ You can always override with manual model IDs.
 - Telegram user ID
 - Telegram bot tokens
 - Proxy
-- ACP coding agent（给 fullstack-dev 使用）
+- ACP coding agent(给 fullstack-dev 使用)
 
 ### Core Scripts
 ```bash
@@ -127,105 +131,59 @@ openclaw gateway restart
 - Completed or stale files should be deleted or moved to `.openclaw/archive/`
 
 ### Current Dual-Dev Standard
-- fullstack-dev：实现、模块深挖、开发文档、接口文档、Claude coding 执行；默认 coding skill 可采用 `coding-lead`，其中 simple 任务直做，medium 倾向 Claude ACP `run` 或 direct acpx，complex 通过现有会话连续协作 + 上下文文件推进，不把 ACP `session` 持久线程作为正式主路径；context 活跃上限 60、生命周期总窗口 100；并行允许但必须先定义边界，总上限 5 个工作单元
-- devops：交付、部署、环境、回归、冒烟、自动QA、发布门禁
-- product-lead：澄清、PRD、验收标准，不完整不得派工
-- chief-of-staff：路由、裁决、控制 token 浪费
+- fullstack-dev:实现、模块深挖、开发文档、接口文档、Claude coding 执行;默认 coding skill 可采用 `coding-lead`,其中 simple 任务直做,medium 倾向 Claude ACP `run` 或 direct acpx,complex 通过现有会话连续协作 + 上下文文件推进,不把 ACP `session` 持久线程作为正式主路径;context 活跃上限 60、生命周期总窗口 100;并行允许但必须先定义边界,总上限 5 个工作单元
+- devops:交付、部署、环境、回归、冒烟、自动QA、发布门禁
+- product-lead:澄清、PRD、验收标准,不完整不得派工
+- chief-of-staff:路由、裁决、控制 token 浪费
 
-## Deployment Flow
+## 部署流程
 
-### Step 1: Collect Configuration
+> 完整步骤见 `README.md`。以下是关键参数选取对照表。
 
-Ask the user for these inputs (use defaults if not provided):
+### 必填参数
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| Team name | Alpha Team | Used in all docs and configs |
-| Workspace dir | `~/.openclaw/workspace-team` | Shared workspace root |
-| Timezone | Asia/Shanghai | For cron schedules |
-| Morning brief hour | 8 | Chief's morning report |
-| Evening brief hour | 18 | Chief's evening report |
-| Thinking model | zai/glm-5 | For strategic roles |
-| Execution model | zai/glm-4.7 | For execution roles |
-| CEO title | Boss | How agents address the CEO |
+| 参数 | 默认值 | 说明 |
+|--------|--------|------|
+| teamName | Alpha Team | 团队名 |
+| workspaceDir | `~/.openclaw/workspace-team` | 工作区路径 |
+| timezone | Asia/Shanghai | cron 时区 |
+| morningHour | 8 | 晨报时间 |
+| eveningHour | 18 | 晚报时间 |
+| thinkingModel | 自动检测 | 策略型角色（chief/product/growth/content）|
+| executionModel | 自动检测 | 执行型角色（devops/fullstack/intel/data）|
+| ceoTitle | Boss | CEO 称呼 |
 
-Optional: Telegram user ID, proxy, and 7 bot tokens.
+### 可选参数
+- `roles`：自定义角色列表（默认全郥 8 个）
+- `roleNames`：自定义角色名称（如中文起名）
+- `--team <prefix>`：多团队并存时用于隔离角色 ID
+- Telegram bot tokens（可选，配置后自动写入 openclaw.json）
 
-### Step 2: Run Deploy Script
-
+### 核心命令
 ```bash
+# 交互式生成
 node <skill-dir>/scripts/deploy.js
-```
 
-Interactive -- asks all questions from Step 1, generates the full workspace.
-
-### Step 2b: Non-interactive / Verify Mode
-
-Prepare a JSON config file:
-
-```json
-{
-  "teamName": "Alpha Team",
-  "workspaceDir": "~/.openclaw/workspace-team",
-  "timezone": "Asia/Shanghai",
-  "morningHour": 8,
-  "eveningHour": 18,
-  "thinkingModel": "zai/glm-5",
-  "executionModel": "zai/glm-4.7",
-  "ceoTitle": "Boss",
-  "roles": ["chief-of-staff","data-analyst","growth-lead","content-chief","intel-analyst","product-lead","devops","fullstack-dev"]
-}
-```
-
-Run:
-
-```bash
+# 非交互生成
 node <skill-dir>/scripts/deploy.js --config team-builder.json
+
+# 验证生成结果
 node <skill-dir>/scripts/deploy.js --verify --config team-builder.json
-```
 
-`--verify` checks that generated files contain the expected dual-dev model, role ownership, and cron entries.
-
-### Step 3: Apply Config
-
-```bash
+# 应用配置（写入 openclaw.json）
 node <workspace-dir>/apply-config.js
-```
 
-Adds agents to openclaw.json, preserving existing config.
+# 创建 cron
+powershell <workspace-dir>/create-crons.ps1  # Windows
+bash <workspace-dir>/create-crons.sh          # macOS/Linux
 
-### Step 4: Create Cron Jobs
-
-```bash
-# Windows
-powershell <workspace-dir>/create-crons.ps1
-
-# Linux/Mac
-bash <workspace-dir>/create-crons.sh
-```
-
-### Step 5: Restart Gateway
-
-```bash
+# 重启
 openclaw gateway restart
 ```
 
-### Step 6: Fill Business Info
+`--verify` 检查生成物是否包含双开发模型、角色归属、cron 条目。
 
-User must edit:
-- `shared/decisions/active.md` -- strategy, priorities
-- `shared/products/_index.md` -- products overview (≤5 lines per product: URL, code path, positioning, tech, status). Detailed info goes in each product's `overview.md`.
-- `shared/knowledge/competitor-map.md` -- competitor analysis
-- `shared/knowledge/tech-standards.md` -- coding standards
-
-### Step 7: Trigger Deep Dive Scans
-
-After filling in products with code directories, tell product-lead to trigger Deep Dive scans:
-1. Product-lead sends delivery-oriented scan requests to devops via inbox
-2. Devops enters each project directory and generates shared knowledge / deployment-oriented scan outputs
-3. Fullstack-dev picks up module-level deep dive or implementation follow-up when needed
-4. Product-lead reviews the generated files for completeness and acceptance impact
-5. All agents now have deep project understanding for informed decisions
+完整安装步骤见 `README.md`。
 
 ## Cron Schedule
 
@@ -327,14 +285,14 @@ The `shared/data/` directory serves as a read-only data pool for all agents:
 - Format: structured markdown or JSON, dated filenames (e.g., `metrics-2026-03-01.md`)
 - Retention: keep 30 days, archive older files
 
-## Project Deep Dive — Code Scanning
+## Project Deep Dive - Code Scanning
 
-Agents can deeply understand each SaaS product through automated code scanning. This is critical — without deep project knowledge, all team decisions are surface-level.
+Agents can deeply understand each SaaS product through automated code scanning. This is critical - without deep project knowledge, all team decisions are surface-level.
 
 ### How It Works
 
 1. CEO adds a product to `shared/products/_index.md` (name, URL, code directory, tech stack)
-2. Product Lead triggers a delivery-oriented Deep Dive scan by messaging DevOps via inbox
+2. Product Lead triggers a delivery-oriented Deep Dive scan by dispatching to DevOps (via `sessions_spawn` if online, inbox as fallback)
 3. DevOps enters the project directory (read-only) and generates shared knowledge / delivery-oriented scan outputs
 4. Fullstack Dev picks up module-level deep dive or implementation follow-up when needed
 5. Knowledge files are generated in `shared/products/{product}/`
@@ -356,12 +314,12 @@ Each product directory includes a `manifest.json` (~200 tokens) that lists all f
 
 ### Manifest Quality Standards
 
-摘要不能为了省 token 丢掉关键信息。每条摘要须满足：
-- **核心文件**（database/models/services/routes/integrations）：50-130字，列出关键实体名/数量/域名
-- **中等文件**（auth/frontend/commands/config）：30-80字，点明方案和范围
-- **轻量文件**（changelog/notes/metrics）：可以短（<20字）
-- **taskFileMap**：必须覆盖该产品的所有核心业务场景（不少于8个映射）
-- **codeStats**：必须包含文件数、行数、模型数、表数等量化指标
+摘要不能为了省 token 丢掉关键信息。每条摘要须满足:
+- **核心文件**(database/models/services/routes/integrations):50-130字,列出关键实体名/数量/域名
+- **中等文件**(auth/frontend/commands/config):30-80字,点明方案和范围
+- **轻量文件**(changelog/notes/metrics):可以短(<20字)
+- **taskFileMap**:必须覆盖该产品的所有核心业务场景(不少于8个映射)
+- **codeStats**:必须包含文件数、行数、模型数、表数等量化指标
 
 ### Product Knowledge Directory
 
@@ -432,7 +390,9 @@ Fullstack Dev auto-detects tech stack and applies stack-specific scan strategies
 
 ## Team Coordination v2
 
-### Inbox Protocol v2 (status tracking)
+### Inbox Protocol v2 (backup channel, status tracking)
+
+> **Primary dispatch**: `sessions_spawn` (real-time). Inbox is for archival, cross-session handoff, and fallback when spawn is unavailable.
 
 Every inbox message now has a `status` field:
 - `pending` → `received` → `in-progress` → `done` (or `blocked`)
@@ -449,13 +409,21 @@ Chief-of-staff maintains a "live scoreboard" updated every session:
 - 🔗 Cross-agent task chain tracking (A→B→C with per-step status)
 - 📅 Today/Tomorrow focus
 
-**All agents read this file first when waking up.** 5-second situational awareness.
+**Agent 启动顺序（内置于 AGENTS.md）：**
+1. 确认角色
+2. 读 `agents/[role]/SOUL.md`
+3. 读 `shared/onboarding.md`（项目背景，CEO 填写）
+4. 读 `shared/status/team-dashboard.md`（当前状态）
+5. 读 `shared/decisions/active.md`（仅涉及策略时）
+6. 读 `shared/inbox/to-[role].md`
+7. 读 `agents/[role]/MEMORY.md`（仅需历史上下文时）
 
 ### Chief-of-Staff as Router
 
 The chief is upgraded from "briefing writer" to "active team router":
+- **Real-time dispatch**: uses `sessions_spawn(runtime="subagent")` to directly wake agents and assign tasks - this is the primary dispatch method
 - **Blocker detection**: scans all inboxes for overdue messages
-- **Active dispatch**: writes reminders directly to lagging agents' inboxes
+- **Inbox as backup**: writes to inbox only for archival, cross-session handoff, or when agent is unreachable
 - **Task chain tracking**: identifies multi-agent workflows and tracks each step
 - **Escalation**: persistent blockers get flagged to CEO
 - **Runs 4x/day** (morning brief, midday patrol, afternoon patrol, evening brief)
@@ -479,7 +447,7 @@ The chief is upgraded from "briefing writer" to "active team router":
 
 | Before | After | Impact |
 |--------|-------|--------|
-| Inbox = blind drop | Inbox with status tracking | Messages are acknowledged and trackable |
+| Inbox = primary dispatch | Inbox = backup + spawn = primary | Real-time dispatch via spawn; inbox for archival only |
 | Chief 2x/day | Chief 4x/day with router role | Blockers caught within hours, not days |
 | Content-chief 1x/week | Daily M-F | Actually produces content |
 | Product-lead no cron | Daily | Knowledge governance happens |
@@ -489,9 +457,9 @@ The chief is upgraded from "briefing writer" to "active team router":
 ## Key Design Decisions
 
 - **Shared workspace** so qmd indexes everything for all agents
-- **Inbox Protocol v2** with status tracking and timeout rules for reliable async communication
-- **Chief as Router** — not just a briefing writer but active coordinator who detects and resolves blockers
-- **Team Dashboard** — single source of truth for team-wide status, maintained by chief every session
+- **Real-time spawn dispatch** as primary inter-agent communication; inbox as backup for archival and cross-session handoff
+- **Chief as Router** - active coordinator who dispatches via `sessions_spawn`, detects blockers, and resolves them
+- **Team Dashboard** - single source of truth for team-wide status, maintained by chief every session
 - **GEO as #1 priority** (AI search = blue ocean)
 - **Fullstack Dev spawns Claude Code** via ACP for complex implementation tasks
 - **DevOps owns delivery and QA gate** so implementation and release responsibilities stay separated

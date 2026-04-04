@@ -3,11 +3,16 @@
   "slug": "team-builder",
   "displayName": "Team Builder",
   "latest": {
-    "version": "2.0.1",
-    "publishedAt": 1774750980771,
-    "commit": "https://github.com/openclaw/skills/commit/084dc54fdcd848429038ce89c1ba9137c3f83ea7"
+    "version": "3.0.0",
+    "publishedAt": 1775143796429,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.0.1",
+      "publishedAt": 1774750980771,
+      "commit": "https://github.com/openclaw/skills/commit/084dc54fdcd848429038ce89c1ba9137c3f83ea7"
+    },
     {
       "version": "1.0.24",
       "publishedAt": 1773476434916,
