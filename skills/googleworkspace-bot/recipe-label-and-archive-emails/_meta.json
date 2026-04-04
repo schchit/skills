@@ -3,11 +3,16 @@
   "slug": "recipe-label-and-archive-emails",
   "displayName": "Recipe Label And Archive Emails",
   "latest": {
-    "version": "1.0.10",
-    "publishedAt": 1774551160472,
-    "commit": "https://github.com/openclaw/skills/commit/c999c0f35874c133c573482638299981aa4f1b2b"
+    "version": "1.0.12",
+    "publishedAt": 1774982198906,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.10",
+      "publishedAt": 1774551160472,
+      "commit": "https://github.com/openclaw/skills/commit/c999c0f35874c133c573482638299981aa4f1b2b"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1774300620160,
