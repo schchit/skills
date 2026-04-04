@@ -1,148 +1,78 @@
-# JD Lawsuit — 京东诉讼案件管理
+---
+name: jd-lawsuit
+description: >-
+  Judicial Dispute（消费纠纷维权助手）。通过浏览器自动化采集电商平台订单数据、
+  商品快照、物流记录，生成退款申请、12315投诉函、民事起诉状等维权文书。
+  Use when user mentions "维权", "退款", "投诉", "消费纠纷", "订单纠纷",
+  "12315", "消费者权益", "lawsuit", "dispute", or needs help with
+  e-commerce order disputes and consumer rights protection.
+---
 
-> 京东内网诉讼/仲裁案件管理系统的 CLI 能力封装。运行环境为 JoyDesk 内网，通过 `joydesk_sdk.browser_fetch_json` 自动携带 Electron Cookie 认证。
+# JD Lawsuit — Judicial Dispute 消费纠纷维权
 
-## 触发词
+通过浏览器采集电商订单证据，生成维权文书，引导投诉和诉讼流程。
 
-案件、诉讼、lawsuit、案件列表、商家详情、查看明文
+## 前置条件
 
-## 前提
+- 浏览器已登录目标电商平台（本 skill 不处理登录，由用户自行完成）
+- 需要 browser-use MCP（CDP 连接）
 
-- 运行在 JoyDesk 的 skillRunningAgent 中
-- `joydesk_sdk` 已安装（提供 `browser_fetch_json` 和 `get_browser_page`）
-- `playwrightComponent` 已挂载（商家截图能力需要）
-- 用户已在 Electron 中登录京东内网
-
-## 能力
-
-### 1. 案件列表查询（API）
-
-**脚本**: `scripts/case_list.py`
-
-```bash
-# 查看处理中的诉讼案件（默认）
-python scripts/case_list.py
-
-# 按状态筛选
-python scripts/case_list.py --status 2          # 已生效
-python scripts/case_list.py --status 3          # 执行中
-python scripts/case_list.py --status 4          # 已执结
-
-# 按类型
-python scripts/case_list.py --type 11           # 仲裁案件
-
-# 搜索
-python scripts/case_list.py --plaintiff 张三
-python scripts/case_list.py --defendant 京东
-python scripts/case_list.py --handler 陈子豪
-python scripts/case_list.py --inner-code AJ-20241126-1554399489
-
-# 拉取全部（自动翻页）
-python scripts/case_list.py --all --format table
-
-# 分页控制
-python scripts/case_list.py --page 2 --size 50
-```
-
-**输出格式**: `--format json`（默认）或 `--format table`
-
-**核心 API**: `POST /api/v1/workbench/searchCaseList`
-- ⚠️ 注意：前端实际调用的是 `searchCaseList`（自动按登录用户过滤），而非 `search`（全量数据）
-- 认证方式: HttpOnly Cookie（curl 不行，必须 browser_fetch_json）
-- 详细字段说明: `references/api-schema.md`
-
-### 2. 商家详情截图（Playwright）
-
-**脚本**: `scripts/merchant_screenshot.py`
-
-```bash
-# 基本用法 — 传入案件 ID（从 case_list 的 id 字段获取）
-python scripts/merchant_screenshot.py -7896699726227267508
-
-# 指定输出路径
-python scripts/merchant_screenshot.py -7896699726227267508 --output /tmp/merchant.png
-
-# 调整超时
-python scripts/merchant_screenshot.py -7896699726227267508 --timeout 15
-```
-
-**执行流程**:
-1. 导航到 `case-detail?no={case_id}` 详情页
-2. 点击「查看商家详情」按钮
-3. 等待弹框出现
-4. 遍历点击所有「查看明文」按钮（解密手机号/地址等）
-5. 对弹框区域截图保存
-
-**注意**: 
-- `case_no` 参数是 `id` 字段（长数字），不是 `innerCaseCode`
-- 商家详情按钮和明文按钮的选择器可能随页面改版变化，脚本已内置多个候选选择器做容错
-- 需要 playwrightComponent 已挂载
-
-## 典型工作流
+## 核心流程
 
 ```
-用户: 帮我看看处理中的案件
-Agent: 调用 case_list.py → 展示列表
-
-用户: 把第一个案件的商家信息截图给我
-Agent: 从列表取 id → 调用 merchant_screenshot.py → 返回截图
+确认平台与登录 → 定位订单 → 采集证据 → 生成文书 → 投诉/起诉
 ```
 
-## API 参考
+### Step 1: 确认平台与登录状态
 
-详见 `references/api-schema.md`，包含：
-- 完整请求/响应字段说明
-- 风险等级、状态、类型枚举值
-- 所有已知 API 端点清单
-- 页面 URL 路由规则
+向用户确认纠纷发生的**电商平台**，导航到该平台用户中心检查登录状态。
 
-## SDK API 参考
+各平台的入口 URL、订单页路径、选择器策略见 [references/platform-guide.md](references/platform-guide.md)。
 
-### browser_fetch_json（API 请求）
-```python
-from joydesk_sdk import browser_fetch_json
+### Step 2: 定位目标订单
 
-# 签名: browser_fetch_json(url, method="GET", headers=None, body=None, cookie_domain=None, timeout_ms=None)
-# body 传 dict（SDK 内部 json.dumps），不要自己序列化
-# 底层走 /api/browser-proxy/fetch，自动注入 Electron session cookie
-data = browser_fetch_json(
-    "https://jdlawsuit-web.jd.com/api/v1/workbench/searchCaseList",
-    method="POST",
-    headers={"Content-Type": "application/json"},
-    body={"current": 1, "size": 10, "caseType": 1, "stageStatus": 1},
-)
-```
+向用户确认**订单号**或**商品关键词**，导航到订单列表页采集数据。
 
-### PlaywrightBrowser（浏览器自动化）
-```python
-from joydesk_sdk import PlaywrightBrowser
+### Step 3: 证据固定
 
-br = PlaywrightBrowser()  # 通过 HTTP 调用后端的 playwright-component
+对关键页面截图、提取结构化数据，保存至 `~/Downloads/dispute-evidence/{订单号}/`，
+自动生成证据清单索引。
 
-# 打开页面（sync_cookies=True 同步 Electron cookie）
-tab = br.open("https://example.com", sync_cookies=True)
-tab_id = tab["browserTabId"]
+详细采集流程、截图规范、文件命名见 [references/evidence-collection.md](references/evidence-collection.md)。
 
-# 获取 ARIA 快照（含 ref 编号）
-snap = br.snapshot(tab_id)
+### Step 4: 生成维权文书
 
-# 通过 ref 点击/填写
-br.click(tab_id, ref=42)
-br.fill(tab_id, ref=15, text="搜索内容")
+根据纠纷类型生成对应文书：
 
-# 截图
-br.screenshot(tab_id, save_path="/tmp/shot.png")      # 保存到文件
-br.screenshot(tab_id, full_page=True)                   # 返回 base64
+| 类型 | 典型情况 | 生成文书 |
+|------|----------|----------|
+| 退款/退货 | 商品质量问题、描述不符、未收到货 | 退款申请函 |
+| 价格欺诈 | 先涨后降、虚假满减、保价不兑现 | 12315 投诉函 + 赔偿计算 |
+| 虚假宣传 | 商品描述与实物严重不符 | 12315 投诉函 |
+| 售后不作为 | 客服推诿、超时未处理 | 12315 投诉函 + 起诉状 |
+| 食品安全 | 过期/变质/违禁添加 | 12315 投诉函 + 退一赔十计算 |
 
-# 等待 DOM 稳定
-br.smart_wait(tab_id, timeout=10000)
+文书模板见 [references/legal-templates.md](references/legal-templates.md)。
 
-# 关闭 tab
-br.close_tab(tab_id)
-```
+### Step 5: 投诉提交（可选）
 
-## 适配须知
+引导用户通过合适渠道提交投诉。
 
-- 商家详情的 DOM 结构（按钮文本、弹框选择器）可能随页面改版变化
-- 脚本已内置多个候选文本做容错（查看商家详情/店铺信息/商家信息等）
-- 必要时在 JoyDesk 中用 `pw_snapshot()` 查看当前页面结构，调整目标文本
+各渠道操作步骤见 [references/complaint-channels.md](references/complaint-channels.md)。
+
+## 详细参考
+
+| 主题 | 文档 |
+|------|------|
+| 电商平台适配指南 | [references/platform-guide.md](references/platform-guide.md) |
+| 证据采集与截图规范 | [references/evidence-collection.md](references/evidence-collection.md) |
+| 维权文书模板 | [references/legal-templates.md](references/legal-templates.md) |
+| 法律依据速查 | [references/legal-basis.md](references/legal-basis.md) |
+| 投诉渠道操作指南 | [references/complaint-channels.md](references/complaint-channels.md) |
+
+## 注意事项
+
+- 不自动输入账号密码，登录始终由用户手动完成
+- 截图前等待页面完全加载（`browser_wait` 2-3 秒 + snapshot 确认）
+- 生成的文书为参考模板，提示用户根据实际情况修改后使用
+- 若金额较大或情况复杂，建议用户咨询专业律师
