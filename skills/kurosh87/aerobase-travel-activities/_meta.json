@@ -3,11 +3,16 @@
   "slug": "aerobase-travel-activities",
   "displayName": "Aerobase Travel Activities",
   "latest": {
-    "version": "3.2.0",
-    "publishedAt": 1773946195069,
-    "commit": "https://github.com/openclaw/skills/commit/e266db65a252550453d2e9edbad1ed186e80ead2"
+    "version": "3.2.1",
+    "publishedAt": 1774917278827,
+    "commit": null
   },
   "history": [
+    {
+      "version": "3.2.0",
+      "publishedAt": 1773946195069,
+      "commit": "https://github.com/openclaw/skills/commit/e266db65a252550453d2e9edbad1ed186e80ead2"
+    },
     {
       "version": "3.0.8",
       "publishedAt": 1773443411242,
