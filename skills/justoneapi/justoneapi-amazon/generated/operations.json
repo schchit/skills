@@ -1,6 +1,6 @@
 {
   "baseUrl": "https://api.justoneapi.com",
-  "description": "Use JustOneAPI Amazon endpoints through JustOneAPI HTTP APIs.",
+  "description": "Analyze Amazon workflows with JustOneAPI, including product Details, product Top Reviews, and best Sellers across 4 operations.",
   "displayName": "Amazon",
   "openapi": "3.1.0",
   "operations": [

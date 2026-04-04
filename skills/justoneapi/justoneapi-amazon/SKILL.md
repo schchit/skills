@@ -1,6 +1,6 @@
 ---
-name: justoneapi_amazon
-description: Use JustOneAPI Amazon endpoints through JustOneAPI HTTP APIs.
+name: Amazon API
+description: Analyze Amazon workflows with JustOneAPI, including product Details, product Top Reviews, and best Sellers across 4 operations.
 author: JustOneAPI
 homepage: https://api.justoneapi.com
 metadata: {"openclaw":{"homepage":"https://api.justoneapi.com","primaryEnv":"JUST_ONE_API_TOKEN","requires":{"bins":["node"],"env":["JUST_ONE_API_TOKEN"]},"skillKey":"justoneapi_amazon"}}
@@ -8,23 +8,39 @@ metadata: {"openclaw":{"homepage":"https://api.justoneapi.com","primaryEnv":"JUS
 
 # Amazon
 
-Use this skill for JustOneAPI `Amazon` endpoints.
+This skill wraps 4 Amazon operations exposed by JustOneAPI. It is strongest for product Details, product Top Reviews, best Sellers, and products By Category. Expect common inputs such as `country`, `asin`, `page`, `category`, `categoryId`.
 
 ## When To Use It
 
-- The user needs data from the `Amazon` platform exposed by JustOneAPI.
-- The user wants to inspect or call a specific JustOneAPI endpoint for this platform.
-- The user needs raw API output plus a short structured explanation.
+- The user needs product Details or product Top Reviews on Amazon.
+- The task lines up with best Sellers rather than a generic cross-platform workflow.
+- The user can provide identifiers or filters such as `country`, `asin`, `page`, `category`.
+- The user wants an exact API-backed answer instead of a freeform summary.
+
+## Representative Operations
+
+- `getProductDetailV1`: Product Details — Get Amazon product Details data, including title, brand, and price, for building product catalogs and enriching item content (e.g., images), price monitoring and availability tracking, and e-commerce analytics and competitor tracking
+- `getProductTopReviewsV1`: Product Top Reviews — Get Amazon product Top Reviews data, including most helpful) public reviews, for sentiment analysis and consumer feedback tracking, product research and quality assessment, and monitoring competitor customer experience
+- `getBestSellersV1`: Best Sellers — Get Amazon best Sellers data, including rank positions, product metadata, and pricing, for identifying trending products in specific categories, market share analysis and category research, and tracking sales rank and popularity over time
+- `getProductsByCategoryV1`: Products By Category — Get Amazon products By Category data, including title, price, and rating, for category-based product discovery and returns product information such as title, price, and rating
+
+## Request Pattern
+
+- 4 operations are available in this skill.
+- HTTP methods used here: `GET`.
+- The most common non-token parameters are `country`, `asin`, `page`, `category`, `categoryId`.
+- All operations in this skill are parameter-driven requests; none require a request body.
 
 ## How To Work
 
 1. Read `generated/operations.md` before choosing an endpoint.
-2. Pick the smallest matching operation instead of guessing.
-3. Ask the user for any missing required parameter. Do not invent values.
-4. Call the helper with:
+2. Start with one of these operations when it matches the user's request: `getProductDetailV1`, `getProductTopReviewsV1`, `getBestSellersV1`, `getProductsByCategoryV1`.
+3. Pick the smallest matching operation instead of guessing.
+4. Ask the user for any missing required parameter. Do not invent values.
+5. Call the helper with:
 
 ```bash
-node {baseDir}/bin/run.mjs --operation "<operation-id>" --params-json '{"key":"value"}'
+node {baseDir}/bin/run.mjs --operation "<operation-id>" --token "$JUST_ONE_API_TOKEN" --params-json '{"key":"value"}'
 ```
 
 ## Environment
@@ -33,7 +49,8 @@ node {baseDir}/bin/run.mjs --operation "<operation-id>" --params-json '{"key":"v
 
 ## Output Rules
 
-- Start with a short conclusion in plain language.
-- Then include the most relevant fields from the response.
-- Include raw JSON when the user asks for it or when the structure matters.
-- If the API returns an error, explain the failure clearly and include the backend error payload.
+- Start with a plain-language answer tied to the Amazon task the user asked for.
+- Include the most decision-relevant fields from the selected endpoint before dumping raw JSON.
+- When using `getProductDetailV1`, explain why the returned fields answer the user's question.
+- If the user gave filters such as `country`, `asin`, `page`, echo those back so the scope is explicit.
+- If the backend errors, include the backend payload and the exact operation ID.
