@@ -3,11 +3,16 @@
   "slug": "anygen-doc-generator",
   "displayName": "Doc Generator",
   "latest": {
-    "version": "1.3.6",
-    "publishedAt": 1773249949616,
-    "commit": "https://github.com/openclaw/skills/commit/6a89345a9c61ca403900a5bd113a2b30d63c138c"
+    "version": "3.0.0",
+    "publishedAt": 1774865673585,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.3.6",
+      "publishedAt": 1773249949616,
+      "commit": "https://github.com/openclaw/skills/commit/6a89345a9c61ca403900a5bd113a2b30d63c138c"
+    },
     {
       "version": "1.3.4",
       "publishedAt": 1773167936897,
