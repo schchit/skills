@@ -3,9 +3,15 @@
   "slug": "lawmatics",
   "displayName": "Lawmatics",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773183733528,
-    "commit": "https://github.com/openclaw/skills/commit/e593ec8394daea5817f3610231fac22a97363747"
+    "version": "1.0.2",
+    "publishedAt": 1775163214000,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773183733528,
+      "commit": "https://github.com/openclaw/skills/commit/e593ec8394daea5817f3610231fac22a97363747"
+    }
+  ]
 }
