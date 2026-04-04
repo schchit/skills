@@ -1,128 +1,91 @@
 ---
 name: kmb-bus-arrival
-description: Retrieve real-time KMB bus arrival information (route, stop, ETA) using the official Data Hub API. Provides up-to-date next bus times for any KMB route and stop.
-version: 1.1.0
+description: Retrieve real-time KMB bus arrival information. getNextArrivals returns plain text; other tools return JSON.
+version: 1.1.7
+author: Steven Ho
+repository: https://github.com/StevenHo1394/kmb-bus-arrival
 tools:
   - name: getRouteDirection
-    description: List available travel directions for a KMB route (e.g., inbound/outbound).
+    description: List available travel directions for a KMB route. Returns JSON.
     command: python3 kmb_bus.py getRouteDirection {route}
     inputSchema:
       type: object
-      required:
-        - route
+      required: [route]
       properties:
         route:
           type: string
-          description: KMB route number (e.g., "1", "5X", "N21")
     output:
       format: json
+
   - name: getRouteInfo
-    description: Get the list of stops for a route with sequence numbers.
+    description: Get the list of stops for a route with sequence numbers. Returns JSON.
     command: python3 kmb_bus.py getRouteInfo {route} {direction}
     inputSchema:
       type: object
-      required:
-        - route
-        - direction
+      required: [route, direction]
       properties:
         route:
           type: string
         direction:
           type: string
-          description: "inbound" or "outbound" as returned by getRouteDirection
+          enum: ["outbound", "inbound"]
     output:
       format: json
+
   - name: getBusStopID
-    description: Find bus stop ID(s) by name (Chinese or English). May return multiple matches.
+    description: Find bus stop ID(s) by name (Chinese or English). Returns JSON.
     command: python3 kmb_bus.py getBusStopID {name}
     inputSchema:
       type: object
-      required:
-        - name
+      required: [name]
       properties:
         name:
           type: string
-          description: Bus stop name (partial or full, in Chinese or English)
     output:
       format: json
+
   - name: getNextArrivals
-    description: Get the next 3 bus arrival times for a specific route/direction/stop.
+    description: Get the next bus arrival times for a specific route/direction/stop. Returns plain text.
     command: python3 kmb_bus.py getNextArrivals {route} {direction} {stopId}
     inputSchema:
       type: object
-      required:
-        - route
-        - direction
-        - stopId
+      required: [route, direction, stopId]
       properties:
         route:
           type: string
         direction:
           type: string
+          enum: ["outbound", "inbound", "auto"]
         stopId:
           type: string
-          description: KMB bus stop ID (e.g., "ST871")
     output:
-      format: json
+      format: text
 
----
-# Implementation Notes for Jeffery
+Implementation:
 
-## API Endpoints (Base URL: https://data.etabus.gov.hk)
+- getNextArrivals output:
+  ```
+  *Route (To Destination)*
 
-- Route List: `/v1/transport/kmb/route/`
-- Route Directions: `/v1/transport/kmb/route/{route}` (returns route details including bound/direction)
-- Route‑Stop: `/v1/transport/kmb/route-stop/{route}/{direction}/{service_type}` (service_type=1 normally)
-- Stop List: `/v1/transport/kmb/stop` (all stops) or `/v1/transport/kmb/stop?name={name}` to filter
-- Route ETA: `/v1/transport/kmb/route-eta/{route}/{service_type}`
-- Stop ETA: `/v1/transport/kmb/stop-eta/{stop}/{service_type}`
+  Stop: *Human Readable Stop Name*
 
-## Script: kmb_bus.py
+  Next arrivals:
+  - HH:MM HKT
+  - HH:MM HKT
+  ```
+  If direction="auto" and the stop is served in both directions, multiple blocks are printed.
 
-Place this Python script in the same directory as this SKILL.md. It will be invoked with subcommands as defined above.
+- Auto-direction: direction="auto" tries both inbound and outbound; reports whichever has the stop. If both, both are shown.
 
-### Behavior
+- Alternate stop ID fallback: If the given stop ID is not found on the route, the skill searches the route's stop list for a stop whose Chinese or English name matches the intended location and uses that stop's ID instead.
 
-- **getRouteDirection {route}**
-  - Fetch `/v1/transport/kmb/route/{route}` (or route list) to determine available directions.
-  - Return JSON: `{ "route": "...", "directions": [{ "bound": "O", "name_tc": "往荃灣", "name_en": "Outbound" }, ...] }`
+- All tools except getNextArrivals return JSON.
 
-- **getRouteInfo {route} {direction}**
-  - Fetch `/v1/transport/kmb/route-stop/{route}/{direction}/1`.
-  - For each entry in `data`, extract `seq`, `stop`, `name_tc`, `name_en`.
-  - Return JSON list of stops in order.
+- Errors: getNextArrivals prints human-readable messages; other tools return JSON with an `error` field.
 
-- **getBusStopID {name}**
-  - Fetch `/v1/transport/kmb/stop?name={name}` (simple substring match; the API supports name filtering? Actually the endpoint is `/v1/transport/kmb/stop` which returns all stops; client can filter locally. Better: fetch full stop list once and cache, then filter by name_tc or name_en containing the query. For simplicity, fetch `/v1/transport/kmb/stop` and filter locally by name.
-  - Return JSON: `[ { "stop": "ST871", "name_en": "YU CHUI COURT BUS TERMINUS", "name_tc": "愉翠苑巴士總站" }, ... ]`
-
-- **getNextArrivals {route} {direction} {stopId}**
-  - Step 1: Fetch route‑stop for the route/direction to find the `seq` corresponding to `stopId`.
-  - Step 2: Fetch route‑eta: `/v1/transport/kmb/route-eta/{route}/1`. The response is a list of ETA objects (or an object with `data` array). Each has `dir`, `seq`, `eta`, `eta_seq`, `dest_tc`, `rmk_tc`, etc.
-  - Step 3: Filter items where `dir==direction` and `seq==stop_seq`.
-  - Step 4: Sort by `eta_seq` (bus order) and take the first 3.
-  - Step 5: Format each ETA as `HH:MM HKT` using `datetime.fromisoformat`.
-  - Return JSON: `{ "stopId": "...", "stopName": "...", "direction": "...", "arrivals": [ "17:35 HKT", "17:47 HKT", "18:00 HKT" ] }`
-  - If no arrivals, return `"No active ETAs"` with explanation.
-
-### Error Handling
-- If any API returns non-200 or empty data, return a clear error message in JSON under `error`.
-- Network timeouts should be caught and reported.
-
-### Caching
-- Cache the full stop list for ~1 hour to avoid repeated downloads for name searches.
-- Cache route‑stop mappings for the same route/direction for 5 minutes.
-
-## Testing
-Test the script manually before enabling:
-- `python3 kmb_bus.py getRouteDirection 182`
-- `python3 kmb_bus.py getRouteInfo 182 outbound` (should include seq for ST871 if it’s on that route)
-- `python3 kmb_bus.py getBusStopID "愉翠苑巴士總站"`
-- `python3 kmb_bus.py getNextArrivals 182 outbound ST871`
-
-## Integration
-Ensure the `command` fields in the tool definitions point to `python3 kmb_bus.py <subcommand> ...` with proper placeholders. The skill directory must contain this `kmb_bus.py` file.
-
-## Notes
-- The KMB Data Hub may return no ETAs outside operating hours (approx 06:00–23:00). Handle gracefully.
-- Some stops have multiple IDs; prefer the one that appears in the route‑stop list.
+version: 1.1.7
+changes:
+  - Full removal of caching — all API calls are fresh
+  - Plain-text errors for getNextArrivals; JSON errors for other tools
+  - Auto-direction and alternate stop ID fallback retained
+  - Docs aligned with code

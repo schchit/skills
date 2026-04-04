@@ -1,11 +1,17 @@
 {
   "owner": "stevenho1394",
   "slug": "kmb-bus-arrival",
-  "displayName": "kmb-bus-arrival",
+  "displayName": "KMB and LWB Bus Arrivals",
   "latest": {
-    "version": "1.1.0",
-    "publishedAt": 1773392951383,
-    "commit": "https://github.com/openclaw/skills/commit/95b94367dd4240ad94f9018e48f4ee1892fe54c5"
+    "version": "1.1.7",
+    "publishedAt": 1775133592732,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1773392951383,
+      "commit": "https://github.com/openclaw/skills/commit/95b94367dd4240ad94f9018e48f4ee1892fe54c5"
+    }
+  ]
 }
