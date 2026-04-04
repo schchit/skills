@@ -1,13 +1,18 @@
 {
   "owner": "allenfancy-gan",
   "slug": "ima-tts-ai",
-  "displayName": "IMA Studio TTS — seed-tts, DouBao",
+  "displayName": "IMA AI Text To Speech — seed-tts, DouBao",
   "latest": {
-    "version": "1.0.7",
-    "publishedAt": 1773771621284,
-    "commit": "https://github.com/openclaw/skills/commit/46d4c6d3631aec114c385488ef3652c0a36e9cc0"
+    "version": "1.0.8",
+    "publishedAt": 1774852365866,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.7",
+      "publishedAt": 1773771621284,
+      "commit": "https://github.com/openclaw/skills/commit/46d4c6d3631aec114c385488ef3652c0a36e9cc0"
+    },
     {
       "version": "1.0.5",
       "publishedAt": 1773331724331,

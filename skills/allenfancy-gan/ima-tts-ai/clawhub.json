@@ -1,7 +1,7 @@
 {
-  "name": "IMA Studio TTS",
-  "tagline": "Text-to-speech, TTS, voice synthesis — seed-tts-2.0 via IMA Open API.",
-  "description": "TTS (text-to-speech) via IMA Open API with seed-tts-2.0. Voice synthesis, speech from text, dubbing, audio content creation. Output: audio URL (mp3/wav). Flow: query products, create task, poll until done. Requires IMA_API_KEY.",
+  "name": "IMA TTS Generator",
+  "tagline": "Convert text, scripts, and captions into natural voiceovers for videos, explainers, product demos, and social posts.",
+  "description": "Convert text, scripts, and captions into natural voiceovers for videos, explainers, product demos, and social posts.",
   "category": "file-generation",
   "requiredEnvVars": ["IMA_API_KEY"],
   "credentialNotice": "The IMA API key is required at runtime (--api-key or IMA_API_KEY). It is sent only to https://api.imastudio.com. Obtain keys at https://imastudio.com or https://www.imaclaw.ai/ (same provider). Use a scoped or test key if concerned about credential exposure.",
@@ -39,7 +39,9 @@
     "seed tts 2.0",
     "text-to-speech",
     "TTS",
-    "speech synthesis"
+    "speech synthesis",
+    "voiceover",
+    "narration"
   ],
   "tags": [
     "ima-studio",
@@ -47,19 +49,37 @@
     "text-to-speech",
     "speech-synthesis",
     "voice",
+    "voiceover",
+    "narration",
     "seed-tts",
-    "seed-tts-2.0"
+    "seed-tts-2.0",
+    "ai-voice",
+    "dubbing",
+    "audiobook",
+    "podcast"
   ],
   "keywords": [
     "text to speech",
     "speech synthesis",
+    "TTS",
+    "voice synthesis",
+    "voiceover",
+    "narration",
+    "AI voice",
+    "dubbing",
+    "audiobook",
+    "podcast narration",
+    "video narration",
     "ima studio",
     "seed-tts",
     "seed tts",
     "seed tts 2.0",
-    "TTS",
-    "voice synthesis",
-    "voice"
+    "语音合成",
+    "文字转语音",
+    "AI配音",
+    "朗读",
+    "播报",
+    "配音"
   ],
   "search_optimized_terms": [
     "seed-tts",
@@ -68,7 +88,15 @@
     "text to speech",
     "TTS",
     "speech synthesis",
-    "voice synthesis"
+    "voice synthesis",
+    "voiceover",
+    "narration",
+    "AI voice",
+    "dubbing",
+    "语音合成",
+    "文字转语音",
+    "AI配音",
+    "朗读"
   ],
   "related_skills": [
     "ima-knowledge-ai",
@@ -77,13 +105,17 @@
     "ima-resource-skill"
   ],
   "use_cases": [
-    "Voice synthesis, dubbing, narration",
-    "Audio content, broadcast, voiceover",
-    "Multi-voice TTS"
+    "Video narration and voiceover",
+    "Podcast and audiobook production",
+    "E-learning and educational content",
+    "Accessibility and screen readers",
+    "Commercial and marketing voiceover",
+    "IVR and phone announcements"
   ],
   "key_features": [
-    "seed-tts-2.0 support",
-    "Text-to-speech, output mp3/wav URL",
-    "IMA flow: query products, create task, poll until done"
+    "seed-tts-2.0 with natural prosody",
+    "Multiple voice options and styles",
+    "Text-to-speech output mp3/wav URL",
+    "Fast generation with automatic retry"
   ]
 }
