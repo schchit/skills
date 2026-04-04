@@ -27,12 +27,28 @@ const DEFAULT_THRESHOLD = 100000; // 大额交易阈值：10万元
 
 /**
  * 读取银行流水文件
+ * 支持 UTF-8 和 GBK 编码的 CSV 文件
  */
 function readBankFlow(filePath) {
     const ext = path.extname(filePath).toLowerCase();
     
     if (ext === '.csv') {
-        const data = fs.readFileSync(filePath, 'utf8');
+        // 尝试读取文件，先用 UTF-8
+        let data = fs.readFileSync(filePath, 'utf8');
+        
+        // 如果读取的内容包含乱码特征（常见GBK字符在UTF-8中的表现）
+        if (data.includes('\ufffd') || data.includes('���')) {
+            console.log('检测到文件可能为 GBK 编码，尝试使用 GBK 解码...');
+            try {
+                const iconv = require('iconv-lite');
+                const buffer = fs.readFileSync(filePath);
+                data = iconv.decode(buffer, 'gbk');
+                console.log('✅ GBK 解码成功');
+            } catch (e) {
+                console.log('⚠️ GBK 解码失败，使用 UTF-8');
+            }
+        }
+        
         const lines = data.split('\n').filter(line => line.trim());
         const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
         
