@@ -3,11 +3,16 @@
   "slug": "vehiclelimit",
   "displayName": "Vehicle License Plate Number Restriction - 车辆尾号限行",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773727514341,
-    "commit": "https://github.com/openclaw/skills/commit/bffd1f4957ae13a0464a606c89a268001dacf6ee"
+    "version": "1.0.2",
+    "publishedAt": 1775209414703,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773727514341,
+      "commit": "https://github.com/openclaw/skills/commit/bffd1f4957ae13a0464a606c89a268001dacf6ee"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1772608507405,
