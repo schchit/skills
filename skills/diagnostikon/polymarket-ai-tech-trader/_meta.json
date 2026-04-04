@@ -1,13 +1,18 @@
 {
   "owner": "diagnostikon",
   "slug": "polymarket-ai-tech-trader",
-  "displayName": "AI & Tech Launch Trader",
+  "displayName": "Polymarket Ai Tech Trader",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773777693038,
-    "commit": "https://github.com/openclaw/skills/commit/f471cc829597ccd0606ac7afcd097123911dd159"
+    "version": "1.0.2",
+    "publishedAt": 1775316942007,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773777693038,
+      "commit": "https://github.com/openclaw/skills/commit/f471cc829597ccd0606ac7afcd097123911dd159"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773439101176,
