@@ -3,11 +3,16 @@
   "slug": "okx-cex-trade",
   "displayName": "okx-cex-trade",
   "latest": {
-    "version": "1.2.7",
-    "publishedAt": 1774622900146,
-    "commit": "https://github.com/openclaw/skills/commit/924877c4783ac5737f575affe1f002449005b88d"
+    "version": "1.2.8",
+    "publishedAt": 1775199123362,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.2.7",
+      "publishedAt": 1774622900146,
+      "commit": "https://github.com/openclaw/skills/commit/924877c4783ac5737f575affe1f002449005b88d"
+    },
     {
       "version": "1.2.6",
       "publishedAt": 1774238589399,
