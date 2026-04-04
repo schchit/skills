@@ -3,11 +3,16 @@
   "slug": "gws-admin-reports",
   "displayName": "Gws Admin Reports",
   "latest": {
-    "version": "1.0.11",
-    "publishedAt": 1774550949437,
-    "commit": "https://github.com/openclaw/skills/commit/81946210b4e0947dd1a4e8616494e937802488a9"
+    "version": "1.0.13",
+    "publishedAt": 1774981979706,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.11",
+      "publishedAt": 1774550949437,
+      "commit": "https://github.com/openclaw/skills/commit/81946210b4e0947dd1a4e8616494e937802488a9"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1774300420098,
