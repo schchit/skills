@@ -3,11 +3,16 @@
   "slug": "jisu-dream",
   "displayName": "Duke of Zhou's Dream Interpretation - 周公解梦",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1774592833885,
-    "commit": "https://github.com/openclaw/skills/commit/7598c0e80a1b6a8c29ae3223a12fee6e465354a6"
+    "version": "1.0.4",
+    "publishedAt": 1775208559881,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1774592833885,
+      "commit": "https://github.com/openclaw/skills/commit/7598c0e80a1b6a8c29ae3223a12fee6e465354a6"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1773721472530,

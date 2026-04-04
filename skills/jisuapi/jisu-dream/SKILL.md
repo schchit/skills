@@ -1,6 +1,6 @@
 ---
-name: jisu-dream
-description: 使用极速数据周公解梦 API 按关键词查询梦境解释，支持分页返回结果列表。
+name: "Duke of Zhou's Dream Interpretation - 周公解梦"
+description: 按关键词检索周公解梦释义，支持分页。当用户说：梦见蛇是什么意思？梦到飞代表什么？或类似解梦问题时，使用本技能。
 metadata: { "openclaw": { "emoji": "💤", "requires": { "bins": ["python3"], "env": ["JISU_API_KEY"] }, "primaryEnv": "JISU_API_KEY" } }
 ---
 
