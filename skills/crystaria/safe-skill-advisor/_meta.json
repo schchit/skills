@@ -3,11 +3,16 @@
   "slug": "safe-skill-advisor",
   "displayName": "Safe Skill Advisor",
   "latest": {
-    "version": "1.5.1",
-    "publishedAt": 1772718124306,
-    "commit": "https://github.com/openclaw/skills/commit/01b561ae96d2214ade13e0b5352eb477e7bd4b42"
+    "version": "1.7.0",
+    "publishedAt": 1775025194726,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.5.1",
+      "publishedAt": 1772718124306,
+      "commit": "https://github.com/openclaw/skills/commit/01b561ae96d2214ade13e0b5352eb477e7bd4b42"
+    },
     {
       "version": "1.4.0",
       "publishedAt": 1772717454079,

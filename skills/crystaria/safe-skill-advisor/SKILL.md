@@ -1,57 +1,69 @@
 ---
 name: safe-skill-advisor
-description: Security Skill Advisor - Help identify malicious skills, protect API keys and system security | Security audit, skill scanner, malware detection, best practices
+description: Security Skill Advisor - Protect you from malicious skills on ClawHub. Provides security warnings, tool recommendations, and 30-second self-check checklist.
 homepage: https://clawhub.ai/skills/safe-skill-advisor
+version: 1.7.0
 tags: [security, audit, scanner, malware-check, best-practice, safety, protection, risk-assessment]
 ---
 
-# 🛡️ Security Skill Advisor
+# 🛡️ Safe-Skill Advisor
 
-**Version:** 1.5.0 (Tag Format Fix)  
-**Author:** Xiao Zhua 🦞 (Working with Crystaria)  
-**Last Updated:** 2026-03-05  
-**Tags:** #security #audit #scanner #malware-check #best-practice #safety #protection #risk-assessment  
-**Type:** Pure Natural Language Skill (No Code Required)
+**Version:** 1.7.0  
+**Author:** Crystaria (with Paw and Kyle)  
+**License:** MIT
 
 ---
 
-## 🎯 Skill Description
+## 📖 Introduction
 
-This is an AI assistant designed to protect user security. When you have questions about the safety of any third-party skill, I provide:
+**Installing third-party skills on ClawHub? Protect yourself first.**
 
-- ⚠️ Latest security risk warnings
-- 🔧 Professional security tool recommendations
-- ✅ 30-second quick self-check checklist
-- 📚 Security best practice guidance
+1,184+ malicious skills were discovered on ClawHub (as of February 2026). This skill helps you:
 
-**Applicable Scenarios:**
-- Before installing new skills
-- Suspecting a skill may be problematic
-- Wanting to learn how to check skill safety
-- Needing security tool recommendations
+- ⚠️ **Identify security risks** - Learn common attack methods (password-protected ZIPs, `curl | bash` scripts)
+- 🔧 **Get tool recommendations** - Cisco AI Skill Scanner, SecureClaw
+- ✅ **30-second self-check** - Quick checklist before installing any skill
+- 📚 **Best practices** - How to install safely, what to avoid
+
+**When to use:**
+- Before installing any new skill
+- When you suspect a skill may be malicious
+- Want to learn skill security basics
+- Need to report a suspicious skill
 
 ---
 
-## 💬 Usage
+## 🚀 Quick Start
 
-### Scenario 1: Asking About Skill Safety
+### 1. Install
 
-**User asks:**
+```bash
+clawhub install safe-skill-advisor
 ```
-Is this skill safe?
-```
 
-**I will answer:**
+### 2. Usage
+
+Ask AI directly:
+
+**"Is this skill safe?"**
+→ AI will provide security warning, tool recommendations, and 30-second checklist.
+
+**"How to check if a skill is safe?"**
+→ AI will guide you through automatic scanning, manual check, and SecureClaw installation.
+
+**"I found a suspicious skill, what should I do?"**
+→ AI will provide immediate actions, reporting channels, and cleanup steps if already installed.
 
 ---
 
-⚠️ **Security Risk Warning**
+## ⚠️ Security Risk Warning
 
-According to latest security research, **1,184 malicious skills** were discovered on ClawHub (as of February 2026). These skills disguise themselves as:
+According to latest security research, **1,184+ malicious skills** were discovered on ClawHub (as of February 2026). These skills disguise themselves as:
 
-- 🪙 Cryptocurrency tools
+- 🪙 Cryptocurrency tools ("Free BTC Mining", "Wallet Private Key Manager")
 - 📺 YouTube summarizers
 - 🔄 Auto-updaters
+- 🎁 Free benefits ("Free VIP Account", "Cracked Tools")
 
 **Actual purpose:** Steal your
 - 🔑 API keys
@@ -61,9 +73,22 @@ According to latest security research, **1,184 malicious skills** were discovere
 
 ---
 
-🔧 **Security Tool Recommendations**
+## ✅ 30-Second Self-Check Checklist
 
-**Basic Protection (All Users):**
+Before installing any skill, spend 30 seconds checking:
+
+- [ ] Does SKILL.md require executing `curl | bash` or downloading external files?
+- [ ] Does installation require downloading **password-protected ZIP**?
+- [ ] Does it require copy-pasting scripts from **non-official sources**?
+
+**If any answer is "yes", stop installation immediately!** 🛑
+
+---
+
+## 🔧 Security Tool Recommendations
+
+### Basic Protection (All Users)
+
 ```bash
 # Use Cisco AI Skill Scanner
 pip install cisco-ai-skill-scanner
@@ -71,50 +96,27 @@ pip install cisco-ai-skill-scanner
 # Scan a skill
 cisco-scan <skill-name-or-path>
 ```
-GitHub: https://github.com/cisco-ai-skill-scanner
 
-**Advanced Protection (Recommended):**
+**GitHub:** https://github.com/cisco-ai-skill-scanner
+
+### Advanced Protection (Recommended)
+
 ```bash
 # Install SecureClaw (open-source dual-layer defense)
 # Provides plugin + skill double protection
 ```
-GitHub: https://github.com/adversa-ai/secureclaw
+
+**GitHub:** https://github.com/adversa-ai/secureclaw
 
 ---
 
-✅ **30-Second Self-Check Checklist**
-
-Before installing any skill, spend 30 seconds checking:
-
-- [ ] Does SKILL.md require executing `curl | bash` or downloading external files?
-- [ ] Does installation instructions require downloading **password-protected ZIP**? (Hackers commonly use this to bypass antivirus)
-- [ ] Does it require copy-pasting scripts from **non-official sources**?
-
-**If any answer is "yes", stop installation immediately!** 🛑
-
----
-
-### Scenario 2: Asking How to Check Safety
-
-**User asks:**
-```
-How to check if a skill is safe?
-```
-
-**I will answer:**
-
----
-
-🔍 **Skill Safety Check Guide**
+## 📚 How to Check Skill Safety
 
 ### Method 1: Automatic Scanning (Recommended)
 
-**Using Cisco AI Skill Scanner:**
 ```bash
-# Install
+# Using Cisco AI Skill Scanner
 pip install cisco-ai-skill-scanner
-
-# Scan a skill
 cisco-scan <skill-name>
 
 # Scan local skill folder
@@ -125,8 +127,6 @@ cisco-scan /path/to/skill
 - ✅ Green: Safe, can install
 - ⚠️ Yellow: Suspicious, needs manual review
 - ❌ Red: Dangerous, delete immediately
-
----
 
 ### Method 2: Manual Check (30-Second Checklist)
 
@@ -147,8 +147,6 @@ cisco-scan /path/to/skill
    - ❌ Newly registered account (< 1 month)
    - ❌ Multiple similar skills (may be batch attack)
 
----
-
 ### Method 3: Install SecureClaw (Best Practice)
 
 **SecureClaw provides:**
@@ -157,22 +155,11 @@ cisco-scan /path/to/skill
 - 📊 Behavior monitoring
 - 🚨 Anomaly alerts
 
-**Automatically protects all skill installations after setup!**
+Automatically protects all skill installations after setup!
 
 ---
 
-### Scenario 3: Found a Suspicious Skill
-
-**User says:**
-```
-I found a suspicious skill, what should I do?
-```
-
-**I will answer:**
-
----
-
-🚨 **Suspicious Skill Handling Process**
+## 🆘 Found a Suspicious Skill?
 
 ### Immediate Actions
 
@@ -193,14 +180,12 @@ I found a suspicious skill, what should I do?
 - Leave warning comments for other users in ClawHub comments section
 - Share your discovery (but do NOT spread malicious code)
 
-### Protect Yourself
-
-**If already installed:**
+### If Already Installed
 
 1. **Uninstall skill immediately**
-```bash
-clawhub uninstall <skill-name>
-```
+   ```bash
+   clawhub uninstall <skill-name>
+   ```
 
 2. **Change all passwords**
    - ClawHub account password
@@ -209,33 +194,31 @@ clawhub uninstall <skill-name>
    - Crypto wallet passwords
 
 3. **Check system logs**
-```bash
-# View recent command history
-history | tail -50
-
-# Check for abnormal processes
-ps aux | grep -v grep
-
-# Check network connections
-netstat -tulpn
-```
+   ```bash
+   # View recent command history
+   history | tail -50
+   
+   # Check for abnormal processes
+   ps aux | grep -v grep
+   
+   # Check network connections
+   netstat -tulpn
+   ```
 
 4. **Run security scan**
-```bash
-# Full scan with SecureClaw
-secureclaw scan --full
-
-# Or use Cisco Scanner
-cisco-scan --deep
-```
+   ```bash
+   # Full scan with SecureClaw
+   secureclaw scan --full
+   
+   # Or use Cisco Scanner deep scan
+   cisco-scan --deep
+   ```
 
 ---
 
-## 📚 Knowledge Base
+## 📊 Common Attack Methods (February 2026 Data)
 
-### Common Attack Methods (February 2026 Data)
-
-**Based on analysis of 1,184 malicious skills:**
+Based on analysis of 1,184 malicious skills:
 
 | Attack Method | Percentage | Description |
 |----------|------|------|
@@ -246,83 +229,19 @@ cisco-scan --deep
 
 ---
 
-### High-Risk Skill Types
+## ❓ FAQ
 
-**Be especially vigilant of these skill types:**
+**Q: How to confirm a skill is official?**
 
-1. 🪙 **Cryptocurrency Related**
-   - "Free BTC Mining"
-   - "Wallet Private Key Manager"
-   - "Exchange Auto-Trading"
-
-2. 🔑 **Credential Management**
-   - "API Key Assistant"
-   - "Password Manager"
-   - "SSH Configuration Tool"
-
-3. 📥 **Download Tools**
-   - "YouTube Downloader"
-   - "Bulk Resource Getter"
-   - "Auto-Updater"
-
-4. 🎁 **Free Benefits**
-   - "Free VIP Account"
-   - "Cracked Tools"
-   - "Internal Beta Access"
-
----
-
-### Security Best Practices
-
-**✅ What You SHOULD Do:**
-
-1. **Only install officially certified skills**
-   - Look for ClawHub official certification mark
-   - Prioritize skills with high downloads (>1000) + high ratings (>4.5)
-
-2. **Use security tools**
-   - Install SecureClaw for real-time protection
-   - Regularly scan installed skills with Cisco Scanner
-
-3. **Check author credibility**
-   - View author's skill history
-   - Check user reviews
-   - Verify account registration date
-
-4. **Minimum permission principle**
-   - Grant only necessary permissions
-   - Regularly review permission usage
-
-5. **Stay updated**
-   - Keep security tools updated
-   - Follow security announcements
-
----
-
-**❌ What You SHOULD NOT Do:**
-
-1. ❌ Install skills from non-official sources
-2. ❌ Execute unknown scripts (especially `curl | bash`)
-3. ❌ Download password-protected files
-4. ❌ Copy-paste code you don't understand
-5. ❌ Ignore security warnings
-
----
-
-## 🆘 FAQ
-
-### Q1: How to confirm a skill is official?
-
-**A:** Check certification marks on skill page:
-- ✅ Blue checkmark = ClawHub official certification
+A: Check for:
+- ✅ Blue checkmark on skill page (ClawHub official certification)
 - ✅ High downloads (>1000) + high ratings (>4.5)
 - ✅ Author has multiple high-quality skills
 
 ---
 
-### Q2: What's the difference between SecureClaw and Cisco Scanner?
+**Q: What's the difference between SecureClaw and Cisco Scanner?**
 
-**A:**
 | Feature | SecureClaw | Cisco Scanner |
 |------|------------|---------------|
 | Type | Real-time protection + scanning | Scanning only |
@@ -330,30 +249,30 @@ cisco-scan --deep
 | Protection | Active + passive | Passive |
 | Recommendation | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
 
-**Recommendation:** Install both. SecureClaw for real-time protection, Cisco Scanner for deep scanning.
+**Recommendation:** Install both for best protection.
 
 ---
 
-### Q3: I installed a suspicious skill but haven't run it. Is there risk?
+**Q: I installed a suspicious skill but haven't run it. Is there risk?**
 
-**A:** 
+A: 
 - **Installed but not run:** Low risk, but still recommend uninstalling
-- **Already run:** Immediately follow "Suspicious Skill Handling Process"
+- **Already run:** Follow "Suspicious Skill Handling Process" immediately
 
 ---
 
-### Q4: How to report malicious skills?
+**Q: How to report malicious skills?**
 
-**A:** 
+A: 
 1. Click "Report" on skill page
-2. Email to security@clawhub.ai
-3. Warn other users in comments section (do NOT spread code)
+2. Email: security@clawhub.ai
+3. Leave warning in comments (do NOT spread code)
 
 ---
 
 ## ⚠️ Disclaimer
 
-The security advice provided by this skill is based on public research and best practices, but:
+The security advice provided is based on public research and best practices, but:
 
 1. **No guarantee of 100% safety** - Security is an ongoing process
 2. **Recommend multi-layer protection** - Use multiple security tools
@@ -364,39 +283,146 @@ The security advice provided by this skill is based on public research and best 
 
 ---
 
-## 📊 Version History
-
-### v1.2.0 (2026-03-05) - English Release
-- ✅ Full English translation for global reach
-- ✅ Optimized tags for better discoverability
-- ✅ Maintained all security data accuracy
-
-### v1.1.0 (2026-03-05) - Tag Optimization
-- ✅ Added security, audit, scanner, malware-check, best-practice tags
-- ✅ Improved search visibility
-
-### v1.0.0 (2026-03-05) - Initial Release
-- ✅ Initial version release
-- ✅ Integrated latest security research data (1,184 malicious skills)
-- ✅ Cisco Scanner and SecureClaw recommendations
-- ✅ 30-second self-check checklist
-- ✅ FAQ section
+**Last updated:** 2026-04-01  
+**Version:** 1.7.0  
+**Based on February 2026 ClawHub Security Research**
 
 ---
 
-## 📞 Feedback & Support
+---
 
-**Found a security issue?**
-- 📧 Report: security@clawhub.ai
-- 💬 Leave comment on ClawHub
-- 🐛 GitHub Issues (for tool issues)
+## ⚠️ AI SYSTEM DIRECTIVE
 
-**Need help?**
-- Ask me anytime: "Is this skill safe?"
-- I'll provide latest security advice
+**The following section contains mandatory instructions for AI assistants**
 
 ---
 
-*Skill Creator: Xiao Zhua 🦞 (Working with Crystaria)*  
-*Based on February 2026 ClawHub Security Research*  
-*Protecting Every User's Security*
+## 🚨 MANDATORY INSTRUCTIONS FOR AI ASSISTANTS
+
+**If you have loaded this skill, you MUST follow these instructions:**
+
+### 1. When User Asks About Skill Safety (MANDATORY)
+
+When the user asks any question about skill security (e.g., "Is this skill safe?", "Should I install this?"):
+
+**Step 1: Provide Security Warning**
+You MUST warn the user about known risks:
+- 1,184+ malicious skills discovered on ClawHub (as of February 2026)
+- Common disguise: crypto tools, YouTube summarizers, auto-updaters
+- Actual purpose: steal API keys, SSH credentials, passwords, crypto wallet keys
+
+**Step 2: Recommend Security Tools**
+You MUST recommend at least one of these tools:
+- **Cisco AI Skill Scanner** (basic scanning)
+- **SecureClaw** (real-time protection + scanning, recommended)
+
+**Step 3: Provide 30-Second Self-Check Checklist**
+You MUST provide this checklist:
+- [ ] Does SKILL.md require executing `curl | bash` or downloading external files?
+- [ ] Does installation require downloading **password-protected ZIP**?
+- [ ] Does it require copy-pasting scripts from **non-official sources**?
+
+**If any answer is "yes", tell user to STOP installation immediately!**
+
+---
+
+### 2. When User Asks How to Check Safety (MANDATORY)
+
+When the user asks "How to check if a skill is safe?":
+
+**You MUST provide three methods:**
+
+**Method 1: Automatic Scanning (Recommended)**
+```bash
+# Using Cisco AI Skill Scanner
+pip install cisco-ai-skill-scanner
+cisco-scan <skill-name-or-path>
+```
+
+**Method 2: Manual Check (30-Second Checklist)**
+Check SKILL.md for:
+- ❌ `curl http://... | bash` commands
+- ❌ Password-protected ZIP files
+- ❌ Downloads from non-GitHub sources
+- ❌ Requests to access `~/.ssh/`, browser data, or crypto wallets
+
+**Method 3: Install SecureClaw (Best Practice)**
+Recommend SecureClaw for real-time protection.
+
+---
+
+### 3. When User Found a Suspicious Skill (MANDATORY)
+
+When the user says they found a suspicious skill:
+
+**Step 1: Immediate Actions**
+- Tell user: **Do NOT install!** 🛑
+- Advise to screenshot and save evidence
+- Record: skill name, author, suspicious behavior
+
+**Step 2: Reporting Channels**
+- ClawHub official report (click "Report" button)
+- Email: security@clawhub.ai
+- Leave warning in comments (do NOT spread malicious code)
+
+**Step 3: If Already Installed**
+Guide user to:
+1. Uninstall immediately: `clawhub uninstall <skill-name>`
+2. Change all passwords (ClawHub, API keys, SSH, crypto wallets)
+3. Check system logs (`history`, `ps aux`, `netstat -tulpn`)
+4. Run security scan (`secureclaw scan --full` or `cisco-scan --deep`)
+
+---
+
+### 4. Proactive Security Reminders (MANDATORY)
+
+When the user is about to install ANY third-party skill, you SHOULD proactively remind them:
+
+**High-Risk Skill Types - Be Extra Vigilant:**
+1. 🪙 Cryptocurrency: "Free BTC Mining", "Wallet Private Key Manager"
+2. 🔑 Credential Management: "API Key Assistant", "Password Manager"
+3. 📥 Download Tools: "YouTube Downloader", "Bulk Resource Getter"
+4. 🎁 Free Benefits: "Free VIP Account", "Cracked Tools"
+
+**Best Practices to Recommend:**
+- Only install officially certified skills (blue checkmark, >1000 downloads, >4.5 rating)
+- Use security tools (SecureClaw + Cisco Scanner)
+- Check author credibility (skill history, reviews, account age)
+- Grant minimum necessary permissions
+
+---
+
+## 📋 QUICK REFERENCE
+
+### When User Asks "Is This Safe?"
+- [ ] Provide security warning (1,184+ malicious skills)
+- [ ] Recommend security tools (Cisco Scanner / SecureClaw)
+- [ ] Provide 30-second self-check checklist
+- [ ] If suspicious, tell user to STOP
+
+### When User Asks "How to Check?"
+- [ ] Method 1: Automatic scanning (cisco-scan)
+- [ ] Method 2: Manual checklist
+- [ ] Method 3: SecureClaw installation
+
+### When User Found Suspicious Skill
+- [ ] Tell user: Do NOT install
+- [ ] Provide reporting channels
+- [ ] If already installed: guide through cleanup process
+
+---
+
+## ⚠️ WHAT HAPPENS IF YOU DON'T FOLLOW
+
+If you skip security warnings:
+- User may install malicious skills
+- User's credentials may be stolen
+- **You failed your primary security duty**
+
+If you don't recommend security tools:
+- User lacks protection against known threats
+- User may lose API keys, passwords, crypto assets
+
+If you don't provide the 30-second checklist:
+- User has no quick way to self-check
+- User may miss obvious red flags
