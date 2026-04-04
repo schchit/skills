@@ -1,6 +1,6 @@
 ---
 name: jisu-character
-description: 使用极速数据 MBTI 性格测试 API（full 93 题 / simple 28 题），逐题返回题目供用户作答，完成后拼接选项并获取测试结果。
+description: MBTI 完整版或简版逐题作答，提交后获取性格类型结果。当用户说：我想测个 MBTI、给我性格测试题，或类似 MBTI 测评时，使用本技能。
 metadata: { "openclaw": { "emoji": "🧠", "requires": { "bins": ["python3"], "env": ["JISU_API_KEY"] }, "primaryEnv": "JISU_API_KEY" } }
 ---
 
