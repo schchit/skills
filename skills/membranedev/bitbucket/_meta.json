@@ -3,9 +3,15 @@
   "slug": "bitbucket",
   "displayName": "Bitbucket",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1772780543047,
-    "commit": "https://github.com/openclaw/skills/commit/bee17da1373e9073aed68b8700edbaa15ff77992"
+    "version": "1.0.2",
+    "publishedAt": 1775161796504,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1772780543047,
+      "commit": "https://github.com/openclaw/skills/commit/bee17da1373e9073aed68b8700edbaa15ff77992"
+    }
+  ]
 }
