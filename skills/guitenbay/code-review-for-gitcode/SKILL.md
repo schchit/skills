@@ -48,6 +48,91 @@ curl -H "Authorization: Bearer <token>" \
 - **Description**: Detailed explanation of the issue
 - **Suggestion**: Specific fix recommendation
 
+**How to find the correct line number in the new file**:
+
+Use the provided helper script to find exact line numbers:
+
+```bash
+# Single line
+python scripts/find_line_numbers.py <file_path> "code snippet"
+
+# Multi-line (use \n to separate lines)
+python scripts/find_line_numbers.py <file_path> "line1\nline2\nline3"
+```
+
+**Example**:
+```bash
+python scripts/find_line_numbers.py file_parser.py "return entries"
+# Output: 第 119 行
+
+python scripts/find_line_numbers.py file_parser.py "line.startswith('[ERROR] HCCL') or\n                        line.startswith('[INFO] HCCL')"
+# Output: 第 103-104 行
+```
+
+**Important**: The `position` in your JSON must be the **last line** of the problematic code range (e.g., if problem spans L103-L105, use `105`).
+
+**Manual method** (if script unavailable):
+
+When reviewing a diff file, the line numbers shown in the diff (after `@@` markers) may not match the actual line numbers in the new file. To find the correct `position` for PR comments:
+
+**Understanding diff hunk headers**:
+```
+@@ -old_start,old_count +new_start,new_count @@
+```
+- `-old_start,old_count`: Old file starting line and number of lines
+- `+new_start,new_count`: New file starting line and number of lines
+
+**How to calculate exact line numbers in the new file**:
+
+1. Find the hunk header with `+new_start` (the number after `+`)
+2. Count lines from that starting number, **including**:
+   - Context lines (no prefix)
+   - Added lines (starting with `+`)
+   - Modified lines (shown as removed `-` then added `+`)
+3. **Exclude** the hunk header line itself and file metadata lines
+
+**Example**:
+```
+@@ -40,7 +39,7 @@ bool QueryTableDataDetailHandler::HandleRequest(...)
+     } else if (request.params.type == "1") {
+         ComputeLinkPageDetail(request, response, database);
+     }
+-    session.OnResponse(std::move(responsePtr));
++    SendResponse(std::move(responsePtr), true);
+     return true;
+ }
+```
+- New file starts at line 39
+- Line 39: `} else if ...`
+- Line 40: `ComputeLinkPageDetail...`
+- Line 41: `}`
+- Line 42: `SendResponse(std::move(responsePtr), true);` ← **This is line 42**
+- Line 43: `return true;`
+
+2. **For new files** (file mode is `new file mode`):
+   ```powershell
+   # Count only lines starting with '+' (excluding '+++ ' header)
+   $lines = Get-Content pr_diff.txt
+   $inFile = $false
+   $lineNum = 0
+   for ($i = 0; $i -lt $lines.Count; $i++) {
+       if ($lines[$i] -match "^diff --git.*your-file.py") { $inFile = $true }
+       if ($inFile -and $lines[$i] -match "^\+.*your-target-code") {
+           Write-Output "New file line: $lineNum"
+           break
+       }
+       if ($inFile -and $lines[$i] -match "^\+" -and $lines[$i] -notmatch "^\+\+\+") {
+           $lineNum++
+       }
+   }
+   ```
+
+3. **Quick check**: The `position` should point to the **last line** of the problematic code range in the **new file** (after PR changes).
+
+**Tip**: If GitCode API returns `400 Bad Request` with "diff failed to be generated due to invalid params under position param", the line number is likely incorrect.
+
+**Important**: Always verify by manually counting from the `+new_start` line number in the hunk header. Do not guess or estimate line numbers.
+
 ### Step 3: Select Top 3 Issues
 
 Combine automated + manual findings:
@@ -93,6 +178,8 @@ Generate json format file `top3_issues.json` for these 3 issues to use in next s
 ```
 
 **Note**: `position` uses the **last line** of the code range for GitCode API positioning.
+
+**Important**: The `position` must be the line number in the **new file** (after PR changes), not the line number in the diff file. See Step 2 for how to calculate the correct line number.
 
 **After generating `top3_issues.json`, display the top 3 issues in Markdown format**:
 
@@ -166,6 +253,8 @@ bool isSafePath = std::any_of(path.begin(), path.end(), ...)
 
 **Note**: `position` in JSON uses the last line number (e.g., L119-L124 → position: 124)
 
+**After generating `top3_issues.json`, immediately proceed to Step 4 to format the output.**
+
 ### Step 4: Format Output
 
 Format issues to structured JSON:
@@ -227,7 +316,9 @@ Step 4: Formatted Review Comments (Ready to Post)
 Output: formatted_review.json
 ```
 
-### Step 5: Post to PR (Optional)
+### Step 5: Post to PR (Optional) - ⚠️ 必须等待用户确认
+
+**🚨 重要警告**：此步骤涉及向 PR 发布评论，属于外部写入操作。**必须先显示预览并等待用户明确确认（yes/no），严禁擅自执行！**
 
 Preview and confirm before posting:
 
@@ -249,12 +340,17 @@ python scripts/post_review.py <owner> <repo> <pr_number> <token> [formatted_revi
 python scripts/post_review.py Ascend msinsight 277 your_token_here formatted_review.json
 ```
 
-**Flow**:
+**Flow** (必须严格遵守):
 
 1. Read `formatted_review.json` from Step 4
 2. Display preview of all comments
-3. Wait for user confirmation (`yes`/`no`)
-4. Only post if user confirms
+3. **⚠️ 必须等待用户明确确认**：询问用户 "是否确认提交以上评论？(yes/no)"
+4. **只有用户回复 'yes' 或 '是' 后才执行提交**，否则取消
+
+**🚫 禁止行为**：
+- 未经用户确认直接执行 post_review.py
+- 假设用户会同意而提前执行
+- 以"默认同意"或"预览即提交"的方式执行
 
 **Note**: Only posts individual issue comments, no summary comment.
 
@@ -322,8 +418,9 @@ python scripts/post_review.py Ascend msinsight 277 your_token_here formatted_rev
 
 ## Scripts
 
-| Script             | Purpose            | Step | Input                   | Output                  |
-| ------------------ | ------------------ | ---- | ----------------------- | ----------------------- |
-| `review_pr.py`     | Automated scanning | 1    | PR URL + Token          | `review_result.json`    |
-| `format_review.py` | Format to JSON     | 4    | `top3_issues.json`      | `formatted_review.json` |
-| `post_review.py`   | Post to PR         | 5    | `formatted_review.json` | PR comments             |
+| Script                | Purpose                   | Step | Input                       | Output                  |
+| --------------------- | ------------------------- | ---- | --------------------------- | ----------------------- |
+| `review_pr.py`        | Automated scanning        | 1    | PR URL + Token              | `review_result.json`    |
+| `find_line_numbers.py`| Find code line numbers    | 2    | File path + code snippet    | Line number(s)          |
+| `format_review.py`    | Format to JSON            | 4    | `top3_issues.json`          | `formatted_review.json` |
+| `post_review.py`      | Post to PR                | 5    | `formatted_review.json`     | PR comments             |
