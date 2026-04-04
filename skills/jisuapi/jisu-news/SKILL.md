@@ -1,6 +1,6 @@
 ---
-name: jisu-news
-description: 使用极速数据新闻 API 按频道获取头条、财经、体育、娱乐等热门新闻列表，并支持查询可用频道列表。
+name: "News - 热门新闻"
+description: 按频道获取头条、财经、体育、娱乐等新闻列表，可查频道列表。当用户说：今天财经头条有什么？体育新闻摘要，或类似新闻聚合问题时，使用本技能。
 metadata: { "openclaw": { "emoji": "📰", "requires": { "bins": ["python3"], "env": ["JISU_API_KEY"] }, "primaryEnv": "JISU_API_KEY" } }
 ---
 

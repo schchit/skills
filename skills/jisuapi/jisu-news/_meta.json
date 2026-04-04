@@ -3,11 +3,16 @@
   "slug": "jisu-news",
   "displayName": "News - 热门新闻",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1774593026769,
-    "commit": "https://github.com/openclaw/skills/commit/f61e9d71f5cac9306534acbb6c98207d1c52119b"
+    "version": "1.0.4",
+    "publishedAt": 1775207539493,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1774593026769,
+      "commit": "https://github.com/openclaw/skills/commit/f61e9d71f5cac9306534acbb6c98207d1c52119b"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1773728931390,
