@@ -3,11 +3,16 @@
   "slug": "tencentcloud-aigc-recog-text",
   "displayName": "TencentCloud Text AIGC Detection",
   "latest": {
-    "version": "1.0.7",
-    "publishedAt": 1773235079534,
-    "commit": "https://github.com/openclaw/skills/commit/c15dd23b64f431e48d28a484389aca5de6a876c2"
+    "version": "1.0.8",
+    "publishedAt": 1774956539538,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.7",
+      "publishedAt": 1773235079534,
+      "commit": "https://github.com/openclaw/skills/commit/c15dd23b64f431e48d28a484389aca5de6a876c2"
+    },
     {
       "version": "1.0.6",
       "publishedAt": 1773115002694,
