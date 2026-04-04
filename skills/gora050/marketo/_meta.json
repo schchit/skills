@@ -3,11 +3,16 @@
   "slug": "marketo",
   "displayName": "Marketo",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1775162469426,
-    "commit": "https://github.com/openclaw/skills/commit/1ab3c4ccd94ca2e0173b4908d8d9c728cfb9fc33"
+    "version": "1.0.2",
+    "publishedAt": 1775162471164,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1775162469426,
+      "commit": "https://github.com/openclaw/skills/commit/1ab3c4ccd94ca2e0173b4908d8d9c728cfb9fc33"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1772730170277,
