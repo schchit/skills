@@ -1,309 +1,261 @@
 ---
 name: voice-tts
-description: 语音处理技能 - 完整的语音输入输出解决方案。功能：(1) 语音识别 ASR - 将用户语音转录为文字（使用 Whisper）(2) 语音合成 TTS - 将文字转换为语音（使用 Edge TTS）。触发场景：用户发送语音消息、主动要求"用语音读..."、"语音回复"等。支持平台：Telegram、Discord、WhatsApp、飞书/Lark。确保每次语音回复都同时发送文字和语音。
-metadata: {"openclaw": {"emoji": "🎙️", "requires": {"bins": ["python3", "ffmpeg"], "pip": ["edge-tts", "whisper", "torch", "click"]}}}
+description: 语音输入（Whisper ASR）+ 语音输出（Edge TTS）技能，支持 agent 专属音色，可调用 send_voice_reply.mjs 发送 Telegram 语音消息。
+metadata: {"openclaw": {"emoji": "🎙️", "requires": {"bins": ["node>=18", "python3", "ffmpeg"], "pip": ["edge-tts", "whisper", "click"]}}}
 ---
 
-> ⚠️ 安装后请将 scripts/ 目录下的 .txt 文件名后缀去掉（去掉 .txt）才能正常使用！
+# voice-tts
 
-# Voice 语音处理技能
+语音输入（ASR）+ 语音输出（TTS）技能，完整替代 OpenClaw 内置 tts 工具处理中文内容。
 
-完整的语音输入输出解决方案，同时支持语音识别（ASR）和语音合成（TTS）。
-
-## 功能概述
+## 技术概览
 
 | 方向 | 技术 | 说明 |
 |------|------|------|
-| 语音→文字 | Whisper (本地) | 用户发语音时自动转录 |
-| 文字→语音 | Edge TTS | 生成语音回复 |
+| 语音 → 文字 | Whisper（本地） | 接收语音，自动转文字 |
+| 文字 → 语音 | Edge TTS（云端） | 生成 MP3，发送 Telegram 语音消息 |
 
-## 安装依赖
+---
+
+## 工作方式
+
+### ASR（语音 → 文字）
+
+用户发来语音消息 → `voice-asr.mjs` 转写为文字 → 触发 agent 处理。
+
+语音识别在 OpenClaw 工具层自动完成，agent 收到的是文字。
+
+### TTS（文字 → 语音）
+
+agent 回复文字后，如需以语音发送，调用 `send_voice_reply.mjs` 手动发送 Telegram 语音消息：
 
 ```bash
-# 必须安装的包
-pip install edge-tts whisper torch click
-
-# 如果没有 ffmpeg（音频处理需要）
-# macOS: brew install ffmpeg
-# Ubuntu: sudo apt install ffmpeg
+node /path/to/voice-tts/scripts/send_voice_reply.mjs \
+  --text "你的回复内容" \
+  --chat-id 8317347201 \
+  --agent main
 ```
 
-## OpenClaw 配置
+---
 
-要在 OpenClaw 中使用语音识别，需要修改 `openclaw.json`：
+## 快速安装
+
+### 方式一：一键安装（推荐）
+
+```bash
+# 默认安装 turbo 模型
+bash /path/to/voice-tts/install.sh
+
+# 国内加代理
+bash /path/to/voice-tts/install.sh --proxy http://127.0.0.1:7897
+```
+
+### 方式二：手动安装
+
+```bash
+pip install edge-tts whisper click
+brew install ffmpeg   # macOS
+sudo apt install -y ffmpeg  # Ubuntu
+```
+
+安装完成后运行冒烟测试：
+
+```bash
+bash tests/smoke.sh
+```
+
+---
+
+## 配置（可选）
+
+`config.default.json` 已包含所有默认值，**不填配置可直接使用**。
+
+如需自定义 agent 音色映射或 ASR 参数，在 `openclaw.json` 的 `skills.entries.voice-tts.config` 中覆盖：
 
 ```json
 {
-  "tools": {
-    "media": {
-      "audio": {
+  "skills": {
+    "entries": {
+      "voice-tts": {
         "enabled": true,
-        "models": [
-          {
-            "type": "cli",
-            "command": "python3",
-            "args": [
-              "{{SkillPath}}/voice-tts/scripts/whisper",
-              "--model",
-              "base",
-              "{{MediaPath}}"
-            ]
+        "config": {
+          "tts": {
+            "defaultVoice": "zh-CN-XiaoxiaoNeural",
+            "agentVoices": {
+              "main":       "zh-CN-XiaoxiaoNeural",
+              "researcher": "zh-CN-YunxiNeural",
+              "product":    "zh-CN-XiaoyiNeural",
+              "coder":      "zh-CN-YunyangNeural",
+              "devops":     "zh-CN-YunjianNeural"
+            }
+          },
+          "asr": {
+            "defaultInitialPrompt": "以下是中文语音转文字。常见词包括：管家、研究员、邮差、码农、产品、运维、OpenClaw、小爱、Telegram。",
+            "defaultTemperature": 0,
+            "conditionOnPreviousText": true
           }
-        ]
+        }
       }
     }
   }
 }
 ```
 
-**说明**：
-- `{{SkillPath}}` 会自动替换为 skill 安装路径
-- `--model base` 可以改为 `turbo` 等其他模型
-- 修改后执行 `openclaw gateway restart` 重启生效
-
-## 触发场景
-
-### 场景一：用户发送语音消息（ASR）
-
-当用户发送**语音消息**时：
-1. 系统会自动转录为文字（transcript）
-2. 你需要理解用户意图并回复
-3. **用语音+文字回复**用户
-
-### 场景二：用户主动要求语音回复（TTS）
-
-当用户说以下话术时：
-- "用语音读..."
-- "语音回复"
-- "读给我听"
-- "说出来"
-- "text to speech"
-- "TTS"
-- "飞书语音"
-- 或任何明确要求语音输出的请求
-
-## 脚本说明
-
-Skill 自带两个脚本：
-
-### 1. 语音识别 - whisper
-
-位置：`{{SkillPath}}/scripts/whisper`
-
-```bash
-# 基本用法
-python3 {{SkillPath}}/scripts/whisper audio.mp3
-
-# 指定模型（默认 base）
-python3 {{SkillPath}}/scripts/whisper audio.mp3 --model turbo
-
-# 输出 JSON（带语言检测）
-python3 {{SkillPath}}/scripts/whisper audio.mp3 --json
-
-# 带时间戳
-python3 {{SkillPath}}/scripts/whisper audio.mp3 --timestamps
-```
-
-**可用模型**：
-
-| 模型 | 大小 | 速度 | 精度 |
-|------|------|------|------|
-| tiny | 39M | 最快 | 较低 |
-| base | 74M | 快 | 中等 |
-| small | 244M | 中等 | 较好 |
-| turbo | 809M | 快 | 较好 |
-| large-v3 | 1.5GB | 慢 | 最高 |
-
-**推荐**：首次使用下载 `base` 或 `turbo` 模型，后续可直接使用。
-
-### 2. 语音合成 - edge_tts
-
-位置：`{{SkillPath}}/scripts/edge_tts`
-
-```bash
-# 基本用法
-python3 {{SkillPath}}/scripts/edge_tts "要说的内容" -f output.mp3
-
-# 指定声音
-python3 {{SkillPath}}/scripts/edge_tts "你好" -v zh-CN-XiaoxiaoNeural -f output.mp3
-
-# 调整语速
-python3 {{SkillPath}}/scripts/edge_tts "你好" -r +10% -f output.mp3
-```
-
-**推荐声音**：
-- `zh-CN-XiaoxiaoNeural` - 中文女声（默认推荐）
-- `zh-CN-YunxiNeural` - 中文男声
-- `en-US-JennyNeural` - 英文女声
-
-### 3. 自动语音检查 - auto_voice_check（可选）
-
-自动检查未处理的语音消息并批量处理。
-
-```bash
-python3 {{SkillPath}}/scripts/auto_voice_check
-```
-
-功能：
-- 检查 `~/.openclaw/media/inbound/` 下的新音频
-- 自动转写（使用 whisper）
-- 移动到已处理目录
-
-### 4. 语音回复钩子 - voice_reply_hook（可选）
-
-用于自动合成语音回复的钩子。
-
-```bash
-# 设置环境变量
-export REPLY_TEXT="你好，我是AI助手"
-export MEDIA_OUT="{{Workspace}}/media/outbound"
-
-# 执行钩子
-python3 {{SkillPath}}/scripts/voice_reply_hook
-```
-
-## 使用流程
-
-### 语音输入处理流程
-
-```
-用户发送语音 → 系统转录 → 你理解内容 → 语音+文字回复
-```
-
-1. 用户语音消息到达时，系统会提供 `transcript` 字段（转录文字）
-2. 直接读取理解用户意图
-3. 用 Edge TTS 合成语音回复
-4. 同时发送文字和语音
-
-### 语音输出流程
-
-```
-文字内容 → Edge TTS 合成 → 发送语音消息
-```
-
-1. 确定要语音回复的内容
-2. 创建输出目录：`mkdir -p {{Workspace}}/media/outbound/`
-3. 合成语音：`python3 {{SkillPath}}/scripts/edge_tts "内容" -f {{Workspace}}/media/outbound/voice.mp3`
-4. 发送语音消息（见下方多平台说明）
-
-## 配置
-
-### 音频目录
-
-- 输入音频：`~/.openclaw/media/inbound/`（系统自动存放）
-- 输出音频：`{{Workspace}}/media/outbound/`
-
-### 环境变量（飞书需要）
-
-- `FEISHU_APP_ID` - 飞书应用 ID
-- `FEISHU_APP_SECRET` - 飞书应用密钥
-- `FEISHU_CHAT_ID` - 群聊 ID
-
-## 多平台支持
-
-### Telegram（推荐）
-
-```python
-message(
-    action="send",
-    channel="telegram",
-    media="{{Workspace}}/media/outbound/voice.mp3",
-    asVoice=True,
-    message="这里是文字说明"
-)
-```
-
-| 参数 | 说明 |
-|------|------|
-| `asVoice=True` | 关键！设为 True 显示为语音消息 |
-
-### Discord
-
-```python
-message(action="send", channel="discord", media=voice_path, message=text)
-```
-
-### WhatsApp
-
-```python
-message(action="send", channel="whatsapp", media=voice_path, message=text)
-```
-
-### 飞书/Lark
-
-飞书不支持直接发语音，用文件消息：
-
-```bash
-# 1. 获取 token
-TENANT_TOKEN=$(curl -s -X POST "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal" \
-  -H "Content-Type: application/json" \
-  -d "{\"app_id\": \"${FEISHU_APP_ID}\", \"app_secret\": \"${FEISHU_APP_SECRET}\"}" | \
-  python3 -c "import json,sys; print(json.load(sys.stdin).get('tenant_access_token',''))")
-
-# 2. 上传音频
-FILE_KEY=$(curl -s -X POST "https://open.feishu.cn/open-apis/im/v1/files" \
-  -H "Authorization: Bearer ${TENANT_TOKEN}" \
-  -F "file_type=mp3" \
-  -F "file=@{{Workspace}}/media/outbound/voice.mp3" | \
-  python3 -c "import json,sys; print(json.load(sys.stdin).get('data',{}).get('file_key',''))")
-
-# 3. 发送
-curl -s -X POST "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id" \
-  -H "Authorization: Bearer ${TENANT_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d "{\"receive_id\": \"${FEISHU_CHAT_ID}\", \"msg_type\": \"file\", \"content\": \"{\\\"file_key\\\": \\\"${FILE_KEY}\\\"}\"}"
-```
-
-或用卡片发文字说明：
-
-```bash
-curl -s -X POST "${FEISHU_WEBHOOK_URL}" \
-  -H "Content-Type: application/json" \
-  -d '{"msg_type": "interactive", "card": {"header": {"title": {"tag": "plain_text", "content": "🎙️ 语音消息"}, "template": "blue"}, "elements": [{"tag": "markdown", "content": "**文字内容：**\n\n要说的内容"}]}}'
-```
-
-## 重要规则
-
-1. **语音输入**：用户发语音 → 必须用语音+文字双回复
-2. **语音输出**：用户要求语音 → 必须合成语音发送
-3. **同时发送**：语音消息必须附带文字，确保兼容所有平台
-4. **检查文件**：合成后确认文件存在再发送
-
-## 示例
-
-### 示例一：用户语音问天气
-
-用户语音："今天天气怎么样？"
-
-处理：
-1. 读取 transcript（系统已转录）
-2. 回答：今天天气晴朗，20-28度
-3. 合成语音
-4. 发送：文字+语音双回复
-
-### 示例二：用户要求读文章
-
-用户："用语音读一下这段话：AI正在改变世界"
-
-处理：
-1. 提取要读的内容
-2. 合成语音：AI正在改变世界
-3. 发送：语音消息 + 文字"已经读给你听了"
-
-## 故障排除
-
-### Whisper 转录失败
-- 确认 ffmpeg 已安装：`ffmpeg -version`
-- 确认音频文件存在：`ls -la ~/.openclaw/media/inbound/`
-
-### Edge TTS 生成失败
-- 检查 Python 包：`python3 -c "import edge_tts"`
-- 检查输出目录权限
-
-### 语音发送失败
-- Telegram：文件需 < 20MB
-- 飞书：需要配置 App ID/Secret
+修改后执行 `openclaw gateway restart`。
 
 ---
 
-**提示**：这个技能可以自动和天气、新闻、日程等技能结合，用语音播报信息。
+## 核心脚本
+
+### 语音合成 — `bin/voice-tts.mjs`
+
+将文字转为语音文件：
+
+```bash
+# 基本用法
+node bin/voice-tts.mjs "你好" -f /tmp/demo.mp3
+
+# 指定 agent 音色
+node bin/voice-tts.mjs "你好" -f /tmp/demo.mp3 --agent main
+
+# 指定声音 / 语速
+node bin/voice-tts.mjs "你好" -f /tmp/demo.mp3 -v zh-CN-YunxiNeural -r +10%
+```
+
+可用中文音色：`zh-CN-XiaoxiaoNeural`（女声，推荐）、`zh-CN-YunxiNeural`、`zh-CN-XiaoyiNeural`、`zh-CN-YunyangNeural`、`zh-CN-YunjianNeural`、`zh-CN-XiaomoNeural`
+
+### 语音识别 — `bin/voice-asr.mjs`
+
+将音频文件转文字：
+
+```bash
+# 基本用法
+node bin/voice-asr.mjs audio.ogg
+
+# 指定模型 / 语言
+node bin/voice-asr.mjs audio.ogg --model turbo --language zh
+
+# 输出 JSON（含语言检测）
+node bin/voice-asr.mjs audio.ogg --json
+```
+
+可用模型：`tiny` `base` `small` `turbo` `large-v3`
+
+### 发送 Telegram 语音 — `scripts/send_voice_reply.mjs`
+
+一键完成"文字 → TTS 合成 → Telegram 语音消息发送"：
+
+```bash
+node scripts/send_voice_reply.mjs \
+  --text "已收到！" \
+  --chat-id 8317347201 \
+  --agent main
+```
+
+**参数说明：**
+
+| 参数 | 必填 | 说明 |
+|------|------|------|
+| `--text` | ✅ | 要语音播报的文字内容 |
+| `--chat-id` | ✅ | Telegram 目标用户 ID |
+| `--agent` | 否 | agent id，自动选对应音色 |
+| `--voice` | 否 | 覆盖默认音色，如 `zh-CN-YunxiNeural` |
+| `--rate` | 否 | 语速，如 `+10%`、`-5%` |
+| `--token` | 否 | 直接指定 Telegram Bot Token |
+
+**Token 自动查找优先级：**
+1. `--token` 参数
+2. `openclaw.json → channels.telegram.accounts.<当前agent>.botToken`
+3. `openclaw.json → channels.telegram.accounts.default.botToken`
+4. 环境变量 `TELEGRAM_BOT_TOKEN`
+
+---
+
+## 文件结构
+
+```
+voice-tts/
+├── SKILL.md                      # 本文档
+├── config.default.json           # 默认配置（直接可用，不需修改）
+├── install.sh                    # 一键安装脚本
+│
+├── bin/
+│   ├── voice-tts.mjs             # TTS 入口
+│   └── voice-asr.mjs             # ASR 入口
+│
+├── lib/
+│   ├── config.mjs                # 配置读取（支持 openclaw.json 覆盖）
+│   ├── errors.mjs                 # 统一错误码 + 用户兜底消息
+│   └── audio.mjs                 # 音频校验
+│
+├── scripts/
+│   ├── send_voice_reply.mjs      # Telegram 语音发送（核心）
+│   └── auto_voice_check          # 批量处理未处理语音
+│
+└── tests/
+    └── smoke.sh                   # 冒烟测试
+```
+
+> **注意：** `scripts/edge_tts` 和 `scripts/whisper` 是内部 Python 封装，非直接入口；直接使用上表中的 `bin/` 入口即可。
+
+---
+
+## 错误码
+
+| 错误码 | 含义 | 用户兜底消息 |
+|--------|------|-------------|
+| `no_file_path` | 未提供音频文件 | 抱歉，没有收到音频文件，请重试。 |
+| `file_not_found` | 文件不存在 | 抱歉，音频文件没找到，请重试。 |
+| `file_empty` | 文件为空 | 抱歉，音频文件是空的，请重试。 |
+| `file_too_small` | 文件过小 | 抱歉，音频文件不完整，请重试。 |
+| `file_stale` | 文件过期 | 抱歉，音频文件已过期，请重试。 |
+| `transcription_failed` | Whisper 转写失败 | 抱歉，语音识别失败了，请重试。 |
+| `synthesis_failed` | Edge TTS 生成失败 | 抱歉，语音生成失败了，请重试。 |
+| `timeout` | 执行超时 | 抱歉，处理超时了，请稍后重试。 |
+
+---
+
+## 语音文件自动归档
+
+`voice-asr.mjs` 成功转写后，自动将原文件从 `~/.openclaw/media/inbound/` 复制到 **agent workspace** `media/inbound/`，然后删除原文件。
+
+- ✅ 成功时：复制归档，删除原文件
+- ❌ 失败时：保留原文件，可重试
+
+---
+
+## 故障排查
+
+```bash
+# 检查依赖
+ffmpeg -version
+python3 -c "import edge_tts; print('edge-tts ok')"
+python3 -c "import whisper; print('whisper ok')"
+
+# 检查未处理语音文件
+ls -la ~/.openclaw/media/inbound/
+
+# 直接测试 ASR
+node bin/voice-asr.mjs ~/.openclaw/media/inbound/your-file.ogg
+
+# 直接测试 TTS
+node bin/voice-tts.mjs "测试" -f /tmp/test.mp3
+
+# 运行冒烟测试
+bash tests/smoke.sh
+```
+
+常见问题：
+- **TTS 生成失败**：检查 `python3 -c "import edge_tts; print('ok')"`
+- **Telegram 发送失败**：确认 botToken 正确、chat-id 是数字 ID、语音文件 < 20MB
+- **语音发错对象**：检查 `conversationId` 是否与预期 chat-id 一致
+
+---
+
+## 可选：批量处理未处理语音
+
+```bash
+node scripts/auto_voice_check
+```
+
+检查 `~/.openclaw/media/inbound/` 下未处理的 `.ogg` 文件，自动转写并归档。
