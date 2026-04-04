@@ -14,6 +14,11 @@ import {
   selectWorkspace,
 } from "./clickzetta-discovery.mjs";
 import { runProxyOneShot } from "./cz-agent-proxy.mjs";
+import {
+  isRecord,
+  asTrimmedString,
+  writeJsonAndExit,
+} from "./utils.mjs";
 
 const SKILL_KEY = "studio-agent";
 const DEFAULT_CONFIG_PATH = "~/.openclaw/clawdbot.json";
@@ -77,17 +82,6 @@ function usage() {
   ].join("\n");
 }
 
-function isRecord(value) {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function asTrimmedString(value) {
-  if (value === undefined || value === null) {
-    return undefined;
-  }
-  const text = String(value).trim();
-  return text.length > 0 ? text : undefined;
-}
 
 function expandHome(inputPath) {
   const raw = asTrimmedString(inputPath);
@@ -151,6 +145,17 @@ function parseWorkspaceCommand(input) {
   const lower = normalized.toLowerCase();
   const mentionsWorkspace = lower.includes("workspace") || normalized.includes("工作区");
   if (!mentionsWorkspace) {
+    return null;
+  }
+
+  // If the input contains action verbs that indicate a remote operation
+  // (e.g. "在 workspace 里执行 SQL"), skip local workspace handling
+  // and let the remote agent process it.
+  const remoteActionPattern =
+    /(?:执行|运行|创建|删除|查询|提交|编辑|修改|导入|导出|分析)\s/i;
+  const remoteActionPatternEn =
+    /\b(?:execute|run|create|delete|query|submit|edit|import|export|analyze)\s/i;
+  if (remoteActionPattern.test(normalized) || remoteActionPatternEn.test(lower)) {
     return null;
   }
 
@@ -275,7 +280,17 @@ function loadSkillEnv(configPath) {
   const skillConfig = parsed?.skills?.entries?.[SKILL_KEY];
   const env = isRecord(skillConfig?.env) ? { ...skillConfig.env } : {};
   const apiKey = asTrimmedString(skillConfig?.apiKey);
-  if (apiKey && !asTrimmedString(env.CZ_STUDIO_JDBC_URL)) {
+  const envJdbc = asTrimmedString(env.CZ_STUDIO_JDBC_URL);
+  if (apiKey && envJdbc && apiKey !== envJdbc) {
+    // apiKey is the UI-facing field; sync env to match and persist
+    env.CZ_STUDIO_JDBC_URL = apiKey;
+    try {
+      parsed.skills.entries[SKILL_KEY].env.CZ_STUDIO_JDBC_URL = apiKey;
+      fs.writeFileSync(fullPath, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
+    } catch {
+      // best-effort sync; runtime still uses apiKey
+    }
+  } else if (apiKey) {
     env.CZ_STUDIO_JDBC_URL = apiKey;
   }
   return { configPath: fullPath, env };
@@ -333,10 +348,6 @@ async function resolveRuntimeEnv(skillEnv, opts) {
   };
 }
 
-function writeJsonAndExit(payload, code) {
-  process.stdout.write(`${JSON.stringify(payload)}\n`);
-  process.exit(code);
-}
 
 function createProtocolError(message, extra = {}) {
   return {
@@ -522,6 +533,22 @@ async function run() {
   let resolvedRuntime;
   try {
     resolvedRuntime = await resolveRuntimeEnv(loaded.env, opts);
+  } catch (error) {
+    if (slowConnectTimer) {
+      clearTimeout(slowConnectTimer);
+    }
+    writeJsonAndExit(
+      {
+        ok: false,
+        error: {
+          code: "DISCOVERY_ERROR",
+          message: `runtime discovery failed: ${error instanceof Error ? error.message : String(error)}`,
+        },
+        ...createSetupHint(expandHome(opts.configPath)),
+      },
+      1,
+    );
+    return;
   } finally {
     if (slowConnectTimer) {
       clearTimeout(slowConnectTimer);
@@ -640,8 +667,6 @@ async function run() {
     1,
   );
 }
-
-const STARTUP_ID = "startup";
 
 run().catch((error) => {
   writeJsonAndExit(

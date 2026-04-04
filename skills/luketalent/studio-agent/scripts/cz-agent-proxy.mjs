@@ -5,6 +5,11 @@ import { createInterface } from "node:readline";
 import process, { env as hostEnv } from "node:process";
 import { fileURLToPath } from "node:url";
 import { discoverStudioEnv, resolveAutoDiscoveryInput } from "./clickzetta-discovery.mjs";
+import {
+  isRecord,
+  extractTokenFromWsUrl,
+  parseTokenClaims,
+} from "./utils.mjs";
 
 const PROXY_VERSION = "v1";
 const DEFAULT_SESSION_ID = "openclaw-session";
@@ -41,47 +46,13 @@ function nowMs() {
   return Date.now();
 }
 
-function isRecord(value) {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
+// proxy uses a stricter asTrimmedString that only accepts string type
 function asTrimmedString(value) {
   if (typeof value !== "string") {
     return undefined;
   }
   const trimmed = value.trim();
   return trimmed ? trimmed : undefined;
-}
-
-function extractTokenFromWsUrl(rawUrl) {
-  const url = asTrimmedString(rawUrl);
-  if (!url) {
-    return undefined;
-  }
-  try {
-    const parsed = new URL(url);
-    return asTrimmedString(parsed.searchParams.get("x-clickzetta-token"));
-  } catch {
-    return undefined;
-  }
-}
-
-function parseTokenClaims(rawToken) {
-  const token = asTrimmedString(rawToken);
-  if (!token) {
-    return undefined;
-  }
-  const parts = token.split(".");
-  if (parts.length < 2) {
-    return undefined;
-  }
-  try {
-    const payload = Buffer.from(parts[1], "base64url").toString("utf8");
-    const parsed = JSON.parse(payload);
-    return isRecord(parsed) ? parsed : undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 function asIdentityFieldValue(value) {
@@ -586,6 +557,11 @@ function resolveWsUrl(baseUrl, token) {
 }
 
 async function connectWebSocket({ url, token, timeoutMs }) {
+  if (typeof globalThis.WebSocket === "undefined") {
+    throw new Error(
+      "WebSocket is not available. Node.js >= 22 is required (or use a WebSocket polyfill).",
+    );
+  }
   const targetUrl = resolveWsUrl(url, token);
   return await new Promise((resolve, reject) => {
     let settled = false;
@@ -1245,27 +1221,8 @@ class CzAgentProxy {
       return;
     }
 
-    if (!message.complete) {
-      if (!this.emitAssistantDeltas) {
-        return;
-      }
-      this.emitEvent(
-        createEvent({
-          event: "assistant_delta",
-          requestId: message.requestId,
-          conversationId: message.conversationId,
-          opType: message.opType,
-          delta: message.opType === "agent_message" ? agentDelta : null,
-          content: null,
-          complete: false,
-          metadata: {},
-          error: null,
-        }),
-      );
-      return;
-    }
-
-    if (message.opType === "error") {
+    // error with complete=true is a terminal state
+    if (message.opType === "error" && message.complete) {
       this.emitEvent(
         createErrorEvent({
           requestId: message.requestId,
@@ -1279,22 +1236,42 @@ class CzAgentProxy {
       return;
     }
 
-    const finalContent = resolveFinalContent(message, this.activeRequest.accumulatedAgentText);
-    this.emitEvent(
-      createEvent({
-        event: "assistant_final",
-        requestId: message.requestId,
-        conversationId: message.conversationId,
-        opType: message.opType,
-        delta: null,
-        content: finalContent,
-        complete: true,
-        metadata: {},
-        error: null,
-      }),
-    );
+    // op_type "end" is the real terminal signal from Studio agent
+    if (message.opType === "end") {
+      const finalContent = resolveFinalContent(message, this.activeRequest.accumulatedAgentText);
+      this.emitEvent(
+        createEvent({
+          event: "assistant_final",
+          requestId: message.requestId,
+          conversationId: message.conversationId,
+          opType: message.opType,
+          delta: null,
+          content: finalContent,
+          complete: true,
+          metadata: {},
+          error: null,
+        }),
+      );
+      this.clearActiveRequest();
+      return;
+    }
 
-    this.clearActiveRequest();
+    // Everything else (agent_message, etc.) is intermediate — accumulate and optionally emit deltas
+    if (this.emitAssistantDeltas) {
+      this.emitEvent(
+        createEvent({
+          event: "assistant_delta",
+          requestId: message.requestId,
+          conversationId: message.conversationId,
+          opType: message.opType,
+          delta: message.opType === "agent_message" ? agentDelta : null,
+          content: null,
+          complete: false,
+          metadata: {},
+          error: null,
+        }),
+      );
+    }
   }
 
   resetRequestTimeoutTimer() {

@@ -53,7 +53,7 @@ Preferred ClawHub / OpenClaw UI flow:
 Example JDBC URL:
 
 ```text
-jdbc:clickzetta://<instance>.dev-api.clickzetta.com/<workspace>?username=<username>&password=<password>
+jdbc:clickzetta://<instance>.<api-host>/<workspace>?username=<username>&password=<password>
 ```
 
 The skill parses this JDBC URL at runtime and extracts:

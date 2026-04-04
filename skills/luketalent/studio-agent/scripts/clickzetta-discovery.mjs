@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { env as hostEnv } from "node:process";
+import { atomicWriteJsonSync } from "./utils.mjs";
 
 const DEFAULT_API_GATEWAY = "https://dev-api.clickzetta.com";
 const DEFAULT_LANGUAGE = "zh_CN";
@@ -486,6 +487,32 @@ function readDiscoveryCache() {
     if (!isRecord(parsed)) {
       return {};
     }
+    // Prune entries from old cache versions or with expired tokens
+    let pruned = false;
+    for (const key of Object.keys(parsed)) {
+      const entry = parsed[key];
+      if (!isRecord(entry)) {
+        delete parsed[key];
+        pruned = true;
+        continue;
+      }
+      const entryVersion = entry.version;
+      if (entryVersion !== undefined && entryVersion !== CACHE_VERSION) {
+        delete parsed[key];
+        pruned = true;
+        continue;
+      }
+      const expiresAtMs = entry.expiresAtMs;
+      if (typeof expiresAtMs === "number" && expiresAtMs <= Date.now()) {
+        delete parsed[key];
+        pruned = true;
+      }
+    }
+    if (pruned && Object.keys(parsed).length > 0) {
+      writeDiscoveryCache(parsed);
+    } else if (pruned) {
+      try { fs.unlinkSync(cachePath); } catch { /* ignore */ }
+    }
     return parsed;
   } catch {
     return {};
@@ -493,9 +520,7 @@ function readDiscoveryCache() {
 }
 
 function writeDiscoveryCache(cache) {
-  const cachePath = getCachePath();
-  fs.mkdirSync(path.dirname(cachePath), { recursive: true });
-  fs.writeFileSync(cachePath, `${JSON.stringify(cache, null, 2)}\n`, "utf8");
+  atomicWriteJsonSync(getCachePath(), cache);
 }
 
 function readWorkspaceSelectionStore() {
@@ -515,9 +540,7 @@ function readWorkspaceSelectionStore() {
 }
 
 function writeWorkspaceSelectionStore(store) {
-  const selectionPath = getWorkspaceSelectionPath();
-  fs.mkdirSync(path.dirname(selectionPath), { recursive: true });
-  fs.writeFileSync(selectionPath, `${JSON.stringify(store, null, 2)}\n`, "utf8");
+  atomicWriteJsonSync(getWorkspaceSelectionPath(), store);
 }
 
 function buildCacheKey({ studioOrigin, username, instanceName, instanceId, apiGateway }) {
