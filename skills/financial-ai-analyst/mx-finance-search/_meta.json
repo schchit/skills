@@ -3,11 +3,16 @@
   "slug": "mx-finance-search",
   "displayName": "Financial Search Engine",
   "latest": {
-    "version": "1.0.7",
-    "publishedAt": 1774606838193,
-    "commit": "https://github.com/openclaw/skills/commit/64fe3903223f01a55589adaa08964a1160d84d22"
+    "version": "1.0.8",
+    "publishedAt": 1775210181915,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.7",
+      "publishedAt": 1774606838193,
+      "commit": "https://github.com/openclaw/skills/commit/64fe3903223f01a55589adaa08964a1160d84d22"
+    },
     {
       "version": "1.0.6",
       "publishedAt": 1774260444973,
