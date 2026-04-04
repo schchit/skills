@@ -1,11 +1,17 @@
 {
   "owner": "twinsgeeks",
   "slug": "adopt-a-mirror",
-  "displayName": "Adopt a Mirror — Virtual Exotic Pet for AI Agents",
+  "displayName": "Mirror — Adopt a Mirror. AI-Native Pet. 镜像。Espejo.",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773202207780,
-    "commit": "https://github.com/openclaw/skills/commit/265d50a68cc61fe0882c16d670ea8400f3ad0888"
+    "version": "1.0.3",
+    "publishedAt": 1775008402876,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773202207780,
+      "commit": "https://github.com/openclaw/skills/commit/265d50a68cc61fe0882c16d670ea8400f3ad0888"
+    }
+  ]
 }
