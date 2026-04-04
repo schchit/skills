@@ -10,7 +10,9 @@ Required local state:
 
 - The default state root is `~/.apple-health-sync`.
 - Passing `--state-dir <path>` moves all required local artifacts under that custom root instead.
-- `config/config.json` and `config/secrets/private_key.pem` are created by `scripts/onboarding.py` and are required by later sync and unlink operations.
+- `config/config.json` is created by `scripts/onboarding.py`.
+- Protocol `v4` uses `config/secrets/private_key.pem`.
+- Protocol `v5` uses `config/secrets/signing_private_key_v5.pem` and `config/secrets/encryption_private_key_v5.pem`.
 
 Legacy note:
 
@@ -55,6 +57,7 @@ Typical user config fields:
 ```json
 {
   "user_id": "ahs_...",
+  "protocol_version": 5,
   "algorithm": "RSA-2048",
   "state_dir": "/Users/<user>/.apple-health-sync",
   "config_dir": "/Users/<user>/.apple-health-sync/config",
@@ -62,16 +65,23 @@ Typical user config fields:
   "private_key_path": "/Users/<user>/.apple-health-sync/config/secrets/private_key.pem",
   "public_key_path": "/Users/<user>/.apple-health-sync/config/public_key.pem",
   "public_key_base64": "<base64-spki-public-key>",
+  "signing_algorithm": "Ed25519",
+  "signing_private_key_path": "/Users/<user>/.apple-health-sync/config/secrets/signing_private_key_v5.pem",
+  "signing_public_key_path": "/Users/<user>/.apple-health-sync/config/signing_public_key_v5.pem",
+  "signing_public_key_base64": "<base64-raw-ed25519-public-key>",
+  "encryption_algorithm": "X25519",
+  "box_algorithm": "X25519-ChaCha20Poly1305",
+  "encryption_private_key_path": "/Users/<user>/.apple-health-sync/config/secrets/encryption_private_key_v5.pem",
+  "encryption_public_key_path": "/Users/<user>/.apple-health-sync/config/encryption_public_key_v5.pem",
+  "encryption_public_key_base64": "<base64-raw-x25519-public-key>",
   "onboarding_fingerprint": "<sha256-hex>",
   "onboarding_payload_json": "<compact-json>",
   "onboarding_payload_hex": "<hex-encoded-json>",
-  "onboarding_deeplink": "healthsync://onboarding?payload=<base64url>",
   "storage": "sqlite",
   "sqlite_path": "/Users/<user>/.apple-health-sync/health_data.db",
   "json_path": "/Users/<user>/.apple-health-sync/config/health_data.ndjson",
   "qr_payload_path": "/Users/<user>/.apple-health-sync/config/registration-qr.json",
   "qr_png_path": "/Users/<user>/.apple-health-sync/config/registration-qr.png",
-  "qr_render_method": "local",
   "last_validation_raw_days": 7,
   "last_validation_stored_days": 7,
   "last_validation_dropped_days": 0
@@ -79,6 +89,12 @@ Typical user config fields:
 ```
 
 Onboarding writes user-owned fields only. App-owned keys such as `onboarding_version`, `ios_app_link`, and the Supabase settings are centralized in `scripts/config.py` and are not persisted back into `config.json`.
+
+Protocol behavior:
+
+- `v4` keeps the legacy RSA keypair and RSA-OAEP encrypted server rows.
+- `v5` uses Ed25519 for challenge signatures and X25519 + ChaCha20-Poly1305 for encrypted day payloads.
+- `fetch_health_data.py` can read mixed history: legacy RSA rows from the old tables plus `v5` rows from `*_v2`.
 
 ## Storage behavior
 
@@ -90,7 +106,7 @@ Onboarding writes user-owned fields only. App-owned keys such as `onboarding_ver
 ## Relay behavior
 
 - `fetch_health_data.py` reads `supabase_region`, `supabase_get_data_url`, and `supabase_publishable_key` from `scripts/config.py`
-- `onboarding.py` reads `supabase_region`, `supabase_qr_code_generator_url`, and `supabase_publishable_key` from `scripts/config.py` for remote QR fallback
+- `onboarding.py` reads `supabase_region`, `supabase_qr_code_generator_url`, and `supabase_publishable_key` from `scripts/config.py`
 - `unlink_device.py` reads `supabase_region`, `supabase_unlink_device_url`, and `supabase_publishable_key` from `scripts/config.py`
 
 ## Validation behavior in `fetch_health_data.py`

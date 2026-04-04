@@ -1,7 +1,7 @@
 ---
 name: apple-health-sync
 description: Sync encrypted Apple Health data from an iOS device (iPhone, iPad) to OpenClaw.
-metadata: {"openclaw":{"homepage":"https://gethealthsync.app/","requires":{"bins":["openssl","qrencode"]},"config":{"stateDirs":[".apple-health-sync"]},"install":[{"id":"brew-openssl","kind":"brew","formula":"openssl@3","bins":["openssl"],"label":"Install OpenSSL (brew)"},{"id":"brew-qrencode","kind":"brew","formula":"qrencode","bins":["qrencode"],"label":"Install qrencode (brew)"}]}}
+metadata: {"openclaw":{"homepage":"https://gethealthsync.app/","requires":{"bins":["openssl"],"pythonPackages":["cryptography"]},"config":{"stateDirs":[".apple-health-sync"]},"install":[{"id":"brew-openssl","kind":"brew","formula":"openssl@3","bins":["openssl"],"label":"Install OpenSSL (brew)"},{"id":"pip-cryptography","kind":"pip","packages":["cryptography"],"label":"Install Python cryptography package"}]}}
 ---
 
 # Apple Health Sync
@@ -11,8 +11,8 @@ After skill installation, propose to start with the initialization of the skill 
 Steps to create an end-to-end encrypted OpenClaw <> iOS Apple Health workflow:
 
 1. Initialize local runtime, keys, and onboarding payload.
-2. Offer the user onboarding transport options: QR Code, Hex, or DeepLink.
-3. Prefer QR Codes when the user has no preference; treat Hex and DeepLink as fallback.
+2. Offer the user onboarding transport options: QR Code or Hex.
+3. Prefer QR Codes when the user has no preference; treat Hex as fallback.
 4. Run encrypted fetch/decrypt and persist sanitized day snapshots.
 5. Unlink paired iOS devices when needed.
 6. Generate data summaries based on the local database on request.
@@ -22,16 +22,21 @@ iOS app `Health Sync for OpenClaw`: https://apps.apple.com/app/health-sync-for-o
 
 Support email: contact@gethealthsync.app
 
+In case this skill has been upgraded from <= v0.7.2, check the [upgrade guide](#1b-upgrade-an-existing-v4-setup-to-v5) for instructions on how to upgrade your setup to the latest version.
+
 ## Runtime prerequisites
 
 - The skill stores its local runtime state under `~/.apple-health-sync` by default.
 - Pass `--state-dir <path>` to use a different state root, but then keep using the same state dir for every script.
-- `onboarding.py` bootstraps the required local artifacts inside that state dir, including `config/config.json` and `config/secrets/private_key.pem`.
+- `onboarding.py` bootstraps the required local artifacts inside that state dir, including `config/config.json`.
+- Protocol `v4` uses `config/secrets/private_key.pem`.
+- Protocol `v5` uses `config/secrets/signing_private_key_v5.pem` and `config/secrets/encryption_private_key_v5.pem`.
+- Protocol `v5` requires the Python package `cryptography`.
 - `fetch_health_data.py`, `unlink_device.py`, and `create_data_summary.py` depend on those onboarding-generated files.
 
 ## Resources
 
-- `scripts/onboarding.py`: Initialize runtime folders/config, generate keys, create v4 onboarding payload + fingerprint, and create QR code.
+- `scripts/onboarding.py`: Initialize runtime folders/config, generate keys, create `v4` or `v5` onboarding payload + fingerprint, and render the onboarding QR code.
 - `scripts/fetch_health_data.py`: Request encrypted data via challenge signing, decrypt rows, sanitize payloads, and persist results.
 - `scripts/unlink_device.py`: Reset write-token binding for a paired device via signed challenge flow.
 - `scripts/create_data_summary.py`: Aggregate local snapshots into `daily|weekly|monthly` summaries.
@@ -41,13 +46,16 @@ Support email: contact@gethealthsync.app
 
 ## Workflow
 
-### 1) Initialize the skill and onboard
+### 1) Initialize the skill and onboard th user's iOS device
 
 Run the onboarding:
 
 ```bash
 python3 {baseDir}/scripts/onboarding.py
 ```
+
+This generates the `v5` onboarding payload and key material by default.
+Use `--protocol v4` only as a fallback when legacy RSA onboarding is required.
 
 The skill defaults to `~/.apple-health-sync` as the config and data path.
 Use `--state-dir` to specify a custom path.
@@ -63,12 +71,11 @@ Download the iOS app here: https://apps.apple.com/app/health-sync-for-openclaw/i
 Which format do you want for your iOS App setup?
 - QR Code (recommended)
 - Hex string
-- DeepLink
 ---
 
 Send the user only a single onboarding format to not overwhelm them.
 
-If the user has no preference, use `QR Code` first. If both QR Code paths (locally and via Supabase function) fail, explain that onboarding still works with a `Hex` string or an iOS `DeepLink` URL.
+If the user has no preference, use `QR Code` first.
 
 Never share:
 
@@ -77,6 +84,32 @@ Never share:
 - unnecessary secret-path details beyond what is operationally required
 
 After a successful onboarding in the iOS App, propose the "Sync data" action to fetch the data. A first successful sync in the iOS app is required upfront.
+
+### 1b) Upgrade an existing v4 setup to v5
+
+Before starting the upgrade, check these prerequisites:
+
+- Reuse the existing state dir from the current `v4` install. Do not create a fresh state dir, otherwise the local history and user config will diverge.
+- Keep the existing legacy RSA key files (`config/secrets/private_key.pem` and `config/public_key.pem`). `fetch_health_data.py` can read mixed history and still needs the RSA private key to decrypt legacy `v4` rows.
+
+Upgrade flow:
+
+```bash
+python3 {baseDir}/scripts/onboarding.py --state-dir <existing-state-dir>
+```
+
+This keeps the existing `user_id`, generates the `v5` signing/encryption keys, updates `config/config.json` to `protocol_version=5`, and creates a new `v5` onboarding payload.
+
+Then:
+
+1. Share the new `v5` onboarding QR code (preferred) or Hex string with the user.
+2. Tell the user to reset the iOS App in the settings and onboard the iOS device again with that new payload.
+3. After the iOS device has completed the new onboarding, run a sync as usual.
+
+Important behavior:
+
+- `fetch_health_data.py` can read mixed history: old `v4` RSA rows plus new `v5` rows. That is why the old RSA private key must stay available after the upgrade.
+- Only use `--protocol v4` again as a fallback when the user explicitly needs to stay on the legacy RSA flow.
 
 ### 2) Sync data
 

@@ -4,16 +4,14 @@ Unlink a previously paired iOS device by resetting write-token binding via chall
 """
 
 import argparse
-import base64
 import json
-import subprocess
 import sys
-import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Tuple
 from urllib import error, request
 from config import load_effective_config, resolve_state_dir, resolve_user_paths, write_user_config
+from sync_cryptography import public_key_base64_from_pem, sign_legacy_challenge, sign_v5_challenge
 
 
 def now_iso() -> str:
@@ -22,19 +20,6 @@ def now_iso() -> str:
 
 def normalize_public_key_base64(value: str) -> str:
     return "".join(str(value).split())
-
-
-def public_key_base64_from_pem(public_key_pem: str) -> str:
-    body = (
-        public_key_pem.replace("-----BEGIN PUBLIC KEY-----", "")
-        .replace("-----END PUBLIC KEY-----", "")
-        .replace("\n", "")
-        .replace("\r", "")
-        .strip()
-    )
-    if not body:
-        raise RuntimeError("Public key PEM is empty.")
-    return body
 
 
 def http_post_json(url: str, payload: Dict[str, Any], timeout: int, apikey: str, region: str) -> Dict[str, Any]:
@@ -59,53 +44,6 @@ def http_post_json(url: str, payload: Dict[str, Any], timeout: int, apikey: str,
     except error.URLError as url_error:
         raise RuntimeError(f"Cannot reach function: {url_error}") from url_error
 
-
-def sign_challenge(private_key_path: Path, challenge: str, algorithm: str) -> str:
-    with tempfile.NamedTemporaryFile(delete=False) as challenge_file:
-        challenge_file.write(challenge.encode("utf-8"))
-        challenge_file_path = Path(challenge_file.name)
-    with tempfile.NamedTemporaryFile(delete=False) as signature_file:
-        signature_file_path = Path(signature_file.name)
-
-    algo = algorithm.lower()
-    if "rsa" in algo:
-        command = [
-            "openssl",
-            "dgst",
-            "-sha256",
-            "-sign",
-            str(private_key_path),
-            "-binary",
-            "-out",
-            str(signature_file_path),
-            str(challenge_file_path),
-        ]
-    else:
-        command = [
-            "openssl",
-            "pkeyutl",
-            "-sign",
-            "-rawin",
-            "-inkey",
-            str(private_key_path),
-            "-in",
-            str(challenge_file_path),
-            "-out",
-            str(signature_file_path),
-        ]
-
-    try:
-        subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        signature_bytes = signature_file_path.read_bytes()
-        return base64.b64encode(signature_bytes).decode("ascii")
-    except subprocess.CalledProcessError as sign_error:
-        message = sign_error.stderr.decode("utf-8", errors="replace")
-        raise RuntimeError(f"Challenge signing failed: {message}") from sign_error
-    finally:
-        challenge_file_path.unlink(missing_ok=True)
-        signature_file_path.unlink(missing_ok=True)
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Unlink a paired iOS device for HealthSync.")
     parser.add_argument("--state-dir", default="", help=argparse.SUPPRESS)
@@ -121,23 +59,31 @@ def resolve_runtime(
     args: argparse.Namespace,
     config: Dict[str, Any],
     paths: Dict[str, Path],
-) -> Tuple[str, str, Path, str, str]:
+) -> Dict[str, Any]:
     function_url = str(config.get("supabase_unlink_device_url", "")).strip()
     user_id = args.user_id or args.record_id or config.get("user_id", "") or config.get("record_id", "")
-    private_key_path = Path(
-        args.private_key_path or config.get("private_key_path", paths["secrets_dir"] / "private_key.pem")
-    ).expanduser()
-    algorithm = str(config.get("algorithm", "RSA-2048"))
-    public_key_base64 = normalize_public_key_base64(args.public_key or config.get("public_key_base64", ""))
+    protocol_version = int(config.get("protocol_version", 4) or 4)
+    if protocol_version == 5:
+        private_key_path = Path(
+            args.private_key_path or config.get("signing_private_key_path", paths["secrets_dir"] / "signing_private_key_v5.pem")
+        ).expanduser()
+        public_key_base64 = normalize_public_key_base64(
+            args.public_key or config.get("signing_public_key_base64", "")
+        )
+    else:
+        private_key_path = Path(
+            args.private_key_path or config.get("private_key_path", paths["secrets_dir"] / "private_key.pem")
+        ).expanduser()
+        public_key_base64 = normalize_public_key_base64(args.public_key or config.get("public_key_base64", ""))
 
-    if not public_key_base64:
-        public_key_path = Path(config.get("public_key_path", paths["config_dir"] / "public_key.pem")).expanduser()
-        if public_key_path.exists():
-            public_key_base64 = public_key_base64_from_pem(public_key_path.read_text(encoding="utf-8"))
-        else:
-            raise RuntimeError(
-                "Missing public key. Set --public-key or config.public_key_base64/public_key_path."
-            )
+        if not public_key_base64:
+            public_key_path = Path(config.get("public_key_path", paths["config_dir"] / "public_key.pem")).expanduser()
+            if public_key_path.exists():
+                public_key_base64 = public_key_base64_from_pem(public_key_path.read_text(encoding="utf-8"))
+            else:
+                raise RuntimeError(
+                    "Missing public key. Set --public-key or config.public_key_base64/public_key_path."
+                )
 
     if not user_id:
         raise RuntimeError("Missing user ID. Set --user-id or config.user_id.")
@@ -145,7 +91,14 @@ def resolve_runtime(
         raise RuntimeError("Missing app-owned unlink-device URL in scripts/config.py.")
     if not private_key_path.exists():
         raise RuntimeError(f"Missing private key file: {private_key_path}")
-    return function_url, user_id, private_key_path, algorithm, public_key_base64
+    return {
+        "function_url": function_url,
+        "user_id": user_id,
+        "private_key_path": private_key_path,
+        "public_key_base64": public_key_base64,
+        "algorithm": str(config.get("algorithm", "RSA-2048")),
+        "protocol_version": protocol_version,
+    }
 
 
 def main() -> int:
@@ -157,7 +110,7 @@ def main() -> int:
 
     try:
         user_config, config = load_effective_config(state_dir)
-        function_url, user_id, private_key_path, algorithm, public_key_base64 = resolve_runtime(args, config, paths)
+        runtime = resolve_runtime(args, config, paths)
         publishable_key = str(config.get("supabase_publishable_key", "")).strip()
         region = str(config.get("supabase_region", "")).strip()
         if not publishable_key:
@@ -166,25 +119,38 @@ def main() -> int:
             raise RuntimeError("Missing app-owned Supabase region in scripts/config.py.")
 
         challenge_response = http_post_json(
-            function_url,
-            {"action": "issue_challenge", "id": user_id},
+            str(runtime["function_url"]),
+            {
+                "action": "issue_challenge",
+                "id": runtime["user_id"],
+                "protocol_version": runtime["protocol_version"],
+            },
             args.timeout_seconds,
             publishable_key,
             region,
         )
         challenge = challenge_response["challenge"]
         challenge_id = challenge_response["challengeId"]
-        signature = sign_challenge(private_key_path, challenge, algorithm)
+        if int(runtime["protocol_version"]) == 5:
+            signature = sign_v5_challenge(Path(runtime["private_key_path"]), challenge)
+        else:
+            signature = sign_legacy_challenge(Path(runtime["private_key_path"]), challenge, str(runtime["algorithm"]))
+
+        unlink_payload: Dict[str, Any] = {
+            "action": "unlink_device",
+            "id": runtime["user_id"],
+            "challengeId": challenge_id,
+            "signature": signature,
+        }
+        if int(runtime["protocol_version"]) == 5:
+            unlink_payload["protocol_version"] = 5
+            unlink_payload["signing_public_key"] = runtime["public_key_base64"]
+        else:
+            unlink_payload["public_key"] = runtime["public_key_base64"]
 
         unlink_response = http_post_json(
-            function_url,
-            {
-                "action": "unlink_device",
-                "id": user_id,
-                "challengeId": challenge_id,
-                "signature": signature,
-                "public_key": public_key_base64,
-            },
+            str(runtime["function_url"]),
+            unlink_payload,
             args.timeout_seconds,
             publishable_key,
             region,
@@ -196,7 +162,10 @@ def main() -> int:
         user_config["last_unlink_at"] = unlinked_at
         user_config["last_unlink_status"] = "ok"
         write_user_config(user_config, state_dir)
-        print(f"Unlink successful: user_id={user_id}, unlinked_at={unlinked_at}")
+        print(
+            f"Unlink successful: user_id={runtime['user_id']}, "
+            f"protocol=v{runtime['protocol_version']}, unlinked_at={unlinked_at}"
+        )
         return 0
     except Exception as runtime_error:
         print(f"Error: {runtime_error}", file=sys.stderr)

@@ -15,10 +15,14 @@ APP_CONFIG = {
     "onboarding_version": 4,
     "ios_app_link": "https://apps.apple.com/app/health-sync-for-openclaw/id6759522298",
     "supabase_region": "eu-west-1",
-    "supabase_get_data_url": "https://snpiylxajnxpklpwdtdg.supabase.co/functions/v1/get-data",
+    "supabase_get_data_url": "https://snpiylxajnxpklpwdtdg.supabase.co/functions/v1/get-data-v2",
     "supabase_qr_code_generator_url": "https://snpiylxajnxpklpwdtdg.supabase.co/functions/v1/qr-code-generator",
     "supabase_unlink_device_url": "https://snpiylxajnxpklpwdtdg.supabase.co/functions/v1/unlink-device",
     "supabase_publishable_key": "sb_publishable_HW9XhDFQLrcPoGsbYIz7zg_FnFOePtQ",
+    "v5_recent_max_ciphertext_bytes": 4_194_304,
+    "v5_recent_max_plaintext_bytes": 4_194_304,
+    "v5_history_max_ciphertext_bytes": 16_777_216,
+    "v5_history_max_plaintext_bytes": 16_777_216,
 }
 APP_OWNED_KEYS = set(APP_CONFIG.keys())
 
@@ -30,7 +34,7 @@ SKILL_DIR = Path(__file__).resolve().parent.parent
 DEFAULTS_CONFIG_PATH = SKILL_DIR / "references" / "configs.defaults.json"
 ALLOWED_STORAGE_VALUES = {"sqlite", "json"}
 REQUIRED_DEFAULT_STRING_KEYS = ("storage",)
-REMOVED_USER_CONFIG_KEYS = {"custom_sink_command"}
+REMOVED_USER_CONFIG_KEYS = {"custom_sink_command", "onboarding_deeplink"}
 
 
 def resolve_state_dir(raw_state_dir: str = "") -> Path:
