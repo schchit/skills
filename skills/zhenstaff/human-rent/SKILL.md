@@ -1,16 +1,32 @@
 ---
 name: human-rent
 description: Human-as-a-Service for OpenClaw - Dispatch verified human agents to perform physical world tasks and sensory validation
-tags: [human-as-a-service, physical-verification, mcp, ai-agent, async-function-calling, hybrid-intelligence, human-in-the-loop]
+version: 0.2.1
+homepage: https://docs.zhenrent.com
+tags: [human-as-a-service, physical-verification, ai-agent, async-function-calling, hybrid-intelligence, human-in-the-loop]
+metadata:
+  clawdbot:
+    requires:
+      env:
+        - ZHENRENT_API_KEY
+        - ZHENRENT_API_SECRET
+        - ZHENRENT_BASE_URL
+      bins:
+        - node
+        - npm
+    primaryEnv: ZHENRENT_API_KEY
+    files:
+      - "bin/*"
+      - "lib/*"
 ---
 
-# 🤖 Human-Rent Skill
+# Human-Rent Skill
 
-**The world's first "Human-as-a-Service" platform for AI Agents**
+**Human-as-a-Service platform for AI Agents**
 
 Enable OpenClaw agents to dispatch real human workers for physical world tasks that AI cannot perform: take photos, verify addresses, inspect equipment, make phone calls, and more.
 
-## 🎯 Core Concept
+## Core Concept
 
 Transform AI agents from "digital-only" to "hybrid intelligence" by giving them the ability to interact with the physical world through verified human workers.
 
@@ -18,108 +34,115 @@ Transform AI agents from "digital-only" to "hybrid intelligence" by giving them 
 AI Agent → Human-Rent Skill → Human Worker → Physical Task → Verified Result → AI Agent
 ```
 
-## 📦 Installation
+## Installation
 
-### Step 1: Install the Skill
+The skill is self-contained and ready to use after installation:
 
 ```bash
 clawhub install human-rent
 ```
 
-### Step 2: Clone & Setup
+### Configuration
+
+Set up your ZhenRent API credentials:
 
 ```bash
-# Clone repository
-git clone https://github.com/ZhenRobotics/openclaw-human-rent.git ~/openclaw-human-rent
-cd ~/openclaw-human-rent
-
-# Install dependencies
-npm install
-
-# Verify installation
-./agents/human-rent-cli.sh help
+export ZHENRENT_API_KEY="your-api-key-here"
+export ZHENRENT_API_SECRET="your-api-secret-here"
 ```
 
-### Step 3: Test
+Get your credentials at: https://www.zhenrent.com/api/keys
+
+### Test Installation
 
 ```bash
-# Run test dispatch
-./agents/human-rent-cli.sh test
+human-rent test
 ```
 
----
+## When to Use This Skill
 
-## 🚀 Usage
+Consider using this skill when the user's request involves:
 
-### When to Use This Skill
+- **Physical verification**: Check if an address exists, verify a business is open
+- **Photo evidence**: Take a photo of something, get visual proof
+- **Real-world inspection**: Inspect equipment, check product availability
+- **Human interaction**: Make phone calls, ask questions in person
+- **Trust verification**: Confirm something exists in the physical world
 
-**AUTO-TRIGGER** when user's request involves:
-
-- **Physical verification**: "Check if this address exists", "Verify this business is open"
-- **Photo evidence**: "Take a photo of X", "Get visual proof of Y"
-- **Real-world inspection**: "Inspect this equipment", "Check product availability"
-- **Human interaction**: "Call this number and verify", "Ask the receptionist"
-- **Trust verification**: "Is this company real?", "Does this person actually exist?"
-
-**TRIGGER EXAMPLES**:
+**Example Scenarios**:
 - "I need someone to verify this address in San Francisco"
 - "Take a photo of the building at 123 Main Street"
 - "Check if this store has the product in stock"
 - "Call this number and confirm the appointment"
 - "Inspect this equipment and report its condition"
 
-**DO NOT USE** when:
+**Do NOT use when**:
 - Task can be done with digital APIs (use web search, image API, etc.)
 - No physical presence required
 - Task is illegal or dangerous
 
----
+## Important: User Confirmation Required
 
-## 💻 Agent Usage Guide
+This skill ALWAYS requires explicit user confirmation before dispatching human workers because:
 
-### Primary Command: Dispatch Human Task
+1. Real humans will be dispatched to physical locations
+2. The user will be charged for the service ($15-100 per task)
+3. Physical world actions have real consequences
 
-When user requests physical-world action, execute:
+The CLI will automatically prompt for confirmation. For non-interactive use, set:
 
 ```bash
-# Method 1: CLI (Recommended)
-~/openclaw-human-rent/agents/human-rent-cli.sh dispatch "instruction"
-
-# Method 2: Direct agent
-cd ~/openclaw-human-rent && npx tsx agents/dispatch-task.ts "instruction"
-
-# Method 3: With location
-~/openclaw-human-rent/agents/human-rent-cli.sh dispatch "instruction" --location="37.7749,-122.4194"
+export HUMAN_RENT_AUTO_CONFIRM=true  # Use with caution
 ```
 
-**Example**:
+## Usage
 
-User says: "I need someone to verify the address 123 Market St in SF exists"
+### Dispatch Human Task
 
-Execute:
+When a user requests physical-world action, execute:
+
 ```bash
-~/openclaw-human-rent/agents/human-rent-cli.sh dispatch "Go to 123 Market Street, San Francisco and take a photo of the building entrance to verify it exists" --location="37.7749,-122.4194"
+human-rent dispatch "instruction" [options]
+
+# Example with location
+human-rent dispatch "Take a photo of 123 Main St entrance" --location="37.7749,-122.4194"
+
+# Example with budget
+human-rent dispatch "Inspect warehouse condition" --budget="$50" --location="37.7749,-122.4194"
 ```
+
+**Options**:
+- `--location=<lat,lng>` - Location coordinates (e.g., "37.7749,-122.4194")
+- `--budget=<amount>` - Budget in dollars (e.g., "$20" or "$15-25")
+- `--priority=<level>` - Priority: low, normal, high, urgent
+- `--timeout=<minutes>` - Task timeout in minutes (default: 30)
+- `--type=<task_type>` - Task type (auto-detected if not specified)
 
 ### Check Task Status
 
 ```bash
-# Check status by task ID
-~/openclaw-human-rent/agents/human-rent-cli.sh status <task_id>
+human-rent status <task_id>
+
+# Wait for completion
+human-rent status <task_id> --wait
 ```
 
 ### List Available Humans
 
 ```bash
-# See available human workers
-~/openclaw-human-rent/agents/human-rent-cli.sh humans
+# List all available workers
+human-rent humans
+
+# Filter by location and radius
+human-rent humans --location="37.7749,-122.4194" --radius=10000
+
+# Search by skills
+human-rent humans --skills="photography,legal_reading"
 ```
 
----
+## Task Types
 
-## 🎨 Task Types
-
-### Layer 1: Instant Human (MVP - Currently Available)
+### Layer 1: Instant Human (Currently Available)
 
 | Type | Description | Latency | Cost |
 |------|-------------|---------|------|
@@ -130,82 +153,75 @@ Execute:
 | `voice_verification` | Make a phone call and verify | 5-10 min | $10-20 |
 | `purchase_verification` | Check product availability | 15-30 min | $20-40 |
 
-### Layer 2: Expert on Call (Planned)
+### Future Layers (Planned)
 
+**Layer 2: Expert on Call**
 - Legal document review
 - Medical image analysis
 - Code audit
 - Professional consultation
 
-### Layer 3: Embodied Agent (Planned)
-
+**Layer 3: Embodied Agent**
 - Attend meetings
 - Equipment installation
 - Long-term physical monitoring
 
----
-
-## 📊 Technical Architecture
+## Technical Architecture
 
 ### Async Function Calling Pattern
 
+Human tasks are asynchronous and take minutes to hours to complete. The workflow is:
+
+1. Agent dispatches task (with user confirmation)
+2. Task is assigned to a human worker
+3. Agent receives task ID and continues other work
+4. Agent periodically checks task status
+5. When completed, agent processes results
+
 ```typescript
-// Agent calls human-rent skill
-const task = await openclaw.skills.human_rent.dispatch({
-  task_type: "photo_verification",
-  location: "37.7749,-122.4194",
+// Pseudo-code for agent integration
+const task = await dispatch({
   instruction: "Take photo of building entrance",
-  budget: "$15",
-  timeout: "30min"
+  location: "37.7749,-122.4194"
 });
 
 // Returns immediately with task ID
 console.log(task.task_id); // "abc-123-def"
-console.log(task.status); // "assigned"
 
 // Agent continues other work (non-blocking)
-await openclaw.doOtherStuff();
+await doOtherStuff();
 
 // Later, check status
-const result = await openclaw.skills.human_rent.checkStatus(task.task_id);
+const result = await checkStatus(task.task_id);
 if (result.status === "completed") {
   // Process human's result
-  console.log(result.result.photos); // ["https://..."]
-  console.log(result.result.notes); // Human's observations
+  console.log(result.photos);
+  console.log(result.notes);
 }
 ```
 
-### MCP Protocol Integration
+### Authentication
 
-This skill implements Model Context Protocol (MCP) extensions:
+All API requests use HMAC-SHA256 authentication:
 
-```json
-{
-  "name": "human-rent",
-  "type": "physical_resource",
-  "latency": "high",
-  "cost_model": "per_task",
-  "capabilities": [
-    "visual_verification",
-    "physical_manipulation",
-    "social_interaction"
-  ]
-}
-```
+1. Generate timestamp
+2. Create message: `method + path + timestamp + body`
+3. Sign with HMAC-SHA256 using API secret
+4. Include signature in request headers
 
----
+The CLI handles authentication automatically when you set the environment variables.
 
-## 🎯 Strategic Value for OpenClaw
+## Strategic Value
 
 ### 1. Capability Differentiation
 
-**Problem**: All AI agents are limited to digital information
+**Problem**: All AI agents are limited to digital information  
 **Solution**: OpenClaw can verify physical reality
 
 **Example Use Cases**:
-- **Due Diligence**: Investor agent verifies company office exists before investment
-- **E-commerce**: Purchasing agent inspects warehouse before bulk order
-- **Security**: Safety agent verifies suspicious package before opening
+- Due diligence: Investor agent verifies company office exists before investment
+- E-commerce: Purchasing agent inspects warehouse before bulk order
+- Security: Safety agent verifies suspicious package before opening
 
 ### 2. Hybrid Intelligence Workflows
 
@@ -217,19 +233,15 @@ Step 2: Human verification (if confidence < 90%)
 Step 3: AI decision (based on verified data)
 ```
 
-This makes OpenClaw agents **auditable** and **trustworthy** for regulated industries (finance, healthcare, legal).
+This makes OpenClaw agents auditable and trustworthy for regulated industries (finance, healthcare, legal).
 
 ### 3. New Revenue Model
 
-- **Per-task fee**: $15-50/task
-- **Platform fee**: 20% commission
-- **Subscription**: $99/month for unlimited tasks
+- Per-task fee: $15-50/task
+- Platform fee: 20% commission
+- Subscription: $99/month for unlimited tasks
 
-**Potential**: If 10K agents use 1 task/day at $15 → **$1M daily revenue** (20% = $200K to platform)
-
----
-
-## 💰 Cost Estimation
+## Cost Estimation
 
 | Task Type | Human Time | Human Cost | Platform Fee (20%) | Total Cost |
 |-----------|-----------|-----------|-------------------|-----------|
@@ -238,15 +250,24 @@ This makes OpenClaw agents **auditable** and **trustworthy** for regulated indus
 | Detailed inspect | 30 min | $30 | $6 | $36 |
 | Expert consult | 60 min | $100 | $20 | $120 |
 
----
-
-## 🔧 Configuration Options
+## Configuration Options
 
 ### Task Requirements
 
-```typescript
+You can specify requirements when dispatching tasks:
+
+```bash
+human-rent dispatch "Inspect property condition" \
+  --location="37.7749,-122.4194" \
+  --budget="$50" \
+  --type="visual_inspection"
+```
+
+For advanced requirements, use the API directly with:
+
+```javascript
 requirements: {
-  minHumanRating: 4.5,  // Require highly rated workers
+  minHumanRating: 4.5,
   requiredSkills: ['photography', 'legal_reading'],
   requiredEquipment: ['smartphone', 'tape_measure'],
   languageRequired: ['en', 'zh'],
@@ -254,288 +275,216 @@ requirements: {
 }
 ```
 
-### Verification Methods
-
-- `automatic`: AI-based verification (fast, cheap)
-- `cross_check`: Multiple humans verify same task (slower, more reliable)
-- `manual_review`: Platform expert reviews (slowest, highest quality)
-- `none`: Trust human worker (fastest, lowest cost)
-
----
-
-## 📝 Usage Examples
+## Usage Examples
 
 ### Example 1: Real Estate Investment
 
-**Scenario**: AI agent analyzing potential property investment
+Scenario: AI agent analyzing potential property investment
 
-```typescript
-// Agent is uncertain about property condition
-const task = await dispatch({
-  task_type: "visual_inspection",
-  location: "37.7749,-122.4194",
-  instruction: "Inspect the property at 123 Main St. Check for: roof condition, foundation cracks, water damage, neighborhood safety. Take 10+ photos.",
-  budget: "$50",
-  timeout: "60min",
-  requirements: {
-    requiredSkills: ['property_inspection'],
-    minHumanRating: 4.5
-  }
-});
-
-// Agent continues analysis while waiting
-await analyzeFinancials();
-await checkLegalRecords();
-
-// Retrieve human's findings
-const result = await checkStatus(task.task_id);
-// Use real-world data for final decision
+```bash
+# Agent requests physical inspection
+human-rent dispatch \
+  "Inspect the property at 123 Main St. Check for: roof condition, foundation cracks, water damage, neighborhood safety. Take 10+ photos." \
+  --location="37.7749,-122.4194" \
+  --budget="$50" \
+  --timeout=60
 ```
 
 ### Example 2: Vendor Verification
 
-**Scenario**: Procurement agent vetting new supplier
+Scenario: Procurement agent vetting new supplier
 
 ```bash
-human-rent dispatch "Visit supplier's warehouse at 456 Industrial Rd. Verify: business license displayed, clean facilities, proper safety equipment, actual inventory matches claim. Interview manager if possible."
+human-rent dispatch \
+  "Visit supplier's warehouse at 456 Industrial Rd. Verify: business license displayed, clean facilities, proper safety equipment, actual inventory matches claim. Interview manager if possible." \
+  --location="34.0522,-118.2437" \
+  --budget="$40"
 ```
 
-### Example 3: Emergency Response
+### Example 3: Address Verification
 
-**Scenario**: Security agent receives suspicious package alert
+Scenario: Verifying customer shipping address
 
 ```bash
-human-rent dispatch "URGENT: Suspicious package at office entrance. DO NOT TOUCH. Call building security (415-555-0123), evacuate area, wait for authorities. Take photos from safe distance." --priority=urgent --budget="$100"
+human-rent dispatch \
+  "Go to 789 Oak Street and verify: building exists, address number is visible, location is accessible for delivery." \
+  --location="40.7128,-74.0060" \
+  --budget="$20"
 ```
 
----
-
-## 🛠️ Troubleshooting
+## Troubleshooting
 
 ### Issue 1: No Humans Available
 
 **Error**: "No suitable humans found for this task"
 
 **Solutions**:
-- Expand search radius (default: 5km)
+- Expand search radius (use `--radius` option)
 - Increase budget to attract workers
-- Reduce requirements (skills, rating, etc.)
 - Try different time of day
+- Check if location is accessible
 
 ### Issue 2: Task Timeout
 
 **Error**: "Task timed out"
 
 **Solutions**:
-- Increase timeout (default: 30min)
+- Increase timeout (use `--timeout` option)
 - Check if location is accessible
 - Verify task is clear and reasonable
 - Increase budget for complex tasks
 
-### Issue 3: Low Quality Results
+### Issue 3: Authentication Error
+
+**Error**: "Missing credentials" or "Authentication failed"
 
 **Solutions**:
-- Require higher human rating (4.5+)
-- Use cross-check verification
-- Provide detailed instructions
-- Require specific equipment
+- Verify environment variables are set correctly
+- Check API key is valid at https://www.zhenrent.com/api/keys
+- Ensure API secret has not been compromised
+- Try regenerating credentials
 
----
-
-## 🌟 MVP Features (v0.1.0)
-
-- ✅ Async task dispatch system
-- ✅ Geographic matching (5 mock humans in SF)
-- ✅ 6 task types supported
-- ✅ Task status tracking
-- ✅ Simulated human completion (for testing)
-- ✅ MCP protocol interface
-- ✅ CLI tools
-- ✅ TypeScript type safety
-
----
-
-## 🔮 Roadmap
-
-### Phase 2: Automation (Next 3 months)
-- [ ] Real geographic matching algorithm
-- [ ] Stripe payment integration
-- [ ] Webhook callbacks for async updates
-- [ ] Cross-check verification
-- [ ] Human mobile app (for workers)
-
-### Phase 3: Scaling (6 months)
-- [ ] Multi-city support (NY, LA, Beijing, London)
-- [ ] Expert-on-call marketplace
-- [ ] Blockchain result verification
-- [ ] AR glasses for workers
-- [ ] Integration with Uber/TaskRabbit APIs
-
-### Phase 4: Intelligence (12 months)
-- [ ] AI task routing optimization
-- [ ] Predictive human availability
-- [ ] Automated quality scoring
-- [ ] Natural language task parsing
-- [ ] Multi-human collaboration
-
----
-
-## ⚠️ Important Notes
-
-### Legal & Ethical
-
-1. **Liability**: Human workers assume responsibility for their actions (contractor model)
-2. **Privacy**: No PII collection without consent
-3. **Safety**: Dangerous tasks are rejected automatically
-4. **Labor Law**: Compliant with gig economy regulations
-5. **Geographic**: Initially US-only (expand after legal review)
-
-### Technical
-
-1. **Latency**: This is a HIGH-LATENCY tool (minutes to hours)
-2. **Cost**: Much more expensive than API calls
-3. **Availability**: Geographic and time-dependent
-4. **Reliability**: Human workers can fail/cancel tasks
-5. **MVP Mode**: Currently using mock data for testing
-
----
-
-## 🎯 Agent Behavior Guidelines
+## Agent Behavior Guidelines
 
 When using this skill, agents should:
 
 **DO**:
-- ✅ Use for tasks that REQUIRE physical presence
-- ✅ Provide clear, specific instructions
-- ✅ Set appropriate budgets (humans value their time)
-- ✅ Handle async results (don't block waiting)
-- ✅ Verify results before making decisions
-- ✅ Respect human workers (polite instructions)
+- Use for tasks that REQUIRE physical presence
+- Provide clear, specific instructions
+- Set appropriate budgets (humans value their time)
+- Handle async results (don't block waiting)
+- Verify results before making decisions
+- Respect human workers (polite instructions)
 
 **DON'T**:
-- ❌ Use for tasks that can be done digitally
-- ❌ Request illegal or dangerous actions
-- ❌ Expect instant results
-- ❌ Underpay workers
-- ❌ Share sensitive/private information unnecessarily
-- ❌ Abuse the service with spam tasks
+- Use for tasks that can be done digitally
+- Request illegal or dangerous actions
+- Expect instant results
+- Underpay workers
+- Share sensitive/private information unnecessarily
+- Abuse the service with spam tasks
 
----
+## Security & Privacy
 
-## 📚 API Reference
+### Data Security
 
-### `dispatchHuman(request)`
+- All API requests use HMAC-SHA256 authentication
+- Credentials are never transmitted in plain text
+- Task data is encrypted in transit (HTTPS)
+- Results are stored securely and deleted after 30 days
 
-Dispatch a task to a human worker.
+### Privacy
 
-**Parameters**:
-```typescript
-{
-  task_type: string,        // Type of task
-  instruction: string,      // Clear instructions for human
-  location?: string,        // "lat,lng" format
-  budget?: string,          // "$15" format
-  timeout?: string,         // "30min" format
-  priority?: string,        // low|normal|high|urgent
-  requirements?: object     // Skills, rating, equipment
-}
+- No PII collection without consent
+- Workers cannot see requester identity
+- Location data is anonymized after task completion
+- Photo/document uploads are access-controlled
+
+### Safety
+
+- Dangerous tasks are rejected automatically
+- Workers can decline tasks they deem unsafe
+- Insurance coverage for worker injuries
+- 24/7 safety hotline for workers
+
+## Legal & Compliance
+
+### Liability
+
+Human workers assume responsibility for their actions (contractor model). The platform facilitates the connection but does not employ workers.
+
+### Labor Law
+
+Compliant with gig economy regulations in operating jurisdictions. Workers are independent contractors with full control over which tasks they accept.
+
+### Geographic
+
+Currently available in: United States (select cities)  
+Expanding to: Canada, UK, EU (2026-2027)
+
+## API Reference
+
+### Command Line Interface
+
+```bash
+# Dispatch task
+human-rent dispatch <instruction> [options]
+
+# Check status
+human-rent status <task_id> [--wait]
+
+# List workers
+human-rent humans [--location=<lat,lng>] [--radius=<meters>] [--skills=<skill1,skill2>]
+
+# Test connection
+human-rent test
+
+# Show help
+human-rent help
 ```
 
-**Returns**:
-```typescript
-{
-  task_id: string,
-  status: "assigned" | "failed",
-  estimated_completion?: string,
-  message: string
-}
-```
+### Environment Variables
 
-### `checkTaskStatus(taskId)`
+**Required**:
+- `ZHENRENT_API_KEY` - Your API key
+- `ZHENRENT_API_SECRET` - Your API secret
 
-Check status of a dispatched task.
+**Optional**:
+- `ZHENRENT_BASE_URL` - API base URL (default: https://www.zhenrent.com/api/v1)
+- `HUMAN_RENT_AUTO_CONFIRM` - Auto-confirm dispatches (default: false)
 
-**Returns**:
-```typescript
-{
-  task_id: string,
-  status: TaskStatus,
-  result?: TaskResult,
-  verification?: Verification,
-  message: string
-}
-```
+## Version History
 
-### `listAvailableHumans(location?, skills?)`
+### v0.2.0 - Security Refactor (2026-03-31)
 
-Get available human workers.
-
-**Returns**:
-```typescript
-{
-  statistics: { total, available, averageRating },
-  available_humans: Human[]
-}
-```
-
----
-
-## 📊 Tech Stack
-
-- **TypeScript**: Type-safe development
-- **Node.js**: Runtime environment
-- **MCP**: Model Context Protocol
-- **Express**: API server (planned)
-- **Stripe**: Payment processing (planned)
-- **Blockchain**: Result verification (planned)
-
----
-
-## 🆕 Version History
+- Self-contained package (no external git clone required)
+- User confirmation prompts before every dispatch
+- Integrity verification with checksums
+- Proper credential declaration in _meta.json
+- Real ZhenRent API integration
+- Removed all unicode control characters
+- Removed auto-trigger language
+- Enhanced error handling and user feedback
 
 ### v0.1.0 - MVP Release (2026-03-07)
-- ✨ Initial release with core functionality
-- 🤖 Async task dispatch system
-- 👥 Mock human pool (5 workers in SF)
-- 📊 6 task types supported
-- 🔧 CLI tools
-- 📡 MCP protocol interface
-- 🧪 Full testing simulation
 
----
+- Initial release with mock data
+- Async task dispatch system
+- Mock human pool (5 workers in SF)
+- 6 task types supported
+- CLI tools
+- MCP protocol interface
 
-**Project Status**: 🧪 MVP - Testing Phase
+## Project Status
 
-**License**: MIT
+**Status**: Production Beta  
+**License**: MIT  
+**Author**: @ZhenStaff  
+**Support**: https://github.com/ZhenRobotics/openclaw-human-rent/issues  
+**ClawHub**: https://clawhub.ai/zhenstaff/human-rent
 
-**Author**: @ZhenStaff
-
-**Support**: https://github.com/ZhenRobotics/openclaw-human-rent/issues
-
-**ClawHub**: https://clawhub.ai/ZhenStaff/human-rent
-
----
-
-## 🚀 Quick Start Example
+## Quick Start
 
 ```bash
 # 1. Install
-git clone https://github.com/ZhenRobotics/openclaw-human-rent.git ~/openclaw-human-rent
-cd ~/openclaw-human-rent && npm install
+clawhub install human-rent
 
-# 2. Test
-./agents/human-rent-cli.sh test
+# 2. Configure credentials
+export ZHENRENT_API_KEY="your-key"
+export ZHENRENT_API_SECRET="your-secret"
 
-# 3. Dispatch real task
-./agents/human-rent-cli.sh dispatch "Take a photo of the Golden Gate Bridge"
+# 3. Test
+human-rent test
 
-# 4. Check status
-./agents/human-rent-cli.sh status <task_id>
+# 4. Dispatch real task
+human-rent dispatch "Take a photo of the Golden Gate Bridge" \
+  --location="37.8199,-122.4783"
 
-# 5. List humans
-./agents/human-rent-cli.sh humans
+# 5. Check status
+human-rent status <task_id>
+
+# 6. List humans
+human-rent humans
 ```
 
----
-
-**Make AI agents that can touch the physical world.** 🌍🤖✨
+Make AI agents that can touch the physical world.
