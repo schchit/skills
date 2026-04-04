@@ -1,9 +1,9 @@
 ---
 name: PDD Shopping
 slug: pdd-shopping
-version: 2.0.0
+version: 2.1.0
 homepage: https://clawic.com/skills/pdd
-description: Navigate Pinduoduo (拼多多) with browser automation for search, group buying, seller vetting, cart operations, and bargain hunting. Supports logged-in workflows for browsing, adding to cart, checking 百亿补贴, and order preview while keeping checkout/payment for user control.
+description: Turn 拼多多 low-price browsing into action-ready buying advice. Use when the user wants to 查低价、百亿补贴、拼团、优惠券、补贴门槛、店铺风险、退款值不值, and needs a direct recommendation such as buy now, join group, wait for subsidy, switch seller, or skip the deal entirely.
 metadata:
   clawdbot:
     emoji: "🛒"
@@ -12,249 +12,160 @@ metadata:
     os: ["linux", "darwin", "win32"]
 ---
 
-## When to Use
+## What This Skill Optimizes For
 
-User wants to shop on Pinduoduo (拼多多). Agent helps with group buying strategies, seller verification, quality assessment, and navigating China's social e-commerce platform known for extreme discounts.
+Use this skill when the user wants a concrete buying move on 拼多多, not just background explanation.
+
+Strongest cases:
+- decide whether the low price is real after coupons, subsidies, and 拼团 conditions
+- choose between buy now, join an existing group, wait, switch seller, or leave the platform
+- judge if a refund-friendly listing is good enough for a risky trial buy
+- separate safe cheap wins from fake bargains with fragile after-sales support
+
+This skill should sound like a deal operator, not a catalog narrator.
+
+## Outcome Standard
+
+Default to an action-first recommendation. The answer should usually end with one of these moves:
+- Buy now
+- Join the current 拼团
+- Wait for a better subsidy or coupon window
+- Switch to another seller or SKU
+- Move to JD or Tmall for lower risk
+- Skip this deal entirely
 
 ## Capabilities
 
-### v2.0 - Browser Automation Support
+### v2.1 - Actionable Buying Support
 
 | Operation | Auth Required | Description |
 |-----------|---------------|-------------|
-| **Search** | Optional | Search products, filter by category/price |
-| **百亿补贴** | Optional | Browse platform-subsidized deals |
-| **拼团** | Optional | View group buying options, join existing groups |
-| **Seller Vetting** | Optional | Check store ratings, reviews, badges |
-| **Product Detail** | Optional | View specs, prices, service guarantees |
-| **Add to Cart** | ✅ Required | Add items to shopping cart |
-| **View Cart** | ✅ Required | Review cart contents |
-| **Join Group Buy** | ✅ Required | Initiate or join 拼团 |
-| **Apply Coupons** | ✅ Required | Check and apply platform/seller coupons |
-| **Generate Order Preview** | ✅ Required | Calculate final price with subsidies |
-| **Payment** | ❌ Blocked | User must complete payment manually |
+| Search | Optional | Search products, filter by price, sales, subsidy, and store type |
+| 百亿补贴 inspection | Optional | Check whether subsidy is official and actually worth taking |
+| 拼团 inspection | Optional | Compare solo price vs group price vs completion risk |
+| Seller vetting | Optional | Check store type, service badges, review risk, and likely after-sales friction |
+| Product detail review | Optional | Read specs, price traps, shipping promises, and compensation badges |
+| Add to cart | Required | Add shortlisted items after user confirms the target listing |
+| View cart | Required | Review cart contents and checkout-fit conditions |
+| Coupon check | Required | Check platform and seller coupons before order preview |
+| Group action | Required | Join or initiate 拼团 after user approval |
+| Order preview | Required | Build a final price and risk summary before purchase |
+| Payment | Blocked | User completes final payment manually |
 
-**Safety Rule**: Agent stops before payment. User retains full control over final purchase.
+Safety rule: stop before payment and any irreversible order submission.
 
-### Legacy: Guidance-Only Mode (No Browser)
+## Decision Lens
 
-- Group buying strategies
-- Seller vetting guidance
-- Quality assessment tips
-- 百亿补贴 navigation
-- Category-specific advice
+Evaluate every PDD listing in this order:
+1. Real final price
+   - current displayed price
+   - 百亿补贴 price
+   - 拼团 price
+   - coupon threshold and whether it is realistically reachable
+2. Fulfillment certainty
+   - shipping promise
+   - estimated dispatch speed
+   - whether urgency makes 拼团 or slow fulfillment unacceptable
+3. Seller trust
+   - store type
+   - rating
+   - recent photo reviews
+   - obvious fake-review patterns
+4. After-sales safety
+   - 退货包运费
+   - 极速退款
+   - 假一赔十
+   - 品质险
+5. Better alternative
+   - if risk-adjusted value is weak, recommend another seller or another platform
 
-## Quick Reference
+## Action Rules
 
-| Topic | File |
-|-------|------|
-| Group buying guide | `groupbuy.md` |
-| Seller vetting | `sellers.md` |
-| Quality assessment | `quality.md` |
-| Browser automation | `browser-workflow.md` |
+### Coupons And Thresholds
 
-## Workflow
+- Treat a coupon as real only if the user can hit the threshold without padding the cart with junk.
+- If the extra spend needed to unlock the coupon is more than the coupon value, call it a trap.
+- If seller coupons and platform coupons can stack, say so explicitly and estimate the post-stack price.
+- If the best price depends on a new-user-only path or unclear claim flow, mark that price as conditional, not final.
 
-### Phase 1: Discovery (Agent-Assisted)
-1. **Search** - Agent searches PDD for target products
-2. **百亿补贴** - Check platform-subsidized deals
-3. **Filter & Sort** - Apply filters (price, sales, ratings)
-4. **Seller Vetting** - Agent checks store badges, ratings, reviews
-5. **Group Buy Options** - View 拼团 prices vs solo prices
+### 拼团
 
-### Phase 2: Selection (Agent-Assisted)
-1. **Product Detail** - Agent opens selected product page
-2. **Price Analysis** - Compare 当前价 / 百亿补贴价 / 拼团价
-3. **Service Verification** - Check 假一赔十, 退货包运费, 品质险
-4. **Review Check** - Read recent reviews, photo reviews
-5. **Group Decision** - Solo buy vs join group vs start group
+- Recommend joining an existing group when the price gap is meaningful and the group looks likely to complete soon.
+- Recommend solo buy when the group discount is small, urgency is high, or completion risk is non-trivial.
+- Recommend waiting only when the user is flexible and there is a believable chance of a better subsidy or group fill soon.
+- If the listing supports 免拼, mention it as the best compromise for urgent low-risk orders.
 
-### Phase 3: Cart & Pre-Order (Agent-Assisted with Login)
-1. **Add to Cart** - Agent adds item to cart (requires login)
-2. **Group Buy Action** - Initiate or join 拼团 (requires login)
-3. **Cart Review** - Agent shows cart contents
-4. **Coupon Application** - Agent checks platform + seller coupons
-5. **Order Summary** - Agent generates complete order preview
+### Delivery And Timing
 
-### Phase 4: Checkout (User-Controlled)
-1. **Handoff** - Agent presents final order details
-2. **User Review** - User confirms all details
-3. **Payment** - ⚠️ **User completes payment manually**
-4. **Confirmation** - User shares order confirmation if desired
+- For urgent items, discount any deal with weak dispatch promises even if the sticker price is great.
+- For commodity items or trial purchases, price can outweigh slower fulfillment if after-sales protection is strong.
+- If a gift or event deadline is near, explicitly bias away from risky sellers and weak logistics.
 
-**Agent Boundary**: Stops at Phase 3. Never executes payment or final order submission.
+### Merchant Risk
 
-## Browser Workflow Upgrade
+Prefer:
+- official brand or flagship stores
+- strong service badges
+- dense recent photo reviews
+- stable high销量 with believable review language
 
-When the user needs live PDD page validation, follow the shared **browser-commerce-base** workflow:
-- public browsing → `openclaw`
-- logged-in assets such as cart/orders/coupons → `user` only when necessary
-- re-snapshot after subsidy overlays, 拼团 panels, or SKU switches
-- capture service badges and compensation promises in screenshots
+Treat as red flags:
+- extreme price gap with no official subsidy label
+- weak or missing after-sales protections
+- store age or volume that does not match the claim
+- repeated complaints about damaged goods, wrong specs, fake goods, or refund friction
 
-Key browser extraction order on PDD:
-- 标题
-- 当前价 / 百亿补贴价 / 拼团价
-- 店铺类型
-- 服务保障（假一赔十 / 退货包运费 / 品质险）
-- 拼团门槛
-- 发货承诺与评价风险
+### Refund Advice
 
-## Core Rules
+- If the item is low-value and covered by 退货包运费 or 极速退款, a trial buy can be acceptable.
+- If the item is expensive, branded, fragile, size-sensitive, or gift-critical, weak refund protections should push the answer toward switching seller or platform.
+- If reviews suggest high defect risk and refund friction, recommend skipping even when the price looks excellent.
 
-### 1. Understanding PDD's Model
+## Browser Workflow
 
-**Social Commerce + Group Buying:**
+When the user wants live page validation:
+- public browsing can be done without login
+- logged-in cart and coupon checks should be used only when necessary
+- re-check after SKU changes, subsidy overlays, or 拼团 panel changes
 
-| Feature | How It Works | Benefit |
-|---------|--------------|---------|
-| **拼团** (Group Buy) | Join others for lower price | 10-40% savings |
-| **百亿补贴** (Billion Subsidy) | Platform-subsidized deals | Guaranteed low prices |
-| **砍价** (Price Chop) | Share to friends for discounts | Free/discounted items |
-| **多多果园** (Orchard Game) | Gamified discounts | Play for coupons |
+Extract in this order:
+- product title and variant
+- displayed price, 拼团价, 百亿补贴价
+- store type and badges
+- shipping and dispatch promise
+- after-sales protections
+- notable review risk
 
-**Platform Positioning:**
-- Lowest prices among major platforms
-- Higher risk, requires more diligence
-- Best for: non-branded goods, daily essentials, agricultural products
-- Avoid for: high-end electronics, luxury, time-sensitive needs
+## Output Pattern
 
-### 2. Store Type Hierarchy
+Use this structure unless the user asks for something shorter:
 
-| Badge | Meaning | Trust Level |
-|-------|---------|-------------|
-| **品牌** (Brand) | Official brand store | ⭐⭐⭐⭐⭐ |
-| **旗舰店** (Flagship) | Authorized flagship | ⭐⭐⭐⭐⭐ |
-| **专卖店** (Specialty) | Category specialist | ⭐⭐⭐⭐☆ |
-| **普通店** (Regular) | Individual seller | ⭐⭐⭐☆☆ |
+### Recommended Move
+State the best action in one sentence.
 
-**PDD-Specific Indicators:**
+### Price Reality
+Show the meaningful prices and which ones are conditional.
 
-| Indicator | Good Sign |
-|-----------|-----------|
-| 假一赔十 | Counterfeit = 10x compensation |
-| 退货包运费 | Free return shipping |
-| 极速退款 | Fast refund processing |
-| 品质险 | Quality insurance |
+### Risk Check
+Call out seller, fulfillment, and refund risk.
 
-### 3. Group Buying Mastery
+### Why This Wins
+Explain why this move is better than waiting, grouping, or switching.
 
-**How 拼团 Works:**
+### Next Step
+Tell the user exactly what to do next.
 
-| Stage | Action | Time Limit |
-|-------|--------|------------|
-| **发起** (Initiate) | Start a group | 24 hours |
-| **参团** (Join) | Join existing group | Until full |
-| **成团** (Complete) | Minimum members reached | - |
-| **发货** (Ship) | Order processes | 1-3 days |
+## Platform Positioning
 
-**Group Size Typical:**
-- Small: 2 people (easy to complete)
-- Medium: 3-5 people
-- Large: 10+ people (biggest discounts)
+PDD is strongest when:
+- price sensitivity is high
+- the item is standard, replaceable, or easy to inspect
+- the user can tolerate some friction for savings
 
-**Strategies:**
-1. Join existing groups (faster)
-2. Share with family/friends
-3. Use PDD's "免拼" (skip group) for urgent orders
-4. Check "即将成团" (about to complete) for quick wins
-
-### 4. The 百亿补贴 Program
-
-**What It Is:**
-- Platform subsidizes prices
-- Guaranteed lowest price
-- Usually on branded goods
-- Limited quantity/time
-
-**How to Spot:**
-- Look for "百亿补贴" red badge
-- Prices often 20-50% below market
-- Includes iPhones, Dyson, Nike, etc.
-
-**Cautions:**
-- Verify it's "官方补贴" (official subsidy)
-- Check seller is authorized
-- Compare with JD/Tmall prices
-- Read recent reviews carefully
-
-### 5. Seller Vetting on PDD
-
-**Critical Checks:**
-
-| Metric | Minimum Threshold | Ideal |
-|--------|-------------------|-------|
-| **店铺评分** | >4.5 | >4.7 |
-| **销量** | >100 | >1000 |
-| **评价数** | >50 | >500 |
-| **店铺年龄** | >6 months | >1 year |
-
-**Review Analysis:**
-- Look for photo reviews (真实晒图)
-- Check "默认" (default) reviews, not just "好评"
-- Read 1-2 star reviews for common issues
-- Verify "已拼" (grouped) count is high
-
-**Red Flags:**
-- No photo reviews
-- Generic/duplicate review text
-- Price too good to be true
-- Store opened <3 months ago
-- High return rate mentioned
-
-### 6. Category-Specific Strategies
-
-**Agricultural Products (农产品):**
-- PDD's strength
-- Direct from farmers
-- Check origin (产地)
-- Seasonal buying = best prices
-
-**Daily Essentials:**
-- Extremely competitive pricing
-- Bulk buying saves more
-- Generic brands often sufficient
-
-**Electronics:**
-- High risk category
-- Only buy from 百亿补贴 or brand stores
-- Verify warranty terms
-- Record unboxing video
-
-**Clothing:**
-- Check size charts carefully
-- Sizing often runs small
-- Read "尺码反馈" (sizing feedback)
-- Photo reviews essential
-
-### 7. Payment & Protection
-
-**Payment Options:**
-- 微信支付 (WeChat Pay) - Most common
-- 支付宝 (Alipay) - Also accepted
-- 多多钱包 (PDD Wallet) - Occasional discounts
-
-**PDD Buyer Protection:**
-
-| Issue | Resolution |
-|-------|------------|
-| Wrong item | Full refund, keep or return |
-| Quality issue | Refund or partial refund |
-| Not received | Automatic refund after timeout |
-| Counterfeit | 假一赔十 (10x compensation) |
-
-**Return Policy:**
-- 7-day return for most items
-- 退货包运费 = free return shipping
-- Some items non-returnable (food, custom)
-
-## Common Traps
-
-- **Joining any group without checking seller** → Quality varies wildly
-- **Ignoring shipping times** → Can be 5-10 days
-- **Assuming 百亿补贴 = always authentic** → Still verify seller
-- **Not reading 1-star reviews** → Pattern of issues
-- **Buying time-sensitive items** → Shipping slower than JD/Tmall
+PDD is weaker when:
+- authenticity risk is unacceptable
+- fulfillment speed matters a lot
+- the item is expensive, gift-critical, or hard to return
 - **Forgetting to claim orchard rewards** → Free money
 - **Impulse buying due to low prices** → Buy what you need
 
