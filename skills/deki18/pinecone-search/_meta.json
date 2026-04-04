@@ -3,9 +3,15 @@
   "slug": "pinecone-search",
   "displayName": "Pinecone Search",
   "latest": {
-    "version": "0.1.1",
-    "publishedAt": 1773244842030,
-    "commit": "https://github.com/openclaw/skills/commit/097eeaa1749b6b0deb984540bc89b8d247b326b2"
+    "version": "0.1.3",
+    "publishedAt": 1775109898804,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.1",
+      "publishedAt": 1773244842030,
+      "commit": "https://github.com/openclaw/skills/commit/097eeaa1749b6b0deb984540bc89b8d247b326b2"
+    }
+  ]
 }
