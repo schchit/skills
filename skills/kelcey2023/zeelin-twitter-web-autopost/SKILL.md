@@ -1,19 +1,19 @@
 ---
 name: ZeeLin Twitter/X AutoPost
-description: "ZeeLin Twitter/X 自动发推 + 回关 + 涨粉运营 — 通过浏览器操作网页版 Twitter/X，无需 API Key。用户自行登录后，Agent 可负责撰写推文并发布、一键回关粉丝、蓝V互关（认证关注者回关）、深度评论、以及在求关注/互关类帖子下主动打招呼互动。支持定时发推（openclaw cron）。Keywords: Zeelin, ZeeLin, auto tweet, follow back, 回关, 互关, 蓝V互关, 认证关注者, 涨粉, 打招呼, comment, scheduled post, no API key."
+description: "ZeeLin Twitter/X 自动发推 + 回关 + 涨粉运营 — 通过 openclaw browser / Browser Relay 操作网页版 Twitter/X，无需 API Key。用户先在自己的浏览器登录并挂上 Relay，Agent 负责撰写推文并发布、一键回关粉丝、蓝V互关（认证关注者回关）、深度评论、以及在求关注/互关类帖子下主动打招呼互动。支持定时发推（openclaw cron）。Keywords: Zeelin, ZeeLin, auto tweet, follow back, 回关, 互关, 蓝V互关, 认证关注者, 涨粉, 打招呼, comment, scheduled post, no API key."
 user-invocable: true
 metadata: {"openclaw":{"emoji":"🐦","skillKey":"zeelin-twitter-x-autopost"}}
 ---
 
 # ZeeLin Twitter/X 自动发推 + 回关 + 涨粉运营 🐦
 
-通过浏览器操作网页版 Twitter/X：支持**发推**（撰写 + 发布）、**回关**（粉丝列表一键回关）、**蓝V互关**（认证关注者回关）、**深度评论**、以及**在求关注/互关类帖子下主动打招呼**。用户自行登录，Agent 用脚本完成操作，无需 API Key。
+通过 `openclaw browser` / Browser Relay 操作网页版 Twitter/X：支持**发推**（撰写 + 发布）、**回关**（粉丝列表一键回关）、**蓝V互关**（认证关注者回关）、**深度评论**、以及**在求关注/互关类帖子下主动打招呼**。用户先在自己的浏览器登录并挂上 Relay，Agent 用脚本完成操作，无需 API Key。
 
 **飞书下**：发推/评论时优先直接发一个 `exec`；回关/蓝V互关默认带较长超时，减少 request timed out。
 
 ## 概述
 
-- **发推**：Agent 撰写推文 → 打开网页版 X → 用户登录 → Agent 输入并发布
+- **发推**：Agent 撰写推文 → 使用已登录且挂上 Relay 的 X 标签页 → Agent 输入并发布
 - **回关**：在关注者列表中自动点击回关
 - **蓝V互关**：在认证关注者列表中自动回关
 - **深度评论**：对指定帖子写评论并发布
@@ -75,12 +75,13 @@ metadata: {"openclaw":{"emoji":"🐦","skillKey":"zeelin-twitter-x-autopost"}}
 
 记住用户提供的 **BASE_URL**，后续所有操作基于它。**不要自行假设网址。**
 
-### Step 2：让用户先登录
+### Step 2：先准备已登录的 Relay 标签页
 
-1. 用浏览器打开用户提供的 X 网址
-2. 提醒用户先在页面里登录
-3. **等待用户回复“已登录”** 后再继续
-4. 收到确认后再检查页面是否已登录
+1. 让用户在自己的 Chrome 中打开用户提供的 X 网址并登录
+2. 让用户在该标签页挂上 OpenClaw Browser Relay，确认 Badge 为 **ON**
+3. 后续一律通过 `openclaw browser` / Relay 操作该标签页
+4. **不要默认改用 `agent-browser`**，因为它是独立浏览器，不共享用户现有登录 session
+5. 只有在用户明确要走独立浏览器，且已经保存过登录态时，才考虑 `agent-browser state load`
 
 ### Step 3：撰写推文内容
 
@@ -184,6 +185,7 @@ openclaw cron add \
 ## 安全与风控
 
 - 不要自动输入密码，登录由用户自己完成
+- 这个 skill 默认依赖 `openclaw browser` / Browser Relay，不要切到 `agent-browser` 去要求用户重新登录
 - 不发违法、仇恨、违规内容
 - 发帖频率建议每天不超过 3–5 条
 - 主动互动单次建议 3–5 条，避免刷屏

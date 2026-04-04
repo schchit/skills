@@ -82,7 +82,7 @@ fi
 
 echo "Opening compose page..."
 $CLI open "${BASE_URL}/compose/post" >/dev/null 2>&1 || true
-$CLI wait --time 2600 >/dev/null 2>&1 || sleep 3
+sleep 3 >/dev/null 2>&1 || sleep 3
 
 SNAPSHOT="$(get_snapshot)"
 if [ -z "$SNAPSHOT" ]; then
@@ -99,7 +99,7 @@ TEXTBOX_REF="$(find_textbox_ref "$SNAPSHOT")"
 if [ -z "$TEXTBOX_REF" ]; then
   echo "Compose textbox not found, fallback to /home ..."
   $CLI open "${BASE_URL}/home" >/dev/null 2>&1 || true
-  $CLI wait --time 2600 >/dev/null 2>&1 || sleep 3
+  sleep 3 >/dev/null 2>&1 || sleep 3
   SNAPSHOT="$(get_snapshot)"
   TEXTBOX_REF="$(find_textbox_ref "$SNAPSHOT")"
 fi
@@ -113,7 +113,7 @@ fi
 echo "Typing into $TEXTBOX_REF ..."
 $CLI click "$TEXTBOX_REF" >/dev/null 2>&1 || true
 $CLI type "$TEXTBOX_REF" "$TWEET_TEXT" >/dev/null 2>&1 || true
-$CLI wait --time 1200 >/dev/null 2>&1 || sleep 1
+sleep 1 >/dev/null 2>&1 || sleep 1
 
 SNAPSHOT2="$(get_snapshot)"
 POST_BUTTON_REF="$(find_enabled_post_button "$SNAPSHOT2")"
@@ -124,7 +124,7 @@ if [ -z "$POST_BUTTON_REF" ]; then
     [ -z "$ALT_REF" ] && continue
     $CLI click "$ALT_REF" >/dev/null 2>&1 || true
     $CLI type "$ALT_REF" "$TWEET_TEXT" >/dev/null 2>&1 || true
-    $CLI wait --time 800 >/dev/null 2>&1 || sleep 1
+    sleep 1 >/dev/null 2>&1 || sleep 1
     SNAPSHOT2="$(get_snapshot)"
     POST_BUTTON_REF="$(find_enabled_post_button "$SNAPSHOT2")"
     if [ -n "$POST_BUTTON_REF" ]; then
@@ -138,7 +138,7 @@ echo "Trying publish hotkey first..."
 $CLI click "$TEXTBOX_REF" >/dev/null 2>&1 || true
 $CLI press "Meta+Enter" >/dev/null 2>&1 || true
 $CLI press "Control+Enter" >/dev/null 2>&1 || true
-$CLI wait --time 1800 >/dev/null 2>&1 || sleep 2
+sleep 2 >/dev/null 2>&1 || sleep 2
 
 POSTED=0
 for _ in 1 2 3 4 5 6 7 8; do
@@ -154,7 +154,7 @@ for _ in 1 2 3 4 5 6 7 8; do
     $CLI click "$POST_BUTTON_REF" >/dev/null 2>&1 || true
   fi
 
-  $CLI wait --time 900 >/dev/null 2>&1 || sleep 1
+  sleep 1 >/dev/null 2>&1 || sleep 1
 done
 
 if [ "$POSTED" -eq 1 ]; then
