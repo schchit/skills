@@ -1,13 +1,18 @@
 {
   "owner": "daniel-refahi-ikara",
   "slug": "dr-context-pipeline",
-  "displayName": "DR. Context Pipeline",
+  "displayName": "dr-context-pipeline",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1774051146924,
-    "commit": "https://github.com/openclaw/skills/commit/cdc49186edd90b76f7d62117f421d5d28b105ec1"
+    "version": "1.6.0",
+    "publishedAt": 1775297047774,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1774051146924,
+      "commit": "https://github.com/openclaw/skills/commit/cdc49186edd90b76f7d62117f421d5d28b105ec1"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1773364025723,
