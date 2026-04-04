@@ -1,13 +1,18 @@
 {
   "owner": "daniel-refahi-ikara",
   "slug": "dr-memory-foundation",
-  "displayName": "DR. Memory Foundation",
+  "displayName": "Dr Memory Foundation",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1774051040778,
-    "commit": "https://github.com/openclaw/skills/commit/663a0352e37ce779b74075507bf6befe6694fd4e"
+    "version": "2.0.0",
+    "publishedAt": 1775196900174,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1774051040778,
+      "commit": "https://github.com/openclaw/skills/commit/663a0352e37ce779b74075507bf6befe6694fd4e"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1773361192071,
