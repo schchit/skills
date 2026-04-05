@@ -110,6 +110,9 @@ python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fanta
 python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py draft [--team ID]
 python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py transactions [--type add,drop,trade] [--since 3d]
 python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py injuries
+
+# Lineup Check — confirmed MLB lineups vs fantasy roster
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py lineup-check [--date YYYY-MM-DD]
 ```
 
 ### Daily Management
@@ -136,14 +139,34 @@ Fetches daily player stats for all rostered players across every team in the lea
 Each player shows their fantasy points, key stat line, and achievement badges (e.g., "Multi-HR", "10+ K", "Gem", "CGSO"). Defaults to yesterday; use `--date` for a specific date.
 
 ```bash
+# Lineup check: verify active players are in confirmed MLB lineups
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py lineup-check
+python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py lineup-check --date 2026-04-01
+```
+
+Cross-references active fantasy roster players against confirmed MLB batting lineups (from MLB Stats API `hydrate=lineups`). Flags position players who are in a starting fantasy slot but NOT in their team's confirmed real-life lineup (e.g., scratched, resting, benched vs lefty/righty). Pitchers are excluded (they don't appear in batting lineups). Players whose team's lineup hasn't been posted are NOT flagged — only players whose lineup IS posted and who are absent. Lineups are typically posted 1-3 hours before game time.
+
+```bash
 # Optimize: smart roster analysis with suggestions
 python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py optimize
 ```
 
 Three analysis categories:
-1. **Lineup swaps** — inactive starters with eligible bench replacements
-2. **Pitcher rotation** — probable starters on bench, active pitchers on off days
-3. **IL management** — injured players not in IL slots, cleared players still in IL
+1. **Lineup changes** — optimal batter assignment via constraint solver (position-aware, fills restrictive slots before UTIL). Outputs every individual position move needed (e.g., `Adames: BN → SS`, `Fitzgerald: SS → UTIL`, `Cronenworth: 1B → BN`). Also checks confirmed MLB batting lineups — players confirmed not in their team's lineup are treated as unavailable (score 0) and will be moved to bench. Players whose games have already started are locked in place (Yahoo locks roster slots at first pitch) and excluded from the solver.
+2. **Pitcher rotation** — probable starters on bench, active pitchers on off days. Only alerts for games that haven't started yet.
+3. **IL management** — players with IL designations (IL, IL10, IL15, IL60) not in IL slots, cleared players still in IL. DTD players are excluded since Yahoo does not allow moving them to IL.
+
+Each move includes team, opponent, and score context. Moves to BN may include a `reason` indicator:
+- `⚠️` — player not in confirmed MLB lineup (urgent — they won't play)
+- `🔒` — player's game has already started (locked by Yahoo)
+- `📅` — player's team is off today
+
+**Early-season preseason rank blending:** The optimizer blends Yahoo's preseason overall rank (OR) into player scores during the first weeks of the season, when current-year stats are too small a sample to be reliable. The blending schedule:
+- **Weeks 1–2**: Full weight — preseason rank contributes up to 15 bonus points (rank 1 gets the max, last-ranked gets 0)
+- **Weeks 3–6**: Linear taper — preseason influence decreases by ~20% per week
+- **Week 7+**: Zero weight — scoring is based entirely on current-season stats
+
+This prevents the optimizer from overreacting to small early-season slumps (e.g., benching a star who went 0-for-8 in the first series). The preseason ranks are fetched via one additional Yahoo API call (`sort=OR, status=T`) per optimize run.
 
 ### Write Commands
 
@@ -281,9 +304,15 @@ Today — Team Name
 Roster Optimization Suggestions
 ==================================================
 
-  LINEUP SWAPS (1 suggested)
-    Swap Jake Burger (BN, MIA playing)
-      ↔  Mookie Betts (SS, LAD off)
+  LINEUP CHANGES (3 moves)
+    Jake Burger: BN → 3B
+      (MIA vs ATL, score: 18.3)
+    Mookie Betts: SS → BN
+      (LAD, score: 12.0)
+      📅  team off today
+    Josh Smith: 3B → BN
+      (TEX vs SEA, score: 9.2)
+      ⚠️  not in confirmed MLB lineup
 
   PITCHER ROTATION (1 alerts)
     Gerrit Cole (NYY) is a probable starter today but is on the bench.
@@ -291,8 +320,10 @@ Roster Optimization Suggestions
   IL MANAGEMENT (1 suggested)
     Move Zack Wheeler (IL-60) from SP slot to IL to free a roster spot.
 
-Total: 3 suggestion(s)
+Total: 5 suggestion(s)
 ```
+
+Players on teams whose games are already in progress or finished are locked and excluded from optimization — they will not appear in the move list.
 
 **scoreboard:**
 
@@ -345,7 +376,7 @@ All commands support `--format discord` which wraps text output in code blocks.
 - **Rate limits**: Yahoo enforces API rate limits. Avoid rapid-fire requests.
 - **Season scope**: Data is scoped to the configured season. Use `--season` for historical data.
 - **OAuth tokens**: Tokens auto-refresh but may eventually expire, requiring re-authentication via `auth`.
-- **MLB schedule**: The `today`, `day`, and `optimize` commands use the MLB Stats API for schedule data (off days, probable pitchers). This data is not available from the Yahoo Fantasy API.
+- **MLB schedule**: The `today`, `day`, `optimize`, and `lineup-check` commands use the MLB Stats API for schedule data (off days, probable pitchers, confirmed batting lineups). This data is not available from the Yahoo Fantasy API.
 
 ## Credential Storage
 

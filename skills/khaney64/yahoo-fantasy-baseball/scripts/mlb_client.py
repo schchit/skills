@@ -138,6 +138,70 @@ def teams_playing_today(date_str=None):
     return playing
 
 
+# Game states that mean the game has NOT started yet
+_NOT_STARTED_STATES = {"Scheduled", "Pre-Game", "Warmup", "Delayed Start", "Delayed"}
+
+
+def teams_with_unlocked_games(date_str=None):
+    """Return teams split by whether their game has started (locked by Yahoo).
+
+    Yahoo Fantasy locks roster slots at first pitch. This function checks
+    each game's detailedState to determine if a team can still be moved.
+
+    Args:
+        date_str: Date in YYYY-MM-DD format. Defaults to today.
+
+    Returns:
+        Tuple of (unlocked: set[str], locked: set[str]) team abbreviations.
+        - unlocked: teams whose game hasn't started yet (can be moved)
+        - locked: teams whose game is in progress or finished (cannot be moved)
+        For doubleheaders, a team is unlocked if ANY game hasn't started.
+    """
+    if date_str is None:
+        date_str = datetime.now().strftime("%Y-%m-%d")
+
+    parts = date_str.split("-")
+    api_date = f"{parts[1]}/{parts[2]}/{parts[0]}"
+
+    url = f"{SCHEDULE_URL}?sportId=1&date={api_date}"
+    data = _fetch_json(url)
+    if data is None:
+        return set(), set()
+
+    unlocked = set()
+    locked = set()
+
+    for date_entry in data.get("dates", []):
+        for game in date_entry.get("games", []):
+            status = game.get("status", {}).get("detailedState", "")
+            if status in ("Cancelled", "Postponed"):
+                continue
+            away = game.get("teams", {}).get("away", {}).get("team", {})
+            home = game.get("teams", {}).get("home", {}).get("team", {})
+            away_id = away.get("id")
+            home_id = home.get("id")
+
+            team_abbrs = []
+            if away_id and away_id in _TEAM_ID_TO_ABBR:
+                team_abbrs.append(_TEAM_ID_TO_ABBR[away_id])
+            if home_id and home_id in _TEAM_ID_TO_ABBR:
+                team_abbrs.append(_TEAM_ID_TO_ABBR[home_id])
+
+            if status in _NOT_STARTED_STATES:
+                for abbr in team_abbrs:
+                    unlocked.add(abbr)
+            else:
+                for abbr in team_abbrs:
+                    # Only mark locked if not already unlocked (doubleheader)
+                    if abbr not in unlocked:
+                        locked.add(abbr)
+
+    # Clean up: if a team is in both (doubleheader), unlocked wins
+    locked -= unlocked
+
+    return unlocked, locked
+
+
 def probable_pitchers_today(date_str=None):
     """Return probable pitchers for today's games.
 
@@ -320,3 +384,46 @@ def game_times_today(date_str=None):
 
     first_pitch = _format_time(earliest_dt) if earliest_dt else None
     return times, first_pitch
+
+
+def confirmed_lineups_today(date_str=None):
+    """Return confirmed batting lineups for today's games.
+
+    Args:
+        date_str: Date in YYYY-MM-DD format. Defaults to today.
+
+    Returns:
+        dict mapping team abbreviation -> list of player full names in the lineup.
+        Teams whose lineups are not yet posted will not appear in the dict.
+    """
+    if date_str is None:
+        date_str = datetime.now().strftime("%Y-%m-%d")
+
+    parts = date_str.split("-")
+    api_date = f"{parts[1]}/{parts[2]}/{parts[0]}"
+
+    url = f"{SCHEDULE_URL}?sportId=1&date={api_date}&hydrate=lineups"
+    data = _fetch_json(url)
+    if data is None:
+        return {}
+
+    lineups = {}
+    for date_entry in data.get("dates", []):
+        for game in date_entry.get("games", []):
+            status = game.get("status", {}).get("detailedState", "")
+            if status in ("Cancelled", "Postponed"):
+                continue
+            game_lineups = game.get("lineups", {})
+            for side in ("away", "home"):
+                team_data = game.get("teams", {}).get(side, {})
+                team_id = team_data.get("team", {}).get("id")
+                if not team_id or team_id not in _TEAM_ID_TO_ABBR:
+                    continue
+                players = game_lineups.get(f"{side}Players", [])
+                if not players:
+                    continue
+                names = [p.get("fullName", "") for p in players if p.get("fullName")]
+                if names:
+                    lineups[_TEAM_ID_TO_ABBR[team_id]] = names
+
+    return lineups

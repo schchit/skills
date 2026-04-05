@@ -904,6 +904,8 @@ def format_today(groups, probable_starters, team_name="", fmt="text",
             }
             if is_probable:
                 entry["probable_starter"] = True
+            elif "SP" in (entry["positions"] or "").split(","):
+                entry["probable_starter"] = False
             return entry
 
         result = {"team": team_name, "date": date_str or today_str,
@@ -946,6 +948,8 @@ def format_today(groups, probable_starters, team_name="", fmt="text",
                 extra = ""
                 if name in probable_starters:
                     extra = " [PROBABLE STARTER]"
+                elif "SP" in (pos or "").split(","):
+                    extra = " [NOT STARTING]"
                 if status:
                     extra += f" ({status})"
                 lines.append(f"    {name:<22} {pos:<14} {team:<5}{opp_time:<18}{extra}")
@@ -966,7 +970,7 @@ def format_optimize(suggestions, fmt="text"):
     """Format optimize command output.
 
     Args:
-        suggestions: dict with keys 'swaps', 'pitcher_alerts', 'il_moves',
+        suggestions: dict with keys 'moves', 'pitcher_alerts', 'il_moves',
                      each a list of suggestion dicts.
         fmt: Output format.
     """
@@ -976,16 +980,27 @@ def format_optimize(suggestions, fmt="text"):
     lines = ["Roster Optimization Suggestions"]
     lines.append("=" * 50)
 
-    # Lineup swaps
-    swaps = suggestions.get("swaps", [])
+    # Lineup changes (position moves)
+    moves = suggestions.get("moves", [])
     lines.append("")
-    lines.append(f"  LINEUP SWAPS ({len(swaps)} suggested)")
-    if swaps:
-        for s in swaps:
-            lines.append(f"    Swap {s['bench_player']} ({s['bench_slot']}, {s['bench_team']} playing)")
-            lines.append(f"      ↔  {s['active_player']} ({s['active_slot']}, {s['active_team']} off)")
+    lines.append(f"  LINEUP CHANGES ({len(moves)} moves)")
+    if moves:
+        for m in moves:
+            opp_str = f" vs {m['opponent']}" if m.get("opponent") else ""
+            lines.append(f"    {m['player']}: {m['from_slot']} → {m['to_slot']}")
+            lines.append(f"      ({m['team']}{opp_str}, score: {m['score']})")
+            reason = m.get("reason", "")
+            if reason:
+                if "not in confirmed" in reason.lower():
+                    lines.append(f"      ⚠️  {reason}")
+                elif "already started" in reason.lower():
+                    lines.append(f"      🔒  {reason}")
+                elif "off today" in reason.lower():
+                    lines.append(f"      📅  {reason}")
+                else:
+                    lines.append(f"      💡  {reason}")
     else:
-        lines.append("    No swaps needed — lineup looks good.")
+        lines.append("    No lineup changes needed — lineup looks good.")
 
     # Pitcher rotation
     pitcher_alerts = suggestions.get("pitcher_alerts", [])
@@ -1008,11 +1023,52 @@ def format_optimize(suggestions, fmt="text"):
         lines.append("    No IL moves needed.")
 
     lines.append("")
-    total = len(swaps) + len(pitcher_alerts) + len(il_moves)
+    total = len(moves) + len(pitcher_alerts) + len(il_moves)
     lines.append(f"Total: {total} suggestion(s)")
 
     if fmt == "discord":
         return "```\n" + "\n".join(lines) + "\n```"
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Lineup Check (confirmed MLB lineups vs fantasy roster)
+# ---------------------------------------------------------------------------
+
+def format_lineup_check(data, fmt="text"):
+    """Format lineup-check command output.
+
+    Args:
+        data: dict with keys 'date', 'team', 'sitting_players',
+              'lineup_not_posted', 'players_confirmed'.
+        fmt: Output format.
+    """
+    if fmt == "json":
+        return json.dumps(data, indent=2)
+
+    lines = [f"Lineup Check — {data['date']}"]
+    lines.append(f"Team: {data['team']}")
+    lines.append("=" * 50)
+
+    sitting = data.get("sitting_players", [])
+    if sitting:
+        lines.append(f"\nNOT in confirmed MLB lineup ({len(sitting)}):")
+        for p in sitting:
+            status_note = f" [Yahoo: {p['yahoo_status']}]" if p.get("yahoo_status") else ""
+            lines.append(
+                f"  {p['selected_position']}: {p['name']} ({p['team']}) "
+                f"— {p.get('opponent', '')} {p.get('game_time', '')}{status_note}"
+            )
+    else:
+        lines.append("\nAll active position players confirmed in lineup.")
+
+    confirmed = data.get("players_confirmed", 0)
+    lines.append(f"\nConfirmed in lineup: {confirmed}")
+
+    not_posted = data.get("lineup_not_posted", [])
+    if not_posted:
+        lines.append(f"Lineups not yet posted: {', '.join(not_posted)}")
+
     return "\n".join(lines)
 
 
