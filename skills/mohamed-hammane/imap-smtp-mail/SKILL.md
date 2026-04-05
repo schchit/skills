@@ -1,6 +1,6 @@
 ---
 name: imap-smtp-mail
-version: 1.0.3
+version: 1.0.4
 description: Read and send email via IMAP/SMTP using local Node scripts. Use when the agent needs to check inboxes, fetch email content, search messages, download attachments, or send emails with optional attachments from configured mailboxes. Includes optional inbox watcher that can forward alerts via OpenClaw CLI.
 metadata:
   openclaw:
@@ -9,7 +9,13 @@ metadata:
       bins:
         - node
         - npm
-        - openclaw
+      env:
+        - IMAP_HOST
+        - IMAP_USER
+        - IMAP_PASS
+        - SMTP_HOST
+        - SMTP_USER
+        - SMTP_PASS
 ---
 
 # IMAP/SMTP Email Tool
@@ -176,6 +182,8 @@ node scripts/imap.js list-mailboxes
 
 ### Test SMTP
 
+> **Note:** This command sends a real test email to your own address (`SMTP_USER`). It is not a passive connectivity check.
+
 ```bash
 cd skills/imap-smtp-mail
 node scripts/smtp.js test
@@ -309,4 +317,4 @@ node scripts/email-watch-lite.js detect-and-trigger --state ../../memory/email-w
 
 Customize the analysis prompt with `--message "your custom instructions"`.
 
-Example systemd service/timer templates are provided in `examples/systemd/`.
+The email watcher requires the `openclaw` CLI binary. It is not needed for core IMAP/SMTP operations.

@@ -6,7 +6,15 @@ const { execFileSync } = require('child_process');
 const { randomUUID } = require('crypto');
 const { checkEmails } = require('./imap');
 
-const WORKSPACE_ROOT = path.resolve(__dirname, '../../..');
+const WORKSPACE_ROOT = (() => {
+  if (process.env.OPENCLAW_WORKSPACE) return path.resolve(process.env.OPENCLAW_WORKSPACE);
+  let dir = path.resolve(__dirname);
+  while (dir !== path.dirname(dir)) {
+    if (fs.existsSync(path.join(dir, '.openclaw')) || fs.existsSync(path.join(dir, 'AGENTS.md'))) return dir;
+    dir = path.dirname(dir);
+  }
+  return path.resolve(__dirname, '../../..');
+})();
 const DEFAULT_STATE_PATH = path.resolve(WORKSPACE_ROOT, 'memory/email-watch-state.json');
 const DEFAULT_ANALYZE_MESSAGE = 'Process the pending email UIDs listed in the email watch state file. For each email, analyze its content and importance. Re-fetch with --extract-attachments when an email has attachments that may be relevant. Your final answer must be either HEARTBEAT_OK (if nothing needs attention) or a clear actionable summary of what requires the user\'s attention.';
 const UID_LIST_LIMIT = 200;
@@ -222,7 +230,15 @@ function isUsableAlert(output) {
 async function main() {
   const { command, options } = parseArgs();
   const trigger = command === 'detect-and-trigger' || isTruthy(options.trigger);
-  const statePath = path.resolve(expandHome(options.state || DEFAULT_STATE_PATH));
+  const statePath = (() => {
+    const raw = path.resolve(expandHome(options.state || DEFAULT_STATE_PATH));
+    // Constrain state path to workspace unless OPENCLAW_WORKSPACE is explicitly set (admin override)
+    if (!process.env.OPENCLAW_WORKSPACE && raw !== WORKSPACE_ROOT && !raw.startsWith(WORKSPACE_ROOT + path.sep)) {
+      console.error(JSON.stringify({ status: 'error', message: `--state path must be inside workspace: ${raw}` }, null, 2));
+      process.exit(1);
+    }
+    return raw;
+  })();
   const mailbox = options.mailbox || undefined;
   const limit = Number(options.limit) || 20;
   const recent = options.recent || null;

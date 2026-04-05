@@ -38,11 +38,19 @@ function validateWritePath(dirPath) {
     throw new Error('ALLOWED_WRITE_DIRS not set in credentials file. Attachment download is disabled.');
   }
 
-  const resolved = path.resolve(dirPath.replace(/^~/, os.homedir()));
+  const expanded = dirPath.replace(/^~/, os.homedir());
+  // Resolve symlinks to prevent escaping allowed directories via symlink chains
+  let resolved;
+  try {
+    resolved = fs.realpathSync(expanded);
+  } catch {
+    resolved = path.resolve(expanded);
+  }
 
-  const allowedDirs = allowedDirsStr.split(',').map(d =>
-    path.resolve(d.trim().replace(/^~/, os.homedir()))
-  );
+  const allowedDirs = allowedDirsStr.split(',').map(d => {
+    const exp = d.trim().replace(/^~/, os.homedir());
+    try { return fs.realpathSync(exp); } catch { return path.resolve(exp); }
+  });
 
   const allowed = allowedDirs.some(dir =>
     resolved === dir || resolved.startsWith(dir + path.sep)

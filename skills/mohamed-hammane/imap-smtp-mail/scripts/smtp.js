@@ -19,7 +19,15 @@ const EMAIL_ENV_FILE = process.env.EMAIL_ENV_FILE || EMAIL_ENV_DEFAULT;
 require('dotenv').config({ path: EMAIL_ENV_FILE });
 const { fetchEmail } = require('./imap');
 
-const WORKSPACE_ROOT = path.resolve(__dirname, '../../..');
+const WORKSPACE_ROOT = (() => {
+  if (process.env.OPENCLAW_WORKSPACE) return path.resolve(process.env.OPENCLAW_WORKSPACE);
+  let dir = path.resolve(__dirname);
+  while (dir !== path.dirname(dir)) {
+    if (fs.existsSync(path.join(dir, '.openclaw')) || fs.existsSync(path.join(dir, 'AGENTS.md'))) return dir;
+    dir = path.dirname(dir);
+  }
+  return path.resolve(__dirname, '../../..');
+})();
 
 function getDomainFromEmail(value) {
   const email = String(value || '').trim();
@@ -86,11 +94,12 @@ function resolveWorkspacePath(inputPath) {
 }
 
 function validateReadPath(inputPath) {
+  const expanded = inputPath.replace(/^~/, os.homedir());
   let realPath;
   try {
-    realPath = fs.realpathSync(inputPath);
+    realPath = fs.realpathSync(expanded);
   } catch {
-    realPath = path.resolve(inputPath);
+    realPath = path.resolve(expanded);
   }
 
   const allowedDirsStr = process.env.ALLOWED_READ_DIRS;
