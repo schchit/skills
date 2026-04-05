@@ -3,9 +3,15 @@
   "slug": "scrapeninja",
   "displayName": "Scrapeninja",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774087431946,
-    "commit": "https://github.com/openclaw/skills/commit/c796f893970e8312741aff833fe3c90930e3de6d"
+    "version": "1.0.2",
+    "publishedAt": 1775165761286,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774087431946,
+      "commit": "https://github.com/openclaw/skills/commit/c796f893970e8312741aff833fe3c90930e3de6d"
+    }
+  ]
 }
