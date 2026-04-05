@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 """
-send2tv.py - Push text or images to Huawei Smart Screen via DLNA/UPnP
+send2tv.py - Push text, images, or audio to Huawei Smart Screen via DLNA/UPnP
 
 Usage:
-  python3 send2tv.py "text message" [font_size]
+  python3 send2tv.py "text message" [--font-size N]
   python3 send2tv.py --image /path/to/image.jpg
+  python3 send2tv.py --audio /path/to/audio.mp3
+  python3 send2tv.py --tts "text to speak" [--voice zh-CN-XiaoxiaoNeural]
   python3 send2tv.py --image /path/to/image.jpg --text "overlay text"
 
 Requirements:
   - Pillow (for text rendering)
   - TV must be on same LAN, UPnP enabled
   - WenQuanYi font for Chinese text (installed at /usr/share/fonts/truetype/wqy/)
+  - node-edge-tts for --tts option (npm install node-edge-tts)
 """
 
 import subprocess
@@ -20,6 +23,7 @@ import time
 import sys
 import os
 import re
+import shutil
 from PIL import Image, ImageDraw, ImageFont
 import http.server
 import socketserver
@@ -94,24 +98,55 @@ def prepare_image(image_path, output_path="/tmp/dlna_push.jpg", max_size=(1920, 
 
 
 class DLNAHandler(http.server.SimpleHTTPRequestHandler):
-    """HTTP handler that serves the DLNA image."""
+    """HTTP handler that serves the DLNA content (image or audio)."""
+    
+    # Class variables to track what to serve
+    serve_type = 'image'  # 'image' or 'audio'
+    
     def log_message(self, format, *args): pass
+    
     def do_GET(self):
-        if self.path in ('/dlna_push.jpg', '/image.jpg', '/'):
-            try:
-                with open("/tmp/dlna_push.jpg", 'rb') as f:
-                    data = f.read()
-                self.send_response(200)
-                self.send_header('Content-Type', 'image/jpeg')
-                self.send_header('Content-Length', str(len(data)))
-                self.end_headers()
-                self.wfile.write(data)
-                print(f"Served {len(data)} bytes to {self.client_address}")
-            except Exception as e:
-                print(f"Error: {e}")
-                self.send_error(500)
+        paths = {
+            'image': ['/dlna_push.jpg', '/image.jpg', '/'],
+            'audio': ['/dlna_push.mp3', '/audio.mp3', '/']
+        }
+        
+        if self.serve_type == 'audio':
+            # Serve audio file
+            if self.path in paths['audio']:
+                try:
+                    audio_path = "/tmp/dlna_push.mp3"
+                    with open(audio_path, 'rb') as f:
+                        data = f.read()
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'audio/mpeg')
+                    self.send_header('Content-Length', str(len(data)))
+                    self.send_header('Accept-Ranges', 'bytes')
+                    self.end_headers()
+                    self.wfile.write(data)
+                    print(f"Served {len(data)} audio bytes to {self.client_address}")
+                except Exception as e:
+                    print(f"Error: {e}")
+                    self.send_error(500)
+            else:
+                self.send_error(404)
         else:
-            self.send_error(404)
+            # Serve image file (original behavior)
+            if self.path in paths['image']:
+                try:
+                    with open("/tmp/dlna_push.jpg", 'rb') as f:
+                        data = f.read()
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'image/jpeg')
+                    self.send_header('Content-Length', str(len(data)))
+                    self.end_headers()
+                    self.wfile.write(data)
+                    print(f"Served {len(data)} image bytes to {self.client_address}")
+                except Exception as e:
+                    print(f"Error: {e}")
+                    self.send_error(500)
+            else:
+                self.send_error(404)
 
 class ReuseAddrTCPServer(socketserver.TCPServer):
     allow_reuse_address = True
@@ -185,9 +220,81 @@ def push(url):
     return True
 
 
+def prepare_audio(audio_path, output_path="/tmp/dlna_push.mp3"):
+    """Prepare audio file for DLNA push - convert to MP3 if needed."""
+    # If already the target path, nothing to do
+    if os.path.abspath(audio_path) == os.path.abspath(output_path):
+        return output_path
+    
+    # Check if file is already mp3
+    if audio_path.lower().endswith('.mp3'):
+        shutil.copy(audio_path, output_path)
+        return output_path
+    
+    # Convert to mp3 using ffmpeg if available
+    if shutil.which('ffmpeg'):
+        subprocess.run([
+            'ffmpeg', '-y', '-i', audio_path,
+            '-codec:a', 'libmp3lame', '-qscale:a', '2',
+            output_path
+        ], check=True, capture_output=True)
+        return output_path
+    
+    # If no ffmpeg and not mp3, just copy and hope TV supports it
+    shutil.copy(audio_path, output_path)
+    return output_path
+
+
+def text_to_speech(text, voice='zh-CN-XiaoxiaoNeural', rate='default', output_path='/tmp/dlna_push.mp3'):
+    """Convert text to speech using edge-tts.
+    
+    Args:
+        text: Text to convert
+        voice: Voice name (default: zh-CN-XiaoxiaoNeural for Chinese)
+        rate: Speech rate (e.g., '+10%', '-20%', 'default')
+        output_path: Output file path
+    
+    Returns:
+        Path to generated audio file
+    """
+    # Find tts-converter.js
+    converter_paths = [
+        '/root/.claude/skills/edge-tts/scripts/tts-converter.js',
+        os.path.expanduser('~/.claude/skills/edge-tts/scripts/tts-converter.js'),
+        os.path.expanduser('~/.openclaw/workspace/skills/edge-tts/scripts/tts-converter.js'),
+    ]
+    
+    converter = None
+    for p in converter_paths:
+        if os.path.exists(p):
+            converter = p
+            break
+    
+    if not converter:
+        raise FileNotFoundError("edge-tts skill not found. Install with: skillhub install openclaw/skills/edge-tts")
+    
+    cmd = ['node', converter, text, '--voice', voice, '--output', output_path]
+    if rate != 'default':
+        cmd.extend(['--rate', rate])
+    
+    print(f"Running TTS: {' '.join(cmd)}")
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    
+    if result.returncode != 0:
+        print(f"TTS stderr: {result.stderr}")
+        raise RuntimeError(f"TTS conversion failed: {result.stderr}")
+    
+    print(f"TTS stdout: {result.stdout}")
+    return output_path
+
+
 def main():
     text = None
     image_path = None
+    audio_path = None
+    tts_text = None
+    tts_voice = 'zh-CN-XiaoxiaoNeural'
+    tts_rate = 'default'
     font_size = 200
     
     args = sys.argv[1:]
@@ -195,6 +302,18 @@ def main():
     while i < len(args):
         if args[i] == '--image' and i + 1 < len(args):
             image_path = args[i + 1]
+            i += 2
+        elif args[i] == '--audio' and i + 1 < len(args):
+            audio_path = args[i + 1]
+            i += 2
+        elif args[i] == '--tts' and i + 1 < len(args):
+            tts_text = args[i + 1]
+            i += 2
+        elif args[i] == '--voice' and i + 1 < len(args):
+            tts_voice = args[i + 1]
+            i += 2
+        elif args[i] == '--rate' and i + 1 < len(args):
+            tts_rate = args[i + 1]
             i += 2
         elif args[i] == '--text' and i + 1 < len(args):
             text = args[i + 1]
@@ -211,10 +330,65 @@ def main():
         else:
             i += 1
     
-    if not text and not image_path:
-        print("Usage: send2tv.py [--image /path/to/img.jpg] [text message] [--font-size N]")
+    if not text and not image_path and not audio_path and not tts_text:
+        print("Usage: send2tv.py [options]")
+        print("")
+        print("Image/Text mode:")
+        print("  send2tv.py \"text message\" [--font-size N]")
+        print("  send2tv.py --image /path/to/img.jpg [--text \"overlay\"]")
+        print("")
+        print("Audio mode:")
+        print("  send2tv.py --audio /path/to/audio.mp3")
+        print("")
+        print("TTS mode (text-to-speech to TV):")
+        print("  send2tv.py --tts \"要朗读的文字\" [--voice VOICE] [--rate RATE]")
+        print("")
+        print("Options:")
+        print("  --voice VOICE    TTS voice (default: zh-CN-XiaoxiaoNeural)")
+        print("  --rate RATE      TTS speed (e.g., +10%, -20%, default)")
+        print("")
+        print("Available Chinese voices:")
+        print("  zh-CN-XiaoxiaoNeural   (female, natural, recommended)")
+        print("  zh-CN-YunyangNeural    (male, natural)")
+        print("  zh-CN-XiaoyiNeural     (female, sweet)")
+        print("  zh-CN-YunjianNeural    (male, mature)")
         sys.exit(1)
     
+    # Handle TTS mode
+    if tts_text:
+        print(f"Converting text to speech: {tts_text[:50]}...")
+        audio_path = text_to_speech(tts_text, voice=tts_voice, rate=tts_rate)
+        print(f"Audio generated: {audio_path}")
+    
+    # Handle audio mode
+    if audio_path:
+        prepare_audio(audio_path)
+        print(f"Audio prepared: {os.path.getsize('/tmp/dlna_push.mp3')} bytes")
+        
+        # Set handler type
+        DLNAHandler.serve_type = 'audio'
+        
+        # Start HTTP server
+        httpd = start_server(HTTP_PORT)
+        print(f"HTTP server on port {HTTP_PORT}")
+        time.sleep(0.5)
+        
+        # Push to TV
+        url = f"http://{LOCAL_IP}:{HTTP_PORT}/dlna_push.mp3"
+        print(f"Pushing audio to TV: {url}")
+        
+        if push(url):
+            print("Audio push successful!")
+        else:
+            print("Audio push failed!")
+            sys.exit(1)
+        
+        # Keep server alive for TV to download
+        print("Keeping server alive for 60s...")
+        time.sleep(60)
+        return
+    
+    # Handle image mode (original behavior)
     if image_path:
         prepare_image(image_path)
         print(f"Image prepared: {os.path.getsize('/tmp/dlna_push.jpg')} bytes")
@@ -222,6 +396,9 @@ def main():
         img = create_text_image(text, font_size=font_size)
         img.save("/tmp/dlna_push.jpg", "JPEG", quality=90)
         print(f"Text image rendered: {os.path.getsize('/tmp/dlna_push.jpg')} bytes")
+    
+    # Set handler type
+    DLNAHandler.serve_type = 'image'
     
     # Start HTTP server
     httpd = start_server(HTTP_PORT)
