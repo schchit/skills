@@ -241,3 +241,17 @@ If the question is mainly about machine-side execution semantics, prefer:
 - **Normal expression:** Expect the same broader Adaptive logic, but with a more explicitly staged light-roast-oriented structure.
 - **Do not misread:** Do not judge it by the exact phase structure of the regular Adaptive profile if the shot is still behaving coherently under this variant's intended staging.
 - **Source note:** Adapted conservatively from the community profile description.
+
+## HyperEx
+- **Family:** Turbo / allongé
+- **Intent:** A turbo-style profile starts with a higher flow rate, then drops to avoid astringency. Usually pulled with the PCL HyperEX basket (by PCL & CORE Coffee). More forgiving of entry-level grinders.
+- **Normal expression:** Phase1 starts with 6-5 mls/30g shotweight then phase2 drops to 3-2 mls/another 40g shotweight, with pressure sweet spot below 4bar (Turbo grind size 350μm or corser)
+- **Do not misread:** Do not treat low pressure or flow drop at phase2 as failed.
+- **Source note:** Local.
+
+## HyperEx 2.0
+- **Family:** Soup
+- **Intent:** A soup-style profile with pre-infusion and a long-ratio HyperEX. Pulled via the PCL HyperEX basket. Uses cupping-level grind to offer home roasters consistency with cupping results.
+- **Normal expression:** Start with a 3 ml/s pre-infusion until 3–4g yield, then transition to 5–6 ml/s until 45g, followed by 1–2 ml/s until a final total yield of 100g. Pressure sweet spot is below 4 bar (Grind size: 500μm or coarser)
+- **Do not misread:** Do not mistake the low pressure or flow drop in Phase 3 for a failed extraction.
+- **Source note:** Local.

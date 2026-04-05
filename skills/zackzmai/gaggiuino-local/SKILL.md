@@ -1,16 +1,15 @@
 ---
 name: gaggiuino-local
-description: Gaggiuino analytical skill for machine control, shot expression analysis, and high-performance visualization. It interprets shot data through profile intent and generates unified static/animated graphs or synchronized video overlays.
-metadata: { "openclaw": { "requires": { "bins": ["curl", "python3", "mktemp", "ffmpeg"] } } }
+description: Gaggiuino skill for machine control, espresso shot analysis through profile intent, dial-in guidance, shot graph rendering, and synchronized overlay videos. Use when checking machine status, analyzing latest or historical shots, switching profiles, reading settings, or generating shot graphs and overlay videos.
+metadata: { "openclaw": { "requires": { "bins": ["curl", "python3", "mktemp", "ffmpeg", "ffprobe"] } } }
 ---
 
 # Gaggiuino Local
 
-Gaggiuino Local is a machine-connected skill for espresso machines running the Gaggiuino mod. 
-It enables live status monitoring, in-depth shot analysis based on profile intent vs. actual expression, profile management, and settings configuration. Additionally, it provides a high-performance rendering engine for generating static graphs, animated trajectory videos, and synchronized overlays for extraction footage.
+Gaggiuino Local is a machine-connected skill for espresso machines running the Gaggiuino mod. It supports machine control, espresso shot analysis through profile intent, troubleshooting and dial-in guidance, profile management, settings work, shot graph rendering, and synchronized overlay videos for extraction footage.
 
 Its core question is not simply **“is this cup good?”**
-It first asks whether the shot became what its profile was trying to make it become.
+It first asks whether the shot became what its profile intended it to be.
 In other words, it asks:
 
 > **Did this shot become the kind of coffee it was trying to be?**
@@ -19,7 +18,7 @@ In Chinese:
 
 > **这杯咖啡有没成为它本来想成为的样子？**
 
-Only after that should it move into troubleshooting or dial-in guidance.
+Only after that does the analysis move into troubleshooting or dial-in guidance.
 
 All machine interaction goes through `scripts/gaggiuino.sh`.
 
@@ -29,15 +28,15 @@ All machine interaction goes through `scripts/gaggiuino.sh`.
 ## What this skill is for
 
 Use this skill when the task involves one or more of these:
-- checking current machine state, readiness, temperature, water level, or active profile / 当前状态
-- analyzing the latest shot / 萃取 or a historical one (**preferred; strongest evidence**)
-- generating static graphs, animated trajectory videos, or synchronized overlays / 萃取可视化与视频叠加
-- dialing in or troubleshooting espresso taste and shot behavior
+- checking machine status, readiness, temperature, water level, or the active profile / 当前状态
+- analyzing the latest shot / 萃取 or a historical shot (**preferred; strongest evidence**)
+- rendering static or animated shot graphs, or generating synchronized overlay videos / 萃取可视化与视频叠加
+- troubleshooting or dialing in espresso taste and shot behavior
 - recommending a profile / 曲线 or profile family
 - listing or switching profiles / 曲线 on the real machine
 - helping identify what family a named profile / 曲线 belongs to
 - reading or updating Gaggiuino settings
-- interpreting graph screenshots or machine screen photos (**fallback; lower-confidence evidence**)
+- interpreting shot-graph screenshots or machine screen photos (**fallback; lower-confidence evidence**)
 
 
 ## What this skill is not for
@@ -56,26 +55,30 @@ Use this skill when the task involves one or more of these:
   → `scripts/gaggiuino.sh profiles`
 - switch to a named profile / use profile XXX / 切到 XXX 曲线 / 换成 XXX 曲线 / 用 XXX 曲线  
   → `scripts/gaggiuino.sh profiles` → resolve id → `scripts/gaggiuino.sh select-profile <id>`
-- latest shot / latest extraction / last shot / latest extraction / 最新一杯 / 最新萃取 / 上一杯 / 最近一杯  
+- latest shot / last shot / latest extraction / 最新一杯 / 最新萃取 / 上一杯 / 最近一杯  
   → `scripts/gaggiuino.sh latest-shot`
-- historical shot by id / extraction by id / 按 id 查历史萃取 / 查某一杯历史记录  
+- historical shot by id / shot by id / extraction by id / 按 id 查历史萃取 / 查某一杯历史记录  
   → `scripts/gaggiuino.sh shot <id>`
 - settings read/change / 读设置 / 改设置 / 查看设置 / 修改设置  
   → `scripts/gaggiuino.sh get-settings <category>` first, then `scripts/gaggiuino.sh update-settings <category> <json>`
-- shot graph (static/dynamic) / overlay video / 渲染萃取图 / 合成视频  
+- shot graph (static/animated) / overlay video / 生成(静态/动态)萃取图 / 合成萃取视频  
   → `scripts/render_shot_graph.py` & `scripts/render_shot_video_overlay.py`
 
 ### Connection default and fallback
 - default base URL is `http://gaggiuino.local`
 - `gaggiuino.local` is the machine's **mDNS hostname**
-- on first use, if no remembered fixed LAN IP exists, the script tries `gaggiuino.local` first
-- the remembered fixed LAN IP is stored at `~/.openclaw/workspace/memory/gaggiuino-base-url.json`
-- if `gaggiuino.local` fails, guide the user to check the machine's network connection and find its real LAN IP in **router settings**
-- for long-term stability, suggest setting a **DHCP static lease on the router**
+- the saved LAN address is stored at `~/.openclaw/workspace/memory/gaggiuino-base-url.json`
+
+- on first use, if no saved LAN address exists, try `gaggiuino.local` first
+- if a saved LAN address exists, try it first and fall back to `gaggiuino.local` on connection-layer failure
+- if both the saved address and `gaggiuino.local` fail, treat the saved address as possibly stale and guide the user to re-check the machine's network or update the saved address
+
+- if `gaggiuino.local` fails and no saved LAN address exists, guide the user to find the machine's real LAN IP in **router settings**
+- for long-term stability, suggest setting a **DHCP static lease** on the router
 - when the user confirms a stable LAN IP they want to keep using, save it with `scripts/gaggiuino.sh set-base-url <url-or-host>`
-- once a remembered fixed LAN IP exists, the script tries that address first and falls back to `gaggiuino.local` on connection-layer failure
-- if both the remembered address and `gaggiuino.local` fail, treat the remembered IP as possibly stale and guide the user to re-check the network or update the saved address
-- use `scripts/gaggiuino.sh get-base-url` to inspect the remembered address and `scripts/gaggiuino.sh clear-base-url` to remove it
+
+- use `scripts/gaggiuino.sh get-base-url` to inspect the saved address
+- use `scripts/gaggiuino.sh clear-base-url` to remove it
 - these addresses are intended for trusted local/LAN endpoints; do **not** point them at untrusted remote servers
 - prefer retrying with a concrete LAN IP over guessing
 
@@ -93,6 +96,7 @@ They are meant to prevent literal but unnatural translations.
 
 ### Core term mappings
 - **profile** → **曲线**
+- **dial-in** → **调磨**
 - **shot** → **萃取**
 - **phase** → **阶段**
 - **Bloom** → **焖蒸**
@@ -252,11 +256,11 @@ The `--out` parameter is optional; if omitted, the scripts will automatically ar
 
 #### Rendering Modes
 - **Static Graph (PNG)**: A single high-resolution image (2400x1080) for quick review.
-- **Dynamic Animation (MP4/GIF)**: A 10fps animation showing the progression of the shot with a moving time cursor. Supports multi-process rendering for high-speed output.
+- **Dynamic Animation (MP4)**: A 10fps animation showing the progression of the shot with a moving time cursor. Supports multi-process rendering for high-speed output.
 - **Video Overlay (MP4)**: Synchronizes graph animation with a user-supplied extraction video.
     - **Landscape video**: Stacks the graph animation on top of the original video.
     - **Portrait video**: Overlays the graph animation semi-transparently at the top or bottom of the video.
-    - **Sync Offset**: Supports a manual time offset to align video audio/visuals perfectly with graph data.
+    - **Sync Offset / Auto Sync**: If the user supplies `--offset`, the renderer uses that manual value. If `--offset` is omitted, the renderer automatically detects the earliest credible **machine-start onset** from video audio. When switch and pump onset are effectively fused in the recording, the event may be classified as `switch_pump_merged` rather than a clean isolated switch click.
 
 #### Visualization CLI Reference
 
@@ -272,16 +276,26 @@ python3 render_shot_graph.py --shot-id <id> --mode mp4
 
 ##### Video Overlay Renderer
 `scripts/render_shot_video_overlay.py`
-**Synchronization Offset**
-- `--offset <seconds>`: Align the graph with the video. 
+**Synchronization Offset / Auto Sync**
+- `--offset <seconds>`: Align the graph with the video using a manual value.
   - **Positive (e.g., 1.4)**: Video started **before** the shot. Graph animation will wait 1.4s before starting.
   - **Negative (e.g., -1.2)**: Shot started **before** the video recording.
+- If `--offset` is omitted, the renderer automatically detects the earliest credible **machine-start onset** from the video audio.
+- Auto-detected events may be reported as:
+  - `switch`: a reasonably isolated switch onset
+  - `switch_pump_merged`: switch and pump onset are effectively fused in the recording
+  - `pump`: pump onset used as the best available machine-start proxy
+- `--audio-sync-mode <auto|switch|pump>`: choose the sync strategy.
+- `--audio-debug`: include detailed detection diagnostics in stderr / JSON output.
 
 **Landscape (Horizontal)**
 Automatically uses a **Vertical Stack (VSTACK)** layout. The graph is placed above the video.
 ```bash
-# Video starts 1.4s before graph (shot<id>_overlay.mp4)
+# Manual sync: video starts 1.4s before graph
 python3 render_shot_video_overlay.py --shot-id <id> --video landscape.mp4 --offset 1.4
+
+# Auto sync from machine-start onset
+python3 render_shot_video_overlay.py --shot-id <id> --video landscape.mp4
 ```
 
 **Portrait (Vertical / Smartphone)**
@@ -290,7 +304,7 @@ Automatically uses a **Semi-transparent Overlay**. The graph floats over the vid
 - `--position <top/bottom>`: Place the graph at the top or bottom of the frame.
 
 ```bash
-# Portrait overlay with custom alpha (0.7) at the bottom
+# Portrait overlay with auto sync and custom alpha at the bottom
 python3 render_shot_video_overlay.py --shot-id <id> --video portrait.mp4 --alpha 0.7 --position bottom
 ```
 

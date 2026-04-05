@@ -94,6 +94,6 @@ These are machine-specific and should not be treated as official/community-backe
 
 | Profile | Family | Type | Short rationale |
 |---|---|---|---|
-| HyperEx 2.0 | Turbo/allongé | local custom |  a high-yield low-pressure fast-flow expression closer to turbo/allongé than filter-style |
-| HyperEx | Turbo/allongé | local custom |  a high-yield low-pressure fast-flow expression closer to turbo/allongé than filter-style |
+| HyperEx 2.0 | Soup | local custom |  a high-yield low-pressure fast-flow expression closer to Soup than filter-style |
+| HyperEx | Turbo/allongé | local custom |  a high-yield low-pressure fast-flow expression closer turbo/allongé to than filter-style |
 | Boiler Off/Flush | Utility | local utility | Current machine idle / flush profile, not brewing taxonomy |

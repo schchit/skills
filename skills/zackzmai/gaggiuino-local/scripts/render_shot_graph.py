@@ -534,7 +534,7 @@ def render_gif(shot: Dict[str, Any], out_path: str, fps: int) -> None:
 # ─── CLI ──────────────────────────────────────────────────────────────────────
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description='Gaggiuino shot graph renderer (v7)')
+    parser = argparse.ArgumentParser(description='Gaggiuino shot graph renderer')
     src = parser.add_mutually_exclusive_group(required=True)
     src.add_argument('--shot-id', type=int)
     src.add_argument('--input')
