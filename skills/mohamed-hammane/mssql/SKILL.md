@@ -1,8 +1,8 @@
 ---
 name: mssql
-version: 1.0.0
-description: Execute SQL Server queries and export results as CSV. Use when the user asks to fetch, insert, update, or manage data in Microsoft SQL Server, validate BI/reporting numbers, or prepare CSV datasets for charts.
-metadata: { "openclaw": { "emoji": "DB", "requires": { "bins": ["sqlcmd"] } } }
+version: 1.0.2
+description: Execute SQL Server queries and export results as delimiter-separated text. Use when the user asks to fetch, insert, update, or manage data in Microsoft SQL Server, validate BI/reporting numbers, or prepare datasets for charts.
+metadata: { "openclaw": { "emoji": "DB", "requires": { "bins": ["sqlcmd"], "env": ["MSSQL_HOST", "MSSQL_DB", "MSSQL_USER", "MSSQL_PASSWORD"] } } }
 ---
 
 # MSSQL
@@ -15,8 +15,8 @@ Run SQL Server queries using `scripts/mssql_query.sh`.
    `~/.openclaw/credentials/mssql.env`
 2. Run a query:
    `bash skills/mssql/scripts/mssql_query.sh --query "SELECT TOP 20 name FROM sys.tables"`
-3. Save to CSV:
-   `bash skills/mssql/scripts/mssql_query.sh --query "SELECT TOP 100 * FROM dbo.MyTable" --out /tmp/mytable.csv`
+3. Save to file:
+   `bash skills/mssql/scripts/mssql_query.sh --query "SELECT TOP 100 * FROM dbo.MyTable" --out /tmp/mytable.dsv`
 
 ## Credentials format
 
@@ -26,7 +26,7 @@ Expected env vars in `~/.openclaw/credentials/mssql.env`:
 - `MSSQL_DB`
 - `MSSQL_USER`
 - `MSSQL_PASSWORD`
-- Optional: `MSSQL_PORT` (default `1433`), `MSSQL_ENCRYPT` (`yes`/`no`), `MSSQL_TRUST_CERT` (`yes`/`no`), `SQLCMD_BIN`
+- Optional: `MSSQL_PORT` (default `1433`), `MSSQL_ENCRYPT` (`yes`/`no`, default `yes`), `MSSQL_TRUST_CERT` (`yes`/`no`, default `no`), `SQLCMD_BIN`
 
 The credential file path can be overridden with the `MSSQL_ENV_FILE` environment variable.
 
@@ -43,11 +43,17 @@ See `references/DB_MAP.example.md` for the expected format.
 ## Useful patterns
 
 - Run long query from file:
-  `bash skills/mssql/scripts/mssql_query.sh --file /path/query.sql --out /tmp/out.csv`
+  `bash skills/mssql/scripts/mssql_query.sh --file /path/query.sql --out /tmp/out.dsv`
+- Override database:
+  `bash skills/mssql/scripts/mssql_query.sh --db OtherDB --query "SELECT TOP 10 * FROM dbo.Users"`
 - Change delimiter:
   `bash skills/mssql/scripts/mssql_query.sh --query "SELECT ..." --delim ","`
 - Increase timeout:
   `bash skills/mssql/scripts/mssql_query.sh --query "SELECT ..." --timeout 180`
+
+## Output format
+
+Output is **delimiter-separated text**, not RFC 4180 CSV. Fields are not quoted or escaped. This works well for structured numeric and short-text data. If your columns contain embedded delimiters, quotes, or newlines, the output may be malformed — choose a delimiter that does not appear in the data, or post-process the output.
 
 ## Best practices
 
@@ -60,4 +66,4 @@ See `references/DB_MAP.example.md` for the expected format.
 ## Troubleshooting
 
 - `sqlcmd not found` -> install sqlcmd v18+ or set `SQLCMD_BIN`.
-- TLS/certificate issues on internal networks -> keep `MSSQL_ENCRYPT=yes` and set `MSSQL_TRUST_CERT=yes` if needed.
+- TLS/certificate issues on internal networks -> set `MSSQL_TRUST_CERT=yes` in your credentials file. The default is `no` (certificate validation enabled).

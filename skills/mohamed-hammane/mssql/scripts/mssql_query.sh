@@ -14,6 +14,7 @@ OUTFILE=""
 QUERY=""
 QUERY_FILE=""
 TIMEOUT="60"
+DB_OVERRIDE=""
 
 usage() {
   local code="${1:-1}"
@@ -24,10 +25,14 @@ Usage:
 Options:
   --query "..."     SQL query text
   --file path.sql   Read SQL query from file
-  --out file.csv    Write output to CSV file (stdout if omitted)
-  --delim ";"       CSV delimiter (default: ;)
+  --out file.dsv    Write output to file (stdout if omitted)
+  --db name         Override database (default: MSSQL_DB from credentials)
+  --delim ";"       Column delimiter (default: ;)
   --timeout 60      Query timeout in seconds (default: 60)
   -h, --help        Show this help
+
+Note: Output is delimiter-separated text, not RFC 4180 CSV.
+      Fields are not quoted or escaped.
 EOF
   exit "$code"
 }
@@ -37,6 +42,7 @@ while [[ $# -gt 0 ]]; do
     --query) QUERY="${2:-}"; shift 2;;
     --file) QUERY_FILE="${2:-}"; shift 2;;
     --out) OUTFILE="${2:-}"; shift 2;;
+    --db) DB_OVERRIDE="${2:-}"; shift 2;;
     --delim) DELIM="${2:-}"; shift 2;;
     --timeout) TIMEOUT="${2:-}"; shift 2;;
     -h|--help) usage 0;;
@@ -74,21 +80,24 @@ if [[ -z "$SQLCMD_BIN" ]]; then
   fi
 fi
 
+TARGET_DB="${DB_OVERRIDE:-$MSSQL_DB}"
 SERVER="${MSSQL_HOST},${MSSQL_PORT:-1433}"
 
 ENC_FLAGS=()
 if [[ "${MSSQL_ENCRYPT:-yes}" == "yes" ]]; then
   ENC_FLAGS+=("-N")
 fi
-if [[ "${MSSQL_TRUST_CERT:-yes}" == "yes" ]]; then
+if [[ "${MSSQL_TRUST_CERT:-no}" == "yes" ]]; then
   ENC_FLAGS+=("-C")
 fi
 
+# Pass password via env var to avoid exposing it in the process list
+export SQLCMDPASSWORD="$MSSQL_PASSWORD"
+
 CMD=("$SQLCMD_BIN"
   -S "$SERVER"
-  -d "$MSSQL_DB"
+  -d "$TARGET_DB"
   -U "$MSSQL_USER"
-  -P "$MSSQL_PASSWORD"
   -b
   -W
   -w 65535
@@ -99,11 +108,16 @@ CMD=("$SQLCMD_BIN"
 )
 
 run_sqlcmd_clean() {
-  "${CMD[@]}" | sed '2d'
+  # sqlcmd prints a dashes separator on line 2 (right after the header).
+  # Remove it only at that position to avoid deleting real data rows.
+  "${CMD[@]}" | sed '2{/^[-][- ]*$/d}'
 }
 
 if [[ -n "$OUTFILE" ]]; then
-  mkdir -p "$(dirname "$OUTFILE")"
+  OUTDIR="$(dirname "$OUTFILE")"
+  if [[ -n "$OUTDIR" ]]; then
+    mkdir -p "$OUTDIR"
+  fi
   run_sqlcmd_clean > "$OUTFILE"
   echo "$OUTFILE"
 else
