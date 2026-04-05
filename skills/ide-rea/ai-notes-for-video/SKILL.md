@@ -1,12 +1,12 @@
 ---
-name: ai-notes-for-video
+name: Baidu Netdisk AIVideoNotes
 description: Generate AI-powered notes from videos (document, outline, or graphic-text formats)
 metadata: { "openclaw": { "emoji": "📺", "requires": { "bins": ["python3"], "env":["BAIDU_API_KEY"]},"primaryEnv":"BAIDU_API_KEY" } }
 ---
 
 # AI Video Notes
 
-Generate structured notes from video URLs using Baidu AI. Supports three note formats.
+Generate structured notes from video URLs using Baidu Netdisk AI. Supports three note formats.
 
 ## Workflow
 

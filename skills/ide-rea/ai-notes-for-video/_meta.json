@@ -1,11 +1,17 @@
 {
   "owner": "ide-rea",
   "slug": "ai-notes-for-video",
-  "displayName": "AI Notes for Video",
+  "displayName": "Baidu Netdisk AIVideoNotes",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773917838233,
-    "commit": "https://github.com/openclaw/skills/commit/e5f58256b4bc43cde4d80701ddf3734f5c5acbf6"
+    "version": "1.0.1",
+    "publishedAt": 1775033098724,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773917838233,
+      "commit": "https://github.com/openclaw/skills/commit/e5f58256b4bc43cde4d80701ddf3734f5c5acbf6"
+    }
+  ]
 }
