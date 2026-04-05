@@ -63,7 +63,7 @@ GATEWAY_URL  = "ws://localhost:18789"
 CLIENT_ID    = "cli"
 CLIENT_MODE  = "cli"
 ROLE         = "operator"
-SCOPES       = ["operator.admin", "operator.approvals", "operator.pairing"]
+SCOPES       = ["operator.admin", "operator.approvals", "operator.pairing", "operator.read", "operator.write"]
 
 
 # ---------------------------------------------------------------------------
@@ -258,11 +258,12 @@ class GatewayClient:
         headers = {
             "Authorization":           f"Bearer {gateway_token}",
             "x-openclaw-session-key":  f"agent:main:{session_key}",
+            "x-openclaw-scopes":       "operator.admin,operator.read,operator.write",
             "Content-Type":            "application/json",
             "Accept":                  "text/event-stream",
         }
         body = {
-            "model":    "auto",
+            "model":    "openclaw",
             "messages": [{"role": "user", "content": text}],
             "stream":   True,
         }

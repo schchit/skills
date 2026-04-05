@@ -1,6 +1,6 @@
 ---
 name: chatclaw
-version: 0.2.9
+version: 0.3.0
 description: Connect your OpenClaw bot to the ChatClaw cloud dashboard for real-time remote chat, token tracking, and task management
 author: ChatClaw Team
 homepage: https://chatclaw.com
@@ -39,11 +39,11 @@ ChatClaw Dashboard (browser / mobile)
 
 ## Requirements
 
-- OpenClaw v2026.1.0 or later
-- Python 3.10 or later
-- `python3` available on PATH
-- Packages: `websockets>=12.0`, `cryptography>=41.0`, `aiohttp>=3.9`
-- A ChatClaw API key from [app.chatclaw.com](https://app.chatclaw.com)
+- **OpenClaw:** v2026.3.28 or later
+- **Python:** 3.8+
+- **Dependencies:** websockets, cryptography, aiohttp
+
+> **Important:** ChatClaw v0.3.0+ requires OpenClaw v2026.3.28 or later due to authentication changes. If you're using an older OpenClaw version, please upgrade OpenClaw or use ChatClaw v0.2.9 (legacy).
 
 ## Installation
 
@@ -158,6 +158,19 @@ This skill makes the following outbound network connections:
 - `http://localhost:18789/v1/chat/completions` — OpenClaw gateway HTTP (SSE streaming chat)
 
 No inbound ports are opened. No user data is stored by the skill itself — messages are persisted by the ChatClaw backend (Supabase) for chat history.
+
+## Changelog
+
+### v0.3.0 (2026-03-30)
+- **Breaking:** Now requires OpenClaw v2026.3.28+
+- Fixed authentication for OpenClaw v2026.3.28 (added required scope headers)
+- Fixed model field validation (changed from "auto" to "openclaw")
+- Added cross-platform path resolution (Docker/VPS/macOS)
+- Improved error messages for troubleshooting
+- Added support for approval workflows (operator.approvals scope)
+
+### v0.2.9 (2026-03-12)
+- Initial ClawHub release
 
 ## License
 

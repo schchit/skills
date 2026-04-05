@@ -3,11 +3,16 @@
   "slug": "chatclaw",
   "displayName": "ChatClaw — Dashboard",
   "latest": {
-    "version": "0.2.9",
-    "publishedAt": 1774382569262,
-    "commit": "https://github.com/openclaw/skills/commit/b3390b67593c84f7a60f957b737205652cbb9e1b"
+    "version": "0.3.0",
+    "publishedAt": 1774989726646,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.2.9",
+      "publishedAt": 1774382569262,
+      "commit": "https://github.com/openclaw/skills/commit/b3390b67593c84f7a60f957b737205652cbb9e1b"
+    },
     {
       "version": "0.2.0",
       "publishedAt": 1773838289569,
