@@ -21,7 +21,7 @@ class ApiService(ApiServiceBase):
     def analysis(self, scene_code=ConstantEnum.DEFAULT__SCENE_CODE, *args, **argss):
         params = argss.setdefault("params", {})
         options = {
-            "data_as_params": True
+            "dataAsParams": True
         }
         # 添加分析类型参数
         if ConstantEnum.DEFAULT__ANALYSIS_TYPE:
@@ -49,4 +49,4 @@ class ApiService(ApiServiceBase):
         data = {
             "cameraSn": cameraSn
         }
-        return super().delete(ApiEnum.DELETE_URL, data, options={"data_as_params": True})
+        return super().delete(ApiEnum.DELETE_URL, data, options={"dataAsParams": True})
