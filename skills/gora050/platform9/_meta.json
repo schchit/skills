@@ -3,9 +3,15 @@
   "slug": "platform9",
   "displayName": "Platform9",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774260267304,
-    "commit": "https://github.com/openclaw/skills/commit/4eff0ba6208212fa992af40a225386bac4a04bc1"
+    "version": "1.0.2",
+    "publishedAt": 1775166632770,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774260267304,
+      "commit": "https://github.com/openclaw/skills/commit/4eff0ba6208212fa992af40a225386bac4a04bc1"
+    }
+  ]
 }
