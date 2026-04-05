@@ -1,11 +1,17 @@
 {
   "owner": "zxfei420",
   "slug": "yi-shang-ai-ethics-safety",
-  "displayName": "Yi Shang AI Ethics Safety",
+  "displayName": "AI 树德：义商本体伦理安全系统",
   "latest": {
-    "version": "1.0.6",
-    "publishedAt": 1773488899550,
-    "commit": "https://github.com/openclaw/skills/commit/40b74839bf1d3381803cccdba29d1079a503a6e3"
+    "version": "1.2.2",
+    "publishedAt": 1774882666260,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.6",
+      "publishedAt": 1773488899550,
+      "commit": "https://github.com/openclaw/skills/commit/40b74839bf1d3381803cccdba29d1079a503a6e3"
+    }
+  ]
 }
