@@ -3,7 +3,11 @@
 
 set -e
 
+# 版本号定义
+SKILL_VERSION="v1.0.5"
+
 echo "🚀 设置腾讯会议 MCP Skill..."
+echo "📦 当前版本: $SKILL_VERSION"
 echo ""
 
 # 检查 mcporter
@@ -33,21 +37,46 @@ echo "🔧 配置 mcporter..."
 # 从环境变量中读取用户填写的 Token
 mcporter config add tencent-meeting-mcp https://mcp.meeting.tencent.com/mcp/wemeet-open/v1 \
     --header "X-Tencent-Meeting-Token=$TENCENT_MEETING_TOKEN" \
-    --header "X-Skill-Version=v1.0.0" \
+    --header "X-Skill-Version=$SKILL_VERSION" \
+    --transport http \
     --scope project
 
-echo "✅ 配置完成！"
+# 检查 mcporter config add 命令的返回值
+if [ $? -ne 0 ]; then
+    echo "❌ mcporter 配置添加失败！"
+    echo "可能的原因："
+    echo "  - 网络连接问题"
+    echo "  - mcporter 版本不兼容"
+    echo "  - 传入的配置参数有误"
+    echo ""
+    echo "请检查上述问题后重试。"
+    exit 1 # 退出脚本
+else
+    echo "✅ 配置完成！"
+fi
+echo ""
 
 # 验证配置
 echo "🧪 验证配置..."
-if mcporter list 2>&1 | grep -q "tencent-meeting-mcp"; then
+LIST_OUTPUT=$(mcporter list 2>&1)
+
+# 检查条件：必须包含"tencent-meeting-mcp"，并且不能包含"auth required"
+if echo "$LIST_OUTPUT" | grep -q "tencent-meeting-mcp" && ! echo "$LIST_OUTPUT" | grep -q "0 healthy"; then
     echo "✅ 配置验证成功！"
     echo ""
-    mcporter list | grep -A 1 "tencent-meeting-mcp" || true
+    echo "$LIST_OUTPUT" | grep -A 1 "tencent-meeting-mcp" || true
 else
-    echo "⚠️  配置验证失败，请检查网络或 Token 是否有效"
+    echo "⚠️  配置验证失败！"
+    echo "$LIST_OUTPUT"
+    echo "请检查以下可能的原因："
+    echo "  1. 网络无法访问 MCP 服务 URL"
+    echo "  2. Token 无效或已过期"
+    echo "  3. mcporter 安装不完整"
     echo ""
-    echo "如有问题，请访问  获取 Token"
+    echo "调试命令："
+    echo "  mcporter list | grep tencent-meeting-mcp"
+    echo "预期展示：tencent-meeting-mcp (xx tools, 0.3s)"
+    exit 1
 fi
 
 echo ""

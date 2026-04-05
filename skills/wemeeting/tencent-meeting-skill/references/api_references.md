@@ -202,7 +202,7 @@ mcporter call tencent-meeting-mcp get_meeting --args '{"meeting_id": "xxx"}'
 | `meeting_info_list[].has_vote` | bool | 是否有投票 |
 | `meeting_info_list[].sync_to_wework` | bool | 是否同步到企业微信 |
 | `meeting_info_list[].meeting_type` | int64 | 会议类型（0:一次性 1:周期性 2:微信专属 等） |
-| `meeting_info_list[].type` | int64 | 会议类型（0:预约 1:快速） |
+| `meeting_info_list[].type` | int64 | 会议模式（0:预约 1:快速） |
 | `meeting_info_list[].location` | string | 会议地点 |
 | `meeting_info_list[].time_zone` | string | 时区 |
 | `meeting_info_list[].media_set_type` | int64 | 0:公网会议 1:专网会议（混合云企业返回） |
@@ -287,89 +287,89 @@ mcporter call tencent-meeting-mcp get_meeting_by_code --args '{"meeting_code": "
 
 **返回值**：
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `meeting_number` | int64 | 会议数量 |
-| `remaining` | int64 | 是否还剩下会议（非0表示需继续查询） |
-| `next_pos` | int64 | 下次查询的 pos 参数 |
-| `next_cursory` | int64 | 下次查询的 cursory 参数 |
-| `meeting_info_list` | array | 会议列表 |
-| `meeting_info_list[].meeting_id` | string | 会议唯一 ID |
-| `meeting_info_list[].meeting_code` | string | 会议号码 |
-| `meeting_info_list[].subject` | string | 会议主题 |
-| `meeting_info_list[].start_time` | string | 开始时间 |
-| `meeting_info_list[].end_time` | string | 结束时间 |
+| 字段 | 类型 | 说明                                                                                                                                     |
+|------|------|----------------------------------------------------------------------------------------------------------------------------------------|
+| `meeting_number` | int64 | 会议数量                                                                                                                                   |
+| `remaining` | int64 | 是否还剩下会议（非0表示需继续查询）                                                                                                                     |
+| `next_pos` | int64 | 下次查询的 pos 参数                                                                                                                           |
+| `next_cursory` | int64 | 下次查询的 cursory 参数                                                                                                                       |
+| `meeting_info_list` | array | 会议列表                                                                                                                                   |
+| `meeting_info_list[].meeting_id` | string | 会议唯一 ID                                                                                                                                |
+| `meeting_info_list[].meeting_code` | string | 会议号码                                                                                                                                   |
+| `meeting_info_list[].subject` | string | 会议主题                                                                                                                                   |
+| `meeting_info_list[].start_time` | string | 开始时间                                                                                                                                   |
+| `meeting_info_list[].end_time` | string | 结束时间                                                                                                                                   |
 | `meeting_info_list[].status` | string | 会议状态（MEETING_STATE_INIT/MEETING_STATE_STARTED/MEETING_STATE_ENDED/MEETING_STATE_CANCELLED/MEETING_STATE_NULL/MEETING_STATE_RECYCLED 等） |
-| `meeting_info_list[].join_url` | string | 加入会议 URL |
-| `meeting_info_list[].password` | string | 会议密码 |
-| `meeting_info_list[].need_password` | bool | 是否需要密码 |
-| `meeting_info_list[].meeting_type` | int64 | 会议类型（0:一次性 1:周期性 2:微信专属 5:个人会议号 6:网络研讨会） |
-| `meeting_info_list[].type` | int64 | 0:预约 1:快速 |
-| `meeting_info_list[].location` | string | 会议地点 |
-| `meeting_info_list[].time_zone` | string | 时区 |
-| `meeting_info_list[].media_set_type` | int64 | 0:公网会议 1:专网会议（混合云企业返回） |
-| `meeting_info_list[].current_sub_meeting_id` | string | 当前子会议 ID（进行中/即将开始） |
-| `meeting_info_list[].remain_sub_meetings` | int64 | 剩余子会议场数 |
-| `meeting_info_list[].has_more_sub_meeting` | int64 | 0:无更多 1:有更多子会议特例 |
-| `meeting_info_list[].enable_live` | bool | 是否开启直播 |
-| `meeting_info_list[].enable_host_key` | bool | 是否开启主持人密钥 |
-| `meeting_info_list[].enable_enroll` | bool | 是否开启报名 |
-| `meeting_info_list[].enable_doc_upload_permission` | bool | 是否允许成员上传文档 |
-| `meeting_info_list[].has_vote` | bool | 是否有投票 |
-| `meeting_info_list[].sync_to_wework` | bool | 是否同步到企业微信 |
-| `meeting_info_list[].host_key` | string | 主持人密钥 |
-| `meeting_info_list[].join_meeting_role` | string | 查询者角色（creator/hoster/invitee） |
-| `meeting_info_list[].hosts` | array | 主持人列表 |
-| `meeting_info_list[].hosts[].userid` | string | 主持人用户 ID |
-| `meeting_info_list[].current_hosts` | array | 当前主持人列表 |
-| `meeting_info_list[].current_hosts[].userid` | string | 当前主持人用户 ID |
-| `meeting_info_list[].current_co_hosts` | array | 当前联席主持人列表 |
-| `meeting_info_list[].current_co_hosts[].userid` | string | 联席主持人用户 ID |
-| `meeting_info_list[].participants` | array | 受邀参会人列表 |
-| `meeting_info_list[].participants[].userid` | string | 受邀参会人用户 ID |
-| `meeting_info_list[].guests` | array | 外部嘉宾列表 |
-| `meeting_info_list[].guests[].guest_name` | string | 嘉宾名称 |
-| `meeting_info_list[].guests[].area` | string | 区域码 |
-| `meeting_info_list[].guests[].phone_number` | string | 手机号 |
-| `meeting_info_list[].sub_meetings` | array | 周期性子会议列表 |
-| `meeting_info_list[].sub_meetings[].sub_meeting_id` | string | 子会议 ID |
-| `meeting_info_list[].sub_meetings[].start_time` | string | 子会议开始时间 |
-| `meeting_info_list[].sub_meetings[].end_time` | string | 子会议结束时间 |
-| `meeting_info_list[].sub_meetings[].status` | int64 | 子会议状态（0:存在 1:已删除） |
-| `meeting_info_list[].recurring_rule` | object | 周期性会议规则 （含子字段，见下方各行） |
-| `meeting_info_list[].recurring_rule.recurring_type` | int64 | 频率（0:每天 1:周一至周五 2:每周 3:每两周 4:每月） |
-| `meeting_info_list[].recurring_rule.until_type` | int64 | 结束类型（0:按日期 1:按次数） |
-| `meeting_info_list[].recurring_rule.until_count` | int64 | 限定次数（1-50） |
-| `meeting_info_list[].recurring_rule.until_date` | int64 | 结束日期时间戳 |
-| `meeting_info_list[].recurring_rule.customized_recurring_type` | int64 | 自定义周期类型 |
-| `meeting_info_list[].recurring_rule.customized_recurring_step` | int64 | 自定义周期步长 |
-| `meeting_info_list[].recurring_rule.customized_recurring_days` | int64 | 自定义周期天数 |
-| `meeting_info_list[].settings` | object | 会议设置 （含子字段，见下方各行） |
-| `meeting_info_list[].settings.allow_in_before_host` | bool | 允许成员在主持人进会前加入 |
-| `meeting_info_list[].settings.allow_multi_device` | bool | 允许多端入会 |
-| `meeting_info_list[].settings.allow_screen_shared_watermark` | bool | 屏幕共享水印 |
-| `meeting_info_list[].settings.allow_unmute_self` | bool | 静音自解除 |
-| `meeting_info_list[].settings.auto_asr` | bool | 自动转写 |
-| `meeting_info_list[].settings.auto_in_waiting_room` | bool | 开启等候室 |
-| `meeting_info_list[].settings.auto_record_type` | string | 自动录制类型（none:禁用 local:本地录制 cloud:云录制） |
-| `meeting_info_list[].settings.change_nickname` | int64 | 是否允许用户改名（1:允许 2:不允许） |
-| `meeting_info_list[].settings.enable_host_pause_auto_record` | bool | 允许主持人暂停/停止云录制 |
-| `meeting_info_list[].settings.mute_enable_join` | bool | 加入静音 |
-| `meeting_info_list[].settings.mute_enable_type_join` | int64 | 加入静音类型 |
-| `meeting_info_list[].settings.only_allow_enterprise_user_join` | bool | 仅企业内部成员可入会 |
-| `meeting_info_list[].settings.only_user_join_type` | int64 | 成员入会限制（1:所有成员 2:仅受邀成员 3:仅企业内部成员） |
-| `meeting_info_list[].settings.participant_join_auto_record` | bool | 成员入会自动录制 |
-| `meeting_info_list[].settings.water_mark_type` | int64 | 水印类型 |
-| `meeting_info_list[].live_config` | object | 直播配置 （含子字段，见下方各行） |
-| `meeting_info_list[].live_config.enable_live_im` | bool | 开启直播互动 |
-| `meeting_info_list[].live_config.enable_live_password` | bool | 是否开启直播密码 |
-| `meeting_info_list[].live_config.enable_live_replay` | bool | 开启直播回放 |
-| `meeting_info_list[].live_config.live_addr` | string | 直播观看地址 |
-| `meeting_info_list[].live_config.live_password` | string | 直播密码 |
-| `meeting_info_list[].live_config.live_subject` | string | 直播主题 |
-| `meeting_info_list[].live_config.live_summary` | string | 直播简介 |
-| `meeting_info_list[].live_config.live_watermark` | object | 直播水印对象 （含子字段，见下方各行） |
-| `meeting_info_list[].live_config.live_watermark.watermark_opt` | int64 | 水印选项（0:默认水印 1:无水印） |
+| `meeting_info_list[].join_url` | string | 加入会议 URL                                                                                                                               |
+| `meeting_info_list[].password` | string | 会议密码                                                                                                                                   |
+| `meeting_info_list[].need_password` | bool | 是否需要密码                                                                                                                                 |
+| `meeting_info_list[].meeting_type` | int64 | 会议类型（0:一次性 1:周期性 2:微信专属 5:个人会议号 6:网络研讨会）                                                                                               |
+| `meeting_info_list[].type` | int64 | 会议模式 0:预约 1:快速                                                                                                                         |
+| `meeting_info_list[].location` | string | 会议地点                                                                                                                                   |
+| `meeting_info_list[].time_zone` | string | 时区                                                                                                                                     |
+| `meeting_info_list[].media_set_type` | int64 | 0:公网会议 1:专网会议（混合云企业返回）                                                                                                                 |
+| `meeting_info_list[].current_sub_meeting_id` | string | 当前子会议 ID（进行中/即将开始）                                                                                                                     |
+| `meeting_info_list[].remain_sub_meetings` | int64 | 剩余子会议场数                                                                                                                                |
+| `meeting_info_list[].has_more_sub_meeting` | int64 | 0:无更多 1:有更多子会议特例                                                                                                                       |
+| `meeting_info_list[].enable_live` | bool | 是否开启直播                                                                                                                                 |
+| `meeting_info_list[].enable_host_key` | bool | 是否开启主持人密钥                                                                                                                              |
+| `meeting_info_list[].enable_enroll` | bool | 是否开启报名                                                                                                                                 |
+| `meeting_info_list[].enable_doc_upload_permission` | bool | 是否允许成员上传文档                                                                                                                             |
+| `meeting_info_list[].has_vote` | bool | 是否有投票                                                                                                                                  |
+| `meeting_info_list[].sync_to_wework` | bool | 是否同步到企业微信                                                                                                                              |
+| `meeting_info_list[].host_key` | string | 主持人密钥                                                                                                                                  |
+| `meeting_info_list[].join_meeting_role` | string | 查询者角色（creator/hoster/invitee）                                                                                                          |
+| `meeting_info_list[].hosts` | array | 主持人列表                                                                                                                                  |
+| `meeting_info_list[].hosts[].userid` | string | 主持人用户 ID                                                                                                                               |
+| `meeting_info_list[].current_hosts` | array | 当前主持人列表                                                                                                                                |
+| `meeting_info_list[].current_hosts[].userid` | string | 当前主持人用户 ID                                                                                                                             |
+| `meeting_info_list[].current_co_hosts` | array | 当前联席主持人列表                                                                                                                              |
+| `meeting_info_list[].current_co_hosts[].userid` | string | 联席主持人用户 ID                                                                                                                             |
+| `meeting_info_list[].participants` | array | 受邀参会人列表                                                                                                                                |
+| `meeting_info_list[].participants[].userid` | string | 受邀参会人用户 ID                                                                                                                             |
+| `meeting_info_list[].guests` | array | 外部嘉宾列表                                                                                                                                 |
+| `meeting_info_list[].guests[].guest_name` | string | 嘉宾名称                                                                                                                                   |
+| `meeting_info_list[].guests[].area` | string | 区域码                                                                                                                                    |
+| `meeting_info_list[].guests[].phone_number` | string | 手机号                                                                                                                                    |
+| `meeting_info_list[].sub_meetings` | array | 周期性子会议列表                                                                                                                               |
+| `meeting_info_list[].sub_meetings[].sub_meeting_id` | string | 子会议 ID                                                                                                                                 |
+| `meeting_info_list[].sub_meetings[].start_time` | string | 子会议开始时间                                                                                                                                |
+| `meeting_info_list[].sub_meetings[].end_time` | string | 子会议结束时间                                                                                                                                |
+| `meeting_info_list[].sub_meetings[].status` | int64 | 子会议状态（0:存在 1:已删除）                                                                                                                      |
+| `meeting_info_list[].recurring_rule` | object | 周期性会议规则 （含子字段，见下方各行）                                                                                                                   |
+| `meeting_info_list[].recurring_rule.recurring_type` | int64 | 频率（0:每天 1:周一至周五 2:每周 3:每两周 4:每月）                                                                                                       |
+| `meeting_info_list[].recurring_rule.until_type` | int64 | 结束类型（0:按日期 1:按次数）                                                                                                                      |
+| `meeting_info_list[].recurring_rule.until_count` | int64 | 限定次数（1-50）                                                                                                                             |
+| `meeting_info_list[].recurring_rule.until_date` | int64 | 结束日期时间戳                                                                                                                                |
+| `meeting_info_list[].recurring_rule.customized_recurring_type` | int64 | 自定义周期类型                                                                                                                                |
+| `meeting_info_list[].recurring_rule.customized_recurring_step` | int64 | 自定义周期步长                                                                                                                                |
+| `meeting_info_list[].recurring_rule.customized_recurring_days` | int64 | 自定义周期天数                                                                                                                                |
+| `meeting_info_list[].settings` | object | 会议设置 （含子字段，见下方各行）                                                                                                                      |
+| `meeting_info_list[].settings.allow_in_before_host` | bool | 允许成员在主持人进会前加入                                                                                                                          |
+| `meeting_info_list[].settings.allow_multi_device` | bool | 允许多端入会                                                                                                                                 |
+| `meeting_info_list[].settings.allow_screen_shared_watermark` | bool | 屏幕共享水印                                                                                                                                 |
+| `meeting_info_list[].settings.allow_unmute_self` | bool | 静音自解除                                                                                                                                  |
+| `meeting_info_list[].settings.auto_asr` | bool | 自动转写                                                                                                                                   |
+| `meeting_info_list[].settings.auto_in_waiting_room` | bool | 开启等候室                                                                                                                                  |
+| `meeting_info_list[].settings.auto_record_type` | string | 自动录制类型（none:禁用 local:本地录制 cloud:云录制）                                                                                                   |
+| `meeting_info_list[].settings.change_nickname` | int64 | 是否允许用户改名（1:允许 2:不允许）                                                                                                                   |
+| `meeting_info_list[].settings.enable_host_pause_auto_record` | bool | 允许主持人暂停/停止云录制                                                                                                                          |
+| `meeting_info_list[].settings.mute_enable_join` | bool | 加入静音                                                                                                                                   |
+| `meeting_info_list[].settings.mute_enable_type_join` | int64 | 加入静音类型                                                                                                                                 |
+| `meeting_info_list[].settings.only_allow_enterprise_user_join` | bool | 仅企业内部成员可入会                                                                                                                             |
+| `meeting_info_list[].settings.only_user_join_type` | int64 | 成员入会限制（1:所有成员 2:仅受邀成员 3:仅企业内部成员）                                                                                                       |
+| `meeting_info_list[].settings.participant_join_auto_record` | bool | 成员入会自动录制                                                                                                                               |
+| `meeting_info_list[].settings.water_mark_type` | int64 | 水印类型                                                                                                                                   |
+| `meeting_info_list[].live_config` | object | 直播配置 （含子字段，见下方各行）                                                                                                                      |
+| `meeting_info_list[].live_config.enable_live_im` | bool | 开启直播互动                                                                                                                                 |
+| `meeting_info_list[].live_config.enable_live_password` | bool | 是否开启直播密码                                                                                                                               |
+| `meeting_info_list[].live_config.enable_live_replay` | bool | 开启直播回放                                                                                                                                 |
+| `meeting_info_list[].live_config.live_addr` | string | 直播观看地址                                                                                                                                 |
+| `meeting_info_list[].live_config.live_password` | string | 直播密码                                                                                                                                   |
+| `meeting_info_list[].live_config.live_subject` | string | 直播主题                                                                                                                                   |
+| `meeting_info_list[].live_config.live_summary` | string | 直播简介                                                                                                                                   |
+| `meeting_info_list[].live_config.live_watermark` | object | 直播水印对象 （含子字段，见下方各行）                                                                                                                    |
+| `meeting_info_list[].live_config.live_watermark.watermark_opt` | int64 | 水印选项（0:默认水印 1:无水印）                                                                                                                     |
 
 ---
 
@@ -496,7 +496,7 @@ mcporter call tencent-meeting-mcp get_waiting_room --args '{"meeting_id": "xxx"}
 | 参数 | 类型 | 必填 | 说明                                        |
 |------|------|------|-------------------------------------------|
 | `pos` | number | ❌ | 查询起始位置，默认为0。分页获取用户会议列表的查询起始时间值，unix 秒级时间戳 |
-| `cursory` | number | ❌ | 分页游标，默认为20                                |
+| `cursory` | number | ❌ | 分页游标，默认为100                                |
 | `is_show_all_sub_meetings` | number | ❌ | 是否展示全部子会议，0-不展示，1-展示，默认为0                 |
 
 **调用示例**：
@@ -736,39 +736,25 @@ mcporter call tencent-meeting-mcp get_smart_minutes --args '{"record_file_id": "
 
 ---
 
-### 16. `export_asr_details` — 导出会议实时转写记录
+**返回值**：
 
-**功能**：导出指定条件下的会议实时转写记录，支持按会议ID、时间范围筛选，可配置双语展示和分页查询。
-
-**参数**：
-
-| 参数 | 类型 | 必填 | 默认值 | 取值范围/说明 |
-|------|------|------|--------|--------------|
-| `meeting_id` | string | ❌ | - | 会议ID，用于筛选指定会议的转写记录 |
-| `start_time` | string | ❌ | - | 查询开始时间，秒级时间戳 |
-| `end_time` | string | ❌ | - | 查询结束时间，秒级时间戳 |
-| `show_bilingual` | number | ❌ | 0 | 0：不展示双语转写；1：展示双语转写 |
-| `page` | number | ❌ | 1 | 页码，从1开始，用于分页查询转写记录 |
-
-**调用示例**：
-```bash
-mcporter call tencent-meeting-mcp export_asr_details --args '{"meeting_id": "123456789", "start_time": "1773280800", "end_time": "1773284400"}'
-```
+返回智能纪要的访问地址信息。
 
 ---
 
-### 17. `get_records_list` — 查询录制列表
+### 16. `get_records_list` — 查询录制列表
 
 **功能**：根据时间范围和会议ID查询用户的录制列表。
 
 **参数**：
 
-| 参数 | 类型 | 必填 | 默认值 | 取值范围/说明 |
-|------|------|------|--------|--------------|
-| `start_time` | string | ✅ | - | 查询开始时间，秒级时间戳 |
-| `end_time` | string | ✅ | - | 查询结束时间，秒级时间戳 |
-| `page_number` | number | ❌ | 1 | 页码，从1开始 |
-| `meeting_id` | string | ❌ | - | 会议ID，不为空时优先根据会议ID查询 |
+| 参数             | 类型 | 必填 | 默认值 | 取值范围/说明             |
+|----------------|------|------|--------|---------------------|
+| `start_time`   | string | ✅ | - | 查询开始时间，秒级时间戳        |
+| `end_time`     | string | ✅ | - | 查询结束时间，秒级时间戳        |
+| `page_number`  | number | ❌ | 1 | 页码，从1开始             |
+| `meeting_id`   | string | ❌ | - | 会议ID，不为空时优先根据会议ID查询 |
+| `meeting_code` | string | ❌ | - | 会议号，不为空时优先根据会议号查询   |
 
 **调用示例**：
 ```bash
