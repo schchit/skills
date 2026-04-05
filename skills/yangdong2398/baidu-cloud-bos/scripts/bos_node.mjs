@@ -95,6 +95,68 @@ function output(data) {
   console.log(JSON.stringify(data, null, 2));
 }
 
+// ========== 图片处理 ==========
+
+// 图片处理操作注册表：key 是 CLI flag 名，value 是验证+构建函数
+// 扩展新操作只需在此添加一个条目
+const IMAGE_OPS = {
+  bright: (value) => {
+    const b = parseInt(value, 10);
+    if (isNaN(b) || b < -100 || b > 100) {
+      throw new Error('--bright 参数范围：-100 到 100');
+    }
+    return `image/bright,b_${b}`;
+  },
+  contrast: (value) => {
+    const c = parseInt(value, 10);
+    if (isNaN(c) || c < -100 || c > 100) throw new Error('--contrast 参数范围：-100 到 100');
+    return `image/contrast,c_${c}`;
+  },
+
+  blur: (value) => {
+    // 接受 "r,s" 格式（如 "2,50"）或单个数字（r=s）
+    const parts = String(value).split(',');
+    const r = parseInt(parts[0], 10);
+    const s = parseInt(parts[1] ?? parts[0], 10);
+    if (isNaN(r) || r < 1 || r > 50) throw new Error('--blur r 参数范围：1 到 50');
+    if (isNaN(s) || s < 1 || s > 50) throw new Error('--blur s 参数范围：1 到 50');
+    return `image/blur,r_${r},s_${s}`;
+  },
+
+  rotate: (value) => {
+    const a = parseInt(value, 10);
+    if (isNaN(a) || a < -360 || a > 360) throw new Error('--rotate 参数范围：-360 到 360');
+    return `image/rotate,a_${a}`;
+  },
+
+  'auto-orient': (value) => {
+    const o = parseInt(value, 10);
+    if (o !== 0 && o !== 1) throw new Error('--auto-orient 参数取值：0 或 1');
+    return `image/auto-orient,o_${o}`;
+  },
+};
+
+/**
+ * 从 CLI opts 构建 x-bce-process 字符串。
+ * --process 直传优先；否则从便捷 flag 构建并链式合并。
+ * 返回 undefined 表示无图片处理。
+ */
+function buildProcessString(opts) {
+  if (opts.process) return opts.process;
+
+  const parts = [];
+  for (const [flag, builder] of Object.entries(IMAGE_OPS)) {
+    if (opts[flag] !== undefined) {
+      parts.push(builder(opts[flag]));
+    }
+  }
+
+  if (parts.length === 0) return undefined;
+
+  // 多操作链式合并：image/bright,b_-5 + image/resize,w_200 → image/bright,b_-5/resize,w_200
+  return parts[0] + parts.slice(1).map(p => '/' + p.replace(/^image\//, '')).join('');
+}
+
 // ========== 操作实现 ==========
 
 async function upload(opts) {
@@ -207,15 +269,15 @@ async function signUrl(opts) {
     throw new Error('缺少 --key 参数');
   }
 
-  const url = client.generatePresignedUrl(BUCKET, key, 0, expires);
+  const processStr = buildProcessString(opts);
+  const params = processStr ? { 'x-bce-process': processStr } : undefined;
 
-  output({
-    success: true,
-    action: 'sign-url',
-    key,
-    expires,
-    url,
-  });
+  const url = client.generatePresignedUrl(BUCKET, key, 0, expires, undefined, params);
+
+  const result = { success: true, action: 'sign-url', key, expires, url };
+  if (processStr) result.process = processStr;
+
+  output(result);
 }
 
 async function headObject(opts) {

@@ -2,12 +2,13 @@
 name: baidu-cloud-bos
 description: >
   百度智能云对象存储(BOS)集成技能。当用户需要上传、下载、管理百度云存储文件，
-  通过 Node.js SDK 脚本、Python SDK 脚本和 bcecmd 命令行工具管理。
+  或需要创建/删除 Bucket、设置 ACL 权限、管理生命周期规则、同步本地目录等操作时使用此技能。
+  BOS 没有 MCP 服务，通过 Node.js SDK 脚本和 bcecmd 命令行工具管理。
 ---
 
 # 百度智能云 BOS 技能
 
-通过 Node.js SDK 脚本 + Python SDK 脚本 + bcecmd 工具管理百度智能云对象存储（BOS）。
+通过 Node.js SDK 脚本 + bcecmd 工具管理百度智能云对象存储（BOS）。
 
 ## 首次使用 — 自动设置
 
@@ -52,7 +53,6 @@ description: >
 
 脚本会自动：
 - 检查并安装 `@baiducloud/sdk`（Node.js SDK）
-- 检查并安装 `bce-python-sdk`（Python SDK）
 - 检查 bcecmd 是否已安装
 - 将凭证持久化到 `~/.config/openclaw/baidu-cloud-bos/credentials.json`（权限 600）
 - 将凭证导出到当前 session 环境变量
@@ -63,25 +63,21 @@ description: >
 
 ## 执行策略
 
-三种方式按优先级降级，确保操作始终可完成：
+两种方式按优先级降级，确保操作始终可完成：
 
 1. **方式一：Node.js SDK 脚本**（优先） — 通过 `scripts/bos_node.mjs` 执行存储操作
-2. **方式二：Python SDK 脚本** — 通过 `scripts/bos_python.py` 执行存储操作
-3. **方式三：bcecmd 命令行** — 通过 shell 命令执行存储操作，支持目录同步
+2. **方式二：bcecmd 命令行** — 通过 shell 命令执行存储操作，支持目录同步
 
 ```
 Node.js + @baiducloud/sdk 可用？
-  ├─ 是 → 使用方式一（存储操作，JSON 输出，适合程序化处理）
-  └─ 否 → Python + bce-python-sdk 可用？
-              ├─ 是 → 使用方式二（存储操作，JSON 输出）
-              └─ 否 → bcecmd 可用？（which bcecmd）
-                        ├─ 是 → 使用方式三（存储操作 + 目录同步）
-                        └─ 否 → 运行 setup.sh 安装
+  ├─ 是 → 使用方式一（单文件操作，JSON 输出，适合程序化处理）
+  └─ 否 → bcecmd 可用？（which bcecmd）
+            ├─ 是 → 使用方式二（全功能，含目录同步）
+            └─ 否 → 运行 setup.sh 安装
 ```
 
 **判断方式一**：`node -e "require('@baiducloud/sdk')"` 成功则可用。
-**判断方式二**：`python3 -c "import baidubce"` 成功则可用。
-**判断方式三**：`which bcecmd` 有输出则可用。
+**判断方式二**：`which bcecmd` 有输出则可用。
 
 ---
 
@@ -115,6 +111,41 @@ list --prefix "images/" --max-keys 100
 # 获取签名 URL
 sign-url --key remote/path/file.jpg --expires 3600
 
+# 图片处理：亮度调整（-100 到 100）
+sign-url --key remote/path/image.jpg --bright -5
+
+# 图片处理：对比度调整（-100 到 100）
+sign-url --key remote/path/image.jpg --contrast -30
+
+# 图片处理：模糊（半径,标准差，各 1-50）
+sign-url --key remote/path/image.jpg --blur 2,50
+
+# 图片处理：旋转（-360 到 360，正数顺时针）
+sign-url --key remote/path/image.jpg --rotate 90
+
+# 图片处理：按 EXIF 自适应旋转
+sign-url --key remote/path/image.jpg --auto-orient 1
+
+# 图片处理：多操作链式（便捷 flag 可组合）
+sign-url --key remote/path/image.jpg --bright 10 --contrast 20
+
+# 图片处理：多参数操作用 --process 直传（缩放、裁剪、水印等）
+sign-url --key remote/path/image.jpg --process "image/resize,m_lfit,w_800"
+sign-url --key remote/path/image.jpg --process "image/crop,x_10,y_10,w_200,h_200"
+sign-url --key remote/path/image.jpg --process "image/circle,r_100"
+sign-url --key remote/path/image.jpg --process "image/rounded-corners,r_50"
+sign-url --key remote/path/image.jpg --process "image/quality,q_80"
+sign-url --key remote/path/image.jpg --process "image/watermark,text_aGVsbG8=,g_9"
+sign-url --key remote/path/image.jpg --process "image/bright,b_10/resize,m_lfit,w_800"
+
+# 获取图片详细信息（宽高、格式、色彩深度、透明通道等）
+# 注意：sign-url 只生成 URL，需配合 curl 获取结果
+sign-url --key remote/path/image.jpg --process "image/info"
+# curl -s "$(上述命令输出的 url)"
+
+# resize 模式：lfit=等比缩小至框内，mfit=等比放大至框外，fill=填充裁剪，pad=填充空白，fixed=强制宽高
+# 水印 text 参数需 URL-safe Base64 编码：标准 base64 后将 + → -，/ → _，去掉尾部 =
+
 # 查看文件信息（HEAD）
 head --key remote/path/file.jpg
 
@@ -132,66 +163,15 @@ list-buckets
 
 ### 限制
 
-仅支持单文件操作，**不支持**目录递归上传/下载/同步（请用方式三 bcecmd）。
+仅支持单文件操作，**不支持**目录递归上传/下载/同步（请用方式二 bcecmd）。图片处理为方式一独有功能。
 
 ---
 
-## 方式二：Python SDK 脚本
-
-> 官方文档: https://cloud.baidu.com/doc/BOS/s/Vjwvyrfs3
-
-当方式一不可用时，通过 `scripts/bos_python.py` 执行存储操作。凭证读取优先级：环境变量 > `~/.config/openclaw/baidu-cloud-bos/credentials.json`。
-
-支持的凭证来源（同方式一）：
-- **环境变量**（优先）：`BCE_ACCESS_KEY_ID` / `BCE_SECRET_ACCESS_KEY` / `BCE_BOS_ENDPOINT` / `BCE_BOS_BUCKET`（必需），`BCE_STS_TOKEN`（可选）
-- **配置文件**（回退）：`~/.config/openclaw/baidu-cloud-bos/credentials.json`
-
-### 常用命令
-
-> 以下省略 `python3 {baseDir}/scripts/bos_python.py` 前缀。
-
-```bash
-# 上传文件
-upload --file /path/to/file.jpg --key remote/path/file.jpg
-
-# 上传字符串内容
-put-string --content "文本内容" --key remote/file.txt --content-type "text/plain"
-
-# 下载文件
-download --key remote/path/file.jpg --output /path/to/save/file.jpg
-
-# 列出文件
-list --prefix "images/" --max-keys 100
-
-# 获取签名 URL
-sign-url --key remote/path/file.jpg --expires 3600
-
-# 查看文件信息
-head --key remote/path/file.jpg
-
-# 删除文件
-delete --key remote/path/file.jpg
-
-# 复制文件
-copy --source-bucket <bucket> --source-key <key> --key <dest-key>
-
-# 列出所有 Bucket
-list-buckets
-```
-
-所有命令输出 JSON 格式，与方式一保持一致。
-
-### 限制
-
-仅支持单文件操作，**不支持**目录递归上传/下载/同步（请用方式三 bcecmd）。
-
----
-
-## 方式三：bcecmd 命令行
+## 方式二：bcecmd 命令行
 
 > 官方文档: https://cloud.baidu.com/doc/BOS/s/kmcn3zrup
 
-当方式一和方式二均不可用时使用。bcecmd 是百度云官方命令行工具，支持目录同步等高级功能。
+当方式一不可用时使用。bcecmd 是百度云官方命令行工具，支持目录同步等高级功能。
 
 ### 首次配置
 
@@ -237,8 +217,9 @@ bcecmd bos sync bos:/<bucket>/remote/ /path/to/local/ --delete
 # 查看文件元信息
 bcecmd bos head bos:/<bucket>/remote/path/file.jpg
 
-# 获取签名 URL（默认 1800 秒，-e 后直接跟秒数无空格）
+# 获取签名 URL（默认 1800 秒，-e 后直接跟秒数无空格；-e-1 为永久有效）
 bcecmd bos gen_signed_url bos:/<bucket>/remote/path/file.jpg -e3600
+bcecmd bos gen_signed_url bos:/<bucket>/remote/path/file.jpg -e-1
 
 # 列出所有 Bucket
 bcecmd bos ls
@@ -248,6 +229,13 @@ bcecmd bos mb bos:/<bucket>
 
 # 删除 Bucket（必须为空）
 bcecmd bos rb bos:/<bucket>
+
+# 常用全局参数
+# --exclude <PATTERN>  排除匹配的文件（支持上传/下载/同步）
+# --include <PATTERN>  仅包含匹配的文件
+# --conf-path <PATH>   指定配置目录（默认 ~/.bcecmd）
+# 示例：同步时排除日志文件
+bcecmd bos sync /path/to/local/ bos:/<bucket>/remote/ --delete --exclude "*.log"
 ```
 
 ### 优势
@@ -261,20 +249,21 @@ bcecmd bos rb bos:/<bucket>
 
 ## 功能对照表
 
-| 功能 | 方式一 Node.js SDK | 方式二 Python SDK | 方式三 bcecmd |
-|------|:-:|:-:|:-:|
-| 上传文件 | ✅ | ✅ | ✅ |
-| 上传字符串/内容 | ✅ | ✅ | ❌ |
-| 下载文件 | ✅ | ✅ | ✅ |
-| 列出文件 | ✅ | ✅ | ✅ |
-| 获取签名 URL | ✅ | ✅ | ✅ |
-| 删除文件 | ✅ | ✅ | ✅ |
-| 查看文件信息 | ✅ | ✅ | ✅ |
-| 复制文件 | ✅ | ✅ | ✅（cp 命令） |
-| 递归上传/下载目录 | ❌ | ❌ | ✅ |
-| 目录同步（增量） | ❌ | ❌ | ✅ |
-| Bucket 管理 | ✅（list） | ✅（list） | ✅（创建/删除/列表） |
-| JSON 结构化输出 | ✅ | ✅ | ❌ |
+| 功能 | 方式一 Node.js SDK | 方式二 bcecmd |
+|------|:-:|:-:|
+| 上传文件 | ✅ | ✅ |
+| 上传字符串/内容 | ✅ | ❌ |
+| 下载文件 | ✅ | ✅ |
+| 列出文件 | ✅ | ✅ |
+| 获取签名 URL | ✅ | ✅ |
+| 图片处理（签名 URL） | ✅ | ❌ |
+| 删除文件 | ✅ | ✅ |
+| 查看文件信息 | ✅ | ✅ |
+| 复制文件 | ✅ | ✅（cp 命令） |
+| 递归上传/下载目录 | ❌ | ✅ |
+| 目录同步（增量） | ❌ | ✅ |
+| Bucket 管理 | ✅（list） | ✅（创建/删除/列表） |
+| JSON 结构化输出 | ✅ | ❌ |
 
 ## 使用规范
 
@@ -282,9 +271,8 @@ bcecmd bos rb bos:/<bucket>
 2. **凭证不明文展示**：引导用户自行通过 setup.sh 或编辑配置文件设置
 3. **所有文件路径**（`--key`/BOS 路径）为存储桶内的相对路径，如 `images/photo.jpg`
 4. **bcecmd 路径格式**：`bos:/<bucket>/path/to/file`，注意 `bos:/` 前缀
-5. **上传后主动获取链接**：上传完成后调用 `sign-url`（方式一/二）或 `gen_signed_url`（方式三）返回访问链接
+5. **上传后主动获取链接**：上传完成后调用 `sign-url`（方式一）或 `gen_signed_url`（方式二）返回访问链接
 6. **错误处理**：调用失败时先用 `setup.sh --check-only` 诊断环境问题
-7. **大批量操作优先用 bcecmd**：目录同步、批量上传等场景推荐方式三
+7. **大批量操作优先用 bcecmd**：目录同步、批量上传等场景推荐方式二
 8. **方式一脚本源码**见 `scripts/bos_node.mjs`
-9. **方式二脚本源码**见 `scripts/bos_python.py`
-10. **API 参考文档**见 `references/api_reference.md`
+9. **API 参考文档**见 `references/api_reference.md`

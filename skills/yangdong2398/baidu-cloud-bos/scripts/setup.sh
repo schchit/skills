@@ -42,44 +42,12 @@ check_npm() {
   fi
 }
 
-check_python() {
-  if command -v python3 &>/dev/null; then
-    ok "Python3 $(python3 --version 2>&1 | awk '{print $2}')"
-    return 0
-  else
-    fail "Python3 未安装"
-    return 1
-  fi
-}
-
-check_pip() {
-  if command -v pip3 &>/dev/null || command -v pip &>/dev/null; then
-    local pip_cmd
-    pip_cmd=$(command -v pip3 || command -v pip)
-    ok "pip $($pip_cmd --version 2>&1 | awk '{print $2}')"
-    return 0
-  else
-    fail "pip 未安装"
-    return 1
-  fi
-}
-
 check_bos_node_sdk() {
   if command -v node &>/dev/null && node -e "require('@baiducloud/sdk')" &>/dev/null 2>&1; then
     ok "@baiducloud/sdk (Node.js SDK) 已安装"
     return 0
   else
     fail "@baiducloud/sdk (Node.js SDK) 未安装"
-    return 1
-  fi
-}
-
-check_bos_python_sdk() {
-  if command -v python3 &>/dev/null && python3 -c "import baidubce" &>/dev/null 2>&1; then
-    ok "bce-python-sdk (Python SDK) 已安装"
-    return 0
-  else
-    fail "bce-python-sdk (Python SDK) 未安装"
     return 1
   fi
 }
@@ -115,16 +83,11 @@ do_check() {
   echo "--- 基础环境 ---"
   check_node || true
   check_npm || true
-  check_python || true
-  check_pip || true
   echo ""
   echo "--- 方式一: Node.js SDK ---"
   check_bos_node_sdk || true
   echo ""
-  echo "--- 方式二: Python SDK ---"
-  check_bos_python_sdk || true
-  echo ""
-  echo "--- 方式三: bcecmd ---"
+  echo "--- 方式二: bcecmd ---"
   check_bcecmd || true
   echo ""
   echo "--- 环境变量 ---"
@@ -133,7 +96,6 @@ do_check() {
   echo "--- Skill 文件 ---"
   [ -f "$BASE_DIR/SKILL.md" ] && ok "SKILL.md" || fail "SKILL.md 不存在"
   [ -f "$BASE_DIR/scripts/bos_node.mjs" ] && ok "scripts/bos_node.mjs" || fail "scripts/bos_node.mjs 不存在"
-  [ -f "$BASE_DIR/scripts/bos_python.py" ] && ok "scripts/bos_python.py" || fail "scripts/bos_python.py 不存在"
   [ -f "$BASE_DIR/references/api_reference.md" ] && ok "references/api_reference.md" || fail "references/api_reference.md 不存在"
   echo ""
 }
@@ -201,26 +163,9 @@ do_setup() {
     warn "Node.js 未安装，跳过 Node.js SDK"
   fi
 
-  # 2. 安装 Python SDK
+  # 2. 检查 bcecmd
   echo ""
-  echo "--- 步骤 2: 安装 Python SDK ---"
-  if check_python; then
-    local PIP_CMD
-    PIP_CMD=$(command -v pip3 2>/dev/null || command -v pip 2>/dev/null || echo "")
-    if [ -n "$PIP_CMD" ]; then
-      $PIP_CMD install bce-python-sdk -q 2>/dev/null && \
-        ok "bce-python-sdk 安装完成" || \
-        warn "bce-python-sdk 安装失败"
-    else
-      warn "pip 未安装，跳过 Python SDK"
-    fi
-  else
-    warn "Python3 未安装，跳过 Python SDK"
-  fi
-
-  # 3. 检查 bcecmd
-  echo ""
-  echo "--- 步骤 3: 检查 bcecmd ---"
+  echo "--- 步骤 2: 检查 bcecmd ---"
   if check_bcecmd; then
     ok "bcecmd 已就绪"
   else
@@ -228,9 +173,9 @@ do_setup() {
     echo "  https://cloud.baidu.com/doc/BOS/s/Ck1rymwdi"
   fi
 
-  # 4. 持久化凭证到 Skill 数据目录 + 导出环境变量
+  # 3. 持久化凭证到 Skill 数据目录 + 导出环境变量
   echo ""
-  echo "--- 步骤 4: 持久化凭证 ---"
+  echo "--- 步骤 3: 持久化凭证 ---"
 
   local CRED_DIR="$HOME/.config/openclaw/baidu-cloud-bos"
   local CRED_FILE="$CRED_DIR/credentials.json"
@@ -257,9 +202,9 @@ CREDEOF
   [ -n "$STS_TOKEN" ] && export BCE_STS_TOKEN="$STS_TOKEN"
   ok "凭证已导出到当前 session"
 
-  # 5. 配置 bcecmd（如果已安装）
+  # 4. 配置 bcecmd（如果已安装）
   echo ""
-  echo "--- 步骤 5: 配置 bcecmd ---"
+  echo "--- 步骤 4: 配置 bcecmd ---"
   if command -v bcecmd &>/dev/null; then
     local BCECMD_CONF="$HOME/.bcecmd"
     mkdir -p "$BCECMD_CONF"
@@ -274,9 +219,9 @@ CREDEOF
     warn "bcecmd 未安装，跳过配置"
   fi
 
-  # 6. 验证连接
+  # 5. 验证连接
   echo ""
-  echo "--- 步骤 6: 验证连接 ---"
+  echo "--- 步骤 5: 验证连接 ---"
 
   local verified=false
 
@@ -284,14 +229,6 @@ CREDEOF
   if command -v node &>/dev/null && node -e "require('@baiducloud/sdk')" &>/dev/null 2>&1; then
     if (cd "$BASE_DIR" && node scripts/bos_node.mjs list --max-keys 1 2>/dev/null | grep -q '"success": true'); then
       ok "BOS 连接验证成功（Node.js SDK）"
-      verified=true
-    fi
-  fi
-
-  # 备选：Python SDK 验证
-  if [ "$verified" = false ] && command -v python3 &>/dev/null && python3 -c "import baidubce" &>/dev/null 2>&1; then
-    if (cd "$BASE_DIR" && python3 scripts/bos_python.py list --max-keys 1 2>/dev/null | grep -q '"success": true'); then
-      ok "BOS 连接验证成功（Python SDK）"
       verified=true
     fi
   fi
@@ -304,8 +241,7 @@ CREDEOF
   echo "=== 设置完成 ==="
   echo "现在可以使用以下方式操作 BOS："
   echo "  方式一: node $BASE_DIR/scripts/bos_node.mjs <action>"
-  echo "  方式二: python3 $BASE_DIR/scripts/bos_python.py <action>"
-  echo "  方式三: bcecmd bos <command>"
+  echo "  方式二: bcecmd bos <command>"
 }
 
 # ========== 主入口 ==========
