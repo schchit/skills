@@ -25,6 +25,7 @@ class Paths:
     downloads_dir: Path
     images_dir: Path
     articles_dir: Path
+    reports_dir: Path
     qrcodes_dir: Path
     logs_dir: Path
 
@@ -50,6 +51,7 @@ def get_paths() -> Paths:
         downloads_dir=downloads_dir,
         images_dir=downloads_dir / "images",
         articles_dir=downloads_dir / "articles",
+        reports_dir=downloads_dir / "reports",
         qrcodes_dir=root / "qrcodes",
         logs_dir=root / "logs",
     )

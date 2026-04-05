@@ -116,13 +116,16 @@ def save_qrcode_session(
     status: int = 0,
     status_text: str = "等待扫码",
     expires_at: int | None = None,
+    notify_channel: str = "",
+    notify_target: str = "",
+    notify_account: str = "",
 ) -> dict[str, Any]:
     now = now_ts()
     db.execute(
         """
         INSERT OR REPLACE INTO login_qrcode_session
-        (sid, status, status_text, cookie_json, qr_path, created_at, expires_at, updated_at, completed_at)
-        VALUES (?, ?, ?, ?, ?, COALESCE((SELECT created_at FROM login_qrcode_session WHERE sid = ?), ?), ?, ?, (SELECT completed_at FROM login_qrcode_session WHERE sid = ?))
+        (sid, status, status_text, cookie_json, qr_path, notify_channel, notify_target, notify_account, created_at, expires_at, updated_at, completed_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, COALESCE((SELECT created_at FROM login_qrcode_session WHERE sid = ?), ?), ?, ?, (SELECT completed_at FROM login_qrcode_session WHERE sid = ?))
         """,
         (
             sid,
@@ -130,6 +133,9 @@ def save_qrcode_session(
             status_text,
             json.dumps(cookies, ensure_ascii=False),
             qr_path,
+            notify_channel or "",
+            notify_target or "",
+            notify_account or "",
             sid,
             now,
             expires_at,

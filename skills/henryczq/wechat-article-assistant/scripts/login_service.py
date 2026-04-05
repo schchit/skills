@@ -7,6 +7,8 @@ from __future__ import annotations
 import random
 import re
 import string
+import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -15,7 +17,7 @@ from config import get_paths
 from database import Database
 from log_utils import get_logger
 from mp_client import WechatLoginExpiredError, WechatMPClient, WechatRequestError
-from openclaw_messaging import OpenClawMessenger
+from openclaw_messaging import MessageTarget, OpenClawMessenger
 from session_store import (
     clear_login_session,
     get_login_session,
@@ -47,8 +49,70 @@ def _generate_sid() -> str:
     return f"skill_{now_ts()}_{suffix}"
 
 
-def _login_resume_command(sid: str) -> str:
-    return f"python scripts/wechat_article_assistant.py login-wait --sid '{sid}' --json"
+def _login_resume_command(
+    sid: str,
+    channel: str = "",
+    target: str = "",
+    account: str = "",
+) -> str:
+    parts = [
+        "python scripts/wechat_article_assistant.py login-wait",
+        f"--sid '{sid}'",
+    ]
+    if channel:
+        parts.append(f"--channel '{channel}'")
+    if target:
+        parts.append(f"--target '{target}'")
+    if account:
+        parts.append(f"--account '{account}'")
+    parts.append("--notify true")
+    parts.append("--json")
+    return " ".join(parts)
+
+
+def _messenger_from_qrcode_session(qrcode_session: dict[str, Any] | None) -> OpenClawMessenger | None:
+    if not qrcode_session:
+        return None
+    channel = str(qrcode_session.get("notify_channel") or "").strip()
+    target = str(qrcode_session.get("notify_target") or "").strip()
+    account = str(qrcode_session.get("notify_account") or "").strip()
+    if not channel or not target:
+        return None
+    return OpenClawMessenger(MessageTarget(channel=channel, target=target, account=account))
+
+
+def _spawn_login_wait_background(sid: str, messenger: OpenClawMessenger | None) -> dict[str, Any] | None:
+    if not messenger or not messenger.is_ready():
+        return None
+    script_path = Path(__file__).resolve().parent / "wechat_article_assistant.py"
+    command = [
+        sys.executable,
+        str(script_path),
+        "login-wait",
+        "--sid",
+        sid,
+        "--channel",
+        messenger.message_target.channel,
+        "--target",
+        messenger.message_target.target,
+        "--notify",
+        "true",
+        "--json",
+    ]
+    if messenger.message_target.account:
+        command.extend(["--account", messenger.message_target.account])
+    try:
+        proc = subprocess.Popen(
+            command,
+            cwd=str(script_path.parent.parent),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        return {"started": True, "pid": proc.pid, "command": " ".join(command)}
+    except Exception as exc:
+        LOGGER.warning("spawn login-wait background failed sid=%s error=%s", sid, exc)
+        return {"started": False, "error": str(exc), "command": " ".join(command)}
 
 
 def login_start(
@@ -113,6 +177,9 @@ def login_start(
         status=0,
         status_text=STATUS_MAP[0],
         expires_at=now_ts() + 5 * 60,
+        notify_channel=messenger.message_target.channel if messenger and messenger.is_ready() else "",
+        notify_target=messenger.message_target.target if messenger and messenger.is_ready() else "",
+        notify_account=messenger.message_target.account if messenger and messenger.is_ready() else "",
     )
 
     notify_result: dict[str, Any] | None = None
@@ -120,13 +187,23 @@ def login_start(
         ok, message = messenger.send_image(str(qr_path), "请使用微信扫描二维码登录微信公众号平台")
         notify_result = {"success": ok, "message": message}
 
+    background_wait = None
+    if notify and messenger and messenger.is_ready() and not wait:
+        background_wait = _spawn_login_wait_background(sid, messenger)
+
     payload = {
         "sid": sid,
         "qr_path": str(qr_path),
         "expires_at": now_ts() + 5 * 60,
         "notify": notify_result,
         "auto_wait": bool(wait),
-        "resume_command": _login_resume_command(sid),
+        "background_wait": background_wait,
+        "resume_command": _login_resume_command(
+            sid,
+            channel=messenger.message_target.channel if messenger and messenger.is_ready() else "",
+            target=messenger.message_target.target if messenger and messenger.is_ready() else "",
+            account=messenger.message_target.account if messenger and messenger.is_ready() else "",
+        ),
     }
 
     if wait and notify:
@@ -165,7 +242,9 @@ def login_poll(db: Database, sid: str, messenger: OpenClawMessenger | None = Non
     qrcode_session = get_qrcode_session(db, sid)
     if not qrcode_session:
         return failure("未找到指定 sid 的登录二维码会话")
-    LOGGER.debug("login_poll sid=%s notify=%s", sid, notify)
+    if (not messenger or not messenger.is_ready()) and notify:
+        messenger = _messenger_from_qrcode_session(qrcode_session)
+    LOGGER.debug("login_poll sid=%s notify=%s messenger_ready=%s", sid, notify, bool(messenger and messenger.is_ready()))
 
     client = WechatMPClient(db)
     session = client.new_session(qrcode_session["cookies"])
