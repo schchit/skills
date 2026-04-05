@@ -3,9 +3,15 @@
   "slug": "getswift",
   "displayName": "Getswift",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773972201863,
-    "commit": "https://github.com/openclaw/skills/commit/f4b3ab03a02cffe41d009e4e053c8a786532b23e"
+    "version": "1.0.2",
+    "publishedAt": 1775165228186,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773972201863,
+      "commit": "https://github.com/openclaw/skills/commit/f4b3ab03a02cffe41d009e4e053c8a786532b23e"
+    }
+  ]
 }
