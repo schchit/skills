@@ -3,9 +3,15 @@
   "slug": "chaser",
   "displayName": "Chaser",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773460942372,
-    "commit": "https://github.com/openclaw/skills/commit/b0d75861e8fb3c568e7793f51fdfb53f71318d05"
+    "version": "1.0.2",
+    "publishedAt": 1775163846241,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773460942372,
+      "commit": "https://github.com/openclaw/skills/commit/b0d75861e8fb3c568e7793f51fdfb53f71318d05"
+    }
+  ]
 }
