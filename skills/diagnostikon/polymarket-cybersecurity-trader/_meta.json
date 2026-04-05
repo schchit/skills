@@ -1,13 +1,18 @@
 {
   "owner": "diagnostikon",
   "slug": "polymarket-cybersecurity-trader",
-  "displayName": "Cybersecurity & Hacking Events Trader",
+  "displayName": "Polymarket Cybersecurity Trader",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773869012725,
-    "commit": "https://github.com/openclaw/skills/commit/55a37d57986950b07c18eff59b3a3a51915e49fa"
+    "version": "1.0.2",
+    "publishedAt": 1775317119764,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773869012725,
+      "commit": "https://github.com/openclaw/skills/commit/55a37d57986950b07c18eff59b3a3a51915e49fa"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773653201018,
