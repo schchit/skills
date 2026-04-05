@@ -1,13 +1,18 @@
 {
   "owner": "shouldnotappearcalm",
   "slug": "a-share-trading",
-  "displayName": "A-Share-Trading",
+  "displayName": "A股数据SKILL",
   "latest": {
-    "version": "0.0.6",
-    "publishedAt": 1774772647254,
-    "commit": "https://github.com/openclaw/skills/commit/8ffb6a103bb58f9e8e2e6512976d9db5333fae08"
+    "version": "0.0.9",
+    "publishedAt": 1775058474129,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.0.6",
+      "publishedAt": 1774772647254,
+      "commit": "https://github.com/openclaw/skills/commit/8ffb6a103bb58f9e8e2e6512976d9db5333fae08"
+    },
     {
       "version": "0.0.3",
       "publishedAt": 1773938147968,
