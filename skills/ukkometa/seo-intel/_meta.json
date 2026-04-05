@@ -1,13 +1,18 @@
 {
   "owner": "ukkometa",
   "slug": "seo-intel",
-  "displayName": "SEO Intel by Froggo",
+  "displayName": "SEO Intel",
   "latest": {
-    "version": "0.3.1",
-    "publishedAt": 1774372771493,
-    "commit": "https://github.com/openclaw/skills/commit/f2c2caf349535b770ada284f773a0a45dbb17558"
+    "version": "1.2.5",
+    "publishedAt": 1774968618317,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.3.1",
+      "publishedAt": 1774372771493,
+      "commit": "https://github.com/openclaw/skills/commit/f2c2caf349535b770ada284f773a0a45dbb17558"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1774049829697,
