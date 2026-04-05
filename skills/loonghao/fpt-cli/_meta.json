@@ -1,11 +1,17 @@
 {
   "owner": "loonghao",
   "slug": "fpt-cli",
-  "displayName": "Fpt Cli Openclaw",
+  "displayName": "Fpt Cli",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1773769565789,
-    "commit": "https://github.com/openclaw/skills/commit/7294462a597190c5b569c03892c929a0f5bdbc0a"
+    "version": "1.0.4",
+    "publishedAt": 1775060060825,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1773769565789,
+      "commit": "https://github.com/openclaw/skills/commit/7294462a597190c5b569c03892c929a0f5bdbc0a"
+    }
+  ]
 }
