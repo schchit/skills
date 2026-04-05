@@ -53,6 +53,7 @@ SAFE BY DEFAULT:
 - Real trades only with explicit --live flag.
 """
 import os
+import re as _re
 import argparse
 from datetime import datetime, timezone
 from simmer_sdk import SimmerClient
@@ -197,6 +198,100 @@ CHANNEL_PROFILES = {
             "wwe", "world wrestling", "wrestlemania", "smackdown", "raw channel",
         ],
     },
+    # --- Extended channels: high-engagement creators Polymarket likes ---
+    "ishowspeed": {
+        "display_name": "IShowSpeed",
+        "subs_M": 35,
+        "daily_vol": 0.30,
+        "skew": 0.35,
+        "weekend_post": 0.55,
+        "first_hour_pct": 0.50,
+        "content_type": "streaming",
+        "keywords": ["ishowspeed", "ishow speed"],
+    },
+    "kaicenat": {
+        "display_name": "Kai Cenat",
+        "subs_M": 20,
+        "daily_vol": 0.35,
+        "skew": 0.30,
+        "weekend_post": 0.50,
+        "first_hour_pct": 0.45,
+        "content_type": "streaming",
+        "keywords": ["kai cenat", "kaicenat"],
+    },
+    "ksi": {
+        "display_name": "KSI",
+        "subs_M": 24,
+        "daily_vol": 0.20,
+        "skew": 0.15,
+        "weekend_post": 0.45,
+        "first_hour_pct": 0.42,
+        "content_type": "commentary",
+        "keywords": ["ksi"],
+    },
+    "loganpaul": {
+        "display_name": "Logan Paul",
+        "subs_M": 24,
+        "daily_vol": 0.18,
+        "skew": 0.10,
+        "weekend_post": 0.40,
+        "first_hour_pct": 0.40,
+        "content_type": "commentary",
+        "keywords": ["logan paul"],
+    },
+    "markiplier": {
+        "display_name": "Markiplier",
+        "subs_M": 37,
+        "daily_vol": 0.10,
+        "skew": 0.10,
+        "weekend_post": 0.35,
+        "first_hour_pct": 0.38,
+        "content_type": "gaming",
+        "keywords": ["markiplier"],
+    },
+    "dream": {
+        "display_name": "Dream",
+        "subs_M": 32,
+        "daily_vol": 0.25,
+        "skew": 0.20,
+        "weekend_post": 0.40,
+        "first_hour_pct": 0.50,
+        "content_type": "gaming",
+        "keywords": ["dream minecraft", "dreamwastaken"],
+    },
+    "jakepaul": {
+        "display_name": "Jake Paul",
+        "subs_M": 21,
+        "daily_vol": 0.20,
+        "skew": 0.15,
+        "weekend_post": 0.45,
+        "first_hour_pct": 0.42,
+        "content_type": "commentary",
+        "keywords": ["jake paul"],
+    },
+    "dude_perfect": {
+        "display_name": "Dude Perfect",
+        "subs_M": 60,
+        "daily_vol": 0.08,
+        "skew": 0.15,
+        "weekend_post": 0.50,
+        "first_hour_pct": 0.35,
+        "content_type": "viral_challenge",
+        "keywords": ["dude perfect"],
+    },
+}
+
+# Generic fallback for YouTube markets that don't match a known channel.
+# Neutral bias (~1.0x) — we still trade it, just without channel-specific edge.
+GENERIC_CHANNEL = {
+    "display_name": "YouTube (generic)",
+    "subs_M": 50,
+    "daily_vol": 0.10,
+    "skew": 0.10,
+    "weekend_post": 0.45,
+    "first_hour_pct": 0.30,
+    "content_type": "generic",
+    "keywords": [],
 }
 
 # Flat keyword list for market discovery
@@ -204,6 +299,8 @@ KEYWORDS = [kw for p in CHANNEL_PROFILES.values() for kw in p["keywords"]] + [
     "youtube subscribers", "youtube milestone", "youtube channel",
     "youtube views", "youtube video", "most subscribed", "subscriber count",
     "subscriber race", "youtube rivalry",
+    "youtube shorts", "youtube streamer", "youtuber",
+    "content creator subscribers", "youtube record",
 ]
 
 # Risk parameters
@@ -401,10 +498,10 @@ def compute_signal(market) -> tuple[str | None, float, str]:
         except Exception:
             pass
 
-    # Channel identification gate
+    # Channel identification — fall back to generic profile for unknown channels
     channel = _identify_channel(q)
     if channel is None:
-        return None, 0, "No top-10 YouTube channel identified in question"
+        channel = GENERIC_CHANNEL
 
     bias, bias_label = youtube_signal_bias(q, channel)
 
@@ -447,9 +544,9 @@ def context_ok(client: SimmerClient, market_id: str) -> tuple[bool, str]:
         if isinstance(slip, dict) and slip.get("slippage_pct", 0) > 0.15:
             return False, f"Slippage {slip['slippage_pct']:.1%}"
         for w in ctx.get("warnings", []):
-            print(f"  [warn] {w}")
+            safe_print(f"  [warn] {w}")
     except Exception as e:
-        print(f"  [ctx] {market_id}: {e}")
+        safe_print(f"  [ctx] {market_id}: {e}")
     return True, "ok"
 
 
@@ -467,7 +564,6 @@ def get_client(live: bool = False) -> SimmerClient:
             api_key=os.environ["SIMMER_API_KEY"],
             venue=venue,
         )
-        _client.apply_skill_config(SKILL_SLUG)
         MAX_POSITION  = float(os.environ.get("SIMMER_MAX_POSITION",  str(MAX_POSITION)))
         MIN_VOLUME    = float(os.environ.get("SIMMER_MIN_VOLUME",    str(MIN_VOLUME)))
         MAX_SPREAD    = float(os.environ.get("SIMMER_MAX_SPREAD",    str(MAX_SPREAD)))
@@ -479,17 +575,67 @@ def get_client(live: bool = False) -> SimmerClient:
     return _client
 
 
+_YT_FILTER = _re.compile(
+    r"(youtube|subscriber|mrbeast|t[\-\s]?series|pewdiepie|cocomelon|"
+    r"set\s*india|views.*video|video.*views|channel.*milestone|"
+    r"most\s+subscribed|ishowspeed|kai\s*cenat|ksi\b|logan\s*paul|"
+    r"jake\s*paul|markiplier|dude\s*perfect|"
+    r"youtuber|content\s+creator|watch\s+hours|streamer.*subscri)",
+    _re.I,
+)
+
+
+def safe_print(text):
+    """Print with fallback for non-ASCII characters (Windows cp1252 terminals)."""
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        print(text.encode('ascii', 'replace').decode())
+
+
 def find_markets(client: SimmerClient) -> list:
-    """Find active YouTube channel markets, deduplicated."""
+    """Find active YouTube channel markets, deduplicated.
+
+    Uses both keyword search AND get_markets() fallback because
+    find_markets() doesn't always return all imported markets.
+    """
     seen, unique = set(), []
+
+    # 1. Keyword search
     for kw in KEYWORDS:
         try:
             for m in client.find_markets(query=kw):
-                if m.id not in seen:
-                    seen.add(m.id)
+                mid = getattr(m, "id", None)
+                q = getattr(m, "question", "")
+                if mid and mid not in seen and _YT_FILTER.search(q):
+                    seen.add(mid)
                     unique.append(m)
         except Exception as e:
-            print(f"[search] {kw!r}: {e}")
+            safe_print(f"[search] {kw!r}: {e}")
+
+    # 2. Broad query search — catches markets specific keywords miss
+    for broad_q in ("youtube", "youtuber", "subscriber milestone", "content creator"):
+        try:
+            for m in client.find_markets(query=broad_q):
+                mid = getattr(m, "id", None)
+                q = getattr(m, "question", "")
+                if mid and mid not in seen and _YT_FILTER.search(q):
+                    seen.add(mid)
+                    unique.append(m)
+        except Exception as e:
+            safe_print(f"[broad search {broad_q!r}] {e}")
+
+    # 3. Fallback: scan recent markets for YouTube matches
+    try:
+        for m in client.get_markets(limit=200):
+            mid = getattr(m, "id", None)
+            q = getattr(m, "question", "")
+            if mid and mid not in seen and _YT_FILTER.search(q):
+                seen.add(mid)
+                unique.append(m)
+    except Exception as e:
+        safe_print(f"[get_markets fallback] {e}")
+
     return unique
 
 
@@ -497,7 +643,7 @@ def run(live: bool = False) -> None:
     weekday   = datetime.now(timezone.utc).weekday()
     day_name  = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][weekday]
     mode      = "LIVE" if live else "PAPER (sim)"
-    print(
+    safe_print(
         f"[polymarket-youtube-channel-trader] mode={mode} "
         f"day={day_name} max_pos=${MAX_POSITION} "
         f"channels={len(CHANNEL_PROFILES)}"
@@ -505,7 +651,7 @@ def run(live: bool = False) -> None:
 
     client  = get_client(live=live)
     markets = find_markets(client)
-    print(f"[polymarket-youtube-channel-trader] {len(markets)} candidate markets")
+    safe_print(f"[polymarket-youtube-channel-trader] {len(markets)} candidate markets")
 
     placed = 0
     for m in markets:
@@ -514,12 +660,12 @@ def run(live: bool = False) -> None:
 
         side, size, reasoning = compute_signal(m)
         if not side:
-            print(f"  [skip] {reasoning}")
+            safe_print(f"  [skip] {reasoning}")
             continue
 
         ok, why = context_ok(client, m.id)
         if not ok:
-            print(f"  [skip] {why}")
+            safe_print(f"  [skip] {why}")
             continue
 
         try:
@@ -533,13 +679,13 @@ def run(live: bool = False) -> None:
             )
             tag    = "(sim)" if r.simulated else "(live)"
             status = "OK" if r.success else f"FAIL:{r.error}"
-            print(f"  [trade] {side.upper()} ${size} {tag} {status} — {reasoning[:75]}")
+            safe_print(f"  [trade] {side.upper()} ${size} {tag} {status} -- {reasoning[:75]}")
             if r.success:
                 placed += 1
         except Exception as e:
-            print(f"  [error] {m.id}: {e}")
+            safe_print(f"  [error] {m.id}: {e}")
 
-    print(f"[polymarket-youtube-channel-trader] done. {placed} orders placed.")
+    safe_print(f"[polymarket-youtube-channel-trader] done. {placed} orders placed.")
 
 
 if __name__ == "__main__":

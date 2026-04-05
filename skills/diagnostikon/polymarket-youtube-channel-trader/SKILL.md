@@ -1,16 +1,15 @@
 ---
 name: polymarket-youtube-channel-trader
-description: Trades Polymarket markets on the top 10 YouTube channels — subscriber milestones, view-count races, channel rivalries — by treating each channel as a distinct volatility asset. Three structural edges: first-hour view velocity mispricing (market prices terminal 24h probability; question asks for first-passage), channel volatility profiles (MrBeast σ=0.25/day vs children's σ=0.02/day), and weekend posting window timing (MrBeast posts 62% of top videos Fri–Sun; edge peaks Thursday entry).
-requires:
-  env:
-    - SIMMER_API_KEY
-  pip:
-    - simmer-sdk
+description: "Trades Polymarket YouTube channel markets (subscriber milestones, view-count races). Requires SIMMER_API_KEY for trade execution via simmer-sdk. Paper trading by default, real trades only with --live flag."
 metadata:
   author: Diagnostikon
   version: "1.0"
   displayName: YouTube Channel Trader
   difficulty: advanced
+  homepage: "https://simmer.markets/skills"
+  repository: "https://github.com/SpartanLabsXyz/simmer-sdk"
+  requires_env: "SIMMER_API_KEY"
+  requires_pip: "simmer-sdk"
   default_mode: "paper"
   live_flag: "--live"
 ---

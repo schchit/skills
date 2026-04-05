@@ -1,13 +1,18 @@
 {
   "owner": "diagnostikon",
   "slug": "polymarket-youtube-channel-trader",
-  "displayName": "YouTube Channel Trader",
+  "displayName": "Polymarket Youtube Channel Trader",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1774681903965,
-    "commit": "https://github.com/openclaw/skills/commit/e6173b2f7e87fa53c83c1b2dd45a1900c0b8d220"
+    "version": "1.0.4",
+    "publishedAt": 1775317393754,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1774681903965,
+      "commit": "https://github.com/openclaw/skills/commit/e6173b2f7e87fa53c83c1b2dd45a1900c0b8d220"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1774183976668,
