@@ -2,6 +2,21 @@
 
 ## Free APIs (No Key Required)
 
+### Stooq ⭐ RECOMMENDED
+- **URL**: `https://stooq.com/q/l/?s=SYMBOL.us&f=sd2t2ohlc&h=&t=csv`
+- **Rate Limit**: Unknown (generous)
+- **Data**: EOD prices (Open, High, Low, Close, Date, Time)
+- **Coverage**: US stocks (add `.us` suffix)
+- **Reliability**: ⭐⭐⭐⭐⭐ (best for US stocks, no key needed)
+- **Format**: CSV
+
+```bash
+# Example: Fetch UNH price
+curl -sL "https://stooq.com/q/l/?s=unh.us&f=sd2t2ohlc&h=&t=csv"
+# Returns: Symbol,Date,Time,Open,High,Low,Close
+#          UNH.US,2026-03-31,22:00:25,262.75,271.865,262.61,270.49
+```
+
 ### Yahoo Finance (via yfinance)
 - **Library**: `pip install yfinance`
 - **Rate Limit**: ~2000 requests/day (unofficial)
@@ -68,10 +83,11 @@ response = requests.get(url, params=params)
 
 | Use Case | Recommended Source |
 |----------|-------------------|
-| Personal/portfolio tracking | yfinance (free, reliable) |
-| Low-frequency updates | Yahoo web scrape |
+| US stocks (EOD prices) | **Stooq** (free, no key, reliable) |
+| Personal/portfolio tracking | Stooq or yfinance |
+| Intraday prices | yfinance (during market hours) |
+| Fundamental data (PE, etc.) | yfinance or FMP (with key) |
 | Production app | Polygon.io or Twelve Data |
-| Fundamental analysis | Financial Modeling Prep |
 | Historical data | Alpha Vantage or yfinance |
 
 ## Rate Limiting Best Practices

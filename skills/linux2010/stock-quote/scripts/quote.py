@@ -73,6 +73,144 @@ def fetch_yfinance_data(symbols):
     return results
 
 
+def fetch_fmp_data(symbols):
+    """Fallback: Fetch data from Financial Modeling Prep (free API)"""
+    results = {}
+    base_url = "https://financialmodelingprep.com/api/v3/quote"
+    
+    for symbol in symbols:
+        try:
+            url = f"{base_url}/{symbol}?apikey=demo"
+            response = requests.get(url, timeout=10)
+            if response.status_code != 200:
+                results[symbol.upper()] = {
+                    'symbol': symbol.upper(),
+                    'error': f'HTTP {response.status_code}',
+                    'source': 'fmp'
+                }
+                continue
+            
+            data = response.json()
+            if not data:
+                results[symbol.upper()] = {
+                    'symbol': symbol.upper(),
+                    'error': 'No data',
+                    'source': 'fmp'
+                }
+                continue
+            
+            quote_data = data[0]
+            quote = {
+                'symbol': symbol.upper(),
+                'price': quote_data.get('price'),
+                'change': quote_data.get('changes'),
+                'change_percent': quote_data.get('changesPercentage'),
+                'previous_close': quote_data.get('previousClose'),
+                'open': quote_data.get('open'),
+                'day_high': quote_data.get('dayHigh'),
+                'day_low': quote_data.get('dayLow'),
+                'volume': quote_data.get('volume'),
+                'market_cap': quote_data.get('marketCap'),
+                'pe_ratio': quote_data.get('pe'),
+                'week_52_high': quote_data.get('yearHigh'),
+                'week_52_low': quote_data.get('yearLow'),
+                'timestamp': datetime.now().isoformat(),
+                'source': 'fmp'
+            }
+            
+            results[symbol.upper()] = quote
+            
+        except Exception as e:
+            results[symbol.upper()] = {
+                'symbol': symbol.upper(),
+                'error': str(e),
+                'source': 'fmp'
+            }
+    
+    return results
+
+
+def fetch_stooq_data(symbols):
+    """
+    Fetch data from Stooq (free, no API key required)
+    Stooq provides delayed end-of-day prices for US stocks
+    URL format: https://stooq.com/q/l/?s=SYMBOL.us&f=sd2t2ohlc&h=&t=csv
+    Returns: Symbol, Date, Time, Open, High, Low, Close
+    """
+    results = {}
+    
+    for symbol in symbols:
+        try:
+            # Stooq URL format: symbol.us for US stocks
+            url = f"https://stooq.com/q/l/?s={symbol.lower()}.us&f=sd2t2ohlc&h=&t=csv"
+            response = requests.get(url, timeout=10, allow_redirects=True)
+            
+            if response.status_code != 200:
+                results[symbol.upper()] = {
+                    'symbol': symbol.upper(),
+                    'error': f'HTTP {response.status_code}',
+                    'source': 'stooq'
+                }
+                continue
+            
+            # Parse CSV response
+            lines = response.text.strip().split('\n')
+            if len(lines) < 2 or 'Symbol' in lines[0]:
+                # Skip header, check if we have data
+                if len(lines) == 1:
+                    results[symbol.upper()] = {
+                        'symbol': symbol.upper(),
+                        'error': 'No data found',
+                        'source': 'stooq'
+                    }
+                    continue
+            
+            # Parse data row: Symbol,Date,Time,Open,High,Low,Close
+            data_row = lines[1] if 'Symbol' in lines[0] else lines[0]
+            parts = data_row.split(',')
+            
+            if len(parts) < 7:
+                results[symbol.upper()] = {
+                    'symbol': symbol.upper(),
+                    'error': 'Invalid data format',
+                    'source': 'stooq'
+                }
+                continue
+            
+            close_price = float(parts[6]) if parts[6] else None
+            
+            quote = {
+                'symbol': symbol.upper(),
+                'price': close_price,
+                'change': None,
+                'change_percent': None,
+                'previous_close': None,
+                'open': float(parts[3]) if parts[3] else None,
+                'day_high': float(parts[4]) if parts[4] else None,
+                'day_low': float(parts[5]) if parts[5] else None,
+                'volume': None,
+                'market_cap': None,
+                'pe_ratio': None,
+                'week_52_high': None,
+                'week_52_low': None,
+                'date': parts[1] if len(parts) > 1 else None,
+                'time': parts[2] if len(parts) > 2 else None,
+                'timestamp': datetime.now().isoformat(),
+                'source': 'stooq'
+            }
+            
+            results[symbol.upper()] = quote
+            
+        except Exception as e:
+            results[symbol.upper()] = {
+                'symbol': symbol.upper(),
+                'error': str(e),
+                'source': 'stooq'
+            }
+    
+    return results
+
+
 def fetch_web_data(symbols):
     """Fallback: fetch data from Yahoo Finance web pages"""
     results = {}
@@ -183,22 +321,52 @@ def main():
     parser = argparse.ArgumentParser(description='Fetch stock quotes')
     parser.add_argument('symbols', nargs='+', help='Stock symbols (e.g., AAPL NVDA TSLA)')
     parser.add_argument('--json', action='store_true', help='Output as JSON')
-    parser.add_argument('--source', choices=['yfinance', 'web', 'auto'], default='auto',
+    parser.add_argument('--source', choices=['yfinance', 'stooq', 'fmp', 'web', 'auto'], default='auto',
                        help='Data source (default: auto)')
     
     args = parser.parse_args()
     
-    # Determine source
+    # Fetch data with automatic fallback
+    # Priority: Stooq (free, no key) > yfinance > FMP > web scrape
     source = args.source
-    if source == 'auto':
-        source = 'yfinance' if YFINANCE_AVAILABLE else 'web'
+    quotes = {}
     
-    # Fetch data
-    if source == 'yfinance':
+    if source == 'auto':
+        # Try Stooq first (free, no API key, reliable for US stocks)
+        print("# Trying Stooq (free, no key)...", file=sys.stderr)
+        quotes = fetch_stooq_data(args.symbols)
+        
+        # Check if we got valid data
+        valid_count = sum(1 for q in quotes.values() if 'price' in q and q['price'] and 'error' not in q)
+        if valid_count > 0:
+            source = 'stooq'
+        else:
+            # Fallback to yfinance
+            if YFINANCE_AVAILABLE:
+                print("# Stooq failed, trying yfinance...", file=sys.stderr)
+                quotes = fetch_yfinance_data(args.symbols)
+                source = 'yfinance'
+            else:
+                # Fallback to FMP
+                print("# yfinance not available, trying FMP...", file=sys.stderr)
+                quotes = fetch_fmp_data(args.symbols)
+                source = 'fmp'
+                
+    elif source == 'stooq':
+        if not REQUESTS_AVAILABLE:
+            print("Error: requests not installed. Run: pip install requests", file=sys.stderr)
+            sys.exit(1)
+        quotes = fetch_stooq_data(args.symbols)
+    elif source == 'yfinance':
         if not YFINANCE_AVAILABLE:
             print("Error: yfinance not installed. Run: pip install yfinance", file=sys.stderr)
             sys.exit(1)
         quotes = fetch_yfinance_data(args.symbols)
+    elif source == 'fmp':
+        if not REQUESTS_AVAILABLE:
+            print("Error: requests not installed. Run: pip install requests", file=sys.stderr)
+            sys.exit(1)
+        quotes = fetch_fmp_data(args.symbols)
     else:
         if not REQUESTS_AVAILABLE:
             print("Error: requests not installed. Run: pip install requests", file=sys.stderr)

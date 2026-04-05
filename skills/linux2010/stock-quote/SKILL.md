@@ -1,6 +1,6 @@
 ---
 name: stock-quote
-description: "Fetch real-time stock prices and fundamental data. Use when: (1) User asks for current stock price or quote, (2) Need to update portfolio holdings with latest prices, (3) Check PE ratios, 52-week ranges, or market caps, (4) Daily portfolio valuation updates, (5) Pre-trade price verification. Supports bulk queries for multiple symbols."
+description: "Fetch real-time stock prices and fundamental data. Use when: (1) User asks for current stock price or quote, (2) Need to update portfolio holdings with latest prices, (3) Check PE ratios, 52-week ranges, or market caps, (4) Daily portfolio valuation updates, (5) Pre-trade price verification. Supports bulk queries for multiple symbols. Default: Stooq (free, no API key)."
 ---
 
 # Stock Quote Skill
@@ -10,7 +10,7 @@ Real-time stock price and fundamental data retrieval skill.
 ## Quick Start
 
 ```bash
-# Single stock
+# Single stock (uses Stooq - free, no key)
 python ~/.openclaw/skills/stock-quote/scripts/quote.py NVDA
 
 # Multiple stocks
@@ -19,8 +19,10 @@ python ~/.openclaw/skills/stock-quote/scripts/quote.py NVDA TSLA BABA ORCL
 # JSON output (for programmatic use)
 python ~/.openclaw/skills/stock-quote/scripts/quote.py NVDA TSLA --json
 
-# Force web fallback (if yfinance unavailable)
-python ~/.openclaw/skills/stock-quote/scripts/quote.py NVDA --source web
+# Force specific data source
+python ~/.openclaw/skills/stock-quote/scripts/quote.py NVDA --source yfinance
+python ~/.openclaw/skills/stock-quote/scripts/quote.py NVDA --source stooq
+python ~/.openclaw/skills/stock-quote/scripts/quote.py NVDA --source fmp
 ```
 
 ## Output Fields
@@ -40,10 +42,14 @@ python ~/.openclaw/skills/stock-quote/scripts/quote.py NVDA --source web
 
 ## Data Sources
 
-1. **yfinance** (primary) - Yahoo Finance API via Python library
-2. **Web scrape** (fallback) - Direct Yahoo Finance page parsing
+| Source | Priority | API Key | Coverage | Notes |
+|--------|----------|---------|----------|-------|
+| **Stooq** | 1st (auto) | ❌ No | US stocks | Free, delayed EOD prices |
+| **yfinance** | 2nd | ❌ No | Global | Rate limited (~2000/day) |
+| **FMP** | 3rd | ⚠️ Demo | Global | Limited demo data |
+| **Web** | 4th | ❌ No | Yahoo only | HTML scraping |
 
-Auto-selects best available source.
+**Auto mode** (default): Stooq → yfinance → FMP → Web scrape
 
 ## Integration Examples
 
