@@ -1,16 +1,19 @@
 ---
 name: asmr-music
 description: "Provide professional ASMR music recommendations and playback services to help users achieve sleep aid, heart rate regulation, and focus enhancement through scientifically designed audio. Use when user wants to (1) relax, sleep, or fall asleep, (2) regulate heart rate or relieve anxiety, (3) improve focus and concentration for study or work, (4) find background white noise or ambient sounds, (5) practice meditation or deep breathing, (6) set up automatic daily reminders for ASMR listening. Keywords: sleep, relax, meditation, heart rate, anxiety, focus, concentration, white noise, ASMR, background music, calming, stress relief, daily reminder, nightly routine."
+metadata:
+  version: "1.0.1"
+  author: hc
 ---
 
-# ASMR Music Assistant
+
+ ASMR Music Assistant
 
 Provide professional ASMR music recommendations and playback services to help users achieve physical and mental regulation through scientifically designed audio.
 
 ## Music Library
 
 ### 1. Sleep Aid Music
-**Name**: Magic Drop ASMR
 **Function**: Deep relaxation, sleep induction
 **Best for**:
 - Pre-sleep preparation
@@ -18,25 +21,39 @@ Provide professional ASMR music recommendations and playback services to help us
 - Nighttime meditation
 - Stress release
 
-**Playback URL**:
-```
-https://ohoeeluhrvswvqoinjyf.supabase.co/storage/v1/object/sign/music/asmr_magic_drop.mp3?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hYzljYmQ1NS03MDkyLTRhNzAtYmYwYS1iN2U3YzllNWZjMzMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtdXNpYy9hc21yX21hZ2ljX2Ryb3AubXAzIiwiaWF0IjoxNzczOTA3NjMyLCJleHAiOjE4MDU0NDM2MzJ9.33r_Dwo2t_7P2PlZzRRyDEAnBYtQpeziJvfsf8d8sjo
-```
+**Audio Link**: Read from `references/asmr_music.md` (Topic: Sleep aid)
 
-### 2. Heart Rate Regulation & Focus Enhancement
-**Name**: Concentrate Flow
-**Function**: Heart rate regulation, focus improvement
+### 2. Heart Rate Regulation
+**Function**: Heart rate regulation, anxiety relief
+**Best for**:
+- Heart rate regulation
+- Anxiety relief
+- Deep relaxation
+- Stress management
+
+**Audio Link**: Read from `references/asmr_music.md` (Topic: Heart rate regulation)
+
+### 3. Focus Enhancement
+**Function**: Focus improvement, concentration
 **Best for**:
 - Study and work sessions
 - Deep concentration
-- Heart rate regulation
-- Anxiety relief
 - Creative thinking
+- Productivity enhancement
 
-**Playback URL**:
-```
-https://ohoeeluhrvswvqoinjyf.supabase.co/storage/v1/object/sign/music/concentrate.mp3?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9hYzljYmQ1NS03MDkyLTRhNzAtYmYwYS1iN2U3YzllNWZjMzMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtdXNpYy9jb25jZW50cmF0ZS5tcDMiLCJpYXQiOjE3NzM5MDc2NjQsImV4cCI6MTgwNTQ0MzY2NH0.N0bTqLnmF5IMbn980WdIvOljQiGCjEoDaLJ2M6Mb2d8
-```
+**Audio Link**: Read from `references/asmr_music.md` (Topic: Focus)
+
+### 4. Stress Relief
+**Function**: Stress release, relaxation
+**Best for**:
+- Daily stress relief
+- Emotional regulation
+- Relaxation breaks
+- Mental health maintenance
+
+**Audio Link**: Read from `references/asmr_music.md` (Topic: Stress relief)
+
+> **Important**: When recommending music to users, always read the audio links from `references/asmr_music.md` file based on the topic/function requested.
 
 ## Daily Reminder Feature
 
