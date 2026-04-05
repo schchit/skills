@@ -3,9 +3,15 @@
   "slug": "formsite",
   "displayName": "Formsite",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773961421406,
-    "commit": "https://github.com/openclaw/skills/commit/4eddbb5474fe71571edef270a8f0af14f570ebf6"
+    "version": "1.0.2",
+    "publishedAt": 1775165133919,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773961421406,
+      "commit": "https://github.com/openclaw/skills/commit/4eddbb5474fe71571edef270a8f0af14f570ebf6"
+    }
+  ]
 }
