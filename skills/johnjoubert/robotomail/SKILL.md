@@ -144,15 +144,15 @@ See `references/webhook-verification.md` for signature verification code.
 
 ## Key Constraints
 
-- **Daily send limits:** 50/day (free), 1,000/day (paid) per mailbox — resets at midnight UTC
-- **Monthly send limits:** 1,000/month (free), 5,000/month (paid) per mailbox
+- **Daily send limits:** 100/day (free), 500–2,000/day (paid, varies by tier) per mailbox — resets at midnight UTC
+- **Monthly send limits:** 5,000/month (free), 15,000/month (Developer), unlimited (Growth, Scale) per mailbox
 - **Velocity limits:** 30 messages/min per mailbox, 60 messages/min per account — returns `429` if exceeded
 - **Bounce rate:** Must stay below 3% over a 7-day rolling window (minimum 50 messages). Exceeding this auto-suspends the mailbox.
 - **Complaint rate:** Must stay below 0.05% over a 7-day rolling window (minimum 50 messages). Exceeding this auto-suspends the mailbox.
 - **Attachment size:** Max 25MB per file
-- **Storage:** 1GB (free), 5GB (paid)
-- **Free tier:** 1 mailbox on `robotomail.co` only
-- **Paid ($15/mo):** 3+ mailboxes, custom domains
+- **Storage:** 1GB (free), 10GB (Developer), 25GB (Growth), 100GB (Scale)
+- **Free tier:** 3 mailboxes on `robotomail.co` only
+- **Paid plans start at $19/mo (Developer):** 10+ mailboxes, custom domains
 
 If a send returns `429`, the mailbox has hit its daily/monthly limit or velocity limit. Tell the user and suggest slowing down or upgrading if on the free plan.
 

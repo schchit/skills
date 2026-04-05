@@ -19,7 +19,7 @@ Accounts that exceed bounce rate (3%) or complaint rate (0.05%) thresholds over 
 }
 ```
 
-The `suspended` and `reason` fields let agents detect suspension programmatically. Read-only operations (GET requests) remain accessible.
+The `suspended` and `reason` fields let agents detect suspension programmatically. Suspended accounts can still read data (GET requests), manage API keys, add suppression entries, verify domains, delete resources, and upgrade billing. Only sending, creating mailboxes/domains/attachments, and creating/updating webhooks are blocked.
 
 **Velocity limits:** Sending is rate-limited to 30 messages/min per mailbox and 60 messages/min per account. Exceeding these returns `429 Too Many Requests`:
 
@@ -106,10 +106,9 @@ Creates a new account with a default API key and platform mailbox.
     "fullAddress": "myagent@robotomail.co",
     "status": "ACTIVE"
   },
-  "mailbox_limit": 1,
-  "daily_send_limit": 50,
-  "monthly_send_limit": 1000,
-  "monthly_send_limit_paid": 5000
+  "mailbox_limit": 3,
+  "daily_send_limit": 100,
+  "monthly_send_limit": 5000
 }
 ```
 
@@ -266,9 +265,9 @@ Lists all mailboxes. Scoped API keys see only their permitted mailboxes.
       "displayName": "string | null",
       "domainId": "uuid | null",
       "dailySendCount": 5,
-      "dailySendLimit": 50,
+      "dailySendLimit": 100,
       "monthlySendCount": 42,
-      "monthlySendLimit": 1000,
+      "monthlySendLimit": 5000,
       "status": "ACTIVE | PAUSED | SUSPENDED",
       "createdAt": "ISO-8601"
     }
