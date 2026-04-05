@@ -3,9 +3,15 @@
   "slug": "signable",
   "displayName": "Signable",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773914581686,
-    "commit": "https://github.com/openclaw/skills/commit/acb7e529a90ce389886757e6eb6053ca5fdb7448"
+    "version": "1.0.2",
+    "publishedAt": 1775164887654,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773914581686,
+      "commit": "https://github.com/openclaw/skills/commit/acb7e529a90ce389886757e6eb6053ca5fdb7448"
+    }
+  ]
 }
