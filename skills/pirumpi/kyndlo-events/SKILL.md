@@ -1,7 +1,7 @@
 ---
 name: kyndlo-events
-description: Autonomous city-scoped event creation from campaign tasks, plus full event lifecycle management — tasks, venues, images, validation — via the gokyn CLI.
-version: 3.0.0
+description: "WORKFLOW-DRIVEN event creation and validation from Kyndlo campaign tasks. When invoked, the agent MUST follow the mandatory step-by-step onboarding flow below — verify token, show campaigns, ask city, ask county, ask batch size, fetch rules — before creating any events. For validation, follow the Event Validation Workflow. Do NOT ask generic questions. Do NOT improvise. Follow the steps exactly."
+version: 3.5.0
 metadata:
   openclaw:
     requires:
@@ -23,63 +23,119 @@ metadata:
 
 # kyndlo-events — Kyndlo Event Management
 
-Create and manage events, activities, tasks, and validations on the Kyndlo platform via the `gokyn` CLI. Supports autonomous city-scoped event creation from campaign tasks.
+**CRITICAL: This skill has MANDATORY step-by-step workflows for both event creation and event validation. You MUST follow the exact steps in order. Do NOT skip steps. Do NOT ask your own questions. Do NOT improvise. The workflow tells you exactly what to run and what to ask at each step.**
+
+## STOP — Read This First
+
+When this skill is invoked (user says anything like "create events", "kyndlo-events", "generate events", etc.):
+
+**If the user says "validate events", "check events", "review events", or "validation"** — skip directly to the **Event Validation Workflow** section below.
+
+For event creation:
+
+1. **Do NOT** ask the user for city, date range, event style, theme, or any other freeform questions
+2. **Do NOT** try to gather requirements conversationally — the workflow below handles that
+3. **DO** immediately start at Step 1 below and follow every step in order
+4. **DO** run the CLI commands shown — they provide the data you need
+5. **DO** wait for the user's response where indicated before moving to the next step
+6. **DO** always check for existing events before creating — duplicates waste resources
+
+Events are created from **campaign tasks** stored in the Kyndlo database, not from user-provided descriptions. The system tells you what events to create. Your job is to follow the workflow.
 
 ## Setup
 
 ```bash
 npm install -g gokyn
 export KYNDLO_API_TOKEN="kyndlo_..."
-gokyn whoami   # verify token works
+export GOOGLE_PLACES_API_KEY="..."   # Required for venue discovery via goplaces
 ```
 
-All commands accept `--token <token>` if the env var is not set.
+All gokyn commands accept `--token <token>` if the env var is not set.
 Add `--json` to any command for machine-readable output.
+`goplaces` is used for venue discovery (Google Places API). It must be installed and configured separately.
 
 ---
 
-## Pre-flight Checks
+## Step 1: Verify token
 
-Before creating any events, run these checks in order. Stop if any fail.
-
-### 1. Verify token
+**Action:** Run this command immediately — do not ask the user anything first.
 
 ```bash
 gokyn whoami --json
 ```
 
-Confirm the token is valid and has the required permissions.
+Confirm the token is valid. If it fails, help the user set `KYNDLO_API_TOKEN`.
 
-### 2. Fetch and read the event creation rules (MANDATORY)
+## Step 2: Show campaigns and ask the user to pick one
+
+**Action:** Run this command:
+
+```bash
+gokyn task campaigns
+```
+
+**Then say to the user:**
+> "Here are the available campaigns: [show the list with name, state, progress, pending tasks]. Which campaign would you like to work on?"
+
+**STOP and wait for the user's reply.** Extract the campaign name and state from their choice.
+
+## Step 3: Show cities and ask which to prioritize
+
+**Action:** Run this command using the state from the campaign they chose:
+
+```bash
+gokyn task cities --state "<state>"
+```
+
+**Then say to the user:**
+> "Here are the cities in [state]: [show city list with populations]. Which city would you like to prioritize? Say a city name, or 'any' to work through all cities."
+
+**STOP and wait for the user's reply.** Handle:
+- **"any"** — Rotate through cities automatically. Start with the first city that has pending tasks.
+- **Specific city** — Lock to that city. Proceed to Step 4.
+
+## Step 4: Ask about county preference
+
+**Say to the user:**
+> "Would you like to focus on a specific county, or work through all of them? (By default, I'll focus on major city counties and skip rural counties. Say 'include rural' if you want those too.)"
+
+**STOP and wait for the user's reply.** Handle:
+- **No preference / default** — Ignore rural counties. Never use `--city "Rural"`. Skip the "Rural" entry when rotating. This is the default.
+- **"include rural"** / **"all including rural"** — Include rural counties. No county filter.
+- **Specific county** — Use `--county <county>` filter.
+- **"all"** (without mentioning rural) — Ignore rural counties (the default).
+
+## Step 5: Ask batch size
+
+**Say to the user:**
+> "How many events should I create before pausing to report results? (e.g. 5, 10, 20)"
+
+**STOP and wait for the user's reply.** Store this as the batch size.
+
+## Step 6: Fetch event creation rules (MANDATORY — do not skip)
+
+**Action:** Run this command:
 
 ```bash
 gokyn task rules
 ```
 
-Read the **full** output and internalize every rule. They govern venue selection, event formatting, images, and quality. **Follow them strictly for every event you create.** Rules are maintained in the database and may change between runs — always fetch fresh.
+Read the **full** output and internalize every rule. These rules come from the Kyndlo admin dashboard and govern venue selection, descriptions, formatting, images, and quality. **You must follow them strictly for every event.**
 
-### 3. Resolve the city scope
+## Step 7: Confirm and begin
 
-```bash
-gokyn task cities --state <state>
-```
+**Say to the user:**
+> "Ready to start. Here's your configuration:
+> - Campaign: [name]
+> - State: [state]
+> - City: [specific city / rotating through all]
+> - County filter: [ignore rural (default) / include rural / specific county]
+> - Batch size: [N] events per batch
+> - Rules: Loaded
+>
+> Shall I begin?"
 
-This shows all cities with their constituent counties and populations. Use this to:
-- **If the user gave a city name:** confirm it exists in the list.
-- **If the user gave a county name:** find which city contains that county and use the city name going forward. For example, Orange County FL belongs to the **Orlando** metro area — use `Orlando`. If the county is in the `Rural` bucket, use `Rural`.
-- **If the user gave neither:** pick a city to target based on pending work.
-
-### 4. Get campaign context
-
-```bash
-gokyn task context --campaign <campaign> --city <city> --json
-```
-
-Confirm the campaign exists. Report city-level progress (counties done, tasks remaining) to the user.
-
-### 5. Report status
-
-Tell the user: campaign name, resolved city, progress percentage, tasks remaining, and confirm rules loaded.
+**STOP and wait for confirmation.** Only proceed to the Autonomous Loop after the user says yes.
 
 ---
 
@@ -132,9 +188,36 @@ Include a day ONLY if the venue is open that day. Omit closed days entirely.
 
 ## The Autonomous Loop
 
-Repeat sequentially for the target city until there are no more eligible tasks, safe progress is blocked, or the user asks you to stop. Track progress as `[Task X]`.
+Process tasks in batches. Each batch creates up to **N** events (the batch size from onboarding), then pauses to report results and ask the user whether to continue.
 
 **Important:** If the loop exits early for any reason, run the Cleanup step to release any uncompleted tasks.
+
+### Before each batch: Refresh rules
+
+At the start of **every** batch (including the first), fetch the latest rules:
+
+```bash
+gokyn task rules
+```
+
+Re-read and internalize. Rules may have been updated by the Kyndlo admin between batches.
+
+### City rotation (when city = "any")
+
+Track the current city. When `task next` returns `"count": 0` for the current city:
+
+1. Get the city list: `gokyn task cities --state "<state>" --json`
+2. For each city (in order), check for pending tasks: `gokyn task context --campaign <campaign> --city "<city>" --json`
+3. Skip "Rural" if the user said "ignore rural counties"
+4. Use the first city with remaining pending tasks
+5. If no cities have pending tasks, stop the loop
+
+### Rural filtering
+
+When the user chose "ignore rural counties":
+- Never pass `--city "Rural"` to any command
+- When rotating through cities, skip the "Rural" entry
+- If a task is returned for a rural county (shouldn't happen with city filter), release it and continue
 
 ### Step 1: Claim a task
 
@@ -142,9 +225,14 @@ Repeat sequentially for the target city until there are no more eligible tasks, 
 gokyn task next --campaign <campaign> --city <city> --assign --name "<agent-name>" --json
 ```
 
-Use the agent name only for `--name` (e.g. `Sugar`). Do NOT pass `--priority` — the server returns tasks in priority order automatically.
+Apply filters based on onboarding preferences:
+- If a specific county was chosen: add `--county <county>`
+- Use the agent name only for `--name` (e.g. `Sugar`). Do NOT pass `--priority` — the server returns tasks in priority order automatically.
 
-If `"count": 0`, stop the loop. If the response includes a `"diagnostic"` field, report it to the user.
+If `"count": 0`:
+- If city = "any": rotate to the next city (see City Rotation above)
+- If specific city: stop the loop
+- If the response includes a `"diagnostic"` field, report it to the user
 
 Extract from `tasks[0]`: `_id` (taskId), `county`, `activityCategory`, `cluster`, `state`.
 
@@ -162,20 +250,68 @@ Extract the activity `_id` from the first matching result. If no results, try sh
 
 ### Step 4: Research a venue
 
-Find a real venue matching the task's `activityCategory` in `county`, `state`. **Follow the venue selection criteria, hours verification gate, and county validation gate from `gokyn task rules`.**
+Find a real venue matching the task's `activityCategory` in `county`, `state`. Use **goplaces** (Google Places API) as the primary discovery tool.
 
-Collect:
+#### 4a. Search for candidates
+
+```bash
+goplaces search "<category> in <county> County, <state>" --json --limit 5 --region US
+```
+
+This returns up to 5 venues with `place_id`, `name`, `address`, `rating`, and `open_now`.
+
+#### 4b. Get full details for the best candidate
+
+```bash
+goplaces details <place_id> --json
+```
+
+Extract from the response:
 - **name** — venue display name
-- **address** — full street address
-- **latitude** and **longitude** — GPS coordinates
-- **open days** — which days the venue is open (as numbers 0-6)
-- **website URL** — venue website (used as `--booking-url`) — **always collect this**
-- **price** — estimated cost in USD (default 0)
-- **photo URL** — a real photo of the venue (optional)
+- **address** — full street address (verify it's in the correct county!)
+- **location.lat** / **location.lng** — GPS coordinates
+- **regular_opening_hours.weekday_descriptions** — operating hours per day
+- **website** — venue website (used as `--booking-url`)
+- **price_level** — price indicator (0=free)
 
-Search up to 5 candidates and use the first one that passes the hours gate and county validation. If none qualify, skip the task.
+#### 4c. Validation gates
 
-### Step 5: Create the event
+Before using a venue, verify ALL of these:
+
+1. **County match** — The address must be in the task's county. If the address says a different city/county, reject it.
+2. **Hours exist** — `regular_opening_hours` must be present. If `None` or missing, reject the venue.
+3. **Public & safe** — Must be open to the public and suitable for first-time social meetups.
+
+Convert hours to open day numbers (0=Sun through 6=Sat). Include a day ONLY if the venue is open that day.
+
+#### 4d. Fallback
+
+If goplaces returns no results or all candidates fail validation:
+- Try broader search terms (e.g. shorter category name, nearby city name)
+- Try web search as a last resort to find hours or verify county
+- If still no qualifying venue after 5 candidates, skip the task
+
+**Collect for the chosen venue:**
+- **name**, **address**, **lat**, **lng**, **open days** (as numbers 0-6), **website URL**, **price** (default 0)
+- **Venue atmosphere details** (for image generation prompt in Step 7): interior/exterior style, lighting, mood, notable features
+
+### Step 5: Check for duplicate events (MANDATORY — do not skip)
+
+Before creating an event, you MUST check if a venue already exists as an event:
+
+```bash
+gokyn event list --search "<venue name>" --json
+```
+
+**Duplicate detection rules:**
+- If any result has the **same title** (case-insensitive) AND is in the **same county** → this is a duplicate. Skip this venue and try the next candidate.
+- If any result has a **similar title** (substring match) AND the **same address** → this is a duplicate. Skip this venue and try the next candidate.
+- If **all** venue candidates for this task are duplicates, skip the task: `gokyn task skip <taskId> --reason "All qualifying venues already have events"`
+- **Only proceed to event creation if the search returns no matches for the chosen venue.**
+
+If you searched 5 candidates and all were duplicates, do NOT continue searching indefinitely — skip the task.
+
+### Step 6: Create the event
 
 Look up the timezone from the State Timezone Reference table. Format open days as comma-separated numbers for `--recurrence-days`.
 
@@ -212,33 +348,104 @@ gokyn event create \
 
 Extract the `eventId` from the JSON response.
 
-### Step 6: Upload a photo
+### Step 7: Generate and upload an event image (MANDATORY)
 
-If you obtained a photo URL during research:
+Every event must have an image. Use **one** of the following methods:
+
+#### Option A: Use Kyndlo's built-in AI image generation (preferred)
 
 ```bash
-curl -L -o /tmp/venue-photo.jpg "<photo-url>"
-gokyn image upload --file /tmp/venue-photo.jpg --event-id <eventId>
+gokyn image generate \
+  --prompt "A welcoming <venue-type> with <atmosphere details>, inviting for casual social meetups. Inspired by <venue name> in <city>, <state>." \
+  --event-id <eventId>
 ```
 
-If no photo is available or upload fails, continue — the event is still valid.
+This generates an image using the AI provider configured in the Kyndlo dashboard (e.g. Gemini, OpenAI), optimizes it, uploads to R2, and attaches it to the event — all in one step.
 
-### Step 7: Complete the task
+#### Option B: Generate externally and upload
+
+If you have your own image generation tool (DALL-E, FAL, Stable Diffusion, etc.), generate the image yourself, then upload:
+
+```bash
+gokyn image upload --file /tmp/venue-image.jpg --event-id <eventId>
+# or from base64:
+gokyn image upload --base64 "<base64-data>" --mime-type image/png --event-id <eventId>
+```
+
+#### Prompt guidelines (for either method)
+
+- Describe the real venue type, atmosphere, and visual traits from your research
+- Include the activity category (e.g. "arcade bar", "botanic garden", "comedy club")
+- Mention key features: lighting, seating, mood, notable elements
+- Keep it grounded in the real venue — don't invent unrelated scenes
+- Example: "A lively retro arcade bar with neon lights, classic arcade cabinets, wood-fired pizza counter, and groups of friends playing games. Warm and inviting atmosphere in Orange Park, Florida."
+
+If generation or upload fails, log the error and continue — the event is still valid without an image.
+
+### Step 8: Complete the task
 
 ```bash
 gokyn task complete <taskId> --event-id <eventId> --venue "<venue name>"
 ```
 
-### Step 8: Report progress
+### Step 9: Track progress
+
+Increment the batch counter. Log:
 
 ```
-[Task X] COMPLETED: <venue name> in <county> County (<cluster>/<category>) — Event ID: <eventId>
+[Batch B, Task T/N] COMPLETED: <venue name> in <county> County (<cluster>/<category>) — Event ID: <eventId>
 ```
 
 If the task was skipped:
 ```
-[Task X] SKIPPED: <county> County / <category> — Reason: <reason>
+[Batch B, Task T/N] SKIPPED: <county> County / <category> — Reason: <reason>
 ```
+
+### Step 10: Check batch completion
+
+If the batch counter has reached the batch size (**N**), go to **Batch Report**. Otherwise, loop back to Step 1.
+
+---
+
+## Batch Report
+
+After completing each batch of **N** events, present a report to the user:
+
+```
+=== Batch <B> Report ===
+Campaign:       <campaign-name>
+City:           <current-city>
+Batch size:     <N>
+Created:        <count>
+Skipped:        <count>
+Failed:         <count>
+
+Events Created:
+  - <venue name> in <county> (<category>) — Event ID: <id>
+  - ...
+
+Skipped Tasks:
+  - <county> / <category> — <reason>
+  - ...
+
+Cumulative Totals (all batches):
+  Created: <total-created>  |  Skipped: <total-skipped>  |  Failed: <total-failed>
+```
+
+Then check remaining work:
+
+```bash
+gokyn task context --campaign <campaign> --city "<current-city>" --json
+```
+
+Report how many tasks remain in the current scope. Then ask:
+
+> "Batch <B> complete. <X> tasks remaining in <city>. Continue with the next batch?"
+
+**Wait for the user's response.**
+- If **yes** — reset the batch counter, refresh rules, and resume the loop
+- If **no** or **stop** — run Cleanup, then print the Final Summary
+- If the user changes preferences (different city, county, batch size) — update the configuration and resume
 
 ---
 
@@ -246,7 +453,9 @@ If the task was skipped:
 
 | Error | Recovery |
 |---|---|
-| No tasks returned (count: 0) | If `diagnostic` field present, report it. Otherwise stop the loop. |
+| No tasks returned (count: 0) | If `diagnostic` field present, report it to the user — it may indicate stale in-progress tasks that need releasing. If city="any", rotate to next city. Otherwise stop the loop. |
+| Diagnostic says tasks are "in_progress (possibly stale)" | Run `gokyn task release-stale --minutes 60` to release stuck tasks, then retry. |
+| Duplicate event found | Skip venue, try next candidate. If all candidates are duplicates, skip the task with reason "All qualifying venues already have events". |
 | No venues found | Try broader search terms. If still none, skip task. |
 | No venues with determinable hours | Skip task with reason "No venues with published hours". |
 | Activity ID not found | Try partial/shorter search terms. If still not found, skip task. |
@@ -265,6 +474,14 @@ Before exiting — whether normally or due to an error — release any task that
 gokyn task release <taskId>
 ```
 
+If you have multiple uncompleted tasks, or if previous agents left stale tasks behind, use the bulk release command:
+
+```bash
+gokyn task release-stale --minutes 60
+```
+
+This releases all `in_progress` tasks that were assigned more than 60 minutes ago back to `pending`.
+
 **Rule:** A task must NEVER be left in `in_progress` status when the agent exits. Every claimed task must end in one of three states:
 - **completed** — event created successfully
 - **skipped** — permanent failure (no venues, category not found)
@@ -274,28 +491,29 @@ Use `skip` for permanent failures. Use `release` for transient failures.
 
 ---
 
-## Summary Report
+## Final Summary
 
-After all tasks are processed (or the loop ends early), print:
+After all batches are done (or the user stops), print a final session summary:
 
 ```
-=== Event Creation Summary ===
-Campaign:   <campaign-name>
-City:       <city-name>
-Processed:  <total> tasks
-Created:    <count>
-Skipped:    <count>
-Failed:     <count>
+=== Event Creation Session Summary ===
+Campaign:       <campaign-name>
+State:          <state>
+Cities worked:  <list of cities processed>
+Total batches:  <B>
+Total created:  <count>
+Total skipped:  <count>
+Total failed:   <count>
 
-Created Events:
+All Created Events:
   - <venue name> in <county> (<category>) — Event ID: <id>
   - ...
 
-Skipped Tasks:
+All Skipped Tasks:
   - <county> / <category> — <reason>
   - ...
 
-Failed Tasks:
+All Failed Tasks:
   - <county> / <category> — <error>
   - ...
 ```
@@ -313,7 +531,11 @@ Always provide a specific reason.
 ## Releasing a Task
 
 ```bash
+# Release a single task
 gokyn task release <taskId>
+
+# Release all stale tasks (assigned more than N minutes ago)
+gokyn task release-stale --minutes 60
 ```
 
 ---
@@ -349,26 +571,180 @@ gokyn task context --campaign "newyork-2027"
 
 ## Event Validation Workflow
 
-Validations are periodic re-checks of existing events.
+**CRITICAL: This is a MANDATORY step-by-step workflow for validating events. Follow each step in order.**
+
+Validations are periodic re-checks of existing events to ensure venue data (hours, price, address, website, status) is still accurate. Events go stale over time — venues close, change hours, raise prices, or move. Your job is to verify each event against current real-world data and report issues.
+
+### Validation Step 1: Check validation stats
 
 ```bash
-# Check validation stats
 gokyn validation summary
-
-# Get next validation to review
-gokyn validation next --assign --json
-
-# After reviewing the event data, submit result:
-gokyn validation submit <validationId> --status valid
-
-# Or if issues found:
-gokyn validation submit <validationId> --status invalid \
-  --issues-json '[{"field":"price","severity":"high","description":"Price changed","currentValue":"$0","expectedValue":"$15"}]'
-
-# Or if minor updates needed:
-gokyn validation submit <validationId> --status needs_update \
-  --notes "Hours changed for summer season"
 ```
+
+Report the summary to the user:
+> "Validation queue: [total] total — [pending] pending, [valid] valid, [invalid] invalid, [needsUpdate] needs update, [overdue] overdue. Ready to start validating?"
+
+**STOP and wait for the user's reply.**
+
+### Validation Step 2: Ask preferences
+
+**Say to the user:**
+> "How many validations should I process before pausing to report? (e.g. 5, 10, 20). Would you like to filter by state or county?"
+
+**STOP and wait for the user's reply.** Store batch size and optional filters.
+
+### Validation Step 3: Claim next validation
+
+```bash
+gokyn validation next --assign --json
+```
+
+Add filters if specified: `--state <state>` and/or `--county <county>`.
+
+If no validations returned, report to the user and stop.
+
+Extract from the response:
+- `_id` (validationId)
+- `eventId`
+- `eventTitle`
+- `county`, `state`
+- `status`, `priority`
+- `lastValidatedAt` (when it was last checked)
+
+### Validation Step 4: Fetch the event details
+
+```bash
+gokyn event get <eventId> --json
+```
+
+Extract the current event data:
+- **title** — venue name
+- **description**
+- **location.address** — street address
+- **location.place** — venue name at the location
+- **location.coordinates** — lat/lng
+- **price** — listed price
+- **bookingUrl** — venue website
+- **recurrence.daysOfWeek** — which days the event recurs
+- **startDateTime** / **endDateTime**
+- **activities** — linked activity categories
+
+### Validation Step 5: Verify against real-world data
+
+Use **goplaces** to look up the venue and compare:
+
+```bash
+goplaces search "<event title> in <county> County, <state>" --json --limit 3 --region US
+```
+
+Find the matching venue, then get full details:
+
+```bash
+goplaces details <place_id> --json
+```
+
+#### What to check:
+
+| Field | How to verify | Issue field |
+|-------|--------------|-------------|
+| **Still open** | Check if the place is marked `permanently_closed` or not found | `other` |
+| **Address** | Compare goplaces address with event `location.address` | `location.address` |
+| **Hours** | Compare `regular_opening_hours.weekday_descriptions` with event `recurrence.daysOfWeek` | `recurrence.daysOfWeek` |
+| **Price** | Check if entry fee has changed (from website if needed) | `price` |
+| **Website** | Verify `bookingUrl` is still valid and points to the right venue | `bookingUrl` |
+| **Name** | Check if the venue has been renamed | `other` |
+
+#### Severity guidelines:
+
+- **`error`** — Venue permanently closed, wrong address, completely wrong hours, broken/unrelated website
+- **`warning`** — Minor hour changes (e.g. one day different), price changed slightly, website redirects but still works
+
+### Validation Step 6: Submit the result
+
+Based on your findings, submit one of three statuses:
+
+#### If everything checks out:
+
+```bash
+gokyn validation submit <validationId> --status valid
+```
+
+#### If there are issues that make the event inaccurate:
+
+```bash
+gokyn validation submit <validationId> --status invalid \
+  --issues-json '[{"field":"<field>","severity":"<error|warning>","description":"<what changed>","currentValue":"<value in our DB>","expectedValue":"<actual value>"}]'
+```
+
+Multiple issues can be reported in the array:
+
+```bash
+gokyn validation submit <validationId> --status invalid \
+  --issues-json '[
+    {"field":"recurrence.daysOfWeek","severity":"error","description":"Venue now closed on Mondays","currentValue":"0,1,2,3,4,5,6","expectedValue":"0,2,3,4,5,6"},
+    {"field":"price","severity":"warning","description":"Entry fee increased","currentValue":"$0","expectedValue":"$10"}
+  ]'
+```
+
+#### If minor updates are needed but the event is mostly correct:
+
+```bash
+gokyn validation submit <validationId> --status needs_update \
+  --notes "Hours changed for summer season — now opens at 10am instead of 9am"
+```
+
+### Validation Step 7: Track progress
+
+Log each result:
+
+```
+[Batch B, V/N] VALID: <event title> in <county> County — no issues
+[Batch B, V/N] INVALID: <event title> in <county> County — <issue count> issues found
+[Batch B, V/N] NEEDS_UPDATE: <event title> in <county> County — <notes summary>
+```
+
+If the venue was not found on goplaces at all:
+
+```bash
+gokyn validation submit <validationId> --status invalid \
+  --issues-json '[{"field":"other","severity":"error","description":"Venue not found on Google Places — may be permanently closed"}]'
+```
+
+### Validation Step 8: Check batch completion
+
+If the batch counter has reached the batch size, go to **Validation Batch Report**. Otherwise loop back to Validation Step 3.
+
+---
+
+### Validation Batch Report
+
+After each batch, present:
+
+```
+=== Validation Batch <B> Report ===
+Processed:      <count>
+Valid:           <count>
+Invalid:        <count>
+Needs Update:   <count>
+
+Results:
+  - <event title> (<county>) — VALID
+  - <event title> (<county>) — INVALID: <brief issue>
+  - ...
+
+Cumulative Totals (all batches):
+  Valid: <total>  |  Invalid: <total>  |  Needs Update: <total>
+```
+
+Then check remaining:
+
+```bash
+gokyn validation summary
+```
+
+> "Batch <B> complete. <pending> validations remaining. Continue?"
+
+**Wait for the user's response.**
 
 ---
 
@@ -418,7 +794,7 @@ gokyn task cities --state "Colorado"   # List metro areas + rural breakdown
 | Command | Purpose |
 |---|---|
 | `gokyn whoami` | Verify token and permissions |
-| `gokyn task rules` | **Read event creation rules (MANDATORY)** |
+| `gokyn task rules` | **Read event creation rules (MANDATORY before each batch)** |
 | `gokyn task campaigns` | List campaigns with progress |
 | `gokyn task context --campaign <id>` | Campaign progress, next county |
 | `gokyn task summary --campaign <id>` | Detailed stats by city and county |
@@ -427,10 +803,14 @@ gokyn task cities --state "Colorado"   # List metro areas + rural breakdown
 | `gokyn task complete <id> --event-id <eid>` | Mark task done |
 | `gokyn task skip <id> --reason <r>` | Skip impossible task |
 | `gokyn task release <id>` | Unclaim a task |
+| `gokyn task release-stale --minutes 60` | Release all stale in-progress tasks |
 | `gokyn task seed --campaign <id> ...` | Seed tasks for counties |
 | `gokyn activity list / get / categories` | Browse activities |
+| `goplaces search "<query>" --json --limit 5 --region US` | **Search venues by category and location** |
+| `goplaces details <place_id> --json` | **Get venue hours, address, coordinates** |
 | `gokyn event list / get / create / update / delete` | Manage events |
-| `gokyn image upload --file <f> --event-id <eid>` | Upload venue photo |
+| `gokyn image generate --prompt <p> --event-id <eid>` | **Generate AI image and attach to event** |
+| `gokyn image upload --file <f> --event-id <eid>` | Upload venue photo from file |
 | `gokyn validation next / submit / summary` | Event validation |
 
 ## Global Flags

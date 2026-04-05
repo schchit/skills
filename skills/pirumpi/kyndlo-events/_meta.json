@@ -3,9 +3,15 @@
   "slug": "kyndlo-events",
   "displayName": "Kyndlo Events",
   "latest": {
-    "version": "3.0.0",
-    "publishedAt": 1774329504433,
-    "commit": "https://github.com/openclaw/skills/commit/e04513bd05291869c0b20f19bd3d03ef7e98e989"
+    "version": "3.5.0",
+    "publishedAt": 1775106914350,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "3.0.0",
+      "publishedAt": 1774329504433,
+      "commit": "https://github.com/openclaw/skills/commit/e04513bd05291869c0b20f19bd3d03ef7e98e989"
+    }
+  ]
 }
