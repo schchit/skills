@@ -3,9 +3,15 @@
   "slug": "oksign",
   "displayName": "Oksign",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773464529780,
-    "commit": "https://github.com/openclaw/skills/commit/a4a81f2b58d29d4aa8963418be9170516a1d4dd3"
+    "version": "1.0.2",
+    "publishedAt": 1775163865474,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773464529780,
+      "commit": "https://github.com/openclaw/skills/commit/a4a81f2b58d29d4aa8963418be9170516a1d4dd3"
+    }
+  ]
 }
