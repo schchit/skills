@@ -18,10 +18,21 @@ class Skill(BaseSkill, ApiService):
         super().__init__()
 
     def get_output_analysis_content_body(self, result=None):
-        import json
         result_json = result
-        result_json = json.dumps(result_json.get('healthAiResponse', result),
-                                 ensure_ascii=False, indent=2)
+
+        result_json_pure_text = result_json.get("pureText")
+        if result_json_pure_text:
+            result_json = JsonUtil.parse(result_json_pure_text, result_json_pure_text)
+
+        result_json_common_ai_response = result_json.get("commonAiResponse")
+        if result_json_common_ai_response:
+            result_json = result_json_common_ai_response
+
+        result_json_health_ai_response = result_json.get("healthAiResponse")
+        if result_json_health_ai_response:
+            result_json = result_json_health_ai_response
+
+        result_json = JsonUtil.stringify(result_json, result_json)
         return result_json
 
     def get_output_analysis_content_head(self, result=None):
@@ -90,6 +101,10 @@ class Skill(BaseSkill, ApiService):
             return True
 
         files = None
+
+        if not input_path:
+            raise ValueError("必须提供本地视频路径(--input)或网络视频URL(--url)")
+
         if (input_path.startswith("http://") or input_path.startswith("https://")):
             params.update({
                 "videoUrl": input_path
@@ -133,7 +148,8 @@ class Skill(BaseSkill, ApiService):
 
         if response:
             for item in response:
-                item["reportImageUrl"] = _get_analysis_export_url(item.get("id"))
+                if item.get("commonAiResponse") or item.get("healthAiResponse"):
+                    item["reportImageUrl"] = _get_analysis_export_url(item.get("id"))
 
         response_text = JsonUtil.stringify(response)
 
