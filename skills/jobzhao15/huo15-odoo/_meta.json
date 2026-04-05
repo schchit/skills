@@ -1,13 +1,18 @@
 {
   "owner": "jobzhao15",
   "slug": "huo15-odoo",
-  "displayName": "火一五欧度（Odoo 19）",
+  "displayName": "huo15-odoo-v2",
   "latest": {
-    "version": "2.0.0",
-    "publishedAt": 1774798636600,
-    "commit": "https://github.com/openclaw/skills/commit/035065d7291b1d49ceeed52ca58b35fa14e2acab"
+    "version": "1.7.1",
+    "publishedAt": 1774965563470,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.0.0",
+      "publishedAt": 1774798636600,
+      "commit": "https://github.com/openclaw/skills/commit/035065d7291b1d49ceeed52ca58b35fa14e2acab"
+    },
     {
       "version": "1.2.0",
       "publishedAt": 1773933026924,
