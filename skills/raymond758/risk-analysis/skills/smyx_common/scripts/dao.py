@@ -57,11 +57,15 @@ class Dao(BaseDao):
 
     def get_db_path(self, db_path):
         import os
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        parent_dir = os.path.dirname(current_dir)
-        parent_dir = os.path.join(parent_dir, "data")
+
+        cwd = os.getcwd()
+        workspace = os.path.dirname(cwd)
+        workspace = os.path.dirname(workspace)
+        workspace = os.environ.get('OPENCLAW_WORKSPACE', workspace)
+        parent_dir = os.path.join(workspace, "data")
         FileUtil.mkdir(parent_dir)
         db_path = os.path.join(parent_dir, db_path)
+
         return db_path
 
     def __init__(self, db_path: str = None):

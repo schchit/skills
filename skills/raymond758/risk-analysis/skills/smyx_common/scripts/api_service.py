@@ -21,7 +21,7 @@ class ApiService(BaseApiService):
         )
 
     def page(self, url, pageNum=None, pageSize=None, *args, **argss):
-        data = args[0] if len(args) > 0 else argss.get('data') or {}
+        data = args[0] if len(args) > 0 else argss.get('data') if argss.get('data') is not None else {}
         if pageNum is None:
             pageNum = 1
         if pageSize is None:

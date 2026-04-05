@@ -1,13 +1,18 @@
 {
   "owner": "raymond758",
   "slug": "risk-analysis",
-  "displayName": "High-Risk Behavior Analyzer | 高风险行为识别分析工具",
+  "displayName": "High-Risk Behavior Identification & Analysis Tool | 高风险行为识别分析工具",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1774861681681,
-    "commit": "https://github.com/openclaw/skills/commit/8ab66cfa8ecdf98b1d729a8b8f5e570ee02a7aea"
+    "version": "1.0.4",
+    "publishedAt": 1775131593520,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1774861681681,
+      "commit": "https://github.com/openclaw/skills/commit/8ab66cfa8ecdf98b1d729a8b8f5e570ee02a7aea"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1774105870060,

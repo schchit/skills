@@ -12,7 +12,7 @@ import logging
 from typing import Any, Callable, Optional, TypeVar, Dict
 import pydash as _
 
-if ConstantEnum.IS_DEBUG:
+if ConstantEnum.is_debug():
     import http.client
 
     # 【关键代码】开启调试模式
@@ -49,6 +49,28 @@ class StringUtil(BaseUtil):
 
 
 class FileUtil(BaseUtil):
+
+    @staticmethod
+    def get_fullname(path):
+        try:
+            return os.path.basename(path)
+        except Exception as e:
+            CommonUtil.trace_exception_stack(e)
+            return ""
+
+    @staticmethod
+    def get_name(path):
+        try:
+            return os.path.splitext(os.path.basename(path))[0]
+        except Exception as e:
+            CommonUtil.trace_exception_stack(e)
+
+    @staticmethod
+    def get_ext(path):
+        try:
+            return os.path.splitext(os.path.basename(path))[1]
+        except Exception as e:
+            CommonUtil.trace_exception_stack(e)
 
     @staticmethod
     def open(path):
@@ -90,7 +112,7 @@ class CommonUtil(BaseUtil):
 
     @staticmethod
     def trace_exception_stack(e):
-        if ConstantEnum.IS_DEBUG:
+        if ConstantEnum.is_debug():
             print(f"❌ 错误描述: {str(e)}, 堆栈跟踪:")
             traceback.print_stack()
 
@@ -323,7 +345,11 @@ class RequestUtil(BaseUtil):
             data = data or {}
             params = params or {}
             options = options or {}
-            data.setdefault('tenantCode', ConstantEnum.CURRENT__TENTANT_CODE)
+            ConstantEnum.CURRENT__TENTANT_CODE and data.setdefault('tenantCode', ConstantEnum.CURRENT__TENTANT_CODE)
+            ConstantEnum.DEFAULT__SKILL_HUB_NAME and data.setdefault('skillHubName',
+                                                                     ConstantEnum.DEFAULT__SKILL_HUB_NAME)
+            ConstantEnum.DEFAULT__SKILL_PLATFORM_NAME and data.setdefault('skillPlatform',
+                                                                          ConstantEnum.DEFAULT__SKILL_PLATFORM_NAME)
             if current__user_name:
                 data.setdefault('pnaUserName', current__user_name)
 
