@@ -3,9 +3,15 @@
   "slug": "uplisting",
   "displayName": "Uplisting",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774072993592,
-    "commit": "https://github.com/openclaw/skills/commit/613bcfe91bd9e31acb992b36aac3e8587f6a0ae8"
+    "version": "1.0.2",
+    "publishedAt": 1775165683080,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774072993592,
+      "commit": "https://github.com/openclaw/skills/commit/613bcfe91bd9e31acb992b36aac3e8587f6a0ae8"
+    }
+  ]
 }
