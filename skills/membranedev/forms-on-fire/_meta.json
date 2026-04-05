@@ -3,9 +3,15 @@
   "slug": "forms-on-fire",
   "displayName": "Forms On Fire",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774051351474,
-    "commit": "https://github.com/openclaw/skills/commit/ba4185b46b8f1b7141dc03d28c36729a0ca96337"
+    "version": "1.0.2",
+    "publishedAt": 1775165560296,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774051351474,
+      "commit": "https://github.com/openclaw/skills/commit/ba4185b46b8f1b7141dc03d28c36729a0ca96337"
+    }
+  ]
 }
