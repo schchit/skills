@@ -3,6 +3,17 @@ name: liepin-jobs
 description: |
   猎聘求职工具 — 在猎聘上搜索职位、投递简历、查看/编辑简历。
   触发词: 找工作, 搜职位, 投简历, 猎聘, liepin, 求职, 招聘, 简历
+version: 0.2.0
+author: xllin
+license: MIT
+homepage: https://github.com/xllinbupt/MCP2skill
+repository: https://github.com/xllinbupt/MCP2skill
+keywords:
+  - jobs
+  - liepin
+  - resume
+  - mcp
+  - chinese
 requires:
   bins: python3
 allowed-tools: Bash(python3:*),Bash(python:*)
@@ -16,34 +27,32 @@ allowed-tools: Bash(python3:*),Bash(python:*)
 
 ---
 
-## !! 首次使用必读：获取 Token
+## !! 首次使用必读：获取凭证
 
-使用此工具前，用户必须先获取猎聘的两个认证 Token。**没有 Token 无法使用任何功能。**
+使用此工具前，用户必须先获取猎聘的用户凭证。**没有凭证无法使用任何功能。**
 
 ### 获取步骤
 
 1. **打开猎聘 MCP 配置页**: 引导用户在浏览器访问 https://www.liepin.com/mcp/server
 2. **登录猎聘账号**: 用户需要有猎聘账号并登录
-3. **获取两个 Token**:
-   - **Gateway Token**: 格式为 `mcp_gateway_token_xxxx`（页面上的 Authorization Bearer 值）
-   - **User Token**: 格式为 `liepin_user_token_xxxx`（页面上的 x-user-token 值）
+3. **获取 User Token**:
+   - **User Token**: 格式为 `liepin_user_token_xxxx`（页面上的 `x-user-token` 值）
 4. **配置 Token**: 运行 setup 命令保存 token
 
 ```bash
 python3 "<skill_dir>/liepin_mcp.py" setup
-# 按提示输入两个 token
+# 按提示输入 user token
 ```
 
 ### 或通过环境变量配置
 
 ```bash
-export LIEPIN_GATEWAY_TOKEN="mcp_gateway_token_xxxx"
 export LIEPIN_USER_TOKEN="liepin_user_token_xxxx"
 ```
 
 ### Token 过期
 
-- Token 有效期 **90 天**
+- 凭证有效期 **90 天**
 - 过期后会收到认证错误，需引导用户重新访问上述页面获取新 Token
 - 重新生成 Token 会立即使旧 Token 失效
 
@@ -130,7 +139,7 @@ python3 "$SCRIPT" call <tool-name> -a '{"key": "value"}' --json
 
 | 错误 | 原因 | 解决方案 |
 |------|------|---------|
-| "未配置 token" | 没有运行 setup | 引导用户获取 Token 并运行 `setup` |
+| "未配置 LIEPIN_USER_TOKEN" | 没有运行 setup | 引导用户获取 Token 并运行 `setup` |
 | HTTP 401 | Token 过期或无效 | 引导用户重新访问配置页获取新 Token |
 | HTTP 429 | 频率限制 | 等待 1 分钟后重试 |
 | 网络超时 | 网络问题 | 重试一次 |

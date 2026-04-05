@@ -21,7 +21,7 @@ from pathlib import Path
 
 # ── 配置 ──────────────────────────────────────────────────────────────
 
-DEFAULT_MCP_URL = "https://open-mcp.liepin.com/servers/cc4a45655fc3432eaf346555d04be77e/mcp"
+DEFAULT_MCP_URL = "https://open-agent.liepin.com/mcp/user"
 
 CONFIG_PATH = Path.home() / ".config" / "liepin-mcp" / "config.json"
 
@@ -41,16 +41,15 @@ def save_config(config):
         json.dump(config, f, indent=2, ensure_ascii=False)
 
 
-def get_tokens(config):
-    """获取 token"""
-    gateway_token = config.get("gateway_token") or os.environ.get("LIEPIN_GATEWAY_TOKEN", "")
+def get_user_token(config):
+    """获取猎聘用户 token"""
     user_token = config.get("user_token") or os.environ.get("LIEPIN_USER_TOKEN", "")
 
-    if not gateway_token or not user_token:
-        print("错误: 未配置 token。请先运行: python liepin_mcp.py setup", file=sys.stderr)
+    if not user_token:
+        print("错误: 未配置 LIEPIN_USER_TOKEN。请先运行: python liepin_mcp.py setup", file=sys.stderr)
         sys.exit(1)
 
-    return gateway_token, user_token
+    return user_token
 
 
 # ── HTTP 请求（零依赖）────────────────────────────────────────────────
@@ -58,9 +57,8 @@ def get_tokens(config):
 class McpSession:
     """MCP 会话管理，使用 urllib（无需 requests）"""
 
-    def __init__(self, url, gateway_token, user_token):
+    def __init__(self, url, user_token):
         self.url = url
-        self.gateway_token = gateway_token
         self.user_token = user_token
         self.session_id = None
 
@@ -69,7 +67,6 @@ class McpSession:
         data = json.dumps(payload).encode("utf-8")
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.gateway_token}",
             "x-user-token": self.user_token,
         }
         if self.session_id:
@@ -126,8 +123,8 @@ class McpSession:
 def create_session(config):
     """创建并初始化 MCP 会话"""
     url = config.get("mcp_url", DEFAULT_MCP_URL)
-    gateway_token, user_token = get_tokens(config)
-    session = McpSession(url, gateway_token, user_token)
+    user_token = get_user_token(config)
+    session = McpSession(url, user_token)
     session.initialize()
     return session
 
@@ -135,19 +132,18 @@ def create_session(config):
 # ── 命令实现 ──────────────────────────────────────────────────────────
 
 def cmd_setup(args):
-    """配置 token"""
+    """配置用户 token"""
     config = load_config()
     print("猎聘 MCP 配置向导")
     print("=" * 40)
-    print("请从 https://www.liepin.com/mcp/server 获取 token\n")
+    print("请从 https://www.liepin.com/mcp/server 获取凭证\n")
 
-    gateway_token = input("Gateway Token (mcp_gateway_token_xxx): ").strip()
     user_token = input("User Token (liepin_user_token_xxx): ").strip()
 
-    if gateway_token:
-        config["gateway_token"] = gateway_token
     if user_token:
         config["user_token"] = user_token
+    # 猎聘新版 MCP 不再要求 gateway token，保留旧配置会让用户困惑，这里清理掉。
+    config.pop("gateway_token", None)
     config["mcp_url"] = args.url or DEFAULT_MCP_URL
 
     save_config(config)

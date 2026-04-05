@@ -3,9 +3,15 @@
   "slug": "liepin-jobs",
   "displayName": "Liepin Jobs",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773848951494,
-    "commit": "https://github.com/openclaw/skills/commit/fa6a25a8d106710a9b07cb945643343bbabbbd28"
+    "version": "0.2.0",
+    "publishedAt": 1775346565113,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773848951494,
+      "commit": "https://github.com/openclaw/skills/commit/fa6a25a8d106710a9b07cb945643343bbabbbd28"
+    }
+  ]
 }
