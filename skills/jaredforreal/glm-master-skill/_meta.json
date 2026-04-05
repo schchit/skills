@@ -3,11 +3,16 @@
   "slug": "glm-master-skill",
   "displayName": "GLM-Master-Skill",
   "latest": {
-    "version": "1.0.7",
-    "publishedAt": 1774838975758,
-    "commit": "https://github.com/openclaw/skills/commit/970423eddfccaa4a406b94ac3f43b4fa39edb72b"
+    "version": "1.0.9",
+    "publishedAt": 1775107204112,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.7",
+      "publishedAt": 1774838975758,
+      "commit": "https://github.com/openclaw/skills/commit/970423eddfccaa4a406b94ac3f43b4fa39edb72b"
+    },
     {
       "version": "1.0.3",
       "publishedAt": 1774255482368,
