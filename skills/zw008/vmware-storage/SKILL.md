@@ -1,21 +1,18 @@
 ---
 name: vmware-storage
 description: >
-  VMware vSphere storage management: datastores, iSCSI, vSAN.
-  Domain-focused skill split from vmware-aiops for lighter context.
-  11 MCP tools: datastore browsing/scanning, iSCSI adapter and target config,
-  vSAN health and capacity monitoring.
-  Use when user asks to "browse datastore", "enable iSCSI", "add iSCSI target",
-  "check vSAN health", "scan for OVA/ISO images", "rescan storage",
-  or mentions VMware storage, iSCSI, or vSAN operations.
-  For VM operations use vmware-aiops, for monitoring use vmware-monitor,
-  for Kubernetes use vmware-vks.
+  Use this skill whenever the user needs to manage VMware storage — datastores, iSCSI targets, and vSAN clusters.
+  Directly handles: browse datastores, scan for deployable images (OVA/ISO), configure iSCSI adapters and targets, check vSAN health and capacity.
+  Always use this skill for "list datastores", "add iSCSI target", "check vSAN health", "browse datastore files", "scan for OVA images", or any storage-related VMware task.
+  For VM operations use vmware-aiops, for networking use vmware-nsx. For load balancing/AVI/AKO use vmware-avi.
 installer:
   kind: uv
   package: vmware-storage
 allowed-tools:
   - Bash
 metadata: {"openclaw":{"requires":{"env":["VMWARE_STORAGE_CONFIG"],"bins":["vmware-storage"],"config":["~/.vmware-storage/config.yaml","~/.vmware-storage/.env"]},"primaryEnv":"VMWARE_STORAGE_CONFIG","homepage":"https://github.com/zw008/VMware-Storage","emoji":"🗄️","os":["macos","linux"]}}
+compatibility: >
+  Requires vmware-policy (auto-installed). All operations audited to ~/.vmware/audit.db.
 ---
 
 # VMware Storage
@@ -23,7 +20,8 @@ metadata: {"openclaw":{"requires":{"env":["VMWARE_STORAGE_CONFIG"],"bins":["vmwa
 VMware vSphere storage management — 11 MCP tools for datastores, iSCSI, and vSAN.
 
 > Split from vmware-aiops for lighter context and local model compatibility.
-> **Companion skills**: [vmware-aiops](https://github.com/zw008/VMware-AIops) (VM lifecycle), [vmware-monitor](https://github.com/zw008/VMware-Monitor) (read-only monitoring), [vmware-vks](https://github.com/zw008/VMware-VKS) (Tanzu Kubernetes), [vmware-nsx](https://github.com/zw008/VMware-NSX) (NSX networking), [vmware-nsx-security](https://github.com/zw008/VMware-NSX-Security) (DFW/firewall), [vmware-aria](https://github.com/zw008/VMware-Aria) (metrics/alerts/capacity).
+> **Companion skills**: [vmware-aiops](https://github.com/zw008/VMware-AIops) (VM lifecycle), [vmware-monitor](https://github.com/zw008/VMware-Monitor) (read-only monitoring), [vmware-vks](https://github.com/zw008/VMware-VKS) (Tanzu Kubernetes), [vmware-nsx](https://github.com/zw008/VMware-NSX) (NSX networking), [vmware-nsx-security](https://github.com/zw008/VMware-NSX-Security) (DFW/firewall), [vmware-aria](https://github.com/zw008/VMware-Aria) (metrics/alerts/capacity), [vmware-avi](https://github.com/zw008/VMware-AVI) (AVI/ALB/AKO).
+> | [vmware-pilot](../vmware-pilot/SKILL.md) (workflow orchestration) | [vmware-policy](../vmware-policy/SKILL.md) (audit/policy)
 
 ## What This Skill Does
 
@@ -51,6 +49,7 @@ vmware-storage doctor
 - VM lifecycle, deployment, guest ops → `vmware-aiops`
 - Inventory, health, alarms, events → `vmware-monitor`
 - Tanzu Kubernetes → `vmware-vks`
+- Load balancing, AVI/ALB, AKO, Ingress → `vmware-avi`
 
 ## Related Skills — Skill Routing
 
@@ -63,6 +62,9 @@ vmware-storage doctor
 | NSX networking: segments, gateways, NAT | **vmware-nsx** |
 | NSX security: DFW rules, security groups | **vmware-nsx-security** |
 | Aria Ops: metrics, alerts, capacity planning | **vmware-aria** |
+| Multi-step workflows with approval | **vmware-pilot** |
+| Load balancer, AVI, ALB, AKO, Ingress | **vmware-avi** (`uv tool install vmware-avi`) |
+| Audit log query | **vmware-policy** (`vmware-audit` CLI) |
 
 ## Common Workflows
 
@@ -108,6 +110,14 @@ vmware-storage datastore list
 vmware-storage datastore list --target prod-vcenter
 vmware-storage iscsi status esxi-lab --target lab-esxi
 ```
+
+## Usage Mode
+
+| Scenario | Recommended | Why |
+|----------|:-----------:|-----|
+| Local/small models (Ollama, Qwen) | **CLI** | ~2K tokens vs ~8K for MCP |
+| Cloud models (Claude, GPT-4o) | Either | MCP gives structured JSON I/O |
+| Automated pipelines | **MCP** | Type-safe parameters, structured output |
 
 ## MCP Tools (11)
 
@@ -218,6 +228,8 @@ chmod 600 ~/.vmware-storage/.env
 vmware-storage doctor
 ```
 
+> All tools are automatically audited via vmware-policy. Audit logs: `vmware-audit log --last 20`
+
 > Full setup guide with multi-target config, MCP server setup, and Docker: see `references/setup-guide.md`
 
 ## Architecture
@@ -235,6 +247,17 @@ Datastores / iSCSI / vSAN
 ```
 
 The MCP server uses stdio transport (local only, no network listener). Connections to vSphere use SSL/TLS on port 443.
+
+## Audit & Safety
+
+All operations are automatically audited via vmware-policy (`@vmware_tool` decorator):
+- Every tool call logged to `~/.vmware/audit.db` (SQLite, framework-agnostic)
+- Policy rules enforced via `~/.vmware/rules.yaml` (deny rules, maintenance windows, risk levels)
+- Risk classification: each tool tagged as low/medium/high/critical
+- View recent operations: `vmware-audit log --last 20`
+- View denied operations: `vmware-audit log --status denied`
+
+vmware-policy is automatically installed as a dependency — no manual setup needed.
 
 ## License
 
