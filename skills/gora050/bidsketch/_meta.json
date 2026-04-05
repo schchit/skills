@@ -3,9 +3,15 @@
   "slug": "bidsketch",
   "displayName": "Bidsketch",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773907415704,
-    "commit": "https://github.com/openclaw/skills/commit/0f589b917e7bde3a591bb4c23df33e092b8f3d8d"
+    "version": "1.0.2",
+    "publishedAt": 1775164873495,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773907415704,
+      "commit": "https://github.com/openclaw/skills/commit/0f589b917e7bde3a591bb4c23df33e092b8f3d8d"
+    }
+  ]
 }
