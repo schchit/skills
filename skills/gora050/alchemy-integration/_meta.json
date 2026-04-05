@@ -3,9 +3,15 @@
   "slug": "alchemy-integration",
   "displayName": "Alchemy",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773554562978,
-    "commit": "https://github.com/openclaw/skills/commit/a5b1af6710d56040f606318b2da92c012a6ce621"
+    "version": "1.0.2",
+    "publishedAt": 1775164104045,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773554562978,
+      "commit": "https://github.com/openclaw/skills/commit/a5b1af6710d56040f606318b2da92c012a6ce621"
+    }
+  ]
 }
