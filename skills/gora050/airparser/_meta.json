@@ -3,9 +3,15 @@
   "slug": "airparser",
   "displayName": "Airparser",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773993832810,
-    "commit": "https://github.com/openclaw/skills/commit/94cda75bb220d45aae05f70d941c01a9a9fcfcce"
+    "version": "1.0.2",
+    "publishedAt": 1775165301321,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773993832810,
+      "commit": "https://github.com/openclaw/skills/commit/94cda75bb220d45aae05f70d941c01a9a9fcfcce"
+    }
+  ]
 }
