@@ -3,9 +3,15 @@
   "slug": "ongage",
   "displayName": "Ongage",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773946991833,
-    "commit": "https://github.com/openclaw/skills/commit/7c02e6c9bf0437a918d2c88527466968d074e880"
+    "version": "1.0.2",
+    "publishedAt": 1775165037754,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773946991833,
+      "commit": "https://github.com/openclaw/skills/commit/7c02e6c9bf0437a918d2c88527466968d074e880"
+    }
+  ]
 }
