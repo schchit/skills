@@ -3,9 +3,15 @@
   "slug": "finerio-connect",
   "displayName": "Finerio Connect",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774868655438,
-    "commit": "https://github.com/openclaw/skills/commit/8fdfee0471b06edd9f0100887d2b37d68b297a10"
+    "version": "1.0.2",
+    "publishedAt": 1775169674068,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774868655438,
+      "commit": "https://github.com/openclaw/skills/commit/8fdfee0471b06edd9f0100887d2b37d68b297a10"
+    }
+  ]
 }
