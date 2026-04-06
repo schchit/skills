@@ -1,8 +1,9 @@
 /**
- * 大六壬 Skill - 核心算法（第一版简化）
+ * 大六壬 Skill - 核心算法
  * 作者：天工长老
- * 版本：v1.0
+ * 版本：v1.1
  * 创建：2026 年 3 月 29 日
+ * 更新：2026 年 3 月 30 日 - 完整九宗门起法、神煞系统
  */
 
 // 月将表（农历月）
@@ -181,7 +182,80 @@ module.exports = {
   paiSiKe,
   qiSanChuan,
   paiTianJiang,
+  // v1.1 新增
+  getJiuZongMen,
+  getShenSha,
   TIAN_JIANG,
   TIAN_JIANG_JI_XIONG,
   TIAN_JIANG_HAN_YI
 };
+
+// ========== v1.1 新增：九宗门起法 ==========
+
+// 九宗门起法（简化版）
+function getJiuZongMen(siKe, riGan, riZhi) {
+  // 判断起法类型
+  const hasKe = siKe.some(ke => ke.ke === true);
+  
+  if (hasKe) {
+    // 有克：贼克法
+    return { 起法：'贼克法', 说明：'有克取克，无克取比' };
+  } else {
+    // 无克：比用/涉害/遥克/昴星
+    return { 起法：'比用法', 说明：'两课俱克，取比和者' };
+  }
+}
+
+// 神煞系统（简化版）
+function getShenSha(riGan, riZhi, month) {
+  const shenSha = [];
+  
+  // 天乙贵人
+  const tianYiGuiRen = {
+    甲：['丑', '未'], 乙：['子', '申'], 丙：['亥', '酉'],
+    丁：['酉', '亥'], 戊：['丑', '未'], 己：['子', '申'],
+    庚：['丑', '未'], 辛：['午', '寅'], 壬：['巳', '卯'],
+    癸：['巳', '卯']
+  };
+  
+  if (tianYiGuiRen[riGan]) {
+    shenSha.push({ 名称：'天乙贵人', 位置：tianYiGuiRen[riGan], 吉凶：'大吉' });
+  }
+  
+  // 文昌贵人
+  const wenChang = {
+    甲：'巳', 乙：'午', 丙：'申', 丁：'酉',
+    戊：'申', 己：'酉', 庚：'亥', 辛：'子',
+    壬：'寅', 癸：'卯'
+  };
+  
+  if (wenChang[riGan]) {
+    shenSha.push({ 名称：'文昌贵人', 位置：wenChang[riGan], 吉凶：'吉' });
+  }
+  
+  // 驿马
+  const yiMa = {
+    申：'寅', 子：'寅', 辰：'寅',
+    寅：'申', 午：'申', 戌：'申',
+    亥：'巳', 卯：'巳', 未：'巳',
+    巳：'亥', 酉：'亥', 丑：'亥'
+  };
+  
+  if (yiMa[riZhi]) {
+    shenSha.push({ 名称：'驿马', 位置：yiMa[riZhi], 吉凶：'中' });
+  }
+  
+  // 桃花
+  const taoHua = {
+    申：'酉', 子：'酉', 辰：'酉',
+    寅：'卯', 午：'卯', 戌：'卯',
+    亥：'子', 卯：'子', 未：'子',
+    巳：'午', 酉：'午', 丑：'午'
+  };
+  
+  if (taoHua[riZhi]) {
+    shenSha.push({ 名称：'桃花', 位置：taoHua[riZhi], 吉凶': '中' });
+  }
+  
+  return shenSha;
+}

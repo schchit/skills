@@ -1,11 +1,17 @@
 {
   "owner": "dglijin-oss",
   "slug": "liuren-skill",
-  "displayName": "大六壬 - Da Liu Ren Divination",
+  "displayName": "大六壬技能",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774856675296,
-    "commit": "https://github.com/openclaw/skills/commit/e0ce63e5af17bb5430ee41b4af83b8614c401bde"
+    "version": "2.0.0",
+    "publishedAt": 1775229014916,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774856675296,
+      "commit": "https://github.com/openclaw/skills/commit/e0ce63e5af17bb5430ee41b4af83b8614c401bde"
+    }
+  ]
 }
