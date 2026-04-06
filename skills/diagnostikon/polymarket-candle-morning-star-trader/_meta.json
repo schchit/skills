@@ -1,11 +1,17 @@
 {
   "owner": "diagnostikon",
   "slug": "polymarket-candle-morning-star-trader",
-  "displayName": "Candle Morning Star Trader",
+  "displayName": "Polymarket Candle Morning Star Trader",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774855837342,
-    "commit": "https://github.com/openclaw/skills/commit/4b52548fbe74e547b4f4ac3f3bccafd7d6baddc1"
+    "version": "1.0.1",
+    "publishedAt": 1775317055173,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774855837342,
+      "commit": "https://github.com/openclaw/skills/commit/4b52548fbe74e547b4f4ac3f3bccafd7d6baddc1"
+    }
+  ]
 }
