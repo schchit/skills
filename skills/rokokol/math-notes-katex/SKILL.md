@@ -49,8 +49,3 @@ This produces:
 
 If formulas look broken: `references/troubleshooting.md`
 
-## Security / scope
-
-- This renderer loads a local `file://` HTML and local KaTeX assets
-- It does not make network requests
-- It writes only the output PNG path you provide
