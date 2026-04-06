@@ -407,37 +407,30 @@ Authenticated endpoints require:
         - is_algo_id (optional): true if order_id is an algo order ID
 
 
-#### get_trade_history 
+#### get_trade_history
 - endpoint: /auth/tacoclaw/trade/get_trade_history
 - method: GET
 - parameters:
     - query parameters:
         - user_id (required): taco user id
-        - symbol (optional): filter by symbol
-        - limit (optional): max records, default 50, max 200
-        - start_time (optional): Unix ms
+        - symbol (required): trading pair (e.g. BTCUSDC)
+        - start_time (required): Unix ms
         - end_time (optional): Unix ms
-        - cursor (optional): pagination cursor
 - expected response:
   ```json
   {
     "base_response": { "status_code": 200, "status_msg": "success" },
-    "trades": [
+    "records": [
       {
-        "trade_id": "t_123456",
-        "order_id": "o_789",
-        "symbol": "BTCUSDC",
-        "side": "Long",
-        "price": "87500.00",
-        "size": "0.01",
-        "notional": "875.00",
-        "fee": "0.35",
-        "realized_pnl": "12.50",
-        "timestamp": 1709337600000
+        "exchange": "Taco",
+        "order_id": "50473587382",
+        "price": "2127.1",
+        "quantity": "0.047",
+        "realized_pnl": "0",
+        "timestamp": 1774515516630,
+        "trade_fee": "0.045987"
       }
-    ],
-    "next_cursor": "cursor_abc123",
-    "has_more": true
+    ]
   }
   ```
 
@@ -565,5 +558,177 @@ Authenticated endpoints require:
     "margin_ratio": "0.15",
     "maintenance_margin": "125.00",
     "position_margin": "875.00"
+  }
+  ```
+  
+#### get_default_ai_trader 
+- endpoint: /auth/autopilot/default
+- method: GET
+- parameters:
+    - query parameters:
+        - user_id (required)
+- expected response:
+  ```json
+  {
+    "base_response": { "status_code": 200, "status_msg": "success" },
+    "default_trader": {
+       "exchange": "Hyper",
+       "frequency": 1800,
+       "prompt_tag": "taco-Data Dana",
+       "provider": "deepseek",
+       "provider_model": "deepseek-chat",
+       "trader_id": "gua6gh-deepseek-1765187795374342",
+       "trader_name": "gua6ghTacoDefault",
+       "trader_state": 1,
+       "use_taco": true,
+       "user_id": "did:privy:cmionawye03s0lb0cgwgua6gh",
+       "openclaw_connected": true,
+       "counter": false,
+       "exchange_api": "privy"
+    }
+  }
+  ```
+- meaning of `trader_state` field: 1 means paused (could be started via `start_default_ai_trader`), 2 means running (could be paused via `pause_default_ai_trader`), 0 means deleted (can not be used any more)
+  
+#### get_default_ai_strategies 
+- endpoint: /auth/autopilot/prompts
+- method: GET    
+- parameters:
+    - query parameters:
+        - tacoclaw (boolean, optional)
+- expected response:
+  ```json
+  {
+    "base_response": { "status_code": 200, "status_msg": "success" },
+    "taco_prompts": [
+        {
+            "content": "You are a professional cryptocurrency trading AI......",
+            "detail": {
+                "annual_apr": 12.59,
+                "description": "Build or exit positions in planned installments, reducing the timing risk compared with putting all capital to work at once.",
+                "executed_trades": 3206,
+                "labels": [
+                    "Systematic Accumulation",
+                    "Conservative",
+                    "Long Term"
+                ],
+                "max_drawdown": 10.86,
+                "pl_ratio": 1.02,
+                "simu_end": 1773936000,
+                "simu_start": 1742400000,
+                "title": "Dollar Cost Average",
+                "win_rate": 55.26
+            },
+            "owner": "taco-autopilot",
+            "tag": "taco-dollar-cost-average",
+            "target": "*"
+        }
+  }
+  ```
+  
+#### start_default_ai_trader 
+- endpoint: /auth/autopilot/trader/start
+- method: POST
+- parameters:
+    - query parameters:
+        - user_id (required)
+        - trader_id (required, same as `trader_id` field of get_default_ai_trader result)
+- expected response:
+  ```json
+  {
+    "base_response": { "status_code": 200, "status_msg": "success" },
+    "trader_id": "gua6gh-deepseek-1765187859937789",
+    "trader_state": 2
+  }
+  ```
+  
+#### pause_default_ai_trader 
+- endpoint: /auth/autopilot/trader/pause
+- method: POST
+- parameters:
+    - query parameters:
+        - user_id (required)
+        - trader_id (required, same as `trader_id` field of `get_default_ai_trader` result)
+		- close_all_position (required)
+- expected response:
+  ```json
+  {
+    "base_response": { "status_code": 200, "status_msg": "success" },
+    "trader_id": "gua6gh-deepseek-1765187859937789",
+    "trader_state": 1
+  }
+  ```
+  
+#### use_a_default_ai_strategy_for_default_ai_trader 
+- endpoint: /auth/autopilot/trader/modification
+- method: POST
+- parameters:
+    - query parameters:
+        - user_id (required)		
+    - request body:
+      ```json
+      {
+        "user_id": "<user_id>",
+        "trader_id": "gua6gh-deepseek-1765187859937789",
+        "prompt_tag": "taco-Momentum Max"
+      }
+      ```
+	- valid value for `prompt_tag` should be from `tag` field of `get_default_ai_strategies` result 
+	- `trader_id` should same as from `trader_id` field of `get_default_ai_trader` result
+- expected response:
+  ```json
+  {
+    "base_response": { "status_code": 200, "status_msg": "success" },    
+	"trader_id": "gua6gh-deepseek-1765187859937789",
+    "trader_state": 2
+  }
+  ```  
+  
+#### change_running_interval_for_default_ai_trader 
+- endpoint: /auth/autopilot/trader/modification
+- method: POST
+- parameters:
+    - query parameters:
+        - user_id (required)		
+    - request body:
+      ```json
+      {
+        "user_id": "<user_id>",
+        "trader_id": "gua6gh-deepseek-1765187859937789",
+        "frequency": 30
+      }
+      ```
+	- valid values for `frequency` are: 15/30/60/120/180/360 
+	- `trader_id` should same as from `trader_id` field of `get_default_ai_trader` result  
+- expected response:
+  ```json
+  {
+    "base_response": { "status_code": 200, "status_msg": "success" },    
+	"trader_id": "gua6gh-deepseek-1765187859937789",
+    "trader_state": 2
+  }
+  ``` 
+  
+#### change_name_for_default_ai_trader 
+- endpoint: /auth/autopilot/trader/modification
+- method: POST
+- parameters:
+    - query parameters:
+        - user_id (required)		
+    - request body:
+      ```json
+      {
+        "user_id": "<user_id>",
+        "trader_id": "gua6gh-deepseek-1765187859937789",
+        "trader_name": "newname"
+      }
+      ```
+	- `trader_id` should be same as the `trader_id` field of `get_default_ai_trader` result  
+- expected response:
+  ```json
+  {
+    "base_response": { "status_code": 200, "status_msg": "success" },    
+	"trader_id": "gua6gh-deepseek-1765187859937789",
+    "trader_state": 2
   }
   ```
