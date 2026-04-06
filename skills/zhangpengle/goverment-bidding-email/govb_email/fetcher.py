@@ -103,10 +103,13 @@ def send_email(date_str, results, excel_path, to_override=None):
 高推荐项目：
 """
 
-    for i, item in enumerate(high_items['bjzc'], 1):
-        budget = f" | 预算{item['budget']}" if item.get('budget') else ""
-        purchaser = f" | {item['purchaser']}" if item.get('purchaser') else ""
-        body += f"{i}. {item['title']}... | {item['method']}{budget}{purchaser}\n"
+    if high_items['bjzc']:
+        for i, item in enumerate(high_items['bjzc'], 1):
+            budget = f" | 预算{item['budget']}" if item.get('budget') else ""
+            purchaser = f" | {item['purchaser']}" if item.get('purchaser') else ""
+            body += f"{i}. {item['title']}... | {item['method']}{budget}{purchaser}\n"
+    else:
+        body += "（暂无高推荐项目）\n"
 
     body += f"""
 【湖南政采】{len(hnzc_list)}条（{date_str}）
@@ -114,10 +117,13 @@ def send_email(date_str, results, excel_path, to_override=None):
 高推荐项目：
 """
 
-    for i, item in enumerate(high_items['hnzc'], 1):
-        budget = f" | 预算{item['budget']}" if item.get('budget') else ""
-        purchaser = f" | {item['purchaser']}" if item.get('purchaser') else ""
-        body += f"{i}. {item['title']}... | {item['method']}{budget}{purchaser}\n"
+    if high_items['hnzc']:
+        for i, item in enumerate(high_items['hnzc'], 1):
+            budget = f" | 预算{item['budget']}" if item.get('budget') else ""
+            purchaser = f" | {item['purchaser']}" if item.get('purchaser') else ""
+            body += f"{i}. {item['title']}... | {item['method']}{budget}{purchaser}\n"
+    else:
+        body += "（暂无高推荐项目）\n"
 
     body += f"""
 详情请见附件Excel。
