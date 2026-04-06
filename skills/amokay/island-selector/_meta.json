@@ -3,9 +3,15 @@
   "slug": "island-selector",
   "displayName": "全球海岛选岛助手",
   "latest": {
-    "version": "1.0.7",
-    "publishedAt": 1775037607187,
-    "commit": "https://github.com/openclaw/skills/commit/dc1dafcf1c5034f4ab8631cee132102f9f6f884c"
+    "version": "1.0.8",
+    "publishedAt": 1775116793107,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.7",
+      "publishedAt": 1775037607187,
+      "commit": "https://github.com/openclaw/skills/commit/dc1dafcf1c5034f4ab8631cee132102f9f6f884c"
+    }
+  ]
 }
