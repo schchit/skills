@@ -3,9 +3,15 @@
   "slug": "azure-devops-reports",
   "displayName": "Azure DevOps Reports",
   "latest": {
-    "version": "1.0.5",
-    "publishedAt": 1774859762977,
-    "commit": "https://github.com/openclaw/skills/commit/0c3998ad88a0ce59045c6bf71e823c69853e121d"
+    "version": "1.0.6",
+    "publishedAt": 1775138339199,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.5",
+      "publishedAt": 1774859762977,
+      "commit": "https://github.com/openclaw/skills/commit/0c3998ad88a0ce59045c6bf71e823c69853e121d"
+    }
+  ]
 }
