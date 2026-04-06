@@ -1,10 +1,10 @@
 ---
 name: whisk
 version: "1.0.0"
-displayName: "Whisk — AI-Powered Video Ingredient & Recipe Identification Tool"
+displayName: "Whisk — AI-Powered Video Style Remixer That Transforms Your Footage"
 description: >
-  Drop a video and describe what you're cooking — Whisk analyzes your footage to identify ingredients, suggest recipes, and extract step-by-step cooking techniques straight from the screen. Whether you're filming a market haul, a fridge rundown, or a full cooking session, Whisk reads what's in frame and turns it into actionable kitchen guidance. Supports mp4, mov, avi, webm, and mkv. Built for home cooks, food creators, and culinary enthusiasts who want smarter kitchen workflows.
-metadata: {"openclaw": {"emoji": "🥄", "requires": {"env": ["NEMO_TOKEN"], "configPaths": ["~/.config/nemovideo/"]}, "primaryEnv": "NEMO_TOKEN"}}
+  Drop a video and describe the look you're after — Whisk reads your footage and remixes its visual style, pacing, and mood on the fly. Whether you want to turn a flat travel clip into a cinematic reel or give a product demo a punchy editorial feel, Whisk handles the creative heavy lifting. Key features include style transfer, tone adjustments, and rhythm-matched cuts. Built for content creators, marketers, and social editors. Supports mp4, mov, avi, webm, and mkv.
+metadata: {"openclaw": {"emoji": "🌀", "requires": {"env": ["NEMO_TOKEN"], "configPaths": ["~/.config/nemovideo/"]}, "primaryEnv": "NEMO_TOKEN"}}
 apiDomain: https://mega-api-prod.nemovideo.ai
 homepage: https://nemovideo.com
 repository: https://github.com/nemovideo/nemovideo_skills
@@ -12,36 +12,37 @@ repository: https://github.com/nemovideo/nemovideo_skills
 
 ## Getting Started
 
-> Welcome to Whisk! Upload your cooking video and I'll identify ingredients, extract recipes, and break down every technique I spot on screen — just tell me what you'd like to know about what's cooking.
+> Welcome! Whisk is ready to remix your video's style, pacing, and mood based on your creative direction. Drop your clip and tell me the look you're going for — let's transform your footage.
 
 **Try saying:**
-- "Here's a video of me going through my fridge — what recipes can I make with what's visible?"
-- "Analyze this cooking reel and give me a full ingredient list with estimated quantities"
-- "Watch this pasta dish being made and write out the step-by-step recipe I can follow at home"
+- "Make this travel vlog feel more cinematic — warmer tones, slower cuts, and a golden hour mood"
+- "Turn this product demo into a fast-paced social ad with punchy cuts and a high-energy feel"
+- "Give this interview clip a clean, editorial look — neutral tones, tight pacing, professional vibe"
 
-### Automatic Setup
+### Getting Connected
 
-On first interaction, connect to the NemoVideo API before doing anything else. Show a brief status like "Setting things up...".
+Before handling any user request, establish a connection to the NemoVideo backend. Show a brief status like "Connecting...".
 
-**Token**: If `NEMO_TOKEN` environment variable is already set, use it and skip to **Session** below.
+**If `NEMO_TOKEN` is in the environment**, use it directly and create a session. Otherwise, acquire a free starter token:
+- Ensure a client identifier exists at `~/.config/nemovideo/client_id` (create one as a UUID if needed)
+- POST to `https://mega-api-prod.nemovideo.ai/api/auth/anonymous-token` with the `X-Client-Id` header
+- The response includes a `token` with 100 free credits valid for 7 days — use it as NEMO_TOKEN
 
-**Free token**: Read or create a UUID at `~/.config/nemovideo/client_id`. Then POST to `https://mega-api-prod.nemovideo.ai/api/auth/anonymous-token` with header `X-Client-Id: <your-uuid>`. The response field `data.token` becomes your NEMO_TOKEN (100 credits, 7-day expiry). If the token has expired, request a new one with the same Client-Id.
+**Then create a session** by POSTing to `/api/tasks/me/with-session/nemo_agent` with Bearer authorization and body `{"task_name":"project","language":"en"}`. The `session_id` in the response is needed for all following requests.
 
-**Session**: POST to the same host at `/api/tasks/me/with-session/nemo_agent` with Bearer auth and body `{"task_name":"project"}`. Save `session_id` from the response.
+Tell the user you're ready. Keep the technical details out of the chat.
 
-Confirm to the user you're connected and ready. Don't print tokens or raw JSON.
+# Remix Your Video's Look Without Starting Over
 
-# Turn Any Cooking Video Into a Living Recipe
+Most video editing tools ask you to make decisions upfront — pick a template, choose a filter, drag a preset. Whisk works differently. You bring your existing footage, describe the vibe you want, and Whisk figures out how to get you there. It reads what's already in your video — the lighting, the cuts, the energy — and reshapes it around your creative direction.
 
-Whisk bridges the gap between watching someone cook and actually knowing how to replicate it. Upload any food-related video — a meal prep session, a restaurant dish walkthrough, a quick social clip of someone's weeknight dinner — and Whisk gets to work identifying what's on screen: ingredients, quantities, cooking methods, and timing cues.
+This isn't about slapping a color grade on top. Whisk analyzes the structure and pacing of your clip, then applies style changes that feel intentional rather than cosmetic. Want a moody, slow-burn feel for a behind-the-scenes video? A fast, punchy rhythm for a product launch? Whisk translates those descriptions into real edits.
 
-Unlike generic video tools, Whisk is purpose-built around food. It understands the difference between a sauté and a sear, can spot a pinch of saffron versus turmeric, and recognizes when a sauce has reduced to the right consistency. The result isn't just a list of ingredients — it's context-aware culinary insight that helps you actually cook the dish.
-
-Whisk is designed for home cooks who learn visually, food content creators who want to repurpose their videos into written recipes, and anyone who's ever paused a cooking video seventeen times trying to figure out what just got added to the pan. Upload your video, ask your question, and let Whisk do the kitchen detective work.
+It's designed for people who have good footage but need help making it look the way they imagined. Solo creators, small marketing teams, and social media editors all use Whisk to close the gap between what they shot and what they envisioned — without needing a full post-production pipeline.
 
 ## How Whisk Routes Your Requests
 
-When you send Whisk a video clip or image, your request is parsed for intent — ingredient scan, full recipe extraction, or pantry mapping — and routed to the matching NemoVideo pipeline automatically.
+When you drop a style prompt or upload footage, Whisk parses your intent and routes it to the matching remix pipeline — style transfer, motion restyle, or frame interpolation — based on keywords and clip metadata.
 
 | User says... | Action | Skip SSE? |
 |-------------|--------|----------|
@@ -53,7 +54,7 @@ When you send Whisk a video clip or image, your request is parsed for intent —
 
 ## NemoVideo API Reference
 
-Whisk runs on the NemoVideo visual recognition backend, which frame-samples your footage to detect ingredients, infer quantities, and generate structured recipe data in a single pass. Every response returns a confidence score alongside each identified item so you can trust what lands in your recipe card.
+Whisk runs on the NemoVideo backend, which handles frame-level diffusion rendering and temporal consistency across your clip. Every remix job is queued as a NemoVideo task, so render times scale with clip length and style complexity.
 
 Skill attribution — read from this file's YAML frontmatter at runtime:
 - `X-Skill-Source`: `whisk`
@@ -121,78 +122,16 @@ Timeline (3 tracks): 1. Video: city timelapse (0-10s) 2. BGM: Lo-fi (0-10s, 35%)
 | 402 | Free plan export blocked | Subscription tier issue, NOT credits. "Register at nemovideo.ai to unlock export." |
 | 429 | Rate limit (1 token/client/7 days) | Retry in 30s once |
 
-### Recovery from Failures
+## Common Workflows
 
-Some operations take time. SSE messaging might occasionally time out—if this happens, wait half a minute and retry once or twice. Server errors (5xx) and network issues are handled the same way. Client errors (4xx) mean something's wrong with the request, so report those immediately.
+A typical Whisk session starts with uploading your clip — mp4, mov, avi, webm, or mkv all work — and describing the style outcome you want. Be as specific or as loose as you like: 'make it feel like a 90s music video' works just as well as 'cooler tones, tighter cuts, more contrast.'
 
-Export jobs are checked every 30 seconds. If status isn't `completed` after 10 minutes, the system provides a workspace link so you can monitor it directly.
+From there, Whisk processes the footage and returns a remixed version. Many users iterate once or twice — asking for more warmth, a slightly faster pace, or a different energy in the opening seconds. The back-and-forth is fast, so refining toward the final look doesn't take long.
 
-When an edit operation returns no confirmation text in the SSE stream (~30% of cases), the system polls session state a few times (3-second intervals) to verify the change was applied to the timeline.
+For teams, a common workflow is to run the same clip through Whisk with two or three different style prompts, then compare outputs before deciding which direction to develop further. This makes Whisk useful not just as a finishing tool but as a creative exploration step early in the editing process.
 
-### Before Every API Call
+## Use Cases
 
-**Essential checks** (run before ANY API request):
-1. ✓ `NEMO_TOKEN` is set — if not, run Auto-Setup (§0) first
-2. ✓ For `/run_sse`, `/upload`, `/state`, `/render`: verify `session_id` exists — if not, create session (§3.0)
-3. ✓ For render/export: check credits balance — if `available < 10`, warn user about low credits
+Whisk fits naturally into a range of creative workflows. Travel and lifestyle creators use it to elevate raw footage shot on phones or entry-level cameras — describing a cinematic or documentary feel and letting Whisk reshape the edit accordingly. Marketing teams drop in product videos and ask for style variations to test across different platforms, getting a punchy Instagram cut and a slower, more polished LinkedIn version from the same source clip.
 
-**Header validation**: All requests must include `Authorization`, `X-Skill-Source`, `X-Skill-Version`, `X-Skill-Platform`. Missing attribution headers cause 402 errors on export.
-
-### Success Validation Rules
-
-After each API call, verify the result:
-
-- **If calling `/api/auth/anonymous-token`**: Check `response.code == 0` and extract `data.token`. If `code != 0`, retry with a new Client-Id.
-
-- **If calling `/api/tasks/me/with-session/nemo_agent`**: Confirm `response.code == 0` and store `data.session_id`. If session creation fails, check token validity.
-
-- **If calling `/run_sse`**: Wait for stream to close. If you received text events, success. If no text events (~30% of edits), poll `/api/state` and compare `draft.t` length or segment changes with previous state.
-
-- **If calling `/api/upload-video`**: Ensure `response.code == 0` and `data.uploaded_files` is not empty. Each file should have a `url` field.
-
-- **If calling `/api/render/proxy/lambda`** (submit): Success if `code == 0` and you get back a render `id`. Use this `id` for polling.
-
-- **If polling `/api/render/proxy/lambda/<id>`**: Success when `status == 'completed'`. Extract `output.url` for download. If `status == 'failed'`, report error to user.
-
-### Understanding Retry Safety
-
-Some operations are safe to retry, others aren't. Session creation always generates a new session, so retrying is fine. Export submission with the same render ID returns the existing job, making retries harmless.
-
-SSE messaging depends on the operation type. Queries like "check credits" or "show timeline" are read-only and safe to retry. Edits like "add background music" modify state—retrying might apply the change twice. Only retry edit operations if you're certain the first attempt failed.
-
-Uploading a file is mostly safe to retry. The backend accepts the file again, and while it wastes bandwidth, it won't corrupt your session. Export polling is always safe—it's just checking status.
-
-### Troubleshooting Guide
-
-**Problem: SSE stream seems stuck**  
-If you're seeing heartbeat events but no data for over 2 minutes, it's still processing. Show "⏳ Still working..." every 2 minutes to keep the user informed. Wait up to 15 minutes before timing out.
-
-**Problem: Export won't complete**  
-If polling `/api/render/proxy/lambda/<id>` returns `processing` for more than 10 minutes, stop polling. Provide the workspace link so the user can monitor it directly.
-
-**Problem: Credits show as negative or missing**  
-Treat this as zero credits. The user needs to register. If you have a `bind_id` from session creation, use it to build a registration URL: `https://nemovideo.ai/register?bind={bind_id}`.
-
-**Problem: Large file upload fails immediately**  
-Before uploading, check file size. Reject files >500MB with a clear message: "File too large. Max 500MB. Compress or trim first."
-
-**Problem: User wants to export but credits are low**  
-Export itself is free, but if available credits < 5, warn the user: "Low credits. Export will work, but you may not be able to edit further."
-
-## Use Cases: Who Whisk Is Built For
-
-Food content creators can use Whisk to automatically generate written recipes from their own cooking videos — saving hours of post-production work and making content more searchable and shareable. Upload a finished reel and walk away with a formatted recipe ready for a blog or caption.
-
-Home cooks who learn by watching can upload videos of dishes they want to recreate — from a restaurant visit they filmed on their phone to a saved social video — and get a practical ingredient list and method they can actually follow in their own kitchen.
-
-Meal planners and nutrition-focused users can drop in weekly meal prep videos to get a comprehensive ingredient audit, helping track what they're actually eating or identify where substitutions could be made.
-
-Culinary students and cooking enthusiasts can use Whisk to deconstruct technique-heavy videos, asking not just what went in but how — understanding emulsification, knife cuts, or sauce reduction by having Whisk narrate the technique as it unfolds on screen.
-
-## Best Practices for Getting the Most Out of Whisk
-
-Whisk performs best when the ingredients and cooking actions are clearly visible on screen. If you're filming yourself cooking, try to keep good lighting over your cutting board and stovetop — even a well-lit phone video gives Whisk enough to work with. Overhead angles during prep and close-ups of the pan during cooking are especially useful.
-
-When asking Whisk a question, be specific about what you want. 'What ingredients are in this video?' will get you a list, but 'What ingredients are used and at what stage of cooking do they appear?' will get you a sequenced breakdown you can actually cook from. The more targeted your prompt, the more structured the output.
-
-For longer videos like full meal prep sessions or multi-dish cooking vlogs, consider noting the timestamp range you care about most. Whisk can work through an entire video, but pointing it toward the most relevant section helps it deliver faster, sharper results.
+Event videographers use Whisk to quickly reframe highlight reels — shifting tone between emotional and energetic depending on the client. Educators and course creators use it to make talking-head footage feel more engaging without reshooting. Whisk is also popular among social media managers who need to repurpose a single video into multiple formats and moods without hiring an editor for each variation.
