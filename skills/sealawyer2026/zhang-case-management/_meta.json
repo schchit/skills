@@ -1,11 +1,17 @@
 {
   "owner": "sealawyer2026",
   "slug": "zhang-case-management",
-  "displayName": "Zhang Case Management",
+  "displayName": "九章-案件管理专家",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774707696698,
-    "commit": "https://github.com/openclaw/skills/commit/7541067f846cdf433bc2d891c07ceec04e83f5d1"
+    "version": "1.5.0",
+    "publishedAt": 1775098557648,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774707696698,
+      "commit": "https://github.com/openclaw/skills/commit/7541067f846cdf433bc2d891c07ceec04e83f5d1"
+    }
+  ]
 }
