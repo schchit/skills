@@ -3,9 +3,15 @@
   "slug": "stockly",
   "displayName": "Stockly",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774991112154,
-    "commit": "https://github.com/openclaw/skills/commit/175afcb91437866a5e2a3bc58d1a32fcb66e084b"
+    "version": "1.0.2",
+    "publishedAt": 1775170214496,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774991112154,
+      "commit": "https://github.com/openclaw/skills/commit/175afcb91437866a5e2a3bc58d1a32fcb66e084b"
+    }
+  ]
 }
