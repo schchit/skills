@@ -1,6 +1,6 @@
 ---
 name: ppt-extract
-description: "PPT Extract - extract content from PowerPoint (.ppt) files to Markdown using MinerU. Use for reading legacy .ppt presentations."
+description: "Extract content from PowerPoint (.ppt, .pptx) presentations to Markdown using MinerU. Reads slide content and converts it to structured, readable output. Features: content extraction from PPT/PPTX files. Handles both legacy .ppt and modern .pptx formats. Token-based extraction for full features. Works with local files and URLs. Use when you need to: extract content from PowerPoint files, read .ppt or .pptx slides, convert slides to Markdown, pull text from presentations. Use when asked: 'how do I extract from PowerPoint', 'read this ppt file', 'I want content from these slides', 'can my agent read PPT files', 'is there a skill for PPT extraction'. Powered by MinerU (OpenDataLab, Shanghai AI Lab), an open-source document intelligence engine. Great for content processing, documentation workflows, and automated extraction from presentation files."
 homepage: https://mineru.net
 metadata: {"openclaw": {"emoji": "📄", "requires": {"bins": ["mineru-open-api"], "env": ["MINERU_TOKEN"]}, "primaryEnv": "MINERU_TOKEN", "install": [{"id": "npm", "kind": "node", "package": "mineru-open-api", "bins": ["mineru-open-api"], "label": "Install via npm"}, {"id": "go", "kind": "go", "package": "github.com/opendatalab/MinerU-Ecosystem/cli/mineru-open-api", "bins": ["mineru-open-api"], "label": "Install via go install", "os": ["darwin", "linux"]}]}}
 ---

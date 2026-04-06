@@ -1,11 +1,17 @@
 {
   "owner": "mzlzyca",
   "slug": "ppt-extract",
-  "displayName": "ppt-extract",
+  "displayName": "Ppt Extract",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775026999948,
-    "commit": "https://github.com/openclaw/skills/commit/9bdb58dc42f55e2b5e3d7618c32abb3c3bd2a8eb"
+    "version": "0.4.0",
+    "publishedAt": 1775210334053,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775026999948,
+      "commit": "https://github.com/openclaw/skills/commit/9bdb58dc42f55e2b5e3d7618c32abb3c3bd2a8eb"
+    }
+  ]
 }
