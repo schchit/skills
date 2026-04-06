@@ -1,11 +1,6 @@
 ---
-name: windows-shell-encoding-doctor
-description: >-
-  Diagnose and fix Windows shell failures in PowerShell, cmd, and Git Bash.
-  Use when bash snippets break in PowerShell, Chinese mojibake, JSON-in-argument hell,
-  paths-with-spaces, UTF-8/GBK/BOM confusion, or CRLF/LF breaking cross-platform scripts.
-  处理「bash 贴进 PowerShell 报错」「中文乱码」「安全传 JSON」「路径存在却找不到」等场景。
-  Text-only skill: references/*.md（无捆绑脚本）。
+name: "Windows Shell Encoding Doctor - Windows Shell编码修复工具"
+description: 诊断修复 Windows 下 PowerShell/cmd/Git Bash 的乱码、引号转义、路径空格与 CRLF 等问题。当用户说：PowerShell 里跑 bash 命令报错、中文乱码怎么修、JSON 怎么安全传给命令行，或类似 Windows 终端编码问题时，使用本技能。
 metadata: { "openclaw": { "emoji": "🪟", "requires": { "bins": [] } } }
 ---
 
