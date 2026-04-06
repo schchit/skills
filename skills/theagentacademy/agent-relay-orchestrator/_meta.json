@@ -1,0 +1,11 @@
+{
+  "owner": "theagentacademy",
+  "slug": "agent-relay-orchestrator",
+  "displayName": "Agent Relay Orchestrator",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774779020079,
+    "commit": null
+  },
+  "history": []
+}
