@@ -360,24 +360,27 @@ def run_strategy(dry_run=True, positions_only=False, show_config=False,
             print(f"      ⚠ Could not fetch CLOB midpoint — using Simmer price as fallback")
             mid = price
         else:
-            print(f"      CLOB mid={mid:.4f}")
+            print(f"      CLOB mid={mid:.3f}")
 
-        # Calculate limit prices
-        yes_bid = round(max(mid - SPREAD_OFFSET, MIN_TICK_SIZE), 4)
+        # Calculate limit prices — round to 2 decimal places (Polymarket 0.01 tick size)
+        POLY_FEE = 0.02
+        yes_bid = round(max(mid - SPREAD_OFFSET, MIN_TICK_SIZE), 2)
         no_mid = 1.0 - mid
-        no_bid = round(max(no_mid - SPREAD_OFFSET, MIN_TICK_SIZE), 4)
+        no_bid = round(max(no_mid - SPREAD_OFFSET, MIN_TICK_SIZE), 2)
 
+        # Net cost after fees (fee applies on fill)
         total_cost = yes_bid + no_bid
-        guaranteed_profit_pct = (1.0 - total_cost) * 100
-        print(f"      YES limit @ {yes_bid:.4f}  |  NO limit @ {no_bid:.4f}")
-        print(f"      Guaranteed profit if both fill: {guaranteed_profit_pct:.1f}% (cost={total_cost:.4f})")
-        if total_cost >= 1.0:
-            print(f"      ⚠ Skip: no edge (total cost {total_cost:.4f} >= 1.00)")
-            skip_reasons.append("no guaranteed profit")
+        fee_cost   = yes_bid * POLY_FEE + no_bid * POLY_FEE
+        net_profit_pct = (1.0 - total_cost - fee_cost) * 100
+        print(f"      YES limit @ {yes_bid:.2f}  |  NO limit @ {no_bid:.2f}")
+        print(f"      Net profit if both fill: {net_profit_pct:.1f}% (cost={total_cost:.2f} + fees={fee_cost:.3f})")
+        if total_cost + fee_cost >= 1.0:
+            print(f"      ⚠ Skip: no edge after fees (total={total_cost + fee_cost:.3f} >= 1.00)")
+            skip_reasons.append("no edge after fees")
             continue
 
-        # Min shares check: price * 5 shares <= max_order_usd
-        if yes_bid * MIN_SHARES_PER_ORDER > MAX_ORDER_USD:
+        # Min shares check: need at least 5 shares, so bid must be <= max_order / 5
+        if yes_bid > MAX_ORDER_USD / MIN_SHARES_PER_ORDER:
             reason = f"YES bid too high for min order at ${MAX_ORDER_USD}"
             print(f"      ⚠ Skip YES: {reason}")
             skip_reasons.append(reason)
@@ -396,12 +399,12 @@ def run_strategy(dry_run=True, positions_only=False, show_config=False,
                     print(f"      ⚠ Safeguard warning: {'; '.join(reasons)}")
 
             reasoning = (
-                f"Market making YES bid: mid={mid:.4f}, quoting {yes_bid:.4f} "
+                f"Market making YES bid: mid={mid:.3f}, quoting {yes_bid:.2f} "
                 f"({SPREAD_OFFSET:.2f} below mid), vol_24h=${vol:,.0f}"
             )
 
             if dry_run:
-                print(f"      [DRY RUN] Would place YES GTC limit @ {yes_bid:.4f} for ${MAX_ORDER_USD}")
+                print(f"      [DRY RUN] Would place YES GTC limit @ {yes_bid:.2f} for ${MAX_ORDER_USD}")
                 trades_attempted += 1
                 trades_executed += 1
             else:
@@ -409,7 +412,7 @@ def run_strategy(dry_run=True, positions_only=False, show_config=False,
                 result = execute_limit_order(market_id, "yes", MAX_ORDER_USD, yes_bid, reasoning)
                 if result.get("success"):
                     trades_executed += 1
-                    print(f"      ✓ YES limit placed @ {yes_bid:.4f}  id={result.get('trade_id')}")
+                    print(f"      ✓ YES limit placed @ {yes_bid:.2f}  id={result.get('trade_id')}")
                 elif result.get("skip_reason"):
                     skip_reasons.append(result["skip_reason"])
                     print(f"      ⚠ YES skipped: {result['skip_reason']}")
@@ -419,18 +422,18 @@ def run_strategy(dry_run=True, positions_only=False, show_config=False,
                     print(f"      ✗ YES failed: {err}")
 
         # NO side
-        if no_bid * MIN_SHARES_PER_ORDER > MAX_ORDER_USD:
+        if no_bid > MAX_ORDER_USD / MIN_SHARES_PER_ORDER:
             reason = f"NO bid too high for min order at ${MAX_ORDER_USD}"
             print(f"      ⚠ Skip NO: {reason}")
             skip_reasons.append(reason)
         else:
             reasoning = (
-                f"Market making NO bid: mid(NO)={no_mid:.4f}, quoting {no_bid:.4f} "
+                f"Market making NO bid: mid(NO)={no_mid:.3f}, quoting {no_bid:.2f} "
                 f"({SPREAD_OFFSET:.2f} below NO mid), vol_24h=${vol:,.0f}"
             )
 
             if dry_run:
-                print(f"      [DRY RUN] Would place NO GTC limit @ {no_bid:.4f} for ${MAX_ORDER_USD}")
+                print(f"      [DRY RUN] Would place NO GTC limit @ {no_bid:.2f} for ${MAX_ORDER_USD}")
                 trades_attempted += 1
                 trades_executed += 1
             else:
@@ -438,7 +441,7 @@ def run_strategy(dry_run=True, positions_only=False, show_config=False,
                 result = execute_limit_order(market_id, "no", MAX_ORDER_USD, no_bid, reasoning)
                 if result.get("success"):
                     trades_executed += 1
-                    print(f"      ✓ NO  limit placed @ {no_bid:.4f}  id={result.get('trade_id')}")
+                    print(f"      ✓ NO  limit placed @ {no_bid:.2f}  id={result.get('trade_id')}")
                 elif result.get("skip_reason"):
                     skip_reasons.append(result["skip_reason"])
                     print(f"      ⚠ NO  skipped: {result['skip_reason']}")
