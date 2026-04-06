@@ -1,6 +1,6 @@
 ---
-name: wechat article search
-description: 微信公众号文章搜索：按关键词抓取文章列表，返回标题、摘要、发布时间、公众号名称与链接；支持可选真实链接解析与 JSON。
+name: "Wechat Article Search"
+description: 按关键词搜索公众号文章，返回标题、摘要、时间、账号与链接等。当用户说：搜一下微信公众号里关于 AI 的文章、找几篇讲理财的推文，或类似公众号文章检索时，使用本技能。
 metadata: { "openclaw": { "emoji": "🔎", "requires": { "bins": ["python3"] } } }
 ---
 
