@@ -3,9 +3,15 @@
   "slug": "flowtrack",
   "displayName": "Flowtrack",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774749840156,
-    "commit": "https://github.com/openclaw/skills/commit/8715339475232540f2e17c831ee110f0a7bf106a"
+    "version": "1.0.2",
+    "publishedAt": 1775169019447,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774749840156,
+      "commit": "https://github.com/openclaw/skills/commit/8715339475232540f2e17c831ee110f0a7bf106a"
+    }
+  ]
 }
