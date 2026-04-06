@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-九码AI语音克隆技能 - 主脚本
+九马AI语音克隆技能 - 主脚本
 输入文本和音频参考或音色ID，生成语音并返回URL
 """
 import argparse
 import json
 import os
 import sys
-import requests
 from pathlib import Path
+from utils import jiuma_request, get_jiuma_api_key, output_result
 
 # 常量定义
 SUBMIT_API = "https://api.jiuma.com/api/voiceClone"
@@ -28,9 +28,10 @@ MIME_TYPES = {
     '.weba': 'audio/webm',
 }
 
-def output_result(json_data):
-    """输出JSON格式结果"""
-    print(json.dumps(json_data, ensure_ascii=False, indent=2))
+headers = {
+    "X-Secret-Key": get_jiuma_api_key()
+}
+
 
 def load_voices_cache():
     """加载音色缓存文件"""
@@ -43,6 +44,7 @@ def load_voices_cache():
             print(f"警告: 加载音色缓存失败: {e}", file=sys.stderr)
     return None
 
+
 def save_voices_cache(voices_data):
     """保存音色缓存文件"""
     cache_file = Path(__file__).parent / VOICES_CACHE_FILE
@@ -54,21 +56,15 @@ def save_voices_cache(voices_data):
         print(f"警告: 保存音色缓存失败: {e}", file=sys.stderr)
         return False
 
+
 def get_available_voices():
     """获取可用音色列表"""
-    try:
-        response = requests.get(VOICES_API, timeout=10)
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("code") == 200:
-                return data.get("data", [])
-            else:
-                print(f"API返回错误: {data.get('message', '未知错误')}", file=sys.stderr)
-        else:
-            print(f"请求失败，状态码: {response.status_code}", file=sys.stderr)
-    except requests.exceptions.RequestException as e:
-        print(f"请求异常: {e}", file=sys.stderr)
-    return None
+
+    data, message = jiuma_request(VOICES_API, headers=headers)
+    if not data:
+        return
+    return data
+
 
 def check_and_load_voices():
     """检查并加载音色，如无则下载"""
@@ -86,10 +82,46 @@ def check_and_load_voices():
         print("无法获取音色列表，请检查网络或API", file=sys.stderr)
         return None
 
+
 def submit(text, sample_audio=None, timbre_id=None):
     """主函数：生成语音"""
     print(f"text: {text}, sample_audio: {sample_audio}, timbre_id: {timbre_id}", file=sys.stderr)
 
+    # 生成语音
+    if not text:
+        output_result({
+            "status": "error",
+            "error": "missing_text",
+            "message": "必须提供要转换的文本",
+            "data": {}
+        })
+        return
+
+    if len(text) > 180:
+        output_result({
+            "status": "error",
+            "error": 102,
+            "message": "转换的文本不能超过180个字",
+            "data": {}
+        })
+        return
+
+    # 检查是否需要音色选择（没有提供音频或音色ID时）
+    if not sample_audio and timbre_id == 0:
+        # 先检查音色缓存
+        voices = check_and_load_voices()
+        if voices:
+            print(f"提示: 没有指定音色，共有 {len(voices)} 个可用音色", file=sys.stderr)
+            print("请使用 --timbre_id 参数指定音色ID，或使用 --sample_audio 指定参考音频", file=sys.stderr)
+            print("使用 --list_voices 查看可用音色列表", file=sys.stderr)
+
+        output_result({
+            "status": "error",
+            "error": "missing_source",
+            "message": "必须提供参考音频或音色ID",
+            "data": {}
+        })
+        return
     # 参数验证
     if not sample_audio and (timbre_id is None or timbre_id == 0):
         output_result({
@@ -99,78 +131,41 @@ def submit(text, sample_audio=None, timbre_id=None):
             "data": {}
         })
         return
+    audio_files = {}
+    request_data = {
+        "text": text
+    }
 
-    try:
-        # 1. 提交生成请求
-        if sample_audio:
-            # 检查文件是否存在
-            if not os.path.exists(sample_audio):
-                output_result({
-                    "status": "error",
-                    "error": "file_not_found",
-                    "message": f"音频文件不存在: {sample_audio}",
-                    "data": {}
-                })
-                return
-
-            # 获取文件扩展名和MIME类型
-            file_ext = os.path.splitext(sample_audio)[1].lower()
-            content_type = MIME_TYPES.get(file_ext, 'application/octet-stream')
-
-            with open(sample_audio, 'rb') as f:
-                files = {'reference_audio': (os.path.basename(sample_audio), f, content_type)}
-                response = requests.post(SUBMIT_API, {
-                    "text": text
-                }, files=files, timeout=300)
-        else:
-            response = requests.post(SUBMIT_API, {
-                "text": text,
-                "timbre_id": timbre_id
-            }, timeout=300)
-
-        # 2. 处理响应
-        if response.status_code != 200:
+    if sample_audio:
+        # 检查文件是否存在
+        if not os.path.exists(sample_audio):
             output_result({
                 "status": "error",
-                "error": response.status_code,
-                "message": "请求远程API失败",
+                "error": "file_not_found",
+                "message": f"音频文件不存在: {sample_audio}",
                 "data": {}
             })
             return
 
-        json_result = response.json()
-        if json_result.get("code") != 200:
-            output_result({
-                "status": "error",
-                "error": json_result.get("code"),
-                "message": json_result.get("message", "未知错误"),
-                "data": {}
-            })
-        else:
-            output_result({
-                "status": "success",
-                "message": json_result.get("message", "语音生成成功"),
-                "data": {
-                    "audio_url": json_result.get("data", {}).get("audio_url", ""),
-                    "text": text,
-                    "source": "reference_audio" if sample_audio else "timbre_id"
-                }
-            })
+        # 获取文件扩展名和MIME类型
+        file_ext = os.path.splitext(sample_audio)[1].lower()
+        content_type = MIME_TYPES.get(file_ext, 'application/octet-stream')
+        audio_files = {'reference_audio': (os.path.basename(sample_audio), open(sample_audio, 'rb'), content_type)}
+    else:
+        request_data["timbre_id"] = timbre_id
+    data, message = jiuma_request(SUBMIT_API, data=request_data, files=audio_files, headers=headers)
+    if not data:
+        return
+    output_result({
+        "status": "success",
+        "message": "语音生成成功",
+        "data": {
+            "audio_url": data.get("audio_url", ""),
+            "text": text,
+            "source": "reference_audio" if sample_audio else "timbre_id"
+        }
+    })
 
-    except requests.exceptions.RequestException as e:
-        output_result({
-            "status": "error",
-            "error": "request_error",
-            "message": f"请求异常: {str(e)}",
-            "data": {}
-        })
-    except Exception as e:
-        output_result({
-            "status": "error",
-            "error": "internal_error",
-            "message": f"内部错误: {str(e)}",
-            "data": {}
-        })
 
 def list_voices():
     """列出可用音色"""
@@ -191,13 +186,14 @@ def list_voices():
             "data": {}
         })
 
+
 def main():
     parser = argparse.ArgumentParser(description="九码AI语音克隆工具")
 
     # 主要参数组
     parser.add_argument('--text', type=str, default="", help="要转换为语音的文本内容")
     parser.add_argument('--sample_audio', type=str, default="", help="本地参考音频文件路径")
-    parser.add_argument('--timbre_id', type=int, default=0, help="九码网站的音色ID")
+    parser.add_argument('--timbre_id', type=int, default=0, help="九马网站的音色ID")
 
     # 音色管理参数
     parser.add_argument('--list_voices', action='store_true', help="列出可用音色")
@@ -219,45 +215,9 @@ def main():
             print("刷新音色缓存失败", file=sys.stderr)
         return
 
-    # 生成语音
-    if not args.text:
-        output_result({
-            "status": "error",
-            "error": "missing_text",
-            "message": "必须提供要转换的文本",
-            "data": {}
-        })
-        return
-
-    if len(args.text) > 180:
-        output_result({
-            "status": "error",
-            "error": 102,
-            "message": "转换的文本不能超过180个字",
-            "data": {}
-        })
-        return
-
-    # 检查是否需要音色选择（没有提供音频或音色ID时）
-    if not args.sample_audio and args.timbre_id == 0:
-        # 先检查音色缓存
-        voices = check_and_load_voices()
-        if voices:
-            print(f"提示: 没有指定音色，共有 {len(voices)} 个可用音色", file=sys.stderr)
-            print("请使用 --timbre_id 参数指定音色ID，或使用 --sample_audio 指定参考音频", file=sys.stderr)
-            print("使用 --list_voices 查看可用音色列表", file=sys.stderr)
-
-        output_result({
-            "status": "error",
-            "error": "missing_source",
-            "message": "必须提供参考音频或音色ID",
-            "data": {}
-        })
-        return
-
     submit(args.text, args.sample_audio if args.sample_audio else None,
            args.timbre_id if args.timbre_id != 0 else None)
 
+
 if __name__ == '__main__':
     main()
-
