@@ -3,11 +3,16 @@
   "slug": "aivoov",
   "displayName": "Aivoov",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1775166777789,
-    "commit": "https://github.com/openclaw/skills/commit/6c8674a49b758bd92ead9e158baa34dcac5903eb"
+    "version": "1.0.2",
+    "publishedAt": 1775166779759,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1775166777789,
+      "commit": "https://github.com/openclaw/skills/commit/6c8674a49b758bd92ead9e158baa34dcac5903eb"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1774307062630,
