@@ -1,6 +1,6 @@
 ---
 name: openclaw-spirits
-description: "Companion spirit system for OpenClaw agents. Every user gets a unique spirit creature — deterministically generated from their identity (24 species, 5 rarities from Common to Mythic 2%). Spirits have personality, elemental affinity, and evolve with interactions. Features: deterministic generation (same user always gets same spirit), rarity system, personality traits, interaction tracking, visual generation prompts. Use when: spirit, companion, pet, 灵兽, summon, familiar, creature, virtual pet, agent companion, gamification, engagement."
+description: Companion spirit system for OpenClaw agents. Deterministically generates a unique spirit (24 species, 5 rarities) based on user identity. Use when user says spirit, 灵兽, summon, my companion, my pet, or when the skill is first installed.
 ---
 
 # OpenClaw Spirits
