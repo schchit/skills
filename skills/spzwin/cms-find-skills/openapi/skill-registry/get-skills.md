@@ -1,4 +1,4 @@
-# GET https://sg-cwork-api.mediportal.com.cn/im/skill/nologin/list
+# POST https://skills.mediportal.com.cn/api/skill/list
 
 ## 作用
 
@@ -27,7 +27,7 @@
       "code": "cms-auth-skills",
       "name": "cms-auth-skills",
       "description": "cms基础 Skill — 登录授权、appKey 获取、access-token 获取",
-      "version": 1.0,
+      "version": "1.0.0",
       "downloadUrl": "https://filegpt-hn.file.mediportal.com.cn/cwork_skill/cms-auth-skills_1.0.zip",
       "isInternal": true,
       "createTime": "2026-03-28T03:53:40.000+00:00"

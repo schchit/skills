@@ -37,6 +37,34 @@ def log(message: str, quiet: bool = False) -> None:
         print(message, file=sys.stderr)
 
 
+def _normalize_zip_member(name: str) -> str:
+    normalized = os.path.normpath(str(name or "").replace("\\", "/")).replace("\\", "/")
+    normalized = normalized.lstrip("/")
+    if not normalized or normalized == ".":
+        raise ValueError(f"ZIP 内存在非法路径: {name}")
+    if normalized.startswith("../") or "/../" in f"/{normalized}/":
+        raise ValueError(f"ZIP 内存在越界路径: {name}")
+    return normalized
+
+
+def _safe_extract(zip_file: zipfile.ZipFile, destination: str) -> list[str]:
+    extracted = []
+    destination_real = os.path.realpath(destination)
+    for member in zip_file.infolist():
+        normalized = _normalize_zip_member(member.filename)
+        target_path = os.path.realpath(os.path.join(destination, normalized))
+        if not target_path.startswith(destination_real + os.sep) and target_path != destination_real:
+            raise ValueError(f"ZIP 内存在越界路径: {member.filename}")
+        if member.is_dir():
+            os.makedirs(target_path, exist_ok=True)
+            continue
+        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+        with zip_file.open(member, "r") as source, open(target_path, "wb") as target:
+            shutil.copyfileobj(source, target)
+        extracted.append(normalized)
+    return extracted
+
+
 def _resolve_skills_dir() -> str | None:
     """
     从脚本自身位置向上查找名为 'skills' 的祖先目录。
@@ -111,7 +139,7 @@ def extract_zip(zip_path: str, target_dir: str, skill_code: str = "", quiet: boo
 
     try:
         with zipfile.ZipFile(zip_path, "r") as zip_file:
-            names = zip_file.namelist()
+            names = [_normalize_zip_member(name) for name in zip_file.namelist() if str(name or "").strip()]
             top_entries = {name.split("/")[0] for name in names if name.split("/")[0]}
 
             has_single_root = False
@@ -124,15 +152,19 @@ def extract_zip(zip_path: str, target_dir: str, skill_code: str = "", quiet: boo
                 )
 
             if has_single_root:
-                zip_file.extractall(target_dir)
+                _safe_extract(zip_file, target_dir)
                 extracted = os.path.join(target_dir, root_name)
+                if not os.path.isfile(os.path.join(extracted, "SKILL.md")):
+                    raise ValueError(f"安装结果缺少 SKILL.md: {extracted}")
                 log(f"解压完成: {extracted}", quiet)
                 return extracted
 
             folder_name = skill_code or os.path.splitext(os.path.basename(zip_path))[0] or "skill"
             dest_dir = os.path.join(target_dir, folder_name)
             os.makedirs(dest_dir, exist_ok=True)
-            zip_file.extractall(dest_dir)
+            _safe_extract(zip_file, dest_dir)
+            if not os.path.isfile(os.path.join(dest_dir, "SKILL.md")):
+                raise ValueError(f"安装结果缺少 SKILL.md: {dest_dir}")
             log(f"解压完成: {dest_dir}", quiet)
             return dest_dir
     except Exception as exc:

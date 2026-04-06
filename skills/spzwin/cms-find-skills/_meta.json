@@ -1,11 +1,17 @@
 {
   "owner": "spzwin",
   "slug": "cms-find-skills",
-  "displayName": "Cms Find Skills",
+  "displayName": "cms-find-skills",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1774858402239,
-    "commit": "https://github.com/openclaw/skills/commit/772d9431eecb802c7cb4e0088718c89764258af3"
+    "version": "1.5.0",
+    "publishedAt": 1775208485007,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1774858402239,
+      "commit": "https://github.com/openclaw/skills/commit/772d9431eecb802c7cb4e0088718c89764258af3"
+    }
+  ]
 }

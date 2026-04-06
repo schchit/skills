@@ -4,6 +4,8 @@ description: CMS Skill 发现工具，调用 get-skills 接口浏览和搜索 Sk
 skillCode: cms-find-skills
 ---
 
+**当前版本**: v1.5.0
+
 # cms-find-skills
 
 只做两件事：

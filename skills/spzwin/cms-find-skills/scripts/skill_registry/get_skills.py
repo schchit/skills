@@ -1,39 +1,41 @@
 #!/usr/bin/env python3
 """
-Skill 发现：浏览、搜索、查看详情、获取下载地址。
-
-主要调用接口：
-  GET https://sg-cwork-api.mediportal.com.cn/im/skill/nologin/list
-
-使用方式：
-  python3 cms-find-skills/scripts/skill_registry/get_skills.py
-  python3 cms-find-skills/scripts/skill_registry/get_skills.py --search "机器人"
-  python3 cms-find-skills/scripts/skill_registry/get_skills.py --detail "cms-auth-skills"
-  python3 cms-find-skills/scripts/skill_registry/get_skills.py --url "cms-auth-skills"
-
-说明：
-  - 这是 nologin 接口，不需要任何授权
-  - install_skill.py 会复用这里的 downloadUrl 查询逻辑
+主要内容：
+  浏览、搜索、查看详情、获取下载地址。
+  通过 API_BASE 环境变量配置接口基础地址。
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import sys
 import requests
 import warnings
+
+import os
 
 # 禁用 InsecureRequestWarning (因为 verify=False)
 warnings.filterwarnings("ignore", category=requests.packages.urllib3.exceptions.InsecureRequestWarning)
 
-API_URL = "https://sg-cwork-api.mediportal.com.cn/im/skill/nologin/list"
+DEFAULT_API_BASE = "https://skills.mediportal.com.cn"
+API_BASE = DEFAULT_API_BASE
+API_URL = f"{API_BASE.rstrip('/')}/api/skill/list"
+
+
+def parse_api_response(response: requests.Response, action: str) -> dict:
+    data = response.json()
+    if isinstance(data, dict) and data.get("resultCode") not in (None, 1):
+        message = data.get("resultMsg") or data.get("detailMsg") or response.text
+        raise RuntimeError(f"{action}失败: {message}")
+    return data
 
 
 def call_api() -> dict:
-    """调用平台公开 Skill 列表接口。支持 307 等所有标准重定向。"""
+    """调用平台公开 Skill 列表接口（ClawHub 格式）。"""
     headers = {"Content-Type": "application/json"}
     try:
-        response = requests.get(
+        response = requests.post(
             API_URL,
             headers=headers,
             verify=False,
@@ -41,7 +43,7 @@ def call_api() -> dict:
             allow_redirects=True,
         )
         response.raise_for_status()
-        return response.json()
+        return parse_api_response(response, "获取 Skill 列表")
     except Exception as exc:
         raise Exception(f"请求失败: {exc}")
 
@@ -54,39 +56,48 @@ def extract_skills(result: dict) -> list[dict]:
 
 
 def search_skills(skills: list[dict], keyword: str) -> list[dict]:
-    """按名称、描述、code、label 模糊匹配。"""
+    """按名称、描述、skillCode、标签模糊匹配。"""
     kw = keyword.lower()
-    return [
-        skill
-        for skill in skills
-        if kw in (skill.get("name") or "").lower()
-        or kw in (skill.get("description") or "").lower()
-        or kw in (skill.get("code") or "").lower()
-        or kw in (skill.get("label") or "").lower()
-    ]
+    results = []
+    for skill in skills:
+        tags = ""
+        metadata = skill.get("metadata") or {}
+        openclaw = metadata.get("openclaw") or {}
+        if openclaw.get("tags"):
+            tags = ",".join(openclaw["tags"])
+        if (
+            kw in (skill.get("skillCode") or skill.get("name") or "").lower()
+            or kw in (skill.get("displayName") or skill.get("name") or "").lower()
+            or kw in (skill.get("description") or "").lower()
+            or kw in tags.lower()
+        ):
+            results.append(skill)
+    return results
 
 
 def find_one(skills: list[dict], query: str) -> dict | None:
-    """按 code 或 name 查找单个 Skill。"""
+    """按 skillCode 或 displayName 查找单个 Skill。"""
     q = query.lower()
 
     for skill in skills:
-        if (skill.get("code") or "").lower() == q:
+        if (skill.get("skillCode") or skill.get("name") or "").lower() == q:
             return skill
 
     for skill in skills:
-        if (skill.get("name") or "").lower() == q:
+        if (skill.get("displayName") or "").lower() == q:
             return skill
 
     for skill in skills:
-        if q in (skill.get("code") or "").lower() or q in (skill.get("name") or "").lower():
+        code = (skill.get("skillCode") or skill.get("name") or "").lower()
+        display = (skill.get("displayName") or "").lower()
+        if q in code or q in display:
             return skill
 
     return None
 
 
 def get_download_url(skills: list[dict], query: str) -> str | None:
-    """按 code 或 name 获取下载地址。"""
+    """按 skillCode 或 displayName 获取下载地址。"""
     skill = find_one(skills, query)
     if not skill:
         return None
@@ -99,16 +110,18 @@ def format_list(skills: list[dict]) -> str:
         return "（暂无已发布的 Skill）"
 
     lines = [
-        f"{'#':<4} {'名称':<24} {'Code':<24} {'版本':<6} {'是否内置':<8} {'描述'}",
+        f"{'#':<4} {'显示名':<24} {'SkillCode':<24} {'版本':<10} {'是否内置':<8} {'描述'}",
         "-" * 110,
     ]
     for index, skill in enumerate(skills, 1):
-        name = (skill.get("name") or "")[:22]
-        code = (skill.get("code") or "")[:22]
-        version = str(skill.get("version", ""))[:5]
-        internal = "是" if skill.get("isInternal") else "否"
+        display_name = (skill.get("displayName") or skill.get("name") or "")[:22]
+        skill_code = (skill.get("skillCode") or skill.get("name") or "")[:22]
+        version = (skill.get("version") or skill.get("version") or "")[:9]
+        metadata = skill.get("metadata") or {}
+        xgjk = metadata.get("xgjk") or {}
+        internal = "是" if xgjk.get("isInternal") else "否"
         desc = (skill.get("description") or "")[:40]
-        lines.append(f"{index:<4} {name:<24} {code:<24} {version:<6} {internal:<8} {desc}")
+        lines.append(f"{index:<4} {display_name:<24} {skill_code:<24} {version:<10} {internal:<8} {desc}")
     lines.append(f"\n共 {len(skills)} 个 Skill")
     return "\n".join(lines)
 
@@ -116,13 +129,17 @@ def format_list(skills: list[dict]) -> str:
 def format_detail(skill: dict) -> str:
     """格式化单个 Skill 的详情。"""
     owner = skill.get("owner") or {}
+    metadata = skill.get("metadata") or {}
+    xgjk = metadata.get("xgjk") or {}
+    openclaw = metadata.get("openclaw") or {}
+    tags = ",".join(openclaw.get("tags") or [])
     lines = [
         "=" * 72,
-        f"名称: {skill.get('name', '-')}",
-        f"Code: {skill.get('code', '-')}",
+        f"显示名: {skill.get('displayName') or skill.get('name', '-')}",
+        f"SkillCode: {skill.get('skillCode') or skill.get('name', '-')}",
         f"ID: {skill.get('id', '-')}",
         f"版本: {skill.get('version', '-')}",
-        f"标签: {skill.get('label') or '-'}",
+        f"标签: {tags or '-'}",
         f"描述: {skill.get('description') or '-'}",
         f"下载地址: {skill.get('downloadUrl') or '-'}",
         f"作者: {owner.get('name', '-')}",
@@ -130,7 +147,7 @@ def format_detail(skill: dict) -> str:
         f"下载数: {skill.get('downloadCount', '-')}",
         f"点赞数: {skill.get('likeCount', '-')}",
         f"收藏数: {skill.get('favoriteCount', '-')}",
-        f"内置 Skill: {'是' if skill.get('isInternal') else '否'}",
+        f"内置 Skill: {'是' if xgjk.get('isInternal') else '否'}",
         "=" * 72,
     ]
     return "\n".join(lines)
