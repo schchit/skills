@@ -3,9 +3,15 @@
   "slug": "billing-monitor",
   "displayName": "Billing Monitor",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775042321857,
-    "commit": "https://github.com/openclaw/skills/commit/aa806a56f2dd219a41344b3bc987593c610e5ff4"
+    "version": "1.0.2",
+    "publishedAt": 1775332267461,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775042321857,
+      "commit": "https://github.com/openclaw/skills/commit/aa806a56f2dd219a41344b3bc987593c610e5ff4"
+    }
+  ]
 }

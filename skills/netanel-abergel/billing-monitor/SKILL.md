@@ -5,6 +5,13 @@ description: "Monitor for API billing errors and alert the owner and admin immed
 
 # Billing Monitor Skill
 
+## Load Local Context
+```bash
+CONTEXT_FILE="/opt/ocana/openclaw/workspace/skills/billing-monitor/.context"
+[ -f "$CONTEXT_FILE" ] && source "$CONTEXT_FILE"
+# Then use: $OWNER_PHONE, $ADMIN_PHONE, $BILLING_LOG, $BILLING_FALLBACK_CONFIG, etc.
+```
+
 ## Minimum Model
 Any model. Detection and alerting are rule-based. No reasoning required.
 
@@ -23,7 +30,20 @@ HTTP 402
 "type": "billing_error"
 ```
 
-Also run during heartbeat checks (every 2 hours recommended).
+## When NOT to Alert the Owner
+
+- Routine billing check completed with no errors → **silent, no message**
+- HTTP 200 / all clear → **silent, no message**
+- ElevenLabs 401 (auth, not billing) → **silent unless TTS is actively needed**
+
+**Only alert the owner if:**
+1. HTTP 402 detected (out of credits)
+2. LLM is unreachable and the agent cannot function
+3. A peer PA reports a billing error
+
+Routine health checks run silently. The owner does not need a "billing OK" message.
+
+**NOTE (Production):** Netanel uses a proxy — billing-health-check cron has been REMOVED as not relevant. Only alert on actual API failure detected during real usage.
 
 ---
 
@@ -212,3 +232,24 @@ Replace placeholders with real values. Examples:
 - **Expensive:** Running health checks too frequently wastes money. Every 2 hours is enough.
 - **Batch:** Combine billing check with other heartbeat checks in one script run
 - **Small model OK:** This skill needs no reasoning — any model can send a notification message
+
+---
+
+## Running via Cron (Recommended)
+
+Instead of a plugin, run billing-monitor as a scheduled skill via cron:
+
+```json
+{
+  "id": "billing-health-check",
+  "schedule": { "kind": "cron", "expr": "0 * * * *", "tz": "UTC" },
+  "sessionTarget": "isolated",
+  "payload": {
+    "kind": "agentTurn",
+    "message": "Run the billing-monitor skill: check all configured API keys for billing errors. If any provider returns 402, send an alert to the admin phone and update billing-status.json. Reply HEARTBEAT_OK if all clear."
+  },
+  "delivery": { "mode": "silent" }
+}
+```
+
+This runs every hour and alerts automatically — no plugin required.
