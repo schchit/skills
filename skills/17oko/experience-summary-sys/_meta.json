@@ -3,9 +3,15 @@
   "slug": "experience-summary-sys",
   "displayName": "Experience Summary Sys",
   "latest": {
-    "version": "1.2.1",
-    "publishedAt": 1775020100835,
-    "commit": "https://github.com/openclaw/skills/commit/9973d7018eef9f932064b074361c09c834f59d89"
+    "version": "1.4.0",
+    "publishedAt": 1775174776591,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.2.1",
+      "publishedAt": 1775020100835,
+      "commit": "https://github.com/openclaw/skills/commit/9973d7018eef9f932064b074361c09c834f59d89"
+    }
+  ]
 }

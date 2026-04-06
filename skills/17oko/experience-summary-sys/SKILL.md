@@ -1,3 +1,9 @@
+---
+name: experience-summary-sys
+description: 管理经验总结系统：定时生成每日/每周/每月/每季度/每年经验总结，以及按需调用历史经验的功能
+metadata: {"openclaw": {"emoji": "📝", "always": true}}
+---
+
 # experience-summary-sys
 
 > ⚠️ **本技能为"指导型"技能**，安装后需要按照以下步骤手动配置才能生效。
@@ -24,19 +30,19 @@ mkdir -p memory/daily memory/weekly
 
 ```bash
 # 每日总结（每天北京时间 00:01）
-openclaw cron add --name daily-summary --cron "0 1 * * *" --tz "Asia/Shanghai" --description "每天总结前一天对话" --system-event "generate-daily-summary"
+openclaw cron add --name daily-summary --cron "1 0 * * *" --tz "Asia/Shanghai" --description "每天总结前一天对话" --system-event "generate-daily-summary"
 
 # 每周总结（每周一北京时间 00:30）
 openclaw cron add --name weekly-summary --cron "30 0 * * 1" --tz "Asia/Shanghai" --description "每周一总结上一周经验" --system-event "generate-weekly-summary"
 
-# 每月总结（每月1日北京时间 00:30）
-openclaw cron add --name monthly-summary --cron "30 0 1 * *" --tz "Asia/Shanghai" --description "每月1日总结上一月经验" --system-event "generate-monthly-summary"
+# 每月总结（每月1日北京时间 01:30）
+openclaw cron add --name monthly-summary --cron "30 1 1 * *" --tz "Asia/Shanghai" --description "每月1日总结上一月经验" --system-event "generate-monthly-summary"
 
-# 每季度总结（每季度第一天北京时间 00:30）
-openclaw cron add --name quarterly-summary --cron "30 0 1 1,4,7,10 *" --tz "Asia/Shanghai" --description "每季度第一天总结上一季度" --system-event "generate-quarterly-summary"
+# 每季度总结（每季度第一天北京时间 02:30）
+openclaw cron add --name quarterly-summary --cron "30 2 1 1,4,7,10 *" --tz "Asia/Shanghai" --description "每季度第一天总结上一季度" --system-event "generate-quarterly-summary"
 
-# 年度总结（每年1月1日北京时间 00:30）
-openclaw cron add --name yearly-summary --cron "30 0 1 1 *" --tz "Asia/Shanghai" --description "每年1月1日总结上一年度" --system-event "generate-yearly-summary"
+# 年度总结（每年1月1日北京时间 03:30）
+openclaw cron add --name yearly-summary --cron "30 3 1 1 *" --tz "Asia/Shanghai" --description "每年1月1日总结上一年度" --system-event "generate-yearly-summary"
 ```
 
 ### 步骤 3：验证配置
@@ -70,12 +76,15 @@ openclaw cron list
 
 ```bash
 # 在 workspace 目录下创建
-mkdir -p memory/daily memory/weekly
+mkdir -p memory/daily memory/weekly memory/manual
 ```
 
 或者手动在 `C:\Users\Admin\.openclaw\workspace\` 下创建：
-- `memory/daily/` — 存放每日总结
-- `memory/weekly/` — 存放每周总结
+- `memory/daily/` — 存放每日总结（自动生成）
+- `memory/weekly/` — 存放每周总结（自动生成）
+- `memory/manual/` — 存放手动记录的日志
+
+> 📌 **提示**：手动记录的日志不会被自动任务覆盖，适合记录重要事项或临时笔记。
 
 ---
 
@@ -85,16 +94,37 @@ mkdir -p memory/daily memory/weekly
 
 #### 每日总结（每天北京时间 00:01 执行）
 
+> ⚠️ **重要**：每日总结现在会同时处理**正常会话**和**被删除/重置的会话**！
+
+**处理逻辑**：
+1. 读取 `sessions/` 目录下所有 `.jsonl` 文件
+2. **正常会话**：读取修改时间为前一天的普通 .jsonl 文件
+3. **被删除/重置会话**：读取文件名包含 `.jsonl.reset.*` 或 `.jsonl.deleted.*` 且时间戳在前一天的
+4. 统一解析，标记来源类型
+5. 合并写入 `memory/daily/YYYY-MM-DD.md`
+
+**容错处理**：
+- 如果当天没有任何会话，仍生成"今日无对话"占位文件
+- 确保 weekly-summary 始终有数据可读
+
 ```bash
 openclaw cron add \
   --name daily-summary \
   --cron "0 1 * * *" \
   --tz "Asia/Shanghai" \
-  --description "每天总结前一天对话" \
+  --description "每天总结前一天对话（含被删除/重置的会话）" \
   --system-event "generate-daily-summary"
 ```
 
 #### 每周总结（每周一北京时间 00:30 执行）
+
+**处理逻辑**：
+1. 读取 `memory/daily/` 目录下上一周的 .md 文件
+2. 按日期排序，去重凝练
+3. 写入 `memory/weekly/YYYY-WXX.md`
+
+**容错处理**：
+- 如果上一周没有任何 daily 文件，仍生成"本周无对话"占位文件
 
 ```bash
 openclaw cron add \
@@ -105,7 +135,17 @@ openclaw cron add \
   --system-event "generate-weekly-summary"
 ```
 
-#### 每月总结（每月1日北京时间 00:30 执行）
+#### 每月总结（每月1日北京时间 01:30 执行）
+
+> 📌 **输出到 MEMORY.md**，格式：`## 📊 YYYY年MM月经验总结`
+
+**处理逻辑**：
+1. 读取 `memory/weekly/` 目录下上一月的周总结文件
+2. 去重凝练，提取核心经验
+3. 追加到 `MEMORY.md` 文件末尾
+
+**容错处理**：
+- 如果上一月没有任何 weekly 文件，仍生成"本月无对话"记录
 
 ```bash
 openclaw cron add \
@@ -116,7 +156,14 @@ openclaw cron add \
   --system-event "generate-monthly-summary"
 ```
 
-#### 每季度总结（每季度第一天北京时间 00:30 执行）
+#### 每季度总结（每季度第一天北京时间 02:30 执行）
+
+> 📌 **输出到 MEMORY.md**，格式：`## 📊 YYYY年QN季度经验总结`
+
+**处理逻辑**：
+1. 从 MEMORY.md 中提取上一季度的月总结章节
+2. 凝练季度核心成果
+3. 追加到 `MEMORY.md` 文件末尾
 
 ```bash
 openclaw cron add \
@@ -127,7 +174,17 @@ openclaw cron add \
   --system-event "generate-quarterly-summary"
 ```
 
-#### 年度总结（每年1月1日北京时间 00:30 执行）
+#### 年度总结（每年1月1日北京时间 03:30 执行）
+
+> 📌 **输出到 MEMORY.md**，格式：`## 🏆 YYYY年度经验总结`
+
+**处理逻辑**：
+1. 从 MEMORY.md 中提取上一年度的季度总结章节
+2. 凝练年度核心成果
+3. 追加到 `MEMORY.md` 文件末尾
+
+**额外功能**：
+- 可附带执行 sessions 目录清理，删除 90 天前的被删除/重置会话文件
 
 ```bash
 openclaw cron add \
@@ -233,7 +290,35 @@ openclaw cron runs <jobId>
 
 ---
 
-### 第五步：自定义配置
+### 第五步：容错与边界处理
+
+为保证系统稳定运行，建议添加以下容错机制：
+
+**1. 空数据处理**
+- 如果某天的 sessions 为空，daily-summary 仍生成"今日无对话"占位文件
+- 如果某周的 daily 文件全空，weekly-summary 生成"本周无对话"占位文件
+- 如果某月的 weekly 文件全空，monthly-summary 生成"本月无对话"记录
+
+**2. 输出格式统一**
+不同周期任务的输出格式使用不同前缀区分：
+| 任务 | 输出格式 | 示例 |
+|------|----------|------|
+| monthly | `## 📊 YYYY年MM月经验总结` | `## 📊 2026年3月经验总结` |
+| quarterly | `## 📊 YYYY年QN季度经验总结` | `## 📊 2026年Q1季度经验总结` |
+| yearly | `## 🏆 YYYY年度经验总结` | `## 🏆 2025年度经验总结` |
+
+**3. 会话文件清理（可选）**
+为避免 sessions 目录文件堆积，可在 yearly-summary 中附带执行清理：
+
+```bash
+# 清理 90 天前的被删除/重置会话文件
+find sessions/ -name "*.jsonl.reset.*" -mtime +90 -delete
+find sessions/ -name "*.jsonl.deleted.*" -mtime +90 -delete
+```
+
+---
+
+### 第六步：自定义配置
 
 #### 修改检索范围
 
@@ -254,6 +339,13 @@ openclaw cron runs <jobId>
 2. 根据相关性筛选（相似度 > 0.7）  # 可调整 0.3-0.9
 ```
 
+#### 修改输出位置（高级）
+
+如果需要修改输出位置，可调整各任务的 `写入路径` 部分：
+- daily-summary: `memory/daily/`
+- weekly-summary: `memory/weekly/`
+- monthly/quarterly/yearly: `MEMORY.md`（根目录）
+
 ---
 
 ## 附录：记忆文件示例
@@ -263,21 +355,25 @@ openclaw cron runs <jobId>
 ```markdown
 # 2026-03-31（星期二）
 
-## 对话总结
-今天主要帮用户完成了以下事项：
-- 配置���5个定时任务（每日/每周/每月/每季度/每年）
-- 创建了经验总结系统的 skill 并发布到桌面
+## 正常会话
+- 会话数：3 个
+- 关键对话：
+  - 用户: "配置 cron 任务"
+  - 助手: "已创建 daily-summary 任务"
 
-### 各通道对话
-- **Webchat**: 配置定时任务相关操作
+## 被删除/重置的会话（2个）
+### 1. xxx.jsonl.reset (@ 04:33)
+- 用户: "上次那个问题解决了吗？"
+- 助手: "已查询，问题是..."
+
+### 2. xxx.jsonl.deleted (@ 16:08)
+- 用户: "用 Chrome 打开微信文章"
+  - 助手: "已启动 Chrome 远程调试模式..."
 
 ## 关键信息
 - 用户偏好：温柔的台湾女生语气
-- 学到了：哥哥希望把经验沉淀成可发布的技能
-
-## 待处理
-- [ ] 测试按需调用功能
-- [ ] 优化 skill 文档
+- 学到的知识：Chrome CDP 可控制浏览器自动化
+- 重要决策：采用合并方案处理所有会话
 ```
 
 ### 每周总结示例 (memory/weekly/2026-W13.md)
@@ -323,6 +419,20 @@ openclaw cron runs <jobId>
 openclaw cron run daily-summary
 ```
 
+### Q4：被删除/重置的会话会丢失吗？
+
+**不会！** 每日总结现在会同时处理：
+- 正常的 .jsonl 文件
+- .jsonl.reset.* 文件（重置的会话）
+- .jsonl.deleted.* 文件（删除的会话）
+
+所有经验都会统一写入 `YYYY-MM-DD.md`，确保经验不遗漏。
+
+### Q5：如何查看历史被删除的会话？
+
+- 每日总结文件：`memory/daily/YYYY-MM-DD.md`（包含正常+被删除会话）
+- 历史汇总：`memory/daily/history-deleted.md`（可选，用于长期追溯）
+
 ---
 
 ## 文件结构
@@ -332,13 +442,15 @@ openclaw cron run daily-summary
 ```
 C:\Users\Admin\.openclaw\workspace\
 ├── AGENTS.md                    # 含按需调用规则
-├── MEMORY.md                    # 长期记忆（精选）
+├── MEMORY.md                    # 长期记忆（精选，monthly/quarterly/yearly 追加）
 ├── memory/
-│   ├── daily/
-│   │   ├── 2026-03-31.md        # 每日总结
+│   ├── daily/                   # 每日总结（自动生成）
+│   │   ├── 2026-03-31.md
 │   │   └── ...
-│   ├── weekly/
-│   │   └── 2026-W13.md          # 周经验总结
+│   ├── weekly/                  # 周经验总结（自动生成）
+│   │   └── 2026-W13.md
+│   ├── manual/                  # 手动记录的日志（不会被自动任务覆盖）
+│   │   └── 2026-04-03.md
 │   └── heartbeat-state.json     # 心跳状态
 └── cron/                        # 定时任务配置
 ```
@@ -355,6 +467,20 @@ C:\Users\Admin\.openclaw\workspace\
 ---
 
 ## 更新日志
+
+- **v1.4.0** (2026-04-03)：优化配置与容错机制
+  - 修正 cron 时间表达式（monthly: 01:30, quarterly: 02:30, yearly: 03:30）
+  - 添加 memory/manual/ 目录说明
+  - 添加容错机制与空数据处理
+  - 明确输出格式（monthly/quarterly/yearly 区分）
+  - 添加会话文件清理策略（90天前）
+  - 调整步骤编号（原第五步→第六步）
+
+- **v1.3.0** (2026-04-02)：增强被删除/重置会话处理
+  - 每日总结现在同时处理正常会话和被删除/重置的会话
+  - 更新记忆文件格式示例（区分正常/重置/删除）
+  - 添加 FAQ 说明（Q4、Q5）
+  - 合并输出：所有会话统一写入一个 .md 文件
 
 - **v1.2.0** (2026-04-01)：优化发布版本
   - 添加标签（Tags）便于搜索
