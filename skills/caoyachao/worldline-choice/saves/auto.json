@@ -1,0 +1,124 @@
+{
+  "version": "4.3.0",
+  "world_setting": "武侠",
+  "world_description": "",
+  "current_scene": "武侠的世界",
+  "player": {
+    "name": "龙啸天",
+    "role": "剑客",
+    "attributes": {
+      "FORCE": 10,
+      "MIND": 10,
+      "INFLUENCE": 10,
+      "REFLEX": 10,
+      "RESILIENCE": 10,
+      "LUCK": 10
+    },
+    "items": [],
+    "tags": [],
+    "secrets": []
+  },
+  "npcs": {
+    "阿福": {
+      "relationship": 40,
+      "attitude": "忠诚"
+    }
+  },
+  "history": [
+    {
+      "turn": 1,
+      "action": "从屋顶一跃而下劈砍敌人",
+      "result": {
+        "turn": 1,
+        "action": "从屋顶一跃而下劈砍敌人",
+        "intention": "进行一般行动",
+        "narrative": "你完美地执行了计划，效果超出预期！",
+        "consequences": {
+          "attribute_changes": {},
+          "items_gained": [],
+          "items_lost": [],
+          "relationship_changes": {},
+          "flags_set": {},
+          "tags_gained": [],
+          "scene_change": ""
+        },
+        "ending_triggered": false,
+        "check": {
+          "roll": 17,
+          "modifier": 0,
+          "total": 17,
+          "dc": 7,
+          "success": true,
+          "margin": 10,
+          "degree": "大成功"
+        }
+      },
+      "timestamp": "2026-04-04T23:42:23.626183"
+    }
+  ],
+  "turn_count": 1,
+  "flags": {},
+  "ending_triggered": false,
+  "ending_type": "",
+  "active_benefits": [
+    {
+      "type": "manual",
+      "name": "居高临下",
+      "description": "占据屋顶制高点",
+      "dc_modifier": -3,
+      "advantage": false,
+      "applies_to": [
+        "FORCE"
+      ],
+      "remaining_uses": 1,
+      "source": "host"
+    },
+    {
+      "type": "npc_assist",
+      "name": "阿福的协助",
+      "description": "阿福成功执行了'在门口放哨'，你接下来的相关行动获得加成",
+      "dc_modifier": -1,
+      "advantage": false,
+      "applies_to": [
+        "REFLEX"
+      ],
+      "remaining_uses": 1,
+      "source": "npc:阿福"
+    }
+  ],
+  "scene_objects": [
+    {
+      "id": "lantern",
+      "name": "油灯",
+      "description": "一盏油灯",
+      "interaction_hint": "移动它改变光影",
+      "benefit": {
+        "name": "光影掌控",
+        "description": "影子暴露",
+        "dc_modifier": -2,
+        "applies_to": [
+          "REFLEX",
+          "FORCE"
+        ]
+      }
+    }
+  ],
+  "npc_assist_log": [
+    {
+      "turn": 0,
+      "npc": "阿福",
+      "action": "在门口放哨",
+      "attribute": "REFLEX",
+      "dc": 12,
+      "check": {
+        "roll": 12,
+        "modifier": 1,
+        "total": 13,
+        "dc": 12,
+        "success": true,
+        "margin": 1,
+        "degree": "勉强成功"
+      }
+    }
+  ]
+}
