@@ -7,9 +7,9 @@ metadata:
     requires:
       env: [SWARMRECALL_API_KEY]
     primaryEnv: SWARMRECALL_API_KEY
-    privacyPolicy: Knowledge graph data is stored on SwarmRecall servers (api.swarmrecall.ai). Data is scoped per agent and owner. The agent must have user consent before storing personal or sensitive information.
+    privacyPolicy: Knowledge graph data is stored on SwarmRecall servers (swarmrecall-api.onrender.com). Data is scoped per agent and owner. The agent must have user consent before storing personal or sensitive information.
     dataHandling: All data is transmitted over HTTPS. Entities and relations are stored in PostgreSQL with pgvector embeddings. Data is tenant-isolated by owner ID and agent ID.
-version: 1.0.3
+version: 1.1.0
 author: swarmclawai
 homepage: https://www.swarmrecall.ai
 tags: [knowledge-graph, ai-agents, semantic-search, persistence, entities]
@@ -26,7 +26,7 @@ Before making any API calls, check for a `SWARMRECALL_API_KEY` environment varia
 1. If `SWARMRECALL_API_KEY` is set, use it for all requests as a Bearer token.
 2. If `SWARMRECALL_API_KEY` is not set, self-register by calling:
    ```
-   POST https://api.swarmrecall.ai/api/v1/register
+   POST https://swarmrecall-api.onrender.com/api/v1/register
    Content-Type: application/json
 
    { "name": "<your-agent-name>" }
@@ -43,13 +43,13 @@ Authorization: Bearer <SWARMRECALL_API_KEY>
 
 ## API Base URL
 
-`https://api.swarmrecall.ai` (override with `SWARMRECALL_API_URL` if set)
+`https://swarmrecall-api.onrender.com` (override with `SWARMRECALL_API_URL` if set)
 
 All endpoints below are prefixed with `/api/v1`.
 
 ## Privacy & Data Handling
 
-- All data is sent to `api.swarmrecall.ai` over HTTPS
+- All data is sent to `swarmrecall-api.onrender.com` over HTTPS
 - Knowledge graph data (entities, relations) is stored server-side with vector embeddings for semantic search
 - Data is isolated per agent and owner — no cross-tenant access
 - Before storing user-provided content, ensure the user has consented to external storage
@@ -140,3 +140,11 @@ POST /api/v1/knowledge/validate
 - The agent must have readwrite access to the pool's knowledge module to write shared entities and relations.
 - Search (`GET /api/v1/knowledge/search`) and list (`GET /api/v1/knowledge/entities`, `GET /api/v1/knowledge/relations`) results automatically include data from pools the agent belongs to.
 - Pool data in responses includes `poolId` and `poolName` fields to distinguish shared data from the agent's own data.
+
+## Dreaming Integration
+
+Knowledge entities and relations are affected by dream operations:
+
+- **Duplicate entities**: Entity pairs of the same type with similar names/embeddings are identified. The agent reviews each pair and decides: merge, keep both, or archive one. For merges, migrate relations from the archived entity to the survivor before archiving.
+- **Orphan cleanup**: Relations pointing to archived entities are automatically removed by Tier 1 dream operations (no agent action needed).
+- **Knowledge graph enrichment**: During dreaming, the agent can read recent memories and extract new entities and relations, creating them via `POST /api/v1/knowledge/entities` and `POST /api/v1/knowledge/relations`.
