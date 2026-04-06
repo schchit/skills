@@ -10,8 +10,8 @@ OpenClaw skill，把代码任务委派给外部 coding agent（Claude Code、Cod
 
 脚本会自动：
 - 扫描本地已装的 coding agent，生成白名单
+- 安装 codex-acp 平台二进制（如检测到 codex）
 - 配置 OpenClaw（acpx 插件、ACP、跨 session 访问）
-- 修复 acpx claude agent 命令映射（`~/.acpx/config.json`）
 - 配置 heartbeat（子 agent 完成后自动回调，无需手动轮询）
 - 重启 daemon 并验证
 

@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ============================================================
 # acp-coder — 一键安装脚本
-# 配置 OpenClaw ACP + acpx agent 映射
+# 配置 OpenClaw ACP（acpx 已内置于 openclaw）
 # ============================================================
 
 RED='\033[0;31m'
@@ -18,6 +18,16 @@ warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 fail()  { echo -e "${RED}[FAIL]${NC}  $*"; exit 1; }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ----------------------------------------------------------
+# 0. 前置检查
+# ----------------------------------------------------------
+if ! command -v openclaw &>/dev/null; then
+  fail "未找到 openclaw 命令。请先安装 OpenClaw 再运行此脚本。"
+fi
+if ! command -v node &>/dev/null; then
+  fail "未找到 node 命令。请先安装 Node.js。"
+fi
 
 # ----------------------------------------------------------
 # 1. 检测已安装的 coding agent
@@ -36,6 +46,22 @@ check_agent() {
 
 check_agent "claude"   "claude"   "Claude Code"
 check_agent "codex"    "codex"    "Codex CLI"
+
+# codex-acp 平台二进制（optional dep，npx 默认跳过，需手动补装）
+for agent in "${AGENTS[@]}"; do
+  if [ "$agent" = "codex" ]; then
+    PLATFORM="$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/')"
+    PKG="@zed-industries/codex-acp-${PLATFORM}"
+    if ! npm list -g "$PKG" --depth=0 2>/dev/null | grep -q "$PKG"; then
+      info "安装 codex-acp 平台二进制 ($PKG)..."
+      npm install -g "$PKG" --registry=https://registry.npmmirror.com \
+        && ok "已安装 $PKG" \
+        || warn "安装失败，codex 可能无法通过 ACP 启动，请手动执行: npm install -g $PKG"
+    else
+      ok "codex-acp 平台二进制已就绪 ($PKG)"
+    fi
+  fi
+done
 check_agent "gemini"   "gemini"   "Gemini CLI"
 check_agent "opencode" "opencode" "OpenCode"
 check_agent "kimi"     "kimi"     "Kimi CLI"
@@ -70,7 +96,20 @@ openclaw config set plugins.entries.acpx.config.permissionMode approve-all
 openclaw config set acp.enabled true
 openclaw config set acp.backend acpx
 openclaw config set acp.defaultAgent "$DEFAULT_AGENT"
-openclaw config set acp.allowedAgents "$ALLOW_JSON"
+
+# 合并 allowedAgents：读取已有值，追加新检测到的 agent，不覆盖用户手动配置
+MERGED_JSON=$(node -e "
+  const { execSync } = require('child_process');
+  let existing = [];
+  try {
+    const out = execSync('openclaw config get acp.allowedAgents', { encoding: 'utf8' }).trim();
+    existing = JSON.parse(out);
+  } catch {}
+  const incoming = $ALLOW_JSON;
+  const merged = [...new Set([...existing, ...incoming])];
+  console.log(JSON.stringify(merged));
+" 2>/dev/null || echo "$ALLOW_JSON")
+openclaw config set acp.allowedAgents "$MERGED_JSON"
 
 # 跨 session 访问
 openclaw config set tools.sessions.visibility all
@@ -79,49 +118,7 @@ openclaw config set tools.agentToAgent.enabled true
 ok "OpenClaw 配置完成"
 
 # ----------------------------------------------------------
-# 3. 修复 acpx agent 命令映射
-# ----------------------------------------------------------
-# acpx 0.3.x 内置映射指向已 deprecated 的 @zed-industries/claude-agent-acp，
-# 与新版 Claude Code 不兼容。通过 ~/.acpx/config.json 覆盖为新包。
-info "配置 acpx agent 命令..."
-
-ACPX_CONFIG_DIR="$HOME/.acpx"
-ACPX_CONFIG="$ACPX_CONFIG_DIR/config.json"
-mkdir -p "$ACPX_CONFIG_DIR"
-
-# 构建 agents 配置（只覆盖检测到的 agent 中需要修复的）
-ACPX_AGENTS="{"
-NEED_COMMA=false
-
-# claude: deprecated @zed-industries → @agentclientprotocol
-for agent in "${AGENTS[@]}"; do
-  if [ "$agent" = "claude" ]; then
-    $NEED_COMMA && ACPX_AGENTS+=","
-    ACPX_AGENTS+="\"claude\":{\"command\":\"npx -y @agentclientprotocol/claude-agent-acp\"}"
-    NEED_COMMA=true
-  fi
-done
-
-ACPX_AGENTS+="}"
-
-if [ -f "$ACPX_CONFIG" ]; then
-  # 已有配置文件，备份后合并 claude 覆盖
-  cp "$ACPX_CONFIG" "$ACPX_CONFIG.bak"
-  # 用 node 做 JSON 合并（比 sed 可靠）
-  node -e "
-    const fs = require('fs');
-    const cfg = JSON.parse(fs.readFileSync('$ACPX_CONFIG', 'utf8'));
-    const patch = JSON.parse('$ACPX_AGENTS');
-    cfg.agents = Object.assign(cfg.agents || {}, patch);
-    fs.writeFileSync('$ACPX_CONFIG', JSON.stringify(cfg, null, 2) + '\n');
-  " && ok "已合并 acpx agent 配置" || warn "合并失败，请手动编辑 $ACPX_CONFIG"
-else
-  echo "{\"agents\":$ACPX_AGENTS}" > "$ACPX_CONFIG"
-  ok "已创建 $ACPX_CONFIG"
-fi
-
-# ----------------------------------------------------------
-# 4. 配置 heartbeat（streamTo 自动回调必需）
+# 3. 配置 heartbeat（streamTo 自动回调必需）
 # ----------------------------------------------------------
 # sessions_spawn streamTo:"parent" + sessions_yield 实现子 agent 完成后自动唤醒父 session。
 # 前提：父 session 所属的 agent 必须在 agents.list 里配置 heartbeat.target = "last"。
@@ -157,7 +154,7 @@ else
 fi
 
 # ----------------------------------------------------------
-# 5. 重启 daemon
+# 4. 重启 daemon
 # ----------------------------------------------------------
 info "重启 OpenClaw daemon..."
 
@@ -170,14 +167,17 @@ fi
 # ----------------------------------------------------------
 # 5. 验证
 # ----------------------------------------------------------
-info "验证 acpx 通信..."
+info "配置校验（仅验证配置已写入，不验证 ACP runtime 连通性）..."
 
 sleep 2
 
-if acpx "${DEFAULT_AGENT}" exec "echo foreman-setup-ok" 2>/dev/null | grep -q "foreman-setup-ok"; then
-  ok "acpx → $DEFAULT_AGENT 通信正常"
+# 注意：这里只检查配置是否正确写入 openclaw.json，不代表 ACP runtime 能成功拉起 agent。
+# 连通性验证需要在 openclaw web UI 或聊天中实际 spawn 一个 agent 才能确认。
+if openclaw config get acp.enabled 2>/dev/null | grep -q "true" && \
+   openclaw config get acp.backend 2>/dev/null | grep -q "acpx"; then
+  ok "配置已写入：acp.enabled=true, acp.backend=acpx, allowedAgents=$(openclaw config get acp.allowedAgents 2>/dev/null)"
 else
-  warn "acpx → $DEFAULT_AGENT 通信验证失败，可能 agent 尚未就绪，请稍后手动验证:\n  acpx $DEFAULT_AGENT exec \"echo hello\""
+  warn "配置校验失败，请手动检查:\n  openclaw config get acp.enabled\n  openclaw config get acp.backend"
 fi
 
 # ----------------------------------------------------------

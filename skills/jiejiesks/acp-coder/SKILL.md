@@ -46,60 +46,68 @@ user-invocable: true
 
 用户看不到 tool call。收到任务后必须先输出文字，再调工具。
 
-### 铁律二：初始任务通过 spawn 的 task 传递
+### 铁律二：spawn 后立即记录 sessionKey 和 sessionId
 
 - sessions_spawn 的 task 直接写用户的实际任务
 - spawn 是非阻塞的，但 gateway 会在 agent 就绪后自动投递 task，不存在竞态
-- spawn 成功后，必须在文字回复中明确写出 session key，如：`已启动 claude（session: abc123）`，防止上下文压缩后丢失
-- sessions_send 仅用于向**已存在的 session** 发送后续任务（如多阶段编排中复用同一 agent）
+- spawn 成功后：
+  1. 从返回值的 `childSessionKey` 字段记下值（如 `agent:claude:acp:b9daac39-...`），后续作为 `sessionKey` 传给 sessions_history
+  2. 立即调 `sessions_list`，通过该值匹配找到对应 session，记下 `sessionId`（UUID 格式，如 `463a84ff-...`）
+  3. 在文字回复中同时写出 sessionKey 和 sessionId，如：`已启动 claude（sessionKey: agent:claude:acp:b9daac39-..., sessionId: 463a84ff-...）`，防止上下文压缩后丢失
 
-### 铁律三：session 只 spawn 一次
+**spawn 返回值字段：** `status`、`childSessionKey`（后续作为 sessionKey 使用）、`runId`、`mode`、`streamLogPath`、`note`
 
-同一个 agent 在当前对话中只 spawn 一次，后续任务用 sessions_send 复用 session key。
+**sessionKey 和 sessionId 是两个不同的东西：**
+- `sessionKey`（如 `agent:claude:acp:b9daac39-...`，spawn 返回值中叫 `childSessionKey`）→ 用于 sessions_history
+- `sessionId`（如 `463a84ff-61df-4a07-8d33-faebe0e70268`）→ 用于 resumeSessionId 复用上下文，从 sessions_list 获取
 
-**唯一例外**：错误处理中 `"session not found"`（session 已过期），此时允许重新 spawn，但仍然只能 spawn 一次。
+**规划类/长输出类任务必须在 task 里要求写文件：**
+- spawn claude 做规划时，task 里直接写「输出完整技术方案并写入文件」
+- ❌ 不能 spawn 同一个 agent 的新 session 来写"上一次的输出"——新 session 没有上下文，agent 不知道自己之前输出了什么
+- ✅ 需要补发指令时，用 `sessions_spawn` + `resumeSessionId` 复用同一个 session（见铁律三）
 
-**包括内容截断场景**：sessions_history 返回 `contentTruncated: true` 时，截断发生在 sessions_history 接口层，agent 自身已完整输出。不得 spawn 新 agent 或自行用 exec/Read 获取内容。正确做法是通过 sessions_send 向同一 session 发指令，让 agent 把完整结果写入文件：
-- `"请把你上一次回复的完整内容写入 /tmp/result-<简要描述>.md"`
+### 铁律三：复用 session 用 resumeSessionId
 
-### 铁律四：send 后无回复不得重试
+**不使用 sessions_send。** 所有交互统一用 `sessions_spawn` + `streamTo: "parent"` + `sessions_yield`。
 
-**重要：sessions_send 返回 `status: "timeout"` 是正常的！** agent 在后台执行中，不代表任务失败。**不要因为 timeout 而重复发送。**
-
-#### 使用了 `streamTo: "parent"` 时（推荐）
-
-spawn 后立即调 `sessions_yield` 让出当前轮次，系统会在子 agent 完成时自动推送通知并唤醒：
+需要复用已有 session 上下文时（如补发"写文件"指令、同阶段追加任务），直接用铁律二中已记录的 sessionId：
 
 ```json
-sessions_yield({})
+sessions_spawn({
+  "runtime": "acp",
+  "agentId": "claude",
+  "task": "请把你上一次回复的完整内容写入 PLAN.md",
+  "resumeSessionId": "463a84ff-61df-4a07-8d33-faebe0e70268",
+  "cwd": "/Users/xxx/workspace/my-project",
+  "streamTo": "parent"
+})
 ```
+
+agent 会通过 session/load 恢复历史上下文，知道自己之前输出了什么。
+
+**同一阶段不重复 spawn 新 session**——需要追加任务时用 resumeSessionId 复用。多阶段编排中，每个阶段独立 spawn 新 session，阶段间通过 task 传递上下文。
+
+**唯一例外**：`"session not found"`（session 已过期），此时允许重新 spawn 新 session。
+
+### 铁律四：spawn 后必须 yield
+
+sessions_spawn 是**非阻塞**的，子 agent 在后台跑。结果通过 `streamTo: "parent"` 异步推送。
+spawn 后必须立即调 `sessions_yield({})` 让出当前轮次，等系统推送回调：
 
 系统推送的通知格式（依次出现）：
 - `"[timestamp] Started claude session {key}. Streaming progress updates to parent session."` — 启动通知
-- `"[timestamp] claude: {output内容}"` — 子 agent 输出（实时流）
-- `"[timestamp] claude run completed."` — 完成通知 ✅
+- `"[timestamp] claude: {output内容}"` — 子 agent 输出（实时流，可能多条）
+- `"[timestamp] {agentId} has produced no output for 60s. It may be waiting for interactive input."` — ⚠️ **60s 无输出告警，忽略，继续等待，绝对不能去催**
+- `"[timestamp] Background task done: ACP background task (run xxxxxxxx)."` — 后台任务完成通知
+- `"[timestamp] claude run completed."` — ✅ **唯一的完成信号，只有收到这条才触发后续操作**
+
+> ❌ 常见错误1：收到 `claude: {output}` 但没有 `run completed.` → 误以为完成 → 调 sessions_history 返回空 → 误以为失败 → 重复 spawn。
+> ❌ 常见错误2：收到 `60s no output` 告警 → 误以为需要干预 → 破坏异步回调流程。
+> ✅ 正确做法：只认 `"run completed."`，其他所有通知一律忽略继续等待。
 
 收到 `"run completed."` 通知后（新一轮自动触发）：
-1. 调 sessions_history 获取完整结果
-2. 有结果 → 提取并返回给用户，继续后续流程
-3. 无结果 → 不正常，如实告知用户
-
-**不需要**等用户手动发"查看结果"——sessions_yield 让出后系统自动唤醒。
-
-#### 未使用 `streamTo: "parent"` 时（手动轮询）
-
-sessions_send 后如果没有收到回复（sessions_history 无新结果），**绝对不允许**：
-- 重新 spawn 新 session
-- 再次 sessions_send 发送相同任务
-- 尝试任何"重试"操作
-
-**唯一正确做法**：
-
-1. 告诉用户「任务已提交，agent 还在执行中，稍后发"查看结果"获取」
-2. **立即结束当前轮次**，不做任何额外操作
-3. 用户主动发消息（如"查看结果"、"继续"）时，调 sessions_history 获取结果：
-   - **有结果** → 提取内容返回给用户，继续后续流程（如进入下一阶段）
-   - **仍无结果** → 再次告诉用户还在执行中，**再次立即结束当前轮次**，不得重新 spawn 或 send
+1. task 中要求写文件 → 直接读文件，无需调 sessions_history
+2. task 中没有要求写文件 → 调 sessions_history 获取结果；有结果 → 提取返回；无结果 → 异常，如实告知用户
 
 ---
 
@@ -170,24 +178,13 @@ sessions_send 后如果没有收到回复（sessions_history 无新结果），*
 
 ---
 
-## 四、sessions_spawn 和 sessions_send 参数规范
+## 四、sessions_spawn 参数规范
 
-> **⚠️ 严格警告：tool schema 里显示的其它参数是内部保留字段，传了会导致 "invalid parameter" 错误并中断 session。只传下面列出的参数，多一个都不行。**
+> **参数建议：以下是经过验证的标准参数组合。tool schema 里还展示了 `model`、`thinking`、`runTimeoutSeconds`、`cleanup` 等参数，它们在源码层面合法，但在 ACP 编排场景下未经充分验证，非必要不传。**
 
-### sessions_spawn — 接受 4~5 个参数
+### sessions_spawn — 标准模板
 
-基础模板（无回调）：
-
-```json
-{
-  "runtime": "acp",
-  "agentId": "claude",
-  "task": "你的实际任务描述",
-  "cwd": "/Users/xxx/workspace/my-project"
-}
-```
-
-**启用自动完成回调**（推荐）——加一个 `streamTo` 参数：
+新建 session：
 
 ```json
 {
@@ -199,36 +196,50 @@ sessions_send 后如果没有收到回复（sessions_history 无新结果），*
 }
 ```
 
+复用已有 session 上下文：
+
+```json
+{
+  "runtime": "acp",
+  "agentId": "claude",
+  "task": "补充任务描述",
+  "resumeSessionId": "463a84ff-61df-4a07-8d33-faebe0e70268",
+  "cwd": "/Users/xxx/workspace/my-project",
+  "streamTo": "parent"
+}
+```
+
+**参数说明：**
 - `runtime` → 固定 `"acp"`
 - `agentId` → `"claude"` 或 `"codex"`
 - `task` → 实际任务内容，gateway 会在 agent 就绪后自动投递
 - `cwd` → 用户项目的绝对路径（不是 ~/.openclaw/workspace）
-- `streamTo` → 可选，固定值 `"parent"`。启用后子 agent 完成时自动推送通知到当前 session，无需手动轮询
+- `streamTo` → 固定值 `"parent"`，**必须传**。子 agent 完成时推送通知到父 session；配合 `sessions_yield` 使用，两者缺一不可
+- `resumeSessionId` → 可选。从 `sessions_list` 返回的 session 对象的 `sessionId` 字段获取（UUID 格式，不是 sessionKey）。传了后 agent 会 replay 历史上下文
 
-**以下参数在 ACP 模式下会报错，不要传：`model`/`thinking`/`attachAs`/`cleanup`/`attachments`/`timeoutSeconds`**
+**不要传 `attachAs`/`attachments`**（ACP 模式不支持）
 
-特殊说明：
-- `mode: "run"` 可以传（也可以不传，默认就是 run）；`mode: "session"` 在 webchat 下报错，不要用
-- `label` 可以传（不会报错）
-- `sandbox: "require"` 报错；`sandbox: "inherit"` 可以传
+**`timeoutSeconds`/`runTimeoutSeconds` 不要与 `streamTo: "parent"` + `sessions_yield` 同时使用**：传了会变成同步等待模式，超时后返回 `timed out`，但 agent 仍在后台跑，父 session 却已经处理完这一轮，导致结果丢失。
 
-### sessions_send — 只接受 2 个参数
+**其他参数说明：**
+- `model`/`thinking`/`cleanup` → 源码合法，但在 ACP 编排场景下非必要，按需使用
+- `mode: "run"` → 可以传（默认就是 run）；`mode: "session"` 在 webchat 下报错，不要用
+- `label` → 可以传
+- `sandbox: "require"` → 报错；`sandbox: "inherit"` → 可以传
 
-直接复制这个模板，只替换 `sessionKey` 和 `message`：
+### sessions_list — 获取 sessionId
+
+用于获取 `resumeSessionId` 所需的 sessionId：
 
 ```json
-{
-  "sessionKey": "agent:claude:acp:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-  "message": "你的任务描述"
-}
+sessions_list({})
 ```
 
-- `sessionKey` → 从 spawn 返回结果中原样复制
-- `message` → 实际任务内容
+返回的每个 session 对象里有 `sessionId` 字段（UUID 格式），这就是 `resumeSessionId` 需要的值。注意区分：
+- `sessionKey`（如 `agent:claude:acp:b9daac39-...`）→ 用于 sessions_history
+- `sessionId`（如 `463a84ff-61df-4a07-8d33-faebe0e70268`）→ 用于 resumeSessionId
 
-**传了 `agentId`/`label`/`timeoutSeconds` 中任何一个都会报错。session 已经绑定了 agent，不需要重复指定。**
-
-### sessions_history — 只接受 1 个参数
+### sessions_history — 获取 agent 输出
 
 ```json
 {
@@ -240,14 +251,14 @@ sessions_send 后如果没有收到回复（sessions_history 无新结果），*
 
 ## 五、Few-Shot 示例
 
-### 示例 1：看项目做什么（单 agent 分析，带自动回调）
+### 示例 1：看项目做什么（单 agent 分析）
 
 用户说：`看下 /Users/me/workspace/MyApp 项目做的是什么`
 
 **第一步 — 先回复：**
 > 收到，让 claude 去分析这个项目。
 
-**第二步 — spawn（带任务 + streamTo）：**
+**第二步 — spawn：**
 ```json
 sessions_spawn({
   "runtime": "acp",
@@ -257,15 +268,21 @@ sessions_spawn({
   "streamTo": "parent"
 })
 ```
-→ 返回 session key: `agent:claude:acp:a1b2c3d4-...`
+→ 返回 `childSessionKey`: `agent:claude:acp:a1b2c3d4-...`（后续作为 sessionKey 使用）
 
-**第三步 — 回复 session key 并 yield：**
-> 已启动 claude（session: agent:claude:acp:a1b2c3d4-...），分析中，完成后自动通知。
+**第三步 — 记录 sessionId：**
+```json
+sessions_list({})
+```
+通过 sessionKey 匹配，记下 `sessionId`（如 `463a84ff-...`），后续复用时需要。
+
+**第四步 — 回复并 yield：**
+> 已启动 claude（sessionKey: agent:claude:acp:a1b2c3d4-..., sessionId: 463a84ff-...），分析中，完成后自动通知。
 ```json
 sessions_yield({})
 ```
 
-**第四步 — 收到回调后自动触发（新轮次）：**
+**第五步 — 收到回调后自动触发（新轮次）：**
 系统推送 `"claude run completed."` 后自动唤醒，在新轮次中调：
 ```json
 sessions_history({ "sessionKey": "agent:claude:acp:a1b2c3d4-..." })
@@ -279,7 +296,7 @@ sessions_history({ "sessionKey": "agent:claude:acp:a1b2c3d4-..." })
 **第一步 — 先回复：**
 > 收到，让 codex 去定位并修复。
 
-**第二步 — spawn（如果当前对话没有 codex session）：**
+**第二步 — spawn：**
 ```json
 sessions_spawn({
   "runtime": "acp",
@@ -289,22 +306,26 @@ sessions_spawn({
   "streamTo": "parent"
 })
 ```
-→ 返回 session key: `agent:codex:acp:e5f6g7h8-...`
+→ 返回 `childSessionKey`: `agent:codex:acp:e5f6g7h8-...`（后续作为 sessionKey 使用）
 
-**第三步 — 回复 session key 并 yield：**
-> 已启动 codex（session: agent:codex:acp:e5f6g7h8-...），修复中，完成后自动通知。
+**第三步 — 记录 sessionId：**
+```json
+sessions_list({})
+```
+通过 sessionKey 匹配，记下 `sessionId`，后续复用时需要。
+
+**第四步 — 回复并 yield：**
+> 已启动 codex（sessionKey: agent:codex:acp:e5f6g7h8-..., sessionId: 789a01bc-...），修复中，完成后自动通知。
 ```json
 sessions_yield({})
 ```
 
-**第四步 — 收到回调后自动触发（新轮次）：**
+**第五步 — 收到回调后自动触发（新轮次）：**
 系统推送 `"codex run completed."` 后自动唤醒，在新轮次中调：
 ```json
 sessions_history({ "sessionKey": "agent:codex:acp:e5f6g7h8-..." })
 ```
 提取结果返回给用户。
-
-**如果之前已有 codex session，直接用 sessions_send 发送后续任务，不需要再 spawn。**
 
 ### 示例 3：复杂任务——重构后 review（多 agent 编排）
 
@@ -319,28 +340,25 @@ sessions_history({ "sessionKey": "agent:codex:acp:e5f6g7h8-..." })
 
 **用户确认后——**
 
-**阶段 1 spawn（带任务 + streamTo）：**
+**阶段 1 spawn + 记录 + yield：**
 ```json
 sessions_spawn({
   "runtime": "acp",
   "agentId": "claude",
-  "task": "分析当前项目的认证模块代码，输出重构方案，包括：1) 现有问题 2) 重构目标 3) 具体修改步骤",
+  "task": "分析当前项目的认证模块代码，输出重构方案，包括：1) 现有问题 2) 重构目标 3) 具体修改步骤。将完整方案写入文件。",
   "cwd": "/Users/me/workspace/MyApp",
   "streamTo": "parent"
 })
 ```
-然后 yield 等待：
+→ 调 sessions_list 记录 sessionKey + sessionId
+> 已启动 claude 阶段1（sessionKey: ..., sessionId: ...）
 ```json
 sessions_yield({})
 ```
 收到 `"claude run completed."` 后（新轮次自动触发）：
-**阶段 1 获取结果：**
-```json
-sessions_history({ "sessionKey": "agent:claude:acp:xxx" })
-```
-有结果 → 记录输出，进入阶段 2。没结果（未收到回调）→ 告诉用户「阶段 1 执行中，稍后发"继续"获取」，**立即结束**。
+直接读 claude 写入的方案文件。没有写文件 → 调 sessions_history；没结果 → 异常，如实告知用户。
 
-**阶段 2 spawn（带上下文 + streamTo）：**
+**阶段 2 spawn + 记录 + yield（带上下文）：**
 ```json
 sessions_spawn({
   "runtime": "acp",
@@ -350,28 +368,52 @@ sessions_spawn({
   "streamTo": "parent"
 })
 ```
+→ 调 sessions_list 记录 sessionKey + sessionId
+> 已启动 codex 阶段2（sessionKey: ..., sessionId: ...）
 ```json
 sessions_yield({})
 ```
 收到 `"codex run completed."` 后（新轮次自动触发）：
-**阶段 2 获取结果：**
-```json
-sessions_history({ "sessionKey": "agent:codex:acp:yyy" })
-```
-有结果 → 记录输出，进入阶段 3。没结果（未收到回调）→ 告诉用户「阶段 2 执行中，稍后发"继续"获取」，**立即结束**。
+调 sessions_history 获取结果。有结果 → 进入阶段 3。没结果 → 异常，如实告知用户。
 
-**阶段 3 复用已有的 claude session send：**
+**阶段 3 spawn + 记录 + yield（带上下文）：**
 ```json
-sessions_send({
-  "sessionKey": "agent:claude:acp:xxx",
-  "message": "Review codex 对认证模块的重构结果：\n\n## codex 实现输出\n<阶段2 codex 的完整输出>\n\n请检查代码质量、安全性、是否符合之前的重构方案。"
+sessions_spawn({
+  "runtime": "acp",
+  "agentId": "claude",
+  "task": "Review codex 对认证模块的重构结果：\n\n## codex 实现输出\n<阶段2 codex 的完整输出>\n\n请检查代码质量、安全性、是否符合之前的重构方案。",
+  "cwd": "/Users/me/workspace/MyApp",
+  "streamTo": "parent"
 })
 ```
-**阶段 3 获取结果：**
+→ 调 sessions_list 记录 sessionKey + sessionId
+> 已启动 claude 阶段3（sessionKey: ..., sessionId: ...）
 ```json
-sessions_history({ "sessionKey": "agent:claude:acp:xxx" })
+sessions_yield({})
 ```
-有结果 → 汇总返回给用户。没结果 → 告诉用户「阶段 3 执行中，稍后发"继续"获取」，**立即结束**。
+收到 `"claude run completed."` 后（新轮次自动触发）：
+调 sessions_history 获取结果。汇总返回给用户。
+
+### 示例 4：内容截断时复用 session
+
+sessions_history 返回 `contentTruncated: true` 时，需要让 agent 把完整结果写入文件。
+使用铁律二中已记录的 sessionId，直接 spawn 复用：
+
+**spawn + resumeSessionId 复用上下文：**
+```json
+sessions_spawn({
+  "runtime": "acp",
+  "agentId": "claude",
+  "task": "请把你上一次回复的完整内容写入 PLAN.md",
+  "resumeSessionId": "463a84ff-61df-4a07-8d33-faebe0e70268",
+  "cwd": "/Users/me/workspace/MyApp",
+  "streamTo": "parent"
+})
+```
+```json
+sessions_yield({})
+```
+收到 `"run completed."` 后读文件即可。
 
 ---
 
@@ -381,12 +423,12 @@ sessions_history({ "sessionKey": "agent:claude:acp:xxx" })
 
 1. 先回复用户
 2. spawn（task 直接写实际任务，**加上 `streamTo: "parent"`**）
-3. 回复 session key，然后调 `sessions_yield({})` 让出当前轮次
+3. 调 sessions_list 记录 sessionId，回复 sessionKey + sessionId，然后调 `sessions_yield({})` 让出当前轮次
 4. **系统自动回调**（收到 `"run completed."` 后新轮次自动触发）：
-   - 调 sessions_history 获取结果：
-     - 内容完整 → 提取并返回给用户
-     - 内容截断（`contentTruncated: true`）→ sessions_send 让 agent 把完整结果写入文件，再读取返回（参见铁律三）
-5. 未收到回调（异常情况）→ 用户手动发"查看结果" → 调 sessions_history，**无结果 → 告知执行中并立即结束**，不得重新 spawn 或 send（参见铁律四）
+   - 若 task 中要求写文件（规划类、长输出类）→ 直接读文件，无需调 sessions_history
+   - 否则调 sessions_history；若返回 `contentTruncated: true` → 用 resumeSessionId 复用 session 让 agent 写文件（见示例 4），写完后读文件
+   - 有结果 → 提取返回给用户
+   - 无结果 → 异常，如实告知用户
 
 ---
 
@@ -408,15 +450,17 @@ sessions_history({ "sessionKey": "agent:claude:acp:xxx" })
 
 对每个阶段：
 
-1. 首次使用该 agent → spawn（task 写实际任务，**加上 `streamTo: "parent"`**），记住 session key
-2. 调 `sessions_yield({})` 让出当前轮次
+1. 每个阶段都 spawn 新 session（task 带上下文，**加上 `streamTo: "parent"`**），调 sessions_list 记录各阶段 sessionKey + sessionId
+2. spawn 后调 `sessions_yield({})` 让出当前轮次，等系统回调
 3. **系统自动回调**（收到 `"run completed."` 后新轮次自动触发）：
-   - 调 sessions_history 获取结果 → 告诉用户当前阶段完成，展示关键输出，进入下一阶段
-4. 未收到回调（异常情况）→ 用户手动发"继续" → 调 sessions_history，**仍然没结果 → 同样告知执行中并立即结束**，不得重新 spawn 或 send（参见铁律四）
+   - 若 task 中要求写文件（规划类、长输出类），直接读文件
+   - 否则调 sessions_history 获取结果；若返回 `contentTruncated: true` → 用 resumeSessionId 复用 session 让 agent 写文件后读取（见示例 4）
+   - 有结果 → 告诉用户当前阶段完成，展示关键输出，进入下一阶段
+   - 没结果 → 异常，如实告知用户
 
 **第三步 — 阶段间传递上下文：**
 
-阶段间传递上下文：新 agent 通过 spawn 的 task 带入；同一 agent 复用 session 时通过 sessions_send 带入。两种情况都必须包含上一阶段的**完整输出，不截断**：
+每个阶段 spawn 新 session，通过 task 带入上一阶段的**完整输出，不截断**：
 
 ```
 ## 任务
@@ -429,7 +473,7 @@ sessions_history({ "sessionKey": "agent:claude:acp:xxx" })
 重构认证模块并 review
 ```
 
-**如果上一阶段输出被截断**：先通过 sessions_send 让上一阶段的 agent 把完整结果写入文件（参见铁律三），再将文件路径传递给下一阶段 agent，让其自行读取。
+**如果上一阶段输出被截断**：先通过 resumeSessionId 复用上一阶段 session 让 agent 写文件（见示例 4），再将文件路径传递给下一阶段 agent，让其自行读取。
 
 **第四步 — 汇总返回：**
 
@@ -441,49 +485,17 @@ sessions_history({ "sessionKey": "agent:claude:acp:xxx" })
 
 ---
 
-## 八、streamTo 回调测试用例
-
-> 把以下内容直接发给 openclaw assistant，验证 `streamTo: "parent"` 是否能自动回调。
-
----
-
-**测试指令（发给 openclaw）：**
-
-```
-请用 sessions_spawn 启动一个 claude agent，执行以下任务：
-  task: "输出一行文字：hello from acp callback test，然后退出"
-  cwd: /tmp
-  streamTo: "parent"
-
-启动后不要手动调 sessions_history，等待系统自动推送完成通知。
-收到通知后调 sessions_history 获取结果，并告诉我：
-1. 是否收到了自动推送的完成通知（通知内容是什么）
-2. sessions_history 的结果
-```
-
-**预期结果（成功）：**
-- spawn 返回 session key
-- 约几秒后 openclaw 自动收到 `"claude run completed in Xs."` 通知
-- 不需要用户手动说"查看结果"，assistant 自动调 sessions_history 并返回输出
-
-**失败情况：**
-- 收到 `error: "sessions_spawn streamTo=\"parent\" requires an active requester session context."` → 说明 requester session 上下文未激活（不影响正常 acp-coder 使用，acp-coder 在 agent session 里调用时会有上下文）
-- 收到 `"invalid parameter"` → 说明此版本不支持 streamTo，需回退到手动轮询
-
----
-
-## 九、错误处理
+## 八、错误处理
 
 遇到错误时，给出**具体的修复命令**，不要只说"请检查"。
 
 | 错误信息 | 回复模板 |
 |---------|---------|
 | `agent not allowed` | `agent "{agentId}" 不在白名单中。修复：openclaw config set acp.allowedAgents '[..."，"{agentId}"]' && openclaw daemon restart` |
-| `ACP runtime unavailable` | `ACP 运行时未就绪。修复：①确认 acpx 已安装 (npm i -g acpx) ②运行 openclaw daemon restart ③检查日志 grep acpx /tmp/openclaw/openclaw-$(date +%Y-%m-%d).log` |
+| `ACP runtime unavailable` | `ACP 运行时未就绪。修复：①确认 openclaw 已启用 acpx 插件 (openclaw config get plugins.entries.acpx.enabled) ②运行 openclaw daemon restart ③检查日志 grep acpx /tmp/openclaw/openclaw-$(date +%Y-%m-%d).log` |
 | `Failed to spawn agent command` | `agent "{agentId}" 启动失败，CLI 工具可能未安装。安装命令：` 后附对应安装方式（见下表） |
-| `session not found` | session 已过期，自动重新 spawn（task 带上任务内容），无需用户操作 |
+| `session not found` | session 已过期，自动重新 spawn 新 session（task 带上任务内容），无需用户操作 |
 | `Permission denied by ACP runtime` | `非交互式 session 权限不足。修复：openclaw config set plugins.entries.acpx.config.permissionMode approve-all && openclaw daemon restart` |
-| `timeout`（sessions_send 返回） | **不是错误！** agent 在后台执行中，正常走获取结果流程 |
 | 其他 | 如实告知用户完整错误信息，不静默忽略 |
 
 ### Agent 安装参考
@@ -498,14 +510,13 @@ sessions_history({ "sessionKey": "agent:claude:acp:xxx" })
 
 ## 禁止事项
 
-- ❌ 在 ACP 子 session 内部调用 sessions_yield（只有主 session / 编排员调用才有效；在 child agent 里调会挂起）
-- ✅ spawn + streamTo 后调 sessions_yield 是正确做法（编排员在主 session 里调）
+- ❌ 在 ACP 子 session 内部调用 sessions_yield（在 child agent 里调会挂起，只能由编排员在主 session 里调）
 - ❌ 自己用 exec/Read/write 操作代码文件（你是编排员，不亲自干活）
-- ❌ 同一 agent 多次 spawn（复用 session key，后续任务用 sessions_send）
+- ❌ 同一阶段重复 spawn 新 session（需要追加任务用 resumeSessionId 复用；多阶段编排每阶段独立 spawn）
 - ❌ 不说话就直接调工具（用户看不到 tool call）
 - ❌ 复杂任务不等用户确认就开始执行
 - ❌ 上下文传递时只传摘要不传完整输出
 - ❌ 阶段间跳过或并行执行有依赖的阶段
 - ❌ 错误时静默忽略
-- ❌ send 后未收到回复就重新 spawn 或再次 send（必须等用户主动询问）
-- ❌ 内容截断时 spawn 新 agent（必须复用现有 session，参见铁律三）
+- ❌ 内容截断时 spawn 新 agent（必须用 resumeSessionId 复用现有 session）
+- ❌ 给 sessions_spawn 传 timeoutSeconds/runTimeoutSeconds 并同时用 streamTo + yield（会变同步模式，与异步回调冲突）
