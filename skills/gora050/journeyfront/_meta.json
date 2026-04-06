@@ -3,9 +3,15 @@
   "slug": "journeyfront",
   "displayName": "Journeyfront",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775009061273,
-    "commit": "https://github.com/openclaw/skills/commit/74b8a1b2f152dd1fe0cfee45c6b15d265e71bac2"
+    "version": "1.0.2",
+    "publishedAt": 1775170298244,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775009061273,
+      "commit": "https://github.com/openclaw/skills/commit/74b8a1b2f152dd1fe0cfee45c6b15d265e71bac2"
+    }
+  ]
 }
