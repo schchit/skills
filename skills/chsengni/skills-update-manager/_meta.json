@@ -3,9 +3,15 @@
   "slug": "skills-update-manager",
   "displayName": "技能更新管理器",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774331693145,
-    "commit": "https://github.com/openclaw/skills/commit/5e5d382698ecdebd10917791e8092c94f95b4e11"
+    "version": "1.0.1",
+    "publishedAt": 1775016185735,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774331693145,
+      "commit": "https://github.com/openclaw/skills/commit/5e5d382698ecdebd10917791e8092c94f95b4e11"
+    }
+  ]
 }

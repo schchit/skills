@@ -27,7 +27,9 @@ class SkillRegistry:
     # 使用脚本所在目录作为基准路径
     SCRIPT_DIR = Path(__file__).parent
     REGISTRY_FILE = str(SCRIPT_DIR.parent / "skills_registry.json")
-    MEMORY_FILE = str(SCRIPT_DIR.parent.parent.parent / "MEMORY.md")
+    # 配置文件路径：/home/gem/workspace/agent/workspace/MEMORY.md
+    # 路径计算：scripts -> skills-update-manager -> skills -> agent -> workspace
+    MEMORY_FILE = str(SCRIPT_DIR.parent.parent.parent / "workspace" / "MEMORY.md")
     
     def __init__(self):
         """初始化注册表"""
@@ -46,10 +48,9 @@ class SkillRegistry:
         return {"skills": [], "next_id": 1}
     
     def _init_memory_config(self):
-        """首次加载时自动初始化 MEMORY.md 配置"""
+        """首次加载时自动初始化 MEMORY.md 配置（只追加，不创建文件）"""
         if not os.path.exists(self.MEMORY_FILE):
-            # MEMORY.md 不存在，创建基础配置
-            self._write_memory_config(False)
+            # MEMORY.md 不存在，跳过初始化（不创建文件）
             return
         
         try:
@@ -57,7 +58,7 @@ class SkillRegistry:
                 content = f.read()
             
             # 检查是否已包含技能管理器配置
-            if "技能管理器配置" in content or "skill" in content.lower():
+            if "技能管理器配置" in content:
                 # 配置已存在，跳过
                 return
             
@@ -66,45 +67,6 @@ class SkillRegistry:
             
         except Exception as e:
             print(f"初始化 MEMORY.md 配置失败：{e}")
-    
-    def _write_memory_config(self, enable_updates: bool):
-        """写入完整的 MEMORY.md 配置（如果文件不存在）"""
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        enable_text = "是" if enable_updates else "否"
-        
-        config_content = f"""# 技能管理器配置
-
-## 更新设置
-- 启用更新检查：{enable_text}
-- 上次检查时间：{current_time}
-- 已注册技能：0 个
-
-## 使用说明
-1. 每次安装技能前优先加载 skills-update-manager
-2. 本地技能（source=local）无法自动更新，update_url 为 null
-3. 如需启用更新检查，需将技能来源设置为 github 或 clawhub 并提供有效更新地址
-
-## 管理命令
-```bash
-# 查看已注册技能
-python skills/skills-update-manager/scripts/skill_registry.py --action list
-
-# 检查更新（本地技能将跳过）
-python skills/skills-update-manager/scripts/skill_registry.py --action check_updates
-
-# 注册新技能
-python skills/skills-update-manager/scripts/skill_registry.py --action register --name <技能名> --source local
-
-# 更新配置
-python skills/skills-update-manager/scripts/skill_registry.py --action update_config --enable-updates true
-```
-"""
-        
-        try:
-            with open(self.MEMORY_FILE, 'w', encoding='utf-8') as f:
-                f.write(config_content)
-        except Exception as e:
-            print(f"写入 MEMORY.md 配置失败：{e}")
     
     def _append_memory_config(self, existing_content: str):
         """追加配置到现有 MEMORY.md"""
@@ -545,7 +507,7 @@ python skills/skills-update-manager/scripts/skill_registry.py --action update_co
     
     def update_config(self, enable_updates: bool) -> Dict:
         """
-        更新MEMORY.md配置
+        更新 MEMORY.md 配置（只追加，不覆盖）
         
         Args:
             enable_updates: 是否启用更新检查
@@ -556,11 +518,71 @@ python skills/skills-update-manager/scripts/skill_registry.py --action update_co
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         enable_text = "是" if enable_updates else "否"
         
-        config_content = f"""# 技能管理器配置
+        # 检查文件是否存在
+        if not os.path.exists(self.MEMORY_FILE):
+            return {
+                "success": False,
+                "message": f"MEMORY.md 文件不存在：{self.MEMORY_FILE}",
+                "hint": "请先创建 MEMORY.md 文件或使用其他方式初始化"
+            }
+        
+        try:
+            with open(self.MEMORY_FILE, 'r', encoding='utf-8') as f:
+                file_content = f.read()
+            
+            # 检查是否已包含技能管理器配置
+            if "技能管理器配置" in file_content:
+                # 配置已存在，更新现有配置
+                return self._update_existing_config(file_content, enable_updates, current_time)
+            else:
+                # 配置不存在，追加配置
+                return self._append_new_config(file_content, enable_updates, current_time)
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "message": f"配置更新失败：{str(e)}"
+            }
+    
+    def _update_existing_config(self, content: str, enable_updates: bool, current_time: str) -> Dict:
+        """更新现有的技能管理器配置"""
+        enable_text = "是" if enable_updates else "否"
+        
+        # 替换启用更新检查
+        content = re.sub(
+            r'- 启用更新检查：[是否]',
+            f'- 启用更新检查：{enable_text}',
+            content
+        )
+        
+        # 替换上次检查时间
+        content = re.sub(
+            r'- 上次检查时间：[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}',
+            f'- 上次检查时间：{current_time}',
+            content
+        )
+        
+        with open(self.MEMORY_FILE, 'w', encoding='utf-8') as f:
+            f.write(content)
+        
+        return {
+            "success": True,
+            "message": f"配置已更新，更新检查：{enable_text}",
+            "config_path": self.MEMORY_FILE
+        }
+    
+    def _append_new_config(self, content: str, enable_updates: bool, current_time: str) -> Dict:
+        """追加新的技能管理器配置"""
+        enable_text = "是" if enable_updates else "否"
+        
+        config_content = """
+---
+
+# 技能管理器配置
 
 ## 更新设置
-- 启用更新检查：{enable_text}
-- 上次检查时间：{current_time}
+- 启用更新检查：""" + enable_text + """
+- 上次检查时间：""" + current_time + """
 
 ## 使用说明
 1. 每次安装技能前优先加载 skills-update-manager
@@ -568,21 +590,16 @@ python skills/skills-update-manager/scripts/skill_registry.py --action update_co
 3. 更新关闭时，跳过更新检查
 """
         
-        try:
-            with open(self.MEMORY_FILE, 'w', encoding='utf-8') as f:
-                f.write(config_content)
-            
-            return {
-                "success": True,
-                "message": f"配置已更新，更新检查：{enable_text}",
-                "config_path": self.MEMORY_FILE
-            }
-            
-        except Exception as e:
-            return {
-                "success": False,
-                "message": f"配置更新失败: {str(e)}"
-            }
+        with open(self.MEMORY_FILE, 'a', encoding='utf-8') as f:
+            f.write(config_content)
+        
+        return {
+            "success": True,
+            "message": f"配置已追加，更新检查：{enable_text}",
+            "config_path": self.MEMORY_FILE
+        }
+
+
 
 
 def main():
