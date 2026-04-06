@@ -101,13 +101,13 @@ class JiumaVideoToText:
 
                 status_map = {
                     3: "提取文本失败",
-                    1: "已完成",
+                    34: "文本提取完成",
                 }
 
                 status_text = status_map.get(status, status)
                 print(f"任务状态: {status_text}")
 
-                if status == 1 and result.get("data",{}).get('voice_content'):
+                if status == 34 and result.get("data",{}).get('voice_content'):
                     content = result.get("data",{}).get('voice_content')
                     return {"code": 200, "status": status, "message": "", "content": content}
                 elif status == 3:
