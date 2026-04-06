@@ -3,11 +3,16 @@
   "slug": "ai-spokesperson-video",
   "displayName": "Ai Spokesperson Video",
   "latest": {
-    "version": "5.0.0",
-    "publishedAt": 1774712828059,
-    "commit": "https://github.com/openclaw/skills/commit/7a811c84f08cf9a3636d629f728350813b4eddbd"
+    "version": "1.0.5",
+    "publishedAt": 1775440183281,
+    "commit": null
   },
   "history": [
+    {
+      "version": "5.0.0",
+      "publishedAt": 1774712828059,
+      "commit": "https://github.com/openclaw/skills/commit/7a811c84f08cf9a3636d629f728350813b4eddbd"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1774540100065,

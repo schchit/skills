@@ -1,10 +1,13 @@
 ---
 name: ai-spokesperson-video
-version: "1.1.0"
+version: 5.0.2
 displayName: "AI Spokesperson Video — Create Talking Head Presenter Videos from Text Scripts"
 description: >
   Create talking head presenter videos from text scripts with AI — generate professional spokesperson presentations, CEO messages, product announcements, news-style updates, training narrations, and personalized video messages without filming a single frame. NemoVideo produces realistic AI presenter videos: natural lip sync matched to generated speech, professional framing and lighting, branded backgrounds, teleprompter-smooth delivery, and the confident presentation style of an experienced on-camera spokesperson. Create spokesperson videos for product launches, internal communications, customer onboarding, investor updates, training modules, and personalized outreach at scale. AI spokesperson video, talking head generator, virtual presenter maker, AI avatar video, digital spokesperson, text to presenter video, AI news anchor, virtual host video, automated presenter content.
-metadata: {"openclaw": {"emoji": "🧑‍💼", "requires": {"env": [], "configPaths": ["~/.config/nemovideo/"]}, "primaryEnv": "NEMO_TOKEN"}}
+metadata: {"openclaw": {"emoji": "🎤", "requires": {"env": ["NEMO_TOKEN"], "configPaths": ["~/.config/nemovideo/"]}, "primaryEnv": "NEMO_TOKEN"}}
+homepage: https://nemovideo.com
+repository: https://github.com/nemovideo/nemovideo_skills
+apiDomain: https://mega-api-prod.nemovideo.ai
 ---
 
 # AI Spokesperson Video — A Professional Presenter for Every Message. No Camera Required.
