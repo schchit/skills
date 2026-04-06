@@ -1,6 +1,7 @@
 ---
 name: drug-search
-description: "Search a pharmaceutical drug database for pipeline and development information. Use this skill whenever the user asks about drugs by name, target, indication, company, modality, phase, or development progress. Automatically parses natural language questions into structured query parameters and calls the backend API to return matching drug records. Trigger words include: drug, compound, molecule, pipeline, drug target, indication, modality, antibody, small molecule, phase, approved, development stage, sponsor, drug company, bispecific, ADC, route of administration."
+description: "Search a pharmaceutical drug database for pipeline and development information. Use this skill whenever the user asks about drugs by name, target, indication, company, modality, phase, or development progress. Automatically parses natural language questions into structured query parameters and calls the backend API to return matching drug records. Trigger words include: drug, compound, molecule, pipeline, drug target, indication, modality, antibody, small molecule, phase, approved, development stage, sponsor, drug company, bispecific, route of administration."
+metadata: { "openclaw": { "emoji": "🔍︎",  "requires": { "bins": ["python3"], "env":["NOAH_API_TOKEN"]},"primaryEnv":"NOAH_API_TOKEN" } }
 ---
 
 # Drug Pipeline Search Skill
@@ -26,11 +27,11 @@ Identify the following entity types from the user's question:
 | `target` | `dict` | Biological target(s)        | `{"logic": "or", "data": ["PD-1", "VEGF"]}`               |
 | `drug_modality` | `dict` | Drug modality / type        | `{"logic": "or", "data": ["antibody", "small molecule"]}` |
 | `drug_feature` | `dict` | Drug feature(s)             | `{"logic": "or", "data": ["bispecific"]}`                 |
-| `phase` | `List[str]` | Development phase(s)        | `["Phase 3", "Approved"]`                                 |
-| `location` | `List[str]` | Geographic location(s)      | `["China", "USA"]`                                        |
+| `phase` | `List[str]` | Development phase(s)        | `["Preclinical", "I", "II", "III", "IV", "Others", "IND", "Suspended", "Approved", "Unknow", "Withdraw from Market", "BLA/NDA"]`                                 |
+| `location` | `List[str]` | Geographic location(s)      | `["China", "United States", "Japan"]`                                        |
 | `route_of_administration` | `dict` | Route of administration     | `{"logic": "or", "data": ["IV", "oral"]}`                 |
 | `page_num` | `int` | Page index (0-based)        | `0`                                                       |
-| `page_size` | `int` | Results per page (1–60)      | `30`                                                       |
+| `page_size` | `int` | Results per page (1–2000)      | `200`                                                       |
 
 **Dict field format:**
 ```json
@@ -43,7 +44,7 @@ Identify the following entity types from the user's question:
 **Type rules:**
 - `company`, `indication`, `phase`, `location` → plain `List[str]`
 - `drug_name`, `target`, `drug_modality`, `drug_feature`, `route_of_administration` → `dict` with `logic` and `data`
-- Default to `page_num: 0, page_size: 5` unless the user specifies otherwise
+- Default to `page_num: 0, page_size: 10` unless the user specifies otherwise
 - Prefer English keywords (the database is indexed in English); translate non-English terms
 
 ## Step 2: Execute the Query
@@ -66,18 +67,93 @@ The response contains:
 - `page_num` / `page_size` — current pagination state
 - `results` — current page of drug records, each with name, phase, modality, targets, companies, indication, development progress, etc.
 
-If no results are returned, suggest relaxing one or more filters (e.g. broader indication, remove phase filter).
+## Step 4: Review and Fallback Search Strategies
+If no results are returned, apply the fallback strategies below before giving up.
+When an initial query returns zero or poor results, try these strategies **in order**:
+
+### Strategy 1 — Drug Name Variant Expansion
+
+Drug names in the database may use different formats (with/without hyphens, partial codes, aliases). Expand the `drug_name` field to include common variants and merge deduplicated results.
+
+```json
+{
+  "drug_name": {"logic": "or", "data": ["SHR-A1904", "SHR A1904", "A1904", "SHR1904"]},
+  "page_num": 0,
+  "page_size": 50
+}
+```
+
+**Common variant patterns to try:**
+- Remove or replace hyphens: `SHR-A1904` → `SHR A1904`, `SHRA1904`
+- Strip prefix/suffix: `9MW-2821` → `MW-2821`, `9MW2821`
+- Known alias: include trade names or INN alongside internal codes
+
+---
+
+### Strategy 2 — Company-First with Application-Layer Filtering
+
+When drug name matching is unreliable, use the company as the anchor. Fetch a broad set of the company's drugs, then filter by modality/indication/target in post-processing.
+
+```json
+{
+  "company": ["Roche", "Roche Inc"],
+  "page_num": 0,
+  "page_size": 500
+}
+```
+
+After retrieving results, apply local filters:
+- `modality == "Antibody-Drug Conjugates, ADCs"`
+- `indication contains "breast cancer"`
+- `drug_name matches known code pattern`
+
+Use this strategy when the drug code is ambiguous or the API match rate is low.
+
+---
+
+### Strategy 3 — Broad Target/Modality Search with Post-Filtering
+
+When neither name nor company is reliable, search by biological target and modality, then narrow results client-side.
+
+```json
+{
+  "target": {"logic": "or", "data": ["CLDN18.2", "Nectin-4", "HER2"]},
+  "drug_modality": {"logic": "or", "data": ["Antibody-Drug Conjugates, ADCs"]},
+  "page_num": 0,
+  "page_size": 200
+}
+```
+
+After retrieval, filter by company name or drug code pattern using substring matching (e.g. code starts with `SHR`, `9MW`, `A166`).
+
+> **Note:** If the API supports regex, patterns like `(SHR|9MW|A166)` can be passed directly in `drug_name.data` to broaden matching in a single call.
+
+---
+
+## Decision Tree
+
+```
+Initial query returns results?
+├── Yes → present results
+└── No  → Strategy 1: expand drug_name variants
+          └── Still no results → Strategy 2: company anchor + local filter
+                                 └── Still no results → Strategy 3: target/modality broad search
+Any step hits HTTP 429?
+└── Pause entire chain 30s → resume from current strategy
+    (sleep ≥5s between every request to avoid triggering 429)
+```
+
+---
 
 ## Conversion Examples
 
 **User:** "Find PD-1 antibodies in Phase 3"
 
-**Parameters:**
 ```json
 {
   "target": {"logic": "or", "data": ["PD-1"]},
   "drug_modality": {"logic": "or", "data": ["antibody"]},
-  "phase": ["Phase 3"],
+  "phase": ["III"],
   "page_num": 0,
   "page_size": 30
 }
@@ -87,7 +163,6 @@ If no results are returned, suggest relaxing one or more filters (e.g. broader i
 
 **User:** "Roche bispecific antibodies for lung cancer"
 
-**Parameters:**
 ```json
 {
   "company": ["Roche"],
@@ -102,7 +177,6 @@ If no results are returned, suggest relaxing one or more filters (e.g. broader i
 
 **User:** "Oral small molecule KRAS G12C inhibitors"
 
-**Parameters:**
 ```json
 {
   "target": {"logic": "or", "data": ["KRAS G12C"]},
@@ -117,7 +191,6 @@ If no results are returned, suggest relaxing one or more filters (e.g. broader i
 
 **User:** "Drugs targeting both PD-1 and VEGF"
 
-**Parameters:**
 ```json
 {
   "target": {"logic": "and", "data": ["PD-1", "VEGF"]},
@@ -130,7 +203,6 @@ If no results are returned, suggest relaxing one or more filters (e.g. broader i
 
 **User:** "Look up pembrolizumab"
 
-**Parameters:**
 ```json
 {
   "drug_name": {"logic": "or", "data": ["pembrolizumab"]},
@@ -139,9 +211,22 @@ If no results are returned, suggest relaxing one or more filters (e.g. broader i
 }
 ```
 
+---
+
 ## Dependencies
 
 - Python 3.8+
 - `requests` library (`pip install requests`)
 - Environment variable `NOAH_API_TOKEN` — API authentication token (required)
   - Register for a free account at [noah.bio](https://noah.bio) to obtain your API key.
+
+---
+
+## Security & Packaging Notes
+
+- This skill only calls NoahAI official HTTPS endpoints under `https://www.noah.bio/api/` and does not contact third-party services.
+- It requires exactly one environment variable: `NOAH_API_TOKEN`. Store it in the environment or a local `.env` file, and never place it inline in commands, chats, or packaged files.
+- The token is scoped to read medical public details only and cannot access private user records.
+- The skill does not intentionally persist request parameters locally. Any server-side retention is determined by the NoahAI API service and its operational logging policies.
+- It does not request persistent or system-level privileges and does not modify system configuration.
+- The skill is source-file based (Python scripts only) and does not require runtime installs, package downloads, or external bootstrap steps.

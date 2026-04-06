@@ -6,7 +6,7 @@ Reads API credentials from environment variables and POSTs structured
 query parameters to a drug pipeline search endpoint.
 
 Dict-type fields (target, drug_name, drug_modality, drug_feature,
-route_of_administration) accept a flat {"keywords": [...]} object.
+route_of_administration) accept a flat {"logic": "or", "data": [...]} object.
 Include/exclude filtering is not supported by the API.
 
 Usage:
@@ -21,6 +21,7 @@ import argparse
 import json
 import os
 import sys
+from urllib.parse import urljoin
 
 try:
     import requests
@@ -44,14 +45,14 @@ DEFAULT_PARAMS = {
     "target": {},
     "route_of_administration": {},
     "page_num": 0,
-    "page_size": 5,
+    "page_size": 10,
 }
 
 
 def build_payload(user_params: dict) -> dict:
     """Merge user-supplied parameters with defaults to produce a complete payload.
 
-    Dict-type fields should be passed as {"keywords": ["val1", "val2"]}.
+    Dict-type fields should be passed as {"logic": "or", "data": ["val1", "val2"]}.
     Include/exclude filtering is not supported.
     """
     payload = DEFAULT_PARAMS.copy()
@@ -70,7 +71,7 @@ def search(params: dict) -> dict:
     :param params: Query parameter dict
     :return: Parsed JSON response from the API
     """
-    api_url = os.environ.get("NOAH_API_URL", "https://noah.bio/api/skills/drug_search/").strip()
+    api_url = r"https://www.noah.bio/api/skills/drug_search/"
     api_token = os.environ.get("NOAH_API_TOKEN", "").strip()
 
     if not api_token:
@@ -91,7 +92,7 @@ def search(params: dict) -> dict:
     print(f"[INFO] Query payload:\n{json.dumps(payload, indent=2)}", file=sys.stderr)
 
     try:
-        response = requests.post(api_url, headers=headers, json=payload, timeout=30)
+        response = requests.post(api_url, headers=headers, json=payload, timeout=30, allow_redirects=False)
         response.raise_for_status()
     except requests.exceptions.ConnectionError as e:
         raise ConnectionError(f"Cannot connect to API server: {api_url}\nDetails: {e}")
@@ -110,12 +111,32 @@ def search(params: dict) -> dict:
 
     return response.json()
 
+def format_json(data, indent=0):
+    result = ""
+    prefix = "  " * indent
+    if isinstance(data, dict):
+        for key, value in data.items():
+            if isinstance(value, (dict, list)):
+                result += f"{prefix}{key}:\n"
+                result += format_json(value, indent + 1)
+            else:
+                result += f"{prefix}{key}: {value}\n"
+    elif isinstance(data, list):
+        for i, item in enumerate(data):
+            if isinstance(item, (dict, list)):
+                result += f"{prefix}[{i}]:\n"
+                result += format_json(item, indent + 1)
+            else:
+                result += f"{prefix}[{i}]: {item}\n"
+    else:
+        result += f"{prefix}{data}\n"
+    return result
 
 def format_results(data: dict) -> str:
     """Format the API response into human-readable text."""
     lines = []
 
-    total = data.get("total", data.get("total_count", "unknown"))
+    total = data.get("page_size", "unknown")
     drugs = data.get("results", data.get("data", []))
 
     lines.append(f"=== Results: {total} drug(s) matched ===\n")
@@ -125,53 +146,12 @@ def format_results(data: dict) -> str:
         return "\n".join(lines)
 
     for i, drug in enumerate(drugs, 1):
-        lines.append(f"[{i}] {drug.get('name', '(no name)')}")
-
-        phase = drug.get("phase", "")
-        if phase:
-            lines.append(f"  Phase               : {phase}")
-
-        modalities = drug.get("modality") or []
-        if modalities:
-            mod_labels = []
-            for m in modalities:
-                if isinstance(m, dict):
-                    mod_labels.extend(str(v) for v in m.values() if v)
-                elif isinstance(m, str):
-                    mod_labels.append(m)
-            if mod_labels:
-                lines.append(f"  Modality            : {', '.join(mod_labels)}")
-
-        targets = drug.get("target") or []
-        if targets:
-            symbols = [t.get("symbol", "") for t in targets if isinstance(t, dict)]
-            symbols = [s for s in symbols if s]
-            if symbols:
-                lines.append(f"  Targets             : {', '.join(symbols)}")
-
-        indication = drug.get("indication", "")
-        if indication:
-            if isinstance(indication, list):
-                indication = ", ".join(indication)
-            lines.append(f"  Indication          : {indication}")
-
-        companies = drug.get("companies") or []
-        if companies:
-            company_strs = [
-                f"{c.get('name', '')} ({c.get('role', '')})" if c.get("role") else c.get("name", "")
-                for c in companies if isinstance(c, dict)
-            ]
-            lines.append(f"  Sponsor             : {', '.join(company_strs)}")
-
-        route = drug.get("administration_route", "")
-        if route:
-            lines.append(f"  Route               : {route}")
-
-        feature = drug.get("feature", "")
-        if feature:
-            lines.append(f"  Feature             : {feature}")
-
-        lines.append("")  # blank line between entries
+        lines.append(f"---- [{i}] -----")
+        
+        s = format_json(drug)
+        lines.append(s.strip())
+        
+        lines.append("")
 
     return "\n".join(lines)
 
@@ -183,7 +163,7 @@ def main():
         epilog="""
 Examples:
   # PD-1 antibody drugs in Phase 3
-  python scripts/search.py --params '{"target": {"keywords": ["PD-1"]}, "drug_modality": {"keywords": ["antibody"]}, "phase": ["Phase 3"]}'
+  python scripts/search.py --params '{"target": {"logic": "or", "data": ["PD-1"]}, "drug_modality": {"logic": "or", "data": ["Antibody-Drug Conjugates, ADCs"]}, "phase": ["III"]}'
 
   # Query by company name
   python scripts/search.py --params '{"company": ["Roche"]}'
