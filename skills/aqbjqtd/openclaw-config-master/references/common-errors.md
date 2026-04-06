@@ -12,6 +12,7 @@
 4. [Cross-field constraint failure（跨字段约束失败）](#4-cross-field-constraint-failure跨字段约束失败)
 5. [Circular $include（循环引用）](#5-circular-include循环引用)
 6. [Array concatenation surprise（数组拼接意外）](#6-array-concatenation-surprise数组拼接意外)
+7. [Version mismatch（版本不一致）](#7-version-mismatch版本不一致)
 
 ---
 
@@ -1148,49 +1149,170 @@ if __name__ == '__main__':
 
 ---
 
+## 7. Version mismatch（版本不一致）
+
+### 错误类型识别
+
+OpenClaw 本地版本与最新版本不一致，或配置使用了当前版本不支持的字段。
+
+### openclaw doctor 输出示例
+
+```bash
+$ openclaw doctor
+
+Configuration Error
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Warning: Config uses fields not available in current version
+
+Current version: 2026.3.28
+Field 'acp.stream.coalesceIdleMs' requires version >= 2026.4.0
+
+Suggestion: Update openclaw to use this field
+  openclaw update
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Run 'openclaw update status --json' for version details
+```
+
+### 根本原因分析
+
+**常见原因：**
+1. **本地版本落后** — 未及时更新 openclaw，配置文件引用了新版本才有的字段
+2. **配置文件迁移** — 从新版本环境复制配置到旧版本环境
+3. **技能版本不匹配** — 技能文档引用了新版本字段，但本地 openclaw 版本较旧
+4. **破坏性变更** — 版本升级后某些字段被废弃或重命名
+
+### 解决步骤
+
+1. **检查当前版本**
+   ```bash
+   # 检查本地版本
+   openclaw --version
+
+   # 检查最新版本和更新状态
+   openclaw update status --json
+   # 关键字段: availability.latestVersion, availability.hasRegistryUpdate
+   ```
+
+2. **更新到最新版本**
+   ```bash
+   # 预览更新（不实际执行）
+   openclaw update --dry-run
+
+   # 执行更新
+   openclaw update
+
+   # 非交互式更新
+   openclaw update --yes
+   ```
+
+3. **更新技能**
+   ```bash
+   # 确保配置技能是最新版
+   openclaw skills update openclaw-config-master
+
+   # 更新所有技能
+   openclaw skills update
+   ```
+
+4. **查阅最新文档**
+   ```bash
+   # 内置文档搜索
+   openclaw docs "configuration"
+
+   # 查看完整配置参考
+   openclaw config schema
+
+   # 在线文档
+   # https://docs.openclaw.ai/gateway/configuration-reference
+   ```
+
+5. **验证版本一致**
+   ```bash
+   openclaw --version
+   openclaw doctor
+   ```
+
+### 预防措施
+
+**版本检查脚本（可加入 cron 或 CI）：**
+```bash
+#!/bin/bash
+# check-version.sh — 版本一致性检查
+
+CURRENT=$(openclaw --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+LATEST=$(openclaw update status --json | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+print(data.get('availability', {}).get('latestVersion', 'unknown'))
+")
+
+if [ "$CURRENT" != "$LATEST" ]; then
+    echo "版本不一致: 当前=$CURRENT, 最新=$LATEST"
+    echo "请运行: openclaw update"
+    exit 1
+else
+    echo "版本一致: $CURRENT"
+fi
+```
+
+**版本相关的配置错误速查**：
+
+| 错误现象 | 版本原因 | 解决方法 |
+|---------|---------|---------|
+| `Unknown key 'acp'` | 本地版本 < 2026.3.28 | 更新 openclaw |
+| `Unknown key 'stream' in acp` | 本地版本 < 2026.4.0 | 更新 openclaw |
+| `tools.web.enabled not found` | 旧版字段，2026.3.x 已重构 | 改用 `tools.web.search.enabled` |
+| `bindings is not an array` | 旧版格式（对象），新版要求数组 | 参考 `version-migration.md` |
+| `commands.bash should be boolean` | 类型错误（字符串 `"true"`） | 改为布尔值 `true` |
+
+---
+
 ## 🔧 快速参考
 
 ### 常用诊断命令
 
 ```bash
+# 版本检查
+openclaw --version
+openclaw update status --json
+
 # 全面检查
 openclaw doctor
 
 # 验证配置
-openclaw validate
+openclaw config validate
 
-# 类型检查
-openclaw validate --type-check
+# 配置文件路径
+openclaw config file
 
-# 循环引用检查
-openclaw validate --check-circular
+# 查看 Schema
+openclaw config schema
 
-# 约束检查
-openclaw validate --constraints
+# 安全审计
+openclaw security audit
+
+# 网关状态
+openclaw gateway status
 
 # 查看必需字段
-openclaw schema required-fields
+openclaw config schema
 
-# 查看约束规则
-openclaw schema constraints
-
-# 生成依赖图
-openclaw graph --includes
-
-# 数组内容追踪
-openclaw get <field> --trace
+# 技能版本
+openclaw skills list
 ```
 
 ### 错误模式速查表
 
 | 错误类型 | 快速诊断命令 | 常见解决方案 |
 |---------|-------------|-------------|
-| Unknown key | `openclaw doctor` | 检查拼写、使用 `openclaw schema list-keys` |
-| Type mismatch | `openclaw validate --type-check` | 移除引号、使用类型转换函数 |
-| Missing required field | `openclaw schema required-fields` | 使用 `openclaw scaffold` 生成模板 |
-| Cross-field constraint | `openclaw validate --constraints` | 查看约束定义、调整字段值 |
-| Circular $include | `openclaw validate --check-circular` | 提取共享配置、使用 `!merge` |
-| Array concatenation | `openclaw get <field> --trace` | 使用 `!replace` 或 `!merge` |
+| Version mismatch | `openclaw --version && openclaw update status --json` | 更新 openclaw：`openclaw update` |
+| Unknown key | `openclaw doctor` | 检查拼写、使用 `openclaw config schema` |
+| Type mismatch | `openclaw doctor` | 移除引号、使用正确类型 |
+| Missing required field | `openclaw doctor` | 补充必需字段 |
+| Cross-field constraint | `openclaw doctor` | 查看约束定义、调整字段值 |
+| Circular $include | `openclaw doctor` | 提取共享配置、重构依赖 |
+| Array concatenation | `openclaw doctor` | 理解 $include 的数组拼接行为 |
 
 ---
 

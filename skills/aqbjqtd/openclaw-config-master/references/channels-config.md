@@ -1,4 +1,4 @@
-# Channels Configuration — OpenClaw 2026.3.28
+# Channels Configuration — OpenClaw 2026.4.1
 
 > **完整配置文档** — 本文件涵盖所有 channel provider 的配置字段。
 > Feishu 的完整文档另见 [飞书插件技能](../openclaw-lark/skills/)。

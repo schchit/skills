@@ -234,6 +234,260 @@ openclaw gateway call chat --params '{"message":"测试"}'
 - `dmPolicy`: `"open"` / `"pairing"` / `"closed"`
 - `groupPolicy`: `"allowlist"` / `"blocklist"` / `"closed"`
 
+#### Telegram 独立配置
+
+**1. 创建 Telegram Bot**
+- 与 [@BotFather](https://t.me/BotFather) 对话
+- 使用 `/newbot` 命令创建新 Bot
+- 保存生成的 Bot Token
+
+**2. 获取你的 Telegram 用户 ID**
+- 向 [@userinfobot](https://t.me/userinfobot) 或你的 Bot 发送消息
+- 从回复中获取数字 ID
+
+**3. 配置模板**
+
+```json
+{
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "YOUR_TELEGRAM_BOT_TOKEN",
+      "dmPolicy": "allowlist",
+      "allowFrom": ["YOUR_TELEGRAM_USER_ID"],
+      "groupPolicy": "disabled"
+    }
+  },
+  "plugins": {
+    "allow": ["openclaw-lark", "minimax", "feishu", "telegram"],
+    "entries": {
+      "minimax": { "enabled": true },
+      "openclaw-lark": { "enabled": true },
+      "feishu": { "enabled": true },
+      "telegram": { "enabled": true }
+    }
+  }
+}
+```
+
+**Telegram 策略说明**：
+
+| 字段 | 选项 | 说明 |
+|------|------|------|
+| `dmPolicy` | `allowlist` | 仅白名单用户可私聊（推荐） |
+| `dmPolicy` | `pairing` | 需要配对码 |
+| `dmPolicy` | `open` | 所有人可私聊（不推荐） |
+| `groupPolicy` | `disabled` | 禁止所有群聊 |
+| `groupPolicy` | `open` | 所有群聊开放 |
+| `groupPolicy` | `allowlist` | 仅白名单群聊可用 |
+| `groupAllowFrom` | `["*"]` | 群里任何人都能 @ 机器人 |
+
+#### 飞书（Feishu）独立配置
+
+**1. 创建飞书应用**
+- 登录 [飞书开放平台](https://open.feishu.cn/)
+- 创建企业自建应用
+- 获取 `App ID` (`cli_xxxxx`) 和 `App Secret`
+
+**2. 配置应用权限**
+- 开通以下权限：
+  - `im:message`（读取消息）
+  - `im:message:send_as_bot`（发送消息）
+  - `im:chat`（群组管理）
+
+**3. 获取你的飞书用户 ID**
+- 在飞书给机器人发一条消息
+- 查看 Gateway 日志：`tail -500 /tmp/openclaw/openclaw-*.log | grep "message from"`
+- 日志输出格式：`received message from ou_xxxxxxxxx`
+
+**4. 配置模板**
+
+```json
+{
+  "channels": {
+    "feishu": {
+      "enabled": true,
+      "appId": "YOUR_FEISHU_APP_ID",
+      "appSecret": { "source": "file", "provider": "lark-secrets", "id": "/lark/appSecret" },
+      "domain": "feishu",
+      "connectionMode": "websocket",
+      "requireMention": true,
+      "dmPolicy": "allowlist",
+      "allowFrom": ["YOUR_FEISHU_USER_ID"],
+      "groupPolicy": "open",
+      "groupAllowFrom": ["*"],
+      "groups": {
+        "YOUR_FEISHU_GROUP_ID": { "enabled": true }
+      }
+    }
+  },
+  "plugins": {
+    "allow": ["openclaw-lark", "minimax"],
+    "entries": {
+      "minimax": { "enabled": true },
+      "openclaw-lark": { "enabled": true }
+    }
+  }
+}
+```
+
+**飞书策略说明**：
+
+| 字段 | 选项 | 说明 |
+|------|------|------|
+| `dmPolicy` | `allowlist` | 仅白名单用户可私聊（推荐） |
+| `groupPolicy` | `open` | 所有群聊开放 |
+| `groupAllowFrom` | `["*"]` | 群里任何人都能 @ 机器人 |
+| `requireMention` | `true` | 必须 @ 机器人才会回复（推荐） |
+| `connectionMode` | `websocket` | 使用 WebSocket 连接（推荐） |
+
+#### Telegram + 飞书联合配置模板
+
+**推荐配置（安全模式）：仅自己可用，禁止群聊**
+
+```json
+{
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "YOUR_TELEGRAM_BOT_TOKEN",
+      "dmPolicy": "allowlist",
+      "allowFrom": ["YOUR_TELEGRAM_USER_ID"],
+      "groupPolicy": "disabled"
+    },
+    "feishu": {
+      "enabled": true,
+      "appId": "YOUR_FEISHU_APP_ID",
+      "appSecret": { "source": "file", "provider": "lark-secrets", "id": "/lark/appSecret" },
+      "domain": "feishu",
+      "connectionMode": "websocket",
+      "requireMention": true,
+      "dmPolicy": "allowlist",
+      "allowFrom": ["YOUR_FEISHU_USER_ID"],
+      "groupPolicy": "open",
+      "groupAllowFrom": ["*"],
+      "groups": {
+        "YOUR_FEISHU_GROUP_ID": { "enabled": true }
+      }
+    }
+  },
+  "plugins": {
+    "allow": ["openclaw-lark", "minimax", "feishu", "telegram"],
+    "entries": {
+      "minimax": { "enabled": true },
+      "openclaw-lark": { "enabled": true },
+      "feishu": { "enabled": true },
+      "telegram": { "enabled": true }
+    }
+  }
+}
+```
+
+**开放配置（群聊可用，需 @）**：
+
+```json
+{
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "YOUR_TELEGRAM_BOT_TOKEN",
+      "dmPolicy": "open",
+      "groupPolicy": "open",
+      "groupAllowFrom": ["*"],
+      "requireMention": true
+    },
+    "feishu": {
+      "enabled": true,
+      "appId": "YOUR_FEISHU_APP_ID",
+      "appSecret": { "source": "file", "provider": "lark-secrets", "id": "/lark/appSecret" },
+      "domain": "feishu",
+      "connectionMode": "websocket",
+      "requireMention": true,
+      "dmPolicy": "open",
+      "groupPolicy": "open",
+      "groupAllowFrom": ["*"]
+    }
+  },
+  "plugins": {
+    "allow": ["openclaw-lark", "minimax"],
+    "entries": {
+      "minimax": { "enabled": true },
+      "openclaw-lark": { "enabled": true }
+    }
+  }
+}
+```
+
+#### 飞书 AppSecret 安全存储
+
+推荐将 AppSecret 存放在环境变量或 secrets 文件中，避免明文写入配置：
+
+```json
+{
+  "appSecret": { "source": "file", "provider": "lark-secrets", "id": "/lark/appSecret" }
+}
+```
+
+或直接使用环境变量：
+
+```bash
+# 在 ~/.openclaw/.env 中添加
+export LARK_APP_SECRET="your-app-secret-here"
+
+# 配置中引用
+{
+  "appSecret": "env:LARK_APP_SECRET"
+}
+```
+
+#### 验证与排错
+
+**1. 配置验证**
+```bash
+openclaw doctor
+```
+
+**2. 查看渠道连接状态**
+```bash
+openclaw channels status
+openclaw config get channels.telegram
+openclaw config get channels.feishu
+```
+
+**3. 获取用户 ID（日志法）**
+```bash
+# 飞书
+tail -500 /tmp/openclaw/openclaw-*.log | grep "message from"
+# 输出: received message from ou_xxxxxxxxx
+
+# Telegram
+tail -500 /tmp/openclaw/openclaw-*.log | grep "telegram.*message"
+```
+
+**4. 重启 Gateway**
+```bash
+openclaw gateway restart
+```
+
+**5. 查看日志**
+```bash
+openclaw logs --limit 200
+tail -500 /tmp/openclaw/openclaw-*.log | grep feishu
+tail -500 /tmp/openclaw/openclaw-*.log | grep telegram
+```
+
+#### 常见错误
+
+| 错误信息 | 原因 | 解决方法 |
+|---------|------|---------|
+| `plugins.entries.X: plugin disabled (disabled in config) but config is present` | 频道和插件配置不一致 | 同时检查并启用 `channels.X` 和 `plugins.entries.X.enabled` |
+| `飞书无法连接` | 飞书插件名称错误 | 使用 `openclaw-lark` 而不是 `feishu` 作为 plugins.entries 的 key |
+| `私聊不回复` | 用户ID未加入白名单 | 将用户 ID 加入 `channels.xxx.allowFrom`，参考日志获取 ID |
+| `群聊不回复` | `requireMention: true` 时必须 @ 机器人 | 设置 `requireMention: false` 或群里 @ 机器人 |
+| `Gateway 启动失败` | 配置了不存在的字段或值 | 检查 `groupPolicy: "deny"` 应为 `disabled`，运行 `openclaw doctor` |
+
+---
+
 **Discord 配置**
 
 1. **创建 Discord 应用**：
@@ -362,7 +616,9 @@ openclaw gateway call tools.get --params '{"toolId":"tool-name"}'
 
 **步骤 2: 修改全局工具配置**
 
-修改 `tools` 部分：
+修改 `tools` 部分。注意：`tools.exec` 不包含 `approvals` 和 `allowFrom`。
+
+若需审批配置，请使用 `channels.<channel>.execApprovals`； 若需命令权限控制，请使用 `commands.allowFrom`。
 
 ```json
 {
@@ -372,9 +628,9 @@ openclaw gateway call tools.get --params '{"toolId":"tool-name"}'
       "enabled": true
     },
     "exec": {
-      "enabled": true,
       "host": "sandbox",
-      "security": "deny",
+      "security": "allowlist",
+      "ask": "on-miss",
       "safeBins": ["python", "node", "git", "ls", "cat", "grep"]
     },
     "web": {
@@ -422,7 +678,8 @@ openclaw gateway call tools.get --params '{"toolId":"tool-name"}'
 }
 ```
 
-**工具配置选项**：
+> **注意**：`tools.exec` 的完整字段列表请参考 `openclaw-config-fields.md#toolsexec` 章节。
+审批配置请使用 `channels.<channel>.execApprovals`，命令权限请使用 `commands.allowFrom`。**工具配置选项**：
 - `profile`: 预设配置（`"minimal"` / `"coding"` / `"messaging"` / `"full"`）
 - `elevated`: 提升权限模式
 - `exec`: 命令执行配置（见 tools.exec 详细字段）

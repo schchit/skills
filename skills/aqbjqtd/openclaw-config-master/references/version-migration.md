@@ -17,6 +17,56 @@
 
 ## 升级前准备
 
+### 0. 版本检查（必做）
+
+在执行任何迁移操作之前，必须先检查当前版本和最新版本：
+
+```bash
+# 检查本地版本
+openclaw --version
+# 输出示例: OpenClaw 2026.4.1 (da64a97)
+
+# 检查最新可用版本（JSON 格式，便于脚本解析）
+openclaw update status --json
+# 关键字段:
+#   availability.latestVersion      — 最新版本号
+#   availability.hasRegistryUpdate  — 是否有更新可用
+
+# 预览更新内容（不实际更新）
+openclaw update --dry-run
+openclaw update --dry-run --json
+```
+
+**版本不一致时的处理**：
+```bash
+# 如果有更新可用，先更新 openclaw 本身
+openclaw update          # 交互式更新
+openclaw update --yes    # 非交互式更新
+
+# 更新完成后验证版本
+openclaw --version
+```
+
+**技能版本检查**：
+```bash
+# 确保配置技能是最新版本
+openclaw skills update openclaw-config-master
+
+# 查看已安装技能列表
+openclaw skills list
+```
+
+**查阅最新文档**：
+```bash
+# 内置文档搜索
+openclaw docs "configuration"
+openclaw docs "migration"
+
+# 在线文档
+# 配置参考: https://docs.openclaw.ai/gateway/configuration-reference
+# Update CLI: https://docs.openclaw.ai/cli/update
+```
+
 ### 1. 备份配置
 
 ```bash

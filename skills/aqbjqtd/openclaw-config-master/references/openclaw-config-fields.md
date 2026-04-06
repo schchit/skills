@@ -327,6 +327,22 @@ Customize with `tools.alsoAllow` / `tools.deny` to add or remove from a profile.
 
 Controls where and how `exec` tool runs.
 
+> **重要**：`tools.exec` 只支持以下字段。**不支持** `approvals`、`allowFrom` 等字段。
+> 添加不支持的字段会导致 schema 验证失败，Gateway 无法启动。
+> exec 审批配置请使用 `channels.<channel>.execApprovals`。
+> 命令权限白名单请使用 `commands.allowFrom`。
+
+```json
+"tools": {
+  "exec": {
+    "security": "allowlist",
+    "ask": "on-miss"
+  }
+}
+```
+
+**完整字段示例**：
+
 ```json
 "tools": {
   "exec": {
@@ -370,6 +386,10 @@ Controls where and how `exec` tool runs.
 | `notifyOnExit` | boolean | Notify when background process exits |
 | `notifyOnExitEmptySuccess` | boolean | Notify on zero-exit even if empty output |
 | `applyPatch` | object | `{ enabled, allowModels, workspaceOnly }` — patch application |
+
+**不支持的字段**（会导致 schema 验证失败）：
+- `approvals` — 应使用 `channels.<channel>.execApprovals`
+- `allowFrom` — 应使用 `commands.allowFrom`
 
 ---
 
@@ -1245,12 +1265,33 @@ Controls session behavior, persistence, and limits.
 
 ## `commands` — Chat Commands
 
+控制聊天命令的行为和权限。
+
+> **重要**：`commands.bash` 必须是**布尔值** `true`/`false`，不能是字符串 `"true"`。
+> `commands.allowFrom` 是按 channel 分组的对象，不是数组。
+> 命令权限白名单在此配置，**不在** `tools.exec` 中。
+
 ```json
 "commands": {
-  "prefix": "/",
-  "aliases": { ... }
+  "bash": true,
+  "native": "auto",
+  "nativeSkills": "auto",
+  "restart": true,
+  "ownerDisplay": "raw",
+  "allowFrom": {
+    "telegram": ["577958597"]
+  }
 }
 ```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `bash` | **boolean** | 启用 bash 命令。必须是 `true`/`false`，不能是字符串 |
+| `native` | enum | 原生命令模式：`"auto"` \| `"on"` \| `"off"` |
+| `nativeSkills` | enum | 原生技能命令：`"auto"` \| `"on"` \| `"off"` |
+| `restart` | boolean | 允许通过命令重启 Gateway |
+| `ownerDisplay` | enum | 所有者显示模式：`"raw"` \| `"mention"` \| `"name"` |
+| `allowFrom` | object | 命令权限白名单，按 channel 分组。格式：`{ "<channel>": ["userId", ...] }` |
 
 ---
 
