@@ -33,6 +33,12 @@ User query combines BOTH:
 
 Do NOT activate for: city-wide hotel search → `flyai-search-budget-hotels`, hotel+flight bundles → `flyai-book-hotel-bundle`.
 
+## Prerequisites
+
+```bash
+npm i -g @fly-ai/flyai-cli
+```
+
 ## Parameters
 
 ### Command 1: search-poi (context building)
