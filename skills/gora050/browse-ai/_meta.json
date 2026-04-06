@@ -3,9 +3,15 @@
   "slug": "browse-ai",
   "displayName": "Browse Ai",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774695844468,
-    "commit": "https://github.com/openclaw/skills/commit/6c7f8a06ebab3be719b86f84b37f5bfc9faebcc9"
+    "version": "1.0.2",
+    "publishedAt": 1775168793443,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774695844468,
+      "commit": "https://github.com/openclaw/skills/commit/6c7f8a06ebab3be719b86f84b37f5bfc9faebcc9"
+    }
+  ]
 }
