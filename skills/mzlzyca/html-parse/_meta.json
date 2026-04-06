@@ -1,11 +1,17 @@
 {
   "owner": "mzlzyca",
   "slug": "html-parse",
-  "displayName": "html-parse",
+  "displayName": "HTML Parse",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1774605304770,
-    "commit": "https://github.com/openclaw/skills/commit/0e72588b0b75dde1121ca8131cbbf91d9f9ecf99"
+    "version": "0.4.0",
+    "publishedAt": 1775210311735,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1774605304770,
+      "commit": "https://github.com/openclaw/skills/commit/0e72588b0b75dde1121ca8131cbbf91d9f9ecf99"
+    }
+  ]
 }
