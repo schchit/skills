@@ -1,10 +1,10 @@
 {
   "name": "glow",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Help your human find meaningful connections through private introductions — dating, friendships, activity partners, or professional networking.",
   "author": "Glow Tech, Inc.",
   "license": "Proprietary",
-  "homepage": "https://talktoglow.com",
+  "homepage": "https://agents.talktoglow.com",
   "requires": {
     "env": ["GLOW_API_KEY"],
     "bins": ["curl"]
