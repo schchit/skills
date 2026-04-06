@@ -3,9 +3,15 @@
   "slug": "eploy",
   "displayName": "Eploy",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774839858035,
-    "commit": "https://github.com/openclaw/skills/commit/15f383fee20c2a8175e171d02055b23831e97901"
+    "version": "1.0.2",
+    "publishedAt": 1775169483457,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774839858035,
+      "commit": "https://github.com/openclaw/skills/commit/15f383fee20c2a8175e171d02055b23831e97901"
+    }
+  ]
 }
