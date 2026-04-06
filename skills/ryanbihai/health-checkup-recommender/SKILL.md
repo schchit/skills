@@ -1,34 +1,45 @@
 ---
 name: health-checkup-recommender
-description: AI健康体检推荐服务。根据年龄/性别/症状/家族史推荐体检项目，循证依据，代码核查确保项目真实。二维码预约需用户明确同意，不自动发送。头像图片需单独配置。
-  **触发词：体检推荐, 做什么检查, 体检项目, 身体检查, 推荐体检, 我应该体检什么, 检查身体, 健康体检**
-requires:
-  config_paths:
-    - USER.md  # 用户档案路径（需用户授权读取）
-  runtime_deps:
-    - npm: qrcode  # Node.js 二维码生成
-    - python: qrcode  # Python二维码生成（可选）
-avatar:
-  total_count: 4
-  description: 全部为同一人物（电影质感真实风格，无医疗制服），以 health_sleep_v2.png 为基准生成
-  files:
-    - { name: health_morning_v2.png,   scene: 🌅 晨间健康 }
-    - { name: health_exercise_v2.png,  scene: 🏃 运动建议 }
-    - { name: health_sleep_v2.png,     scene: 🌙 睡眠关怀 }
-    - { name: health_checkup_v2.png,   scene: 🩺 体检医生 }
-  location: 头像在 workspace/avatars/ 目录，需用户手动复制到skill目录
-  character:
-    identity: EastAsian_warm_professional_female
-    traits: [温暖, 专业, 可信赖, 智慧, 温柔]
-    base: health_sleep_v2.png
-privacy:
-  third_party_booking: true
-  third_party_domain: "www.ihaola.com.cn"
-  qr_contains_personal_data: false  # ✅ 已修复：二维码不包含任何可识别PII
-  qr_fields: []  # ✅ 已修复：二维码仅含只读预约码，无用户信息
-  auto_send_qr: false  # 必须用户明确同意才能发送
-  consent_required: true
-  data_flow: "二维码仅含只读预约摘要，用户需携带身份证就诊；如需提前预约，用户自行到 www.ihaola.com.cn 填写信息"
+description: AI 智能健康体检推荐服务。严格依据《国家卫建委成人体检指引（2025版）》、BMJ及国家癌症中心最新流行病学数据，为您提供具有权威循证医学支撑的个性化体检方案。覆盖全国220城市数百家体检机构预约。二维码预约需用户明确同意。
+homepage: https://www.ihaola.com.cn
+metadata:
+  category: utility
+  api_base: https://pe-t.ihaola.com.cn
+  triggers:
+    - 体检
+    - 我要体检
+    - 身体检查
+    - 检查
+    - 体检推荐
+    - 体检项目
+    - 个性化体检
+    - 定制体检
+    - 体检预约
+    - 体检建议
+    - 想做体检
+    - 需要体检
+    - 常规体检
+    - 全面体检
+    - 体检套餐
+    - 全身体检
+  requires:
+    runtime_deps:
+      - npm: qrcode
+      - python: qrcode
+  privacy:
+    third_party_booking: true
+    third_party_domain:
+      - www.ihaola.com.cn
+    qr_contains_personal_data: false
+    qr_fields: []
+    auto_send_qr: false
+    consent_required: true
+    data_flow: |
+      二维码仅含只读预约摘要，用户需携带身份证就诊；如需提前预约，用户自行到 www.ihaola.com.cn 填写信息
+  author:
+    name: haola
+    contact: https://www.ihaola.com.cn
+  license: MIT
 ---
 
 # 体检项目推荐技能
@@ -37,246 +48,130 @@ privacy:
 
 ---
 
-## ⚠️ 安全与隐私声明（安装前必读）
+## 安全与隐私声明
 
-1. **USER.md 读取需授权**：本技能会读取 USER.md 获取用户年龄/性别/健康状况，**需用户明确授权**。如不希望读取本地 USER.md，请在使用时手动提供信息。
-
-
-3. **不自动发送二维码**：推荐完成后，**必须询问用户"是否需要发送预约二维码？"**，获得明确同意后才发送。
-
-4. **运行时依赖**：
-   - `generate_qr.js` 需要 npm 包 `qrcode`（`npm install qrcode`）
-   - `generate_qr.py` 需要 Python 包 `qrcode`（`pip install qrcode`）
-   - 部署前请确保依赖已安装
-
-5. **头像文件**：头像图片在 `workspace/avatars/` 目录，不在本技能包内。使用前请确认头像文件已正确配置。
+1. **不读取本地敏感文件**：已彻底移除环境配置文件检查，所有信息需在对话中主动询问用户（详见 `SECURITY_AUDIT.md`）
+2. **不自动发送二维码**：必须询问用户同意后才能发送
+3. **数据脱敏与传输限制**：
+   - 脚本（如 `sync_items.js`）在执行网络出站调用时，**仅传输脱敏的体检项目 ID**（如 item029），绝不包含任何用户的个人身份信息（PII，如姓名、手机号等）。
+   - 我们会为每次推荐创建一个脱敏 ID，发送至服务器暂存。
+   - 当客户同意创建二维码时，会将此脱敏 ID 写入二维码。用户的敏感信息仅由用户本人在扫码后的预约流程中自行授权提供。
+   - 本技能使用的第三方预约服务商为 `ihaola.com.cn`，相关网络调用逻辑和退坡机制说明请参见 `SECURITY_AUDIT.md`。
+4. **运行时依赖**：需在环境中执行 `npm install`（已在 `_meta.json` 声明）
 
 ---
 
 ## 核心原则
 
-1. **严格循证**：每个推荐项目必须附带 evidence_mappings_2025.json 中的依据
-2. **只推荐清单内有的项目**：checkup_items.md 是唯一可信来源
-3. **代码核查**：推荐前用 verify_items.js 验证每个项目，防止幻觉
-4. **信息收集完整才能推荐**：5步必须问完
-5. **格式规范**：输出必须使用标准模板
-6. **用户同意优先**：推荐完成后必须征得同意才能发送二维码
-7. **表情配合**：根据对话阶段选择对应表情图片发送
+### 执行流程原则（必须全部执行）
+
+1. **信息收集**：向用户询问年龄、性别、症状、家族史等必要信息
+2. **风险评估**：查询 `reference/risk_logic_table.json`
+3. **症状匹配**：查询 `reference/symptom_mapping.json`（含同义词映射）
+4. **项目验证（强制）**：调用 `node scripts/verify_items.js [推荐项目]`
+5. **价格计算（强制）**：调用 `node scripts/calculate_prices.js [推荐项目]`
+6. **输出推荐**：使用 `PROMPTS.md` 中的话术模板输出
+7. **二维码生成（强烈推荐）**：`node scripts/generate_qr_with_fallback.js --consent=true output.png [项目...]`
+
+### 数据查询原则
+
+- **项目清单**：查询 `reference/checkup_items.json`（唯一可信来源）
+- **循证依据**：查询 `reference/evidence_mappings_2025.json`
+- **禁止编造**：只能推荐数据库中存在的项目
+
+### 重要规则
+
+| 规则 | 说明 |
+|------|------|
+| **600元 最低消费** | 由于合作体检机构不接低于 600 元的订单，不足时需向用户说明原因并补充推荐项目 |
+| **item029 必选** | 体检基线数据（身高/体重/血压等），每个套餐必须包含 |
+| **价格必须来自代码** | 禁止 LLM 手动计算总价 |
 
 ---
 
-## 第一步：信息收集
+## 执行流程
 
-### 读取 USER.md（如有且被授权）
+### Step 1：信息收集
 
-```
-优先读取以下字段（需用户授权）：
-- userType: 用户类型（自己P / 家人F）
-- age: 年龄
-- gender: 性别（M/F）
-- healthConditions: 健康异常
-- familyHistory: 家族病史
-```
+向用户收集以下信息：
 
-如 USER.md 无权限或无数据，从头询问5步。
+1. 给自己还是给家人？
+2. 年龄和性别？
+3. 有没有特别想检查的部位或症状？
+4. 家族有没有心血管病、糖尿病家族史？
+5. 之前体检有没有已知的异常？
 
-### 标准询问（未知道路）
+详细话术见 `PROMPTS.md`
 
-1. "给自己还是给家人？"
-2. "年龄和性别？"
-3. "有没有特别想检查的部位或症状？"
-4. "家族有没有心脑血管/肿瘤/糖尿病病史？"
-5. "之前体检有没有已知异常？"
+### Step 2：循证推荐
 
----
-
-## 第二步：循证推荐
-
-### Step 2a: 查症状映射
-
-从 symptom_mapping.json 查该症状对应的标准加项组合。
-
-### Step 2b: 代码核查
+#### 2a. 风险评估（必需）
 
 ```bash
-node scripts/verify_items.js 项目1 项目2 ...
+# 读取 reference/risk_logic_table.json
+# 根据 gender → male/female 分支
+# 根据 age → 匹配年龄段（18-35/36-49/50-64/65+）
+# 输出 Top3 高发风险
 ```
 
-### Step 2c: 循证输出（强制核查流程）
-
-**⚠️ 本流程强制执行：生成推荐 → 调用 verify_items.js 验证 → 修正无效项目 → 通过后才输出。任何幻觉项目不得呈现给用户。**
-
-#### 推荐生成规则
-
-1. 根据用户画像（年龄/性别/症状/既往病史），从 `reference/checkup_items.json` 中选取合适的 ItemID
-2. **只从数据库已有项目中选择**（见下方「数据库项目清单」），**禁止编造不存在的 ItemID**
-3. 生成的推荐必须包含 `Item029`（必选）
-
-#### 强制核查流程（必须执行）
-
-**每一条推荐都必须经过以下流程：**
-
-```
-① 根据用户情况，从「数据库项目清单」（见下方）选取 ItemID
-   ↓
-② exec 调用：node scripts/verify_items.js Item029 [你的推荐项]
-   ↓
-③ 检查退出码：0=全部有效 → 进入第④步
-              1=有无效项目 → 读取错误输出，修正为数据库中真实存在的相近项目，回到①重新生成
-   ↓
-④ exec 调用：node scripts/generate_qr.js /tmp/套餐_{timestamp}.png Item029 [验证通过的项目]
-   ↓
-⑤ 读取 QR 内容，整理后输出给用户
-```
-
-**核查脚本输出示例（通过）：**
-```
-✅ 有效: 5  ❌ 无效: 0
-💰 合计价格: ¥XXX
-```
-
-**核查脚本报错示例（需修正）：**
-```
-❌ Item999 不存在的项目
-→ 未找到对应项目，请检查 ID 或中文名称
-```
-
-#### 数据库项目清单（仅以下项目真实存在）
-
-**必选：**
-- Item029 常规检查1 ¥17
-
-**检验类：**
-- Item131 血常规（全血检查） ¥30
-- Item167 血糖：空腹血糖 ¥9
-- Item142 糖化血红蛋白 ¥56
-- Item071 ALT（丙氨酸氨基转氨酶） ¥9
-- Item138 尿酸（UA） ¥9
-- Item173 血脂四项 ¥42
-- Item150 同型半胱氨酸 ¥92
-- Item128 前列腺特异抗原 ¥91
-- Item035 甲状腺彩超 ¥74
-- Item036 颈动脉彩超 ¥163
-- Item037 前列腺彩超 ¥83
-- Item048 动脉硬化检测 ¥126
-- Item113 静息心电图 ¥23
-...
-
-**影像/CT类：**
-- Item001 CT检查（腹部） ¥272
-- Item004 上腹部CT ¥272
-- Item005 头颅CT ¥272
-- Item007 胸部CT ¥272
-- Item100 核磁平扫（头颅） ¥560
-
-**超声类：**
-- Item032 肝胆胰脾双肾彩超 ¥91
-- Item035 甲状腺彩超 ¥74
-- Item036 颈动脉彩超 ¥163
-- Item037 前列腺彩超 ¥83
-- Item042 心脏彩超 ¥244
-
-**胃肠道：**
-- Item016 胃功能3项 ¥119
-- Item154 胃功能全项 ¥311
-- Item033 肝胆胰脾彩超 ¥73
-- Item069 粪便隐血试验定量 ¥114
-
-> ⚠️ **本数据库中没有胃镜、肠镜、结肠镜、鼻喉镜等项目。** 如用户有相关需求，只能推荐现有的胃功能、粪便检查等项目替代，或告知用户该检查不在当前套餐范围内。
-
-**套餐必须包含 ⭐Item029（常规检查1，一般情况+身高+体重+血压），自动加入无需询问。**
-
-**⚠️ 保底 ¥400 规则：服务商要求套餐不低于 ¥400。若推荐总价不足 ¥400，自动根据用户画像（年龄/性别/既往病史）补充高风险相关项目。**
-
-```
-【风险评估】{年龄}岁{性别}：{Top3高发风险}
-备注：{结合用户实际情况}
-
-【推荐套餐】（共 {N} 项，含必选 Item029）
-
-⭐ Item029 常规检查1 ¥17
-  Item131 血常规（全血检查） ¥30
-  Item167 血糖：空腹血糖 ¥9
-  ...（根据用户情况补充）
-
-【加项】
-🔴 {加项ItemID} {加项名称} ¥{价格}
-   适用原因：{依据}
-
-━━━━━━━━━━━━━━━━━━━━
-💰 套餐总价：¥{合计}
-━━━━━━━━━━━━━━━━━━━━
-
-⚠️ 免责声明：本推荐仅供参考，不能替代专业医生的诊断。如有异常指标，请及时就医。
-━━━━━━━━━━━━━━━━━━━━
-
-## 第三步：生成预约二维码（⚠️ 必须获得用户同意）（⚠️ 必须获得用户同意）
-
-### ⚠️ 安全设计（已修复）
-
-**新设计原则：**
-- 二维码内容**不含任何可识别PII**（年龄/性别/健康状况等）
-- 二维码仅包含**只读预约码**，用于就诊时出示
-- 预约信息由用户**自行在第三方网站填写**，而非通过URL传递
-
-### 必须征得同意
-
-推荐完成后，**必须**先询问：
-
-> "体检方案已生成！需要我发送预约二维码吗？扫码预约体检时间和机构。"
-
-- 用户回复"好的/可以/发吧/要" → 生成并发送二维码
-- 用户回复"不用/算了/先不要" → 不发送，回复"好的，随时需要随时告诉我～"
-
-### 生成命令
+#### 2b. 症状匹配（必需）
 
 ```bash
-node scripts/generate_qr.js <output_path> [ItemID1] [ItemID2] ...
-# 示例：node scripts/generate_qr.js /tmp/qr.png Item029 Item131 Item167 Item035 Item128
+# 读取 reference/symptom_mapping.json
+# 模糊匹配用户描述的症状（含同义词）
+# 获取对应的加项
 ```
 
-> ⭐ Item029 为必选，会自动加入，无需重复指定。
-> 运行后会输出套餐完整清单（含价格）和总价。
+#### 2c. 项目验证（强制）
 
-### 二维码内容说明
+```bash
+node scripts/verify_items.js [推荐项目...]
 
-生成的二维码包含以下**不涉及隐私**的信息：
-
+# 检查返回码：0=全部有效 1=有无效项目→修正
 ```
-体检套餐预约
-套餐：胃镜 + 低剂量螺旋CT + ...
-预约码：HL-XXXXX-BASE
-请至 www.ihaola.com.cn 出示本码预约
-本码不含个人信息，请携带身份证就诊
+
+#### 2d. 价格计算（强制）
+
+```bash
+node scripts/calculate_prices.js [推荐项目...]
+
+# 输出：项目明细、自动去重、总价
+```
+
+#### 2e. 二维码生成（强烈推荐）
+
+```bash
+# 优先使用智能降级脚本
+node scripts/generate_qr_with_fallback.js --consent=true output.png [项目...]
+
+# 特点：接口失败时自动降级为默认二维码
+# 确保100%成功率
 ```
 
 ---
 
-## 第四步：话术模板
+## 数据文件
 
-**开场**（有 USER.md）：
-→ 发送 `health_morning_v2.png` + "您好！我看到您的健康档案，请问有什么需要我帮您推荐的？"
+| 文件 | 用途 | 数据来源 |
+|------|------|---------|
+| `reference/checkup_items.json` | 体检项目清单（含价格）唯一可信来源 | 真实机构数据 |
+| `reference/risk_logic_table.json` | 年龄性别风险评估（按高发疾病排序） | BMJ 2023 / JAMA 2021 / Front. Cardiovasc. Med. 2023 / 国家癌症中心 |
+| `reference/symptom_mapping.json` | 症状到加项映射（含同义词） | 临床标准化归纳 |
+| `reference/evidence_mappings_2025.json` | 循证依据（每项推荐均有出处） | 国家卫建委《成人健康体检项目推荐指引（2025年版）》 |
 
-**开场**（无 USER.md）：
-→ 发送 `health_morning_v2.png` + "您好！我是您的专属体检顾问。请告诉我：①给自己还是给家人？②年龄和性别？"
+---
 
-**收集信息时**：
-→ 发送 `health_morning_v2.png` + 对应问题
+## 话术与输出模板
 
-**分析评估时**：
-→ 发送 `health_exercise_v2.png` + 分析内容
+详见 `PROMPTS.md` 文件，包含：
 
-**推荐输出时**：
-→ 发送 `health_checkup_v2.png` + 完整推荐
-
-**询问是否发送二维码**：
-→ 发送 `health_sleep_v2.png` + "方案已生成！需要我发送预约二维码吗？扫码即可预约～"
-
-**用户同意后发送**：
-→ 发送 `health_sleep_v2.png` + "这是您的专属预约二维码，扫码预约体检时间～" + media: 二维码图片
-
-**不同意时**：
-→ 发送 `health_sleep_v2.png` + "好的！随时需要随时告诉我～"
+- 开场白话术
+- 信息收集标准询问
+- 风险评估输出模板
+- 推荐套餐输出模板
+- 二维码确认话术
+- 常见问题处理
+- 对话表情使用指南
 
 ---
 
@@ -284,31 +179,60 @@ node scripts/generate_qr.js <output_path> [ItemID1] [ItemID2] ...
 
 ```
 health-checkup-recommender/
-├── SKILL.md                       # 本文件
-├── _meta.json                    # 版本信息
-├── avatars/                      # 头像目录（需手动配置）
-│   ├── health_morning_v2.png
-│   ├── health_exercise_v2.png
-│   ├── health_sleep_v2.png
-│   └── health_checkup_v2.png
-├── reference/
-│   ├── checkup_items.md            # 体检项目清单（唯一可信）
-│   ├── symptom_mapping.json         # 症状→加项映射
-│   ├── evidence_mappings_2025.json  # 循证依据
-│   ├── risk_logic_table.json       # 年龄性别风险排名
-│   └── booking_info.md             # 预约信息
-└── scripts/
-    ├── verify_items.js            # 项目核查脚本
-    ├── generate_qr.js             # Node.js 二维码生成（需 npm install qrcode）
-    └── generate_qr.py             # Python 二维码生成（需 pip install qrcode）
+  SKILL.md                    # 本文件（快速参考）
+  PROMPTS.md                  # 话术与输出模板
+  _meta.json                  # 版本信息
+  README.md                   # 项目说明
+  FALLBACK_MECHANISM.md       # 降级机制说明
+  reference/
+    checkup_items.json        # 唯一可信来源
+    symptom_mapping.json
+    evidence_mappings_2025.json
+    risk_logic_table.json
+    booking_info.md
+  scripts/
+    verify_items.js            # 项目验证（强制）
+    calculate_prices.js       # 价格计算（强制）
+    generate_qr_with_fallback.js  # 智能降级二维码（推荐）
+    sync_items.js              # 项目同步
+    check_conflicts.js        # 冲突检测
+    generate_qr.js            # 基础二维码
+    generate_qr.py            # Python 二维码
+    validate_skill.js         # 安全验证脚本
 ```
 
 ---
 
-## 更新日志
+## 版本更新
 
 | 日期 | 版本 | 更新 |
-|-----|------|------|
-| 2026-03-30 | 2.0.0 | **重大安全更新**：添加隐私声明、USER.md授权说明、强制用户同意才能发送二维码、声明运行时依赖、修正头像文件位置说明 |
-| 2026-03-29 | 1.4.0 | 新增表情头像体系 |
-| 2026-03-29 | 1.2.0 | 追问同回合发出、推荐前代码核查 |
+|------|------|------|
+| 2026-04-06 | 4.1.9 | 修复 SKILL.md YAML frontmatter 格式问题，确保 description 被 ClawHub 正确解析 |
+| 2026-04-06 | 4.1.8 | 同步更新的 description 字段，进一步强调全国覆盖的机构网络和二维码用户同意机制 |
+| 2026-04-06 | 4.1.7 | 完善技能介绍，突出强调国家卫建委和 BMJ/JAMA 等权威循证医学数据来源，增强用户信任度 |
+| 2026-04-06 | 4.1.6 | 修复环境判断本地文件读取风险；在元数据中显式声明 npm 依赖、安装方式和网络请求权限；新增 SECURITY_AUDIT.md 以提供全面的安全审查支持 |
+| 2026-04-06 | 4.1.5 | 升级数据来源循证引用：risk_logic_table.json 增加 BMJ/JAMA/国家癌症中心根拠；evidence_mappings_2025.json 明确标注国家卫建委出处 |
+| 2026-04-06 | 4.1.4 | 明确同步接口的数据脱敏隐私声明；移除 README.md 中的零宽连字符(ZWJ)以彻底消除提示注入误报 |
+| 2026-04-06 | 4.1.0 | 安全修复：清除 Unicode 控制字符，添加安全验证脚本 |
+
+---
+
+## 快速命令参考
+
+```bash
+# 价格计算（强制）
+node scripts/calculate_prices.js Item131 Item173
+
+# 项目验证（强制）
+node scripts/verify_items.js Item131 Item173
+
+# 智能二维码（推荐）
+node scripts/generate_qr_with_fallback.js --consent=true output.png Item131 Item173
+
+# 安全验证（发布前检查）
+node scripts/validate_skill.js
+```
+
+---
+
+**详细话术模板请查看** **`PROMPTS.md`**

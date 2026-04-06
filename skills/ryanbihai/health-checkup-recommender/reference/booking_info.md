@@ -3,7 +3,7 @@
 ## 预约链接
 
 ```
-https://www.ihaola.com.cn/partners/haola-2ca4db68-192a-f911-501a-f155af6f5772/pe/launching.html?fromLaunch=1&needUserInfo=1&code=021Zi8ll2TT6rh4JtTll2PuJNd0Zi8lL&state=
+https://www.ihaola.com.cn/launch/haola/pe?urlsrc=brief&welfareid=xxx&ruleid=xxx
 ```
 
 ## 二维码生成
@@ -11,20 +11,20 @@ https://www.ihaola.com.cn/partners/haola-2ca4db68-192a-f911-501a-f155af6f5772/pe
 ### Node.js（推荐，容器内可用）
 
 ```javascript
-const { generateQR } = require('./scripts/generate_qr.js');
-await generateQR('/path/to/output.png');
+const { generateQR } = require('./scripts/generate_qr.js')
+await generateQR('/path/to/output.png', { welfareid: 'xxx', ruleid: 'xxx' })
 ```
 
 命令行：
 ```bash
-node scripts/generate_qr.js [output_path]
+node scripts/generate_qr.js [output_path] [welfareid] [ruleid]
 ```
 
 ### Python（需要 pip install qrcode）
 
 ```python
 import qrcode
-url = 'https://www.ihaola.com.cn/partners/haola-2ca4db68-192a-f911-501a-f155af6f5772/pe/launching.html?fromLaunch=1&needUserInfo=1&code=021Zi8ll2TT6rh4JtTll2PuJNd0Zi8lL&state='
+url = 'https://www.ihaola.com.cn/launch/haola/pe?urlsrc=brief&welfareid=xxx&ruleid=xxx'
 img = qrcode.make(url)
 img.save('体检预约二维码.png')
 ```
@@ -36,7 +36,6 @@ img.save('体检预约二维码.png')
 1. 推荐完体检项目后，告知用户可以扫码预约
 2. 使用 Node.js 生成二维码图片（推荐）
 3. 将图片发送给用户（微信支持直接发送图片）
-4. 告知用户：预约时说明"好啦专属顾问推荐"，可享VIP服务
 
 ---
 
