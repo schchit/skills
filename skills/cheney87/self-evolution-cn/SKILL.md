@@ -1,5 +1,8 @@
 ---
 name: self-evolution-cn
+slug: self-evolution-cn
+version: 1.0.5
+homepage: https://clawhub.ai/skills/self-evolution-cn
 description: "多 agent 自我进化系统，自动记录学习、错误和功能需求，支持多 agent 统计和自动提升"
 ---
 
@@ -104,4 +107,4 @@ clawdhub update self-evolution-cn
 
 ## 版本
 
-当前版本：1.0.2
+当前版本：1.0.5

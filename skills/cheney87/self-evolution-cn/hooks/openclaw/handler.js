@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 
 // 获取共享学习目录
-const SHARED_LEARNING_DIR = process.env.SHARED_LEARNING_DIR || '/root/.openclaw/shared-learning/.learnings';
+const SHARED_LEARNING_DIR = process.env.SHARED_LEARNING_DIR || '/root/.openclaw/shared-learning';
 
 // 获取当前 agent ID
 const AGENT_ID = process.env.AGENT_ID || 'main';
