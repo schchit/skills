@@ -9,7 +9,7 @@ Every command emits JSON:
 
 Primary fields:
 
-- `error.code`: `AUTH_ERROR`, `API_ERROR`, `RUNTIME_ERROR`, `UNKNOWN_ERROR`
+- `error.code`: `AUTH_ERROR`, `API_ERROR`, `VALIDATION_ERROR`, `RUNTIME_ERROR`, `UNKNOWN_ERROR`
 - `error.status`: HTTP status when available (`0` for network failure)
 - `error.message`: first human-readable diagnosis
 
@@ -53,6 +53,20 @@ Actions:
 1. Compare payload keys and enum values with endpoint constraints
 2. Prefer `--payload-file` to avoid shell escaping issues
 3. Remove unexpected fields and retry
+
+### CLI VALIDATION_ERROR (local preflight)
+
+Symptoms:
+
+- `error.code = VALIDATION_ERROR`
+- `error.issues[]` contains field-level diagnostics before request is sent
+
+Actions:
+
+1. Fix each issue by `field` and `message`
+2. Follow `expected` and `suggestion` when present
+3. For `single-job create`, omit `requestId` to let CLI auto-generate
+4. For `plan-stage-job create`, keep required fields (`planId`, `stageIndex`, `planPath`, `day`) and note that `requestId` is optional without auto-generation
 
 ### Async Job Timeout
 

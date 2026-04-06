@@ -109,11 +109,23 @@ Command-family overview:
 - `single-job by-request <requestId>`
 - `single-job wait --request-id <requestId> [--interval-ms <ms>] [--timeout-ms <ms>]`
 
+`single-job create` local payload validation behavior:
+
+- `requestId` is optional; CLI auto-generates one when missing/blank.
+- Payload is validated before request; failures return `error.code=VALIDATION_ERROR`.
+- Validation errors include field-level `issues[]` with `field`, `message`, `expected`, `actual`, and optional `suggestion`.
+
 ### `plan-stage-job`
 
 - `plan-stage-job create [--payload-file <path> | --body <json>]`
 - `plan-stage-job get <planId> <stageIndex>`
 - `plan-stage-job wait <planId> <stageIndex> [--interval-ms <ms>] [--timeout-ms <ms>]`
+
+`plan-stage-job create` local payload validation behavior:
+
+- Payload is validated before request; failures return `error.code=VALIDATION_ERROR`.
+- Validation errors include field-level `issues[]` with `field`, `message`, `expected`, `actual`, and optional `suggestion`.
+- `requestId` is optional and kept as-is when provided (no auto-generation).
 
 ### `chat`
 
@@ -210,7 +222,7 @@ Command-family overview:
 - `<code>`: email or sms verification code
 - `<audioId>`: audio identifier
 - `<planId>`: healing plan identifier
-- `<requestId>`: async request identifier
+- `<requestId>`: async request identifier (optional in `single-job create` payload because CLI can auto-generate; optional in `plan-stage-job create` payload without auto-generation)
 - `<jobId>`: async job identifier
 - `<stageIndex>`: zero-based plan stage index
 - `<commentId>`: comment identifier under one audio
@@ -261,7 +273,8 @@ Rules:
 
 - Positional args (`<...>`) are required.
 - Flags shown without `[]` are required.
-- Payload required fields are enforced by server validation.
+- Payload required fields are primarily enforced by server validation.
+- `single-job create` and `plan-stage-job create` additionally perform CLI local validation before request.
 
 Payload commands summary:
 
@@ -288,8 +301,8 @@ Payload commands summary:
 - `audio comments add`: R=`content`; O=`parentComment`
 - `plan create`: R=`title`; O=`description,stages,currentStage,status,totalDuration,healingRequestId,healingTheme,launchWish,userSelections`
 - `plan update`: all optional
-- `single-job create`: R=`requestId,userRequest`; O=`shareText,voiceId,selectedEmotions,intensity,energyLevel,selectedScenarios,bodySensations,currentEnvironment,sessionGoal,sessionApproach,avoidTopics,useHistoryMemory,selectedGoals,gender,age,mbti,lifeStage,sleepQuality,meditationExp`
-- `plan-stage-job create`: R=`planId,stageIndex,planPath,day`; O=`requestId,userRequest,shareText,voiceModel,voiceId,userSelections,fixedTags`
+- `single-job create`: R=`userRequest`; O=`requestId(auto-generated when missing),shareText,voiceId,selectedEmotions,intensity,energyLevel,selectedScenarios,bodySensations,currentEnvironment,sessionGoal,sessionApproach,avoidTopics,useHistoryMemory,selectedGoals,gender,age,mbti,lifeStage,sleepQuality,meditationExp`
+- `plan-stage-job create`: R=`planId,stageIndex,planPath,day`; O=`requestId(optional),userRequest,shareText,voiceModel,voiceId,userSelections,fixedTags`
 - `chat send`: R=`message`
 - `chat send-stream`: R=`message`
 - `chat session rename`: R=`title`
@@ -333,6 +346,8 @@ aiheal audio list --sort newest --limit 20
 aiheal single-job create --payload-file ./single-job.json
 aiheal single-job wait --request-id <requestId>
 ```
+
+Use `data.job.requestId` from the `single-job create` response as `<requestId>`.
 
 4. Stream one chat turn:
 

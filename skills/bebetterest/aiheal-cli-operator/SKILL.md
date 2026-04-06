@@ -48,6 +48,7 @@ Command-family scope in this skill:
 - Expect JSON output with top-level `ok`.
 - Use `error.code` and `error.status` as primary diagnostics.
 - For async jobs, use `single-job wait` and `plan-stage-job wait` with explicit timeout values.
+- For `single-job create` and `plan-stage-job create`, handle CLI local validation failures via `error.code=VALIDATION_ERROR` and inspect `error.issues[]` for field-level corrections.
 
 5. Verify capability coverage (detect fake/unimplemented commands).
 - For public endpoints, expect `200` with valid response envelopes.
@@ -67,6 +68,9 @@ Command-family scope in this skill:
 - `npx` cache `EPERM`: set `NPM_CONFIG_CACHE=/tmp/aiheal-npm-cache` or use global install.
 - `API_ERROR` with `status: 404`: prioritize checking endpoint mapping or command naming mismatch.
 - Async wait timeout: query status endpoints (`get`/`by-request`) and inspect progress fields.
+- `VALIDATION_ERROR` (CLI local): fix payload by iterating over `error.issues[]` (`field`, `message`, `expected`, `actual`, `suggestion`) before retry.
+- `single-job create` request id: `requestId` is optional in payload; when omitted CLI auto-generates it. Use returned `data.job.requestId` for `single-job wait --request-id`.
+- `plan-stage-job create` request id: `requestId` is optional in payload (no auto-generation); include it only if your workflow needs an explicit correlation id.
 
 ## Resources
 
