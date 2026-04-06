@@ -1,26 +1,27 @@
 ---
 name: lexi
+version: 1.1.0
+author: mcroebuck
+license: MIT
 description: Filesystem librarian for OpenClaw environments. Systematically scans, catalogs, and organizes the entire file structure — identifying orphaned files, misplaced assets, stale artifacts, broken references, and structural inefficiencies. Use when the user says "audit my files", "organize my filesystem", "run lexi", "clean up", "catalog my files", "file audit", "where does this go", or any variation requesting filesystem review, reorganization, or cleanup.
 metadata: { "openclaw": { "always": false } }
 ---
 
 # Lexi — Filesystem Librarian
 
-You are running the Lexi filesystem audit process. Follow these phases exactly. Do not skip phases. Do not combine phases. Complete each phase before moving to the next.
+A structured filesystem audit process organized into six sequential phases. Each phase completes before the next begins. The scanning framework at `{baseDir}/scanning-framework.md` provides classification definitions, exclusion rules, catalog structure, and report templates.
 
-Reference the scanning framework at `{baseDir}/scanning-framework.md` for classification definitions, exclusion rules, catalog structure, and report templates.
-
-**Safety Rule:** Phases 1-4 are strictly READ-ONLY. You observe, catalog, and report. You do not move, rename, delete, or create files until Phase 5, and only with explicit user approval for each batch.
+**Safety:** Phases 1–4 are strictly read-only — observation, cataloging, and reporting only. File modifications happen exclusively in Phase 5, and only with explicit user approval for each batch.
 
 ---
 
 ## Phase 1: Scope & Exclusions
 
-### Procedure
+### Steps
 
 1. Confirm the scan root with the user. Default: `~` (full home directory).
 
-2. **Returning User Fast Path:** If `USER.md` contains scan history and known preferences:
+2. **Returning User Fast Path:** When `USER.md` contains scan history and known preferences:
    - Present stored exclusions and scope: "Last scan covered [root] with these exclusions: [list]. Still accurate?"
    - If confirmed → proceed to Phase 2.
    - If changes needed → update only what changed.
@@ -30,10 +31,10 @@ Reference the scanning framework at `{baseDir}/scanning-framework.md` for classi
    - **User-configurable exclusions:** Any additional paths the user wants to protect
    - Present the exclusion list and get confirmation before scanning.
 
-4. **Identify scan mode:**
+4. **Scan mode selection:**
    - **Full audit** — first run or periodic deep scan of everything
-   - **Incremental** — only scan files modified since last audit date
-   - **Targeted** — scan a specific directory tree only
+   - **Incremental** — only files modified since last audit date
+   - **Targeted** — a specific directory tree only
 
 5. Save scope and exclusions for future sessions (update USER.md).
 
@@ -41,23 +42,17 @@ Reference the scanning framework at `{baseDir}/scanning-framework.md` for classi
 
 ## Phase 2: Discovery & Inventory
 
-### Procedure
+The raw scan phase — building a complete picture of what exists.
 
-This is the raw scan phase. Build a complete picture of what exists.
+### Steps
 
 1. **Directory tree scan:**
-   ```
-   For each directory under scan root (respecting exclusions):
-   - Record: path, file count, total size, last modified date
+   - For each directory under scan root (respecting exclusions): record path, file count, total size, last modified date
    - Flag: empty directories, deeply nested paths (>5 levels), unusually large directories
-   ```
 
 2. **File inventory:**
-   ```
-   For each file (respecting exclusions):
-   - Record: path, size, last modified, file type/extension
+   - For each file (respecting exclusions): record path, size, last modified, file type/extension
    - Flag: files >10MB, files not modified in >90 days, files with no extension
-   ```
 
 3. **Structural scan:**
    - Identify all git repositories (directories containing `.git/`)
@@ -75,20 +70,20 @@ This is the raw scan phase. Build a complete picture of what exists.
    - Map all symlinks with source → target
    - Build the **dependency graph**: which files reference which paths
 
-5. **Output:** Generate a raw inventory file (structured, not prose). Do NOT present this to the user — it's working data for Phase 3.
+5. **Output:** A raw inventory file (structured, not prose) — working data for Phase 3, not presented to the user.
 
-### Important
+### Notes
 - This phase can be slow on large filesystems. Provide progress updates.
 - For very large directory trees, work in segments (e.g., scan `~/.openclaw/` first, then `~/projects/`, etc.)
-- Never read file contents in this phase except for reference scanning. You're cataloging structure, not auditing content.
+- File contents are not read in this phase except during reference scanning. The goal is cataloging structure, not auditing content.
 
 ---
 
 ## Phase 3: Classification & Analysis
 
-### Procedure
-
 Using the inventory from Phase 2, classify every significant file and directory.
+
+### Steps
 
 1. **Directory classification** — assign each directory a type from the scanning framework:
    - Active project, Archive, Agent workspace, Config/dotfile, Data store, Tool/script, Documentation, Media/assets, Temp/build artifact, Unknown
@@ -121,7 +116,7 @@ Using the inventory from Phase 2, classify every significant file and directory.
 
 ## Phase 4: Report & Collaborative Review
 
-### Procedure
+### Steps
 
 1. **Generate the audit report** following the structure in the scanning framework:
    - Executive Summary (total files, directories, classifications breakdown)
@@ -146,16 +141,15 @@ Using the inventory from Phase 2, classify every significant file and directory.
    - Order batches to minimize intermediate breakage
    - Include reference updates in same batch as the move they depend on
 
-### Important
-- Never rush through findings. The user may have context you don't about why a file exists where it does.
-- If the user says "that's there on purpose," accept it. Record it in the catalog so future scans don't re-flag it.
+### Notes
+- The user may have context about why a file exists where it does. When the user says "that's there on purpose," accept it and record it in the catalog so future scans don't re-flag it.
 - Present file sizes and dates — they help the user make decisions about stale files.
 
 ---
 
 ## Phase 5: Execution (Requires Explicit Approval)
 
-### Procedure
+### Steps
 
 1. **Pre-flight safety check:**
    - Confirm the archive directory exists: `~/.lexi-archive/YYYY-MM-DD/`
@@ -164,7 +158,7 @@ Using the inventory from Phase 2, classify every significant file and directory.
 
 2. **Execute approved changes one batch at a time:**
    - **Moves:** `mv` with archive backup of original location manifest
-   - **Deletions:** Always `trash` first (move to `~/.lexi-archive/YYYY-MM-DD/` with a manifest entry recording original path, size, date, and reason for removal)
+   - **Deletions:** Always archive first — move to `~/.lexi-archive/YYYY-MM-DD/` with a manifest entry recording original path, size, date, and reason for removal
    - **Reference updates:** Update all files that referenced the old path
    - **Symlink cleanup:** Remove broken symlinks, update targets for moved files
 
@@ -178,16 +172,16 @@ Using the inventory from Phase 2, classify every significant file and directory.
    - Update the catalog with new locations
    - Save the changelog to `~/.lexi-archive/YYYY-MM-DD/changelog.md`
 
-### Important
-- **NEVER delete without archiving first.** The archive is sacred.
+### Notes
+- The archive is sacred — files are always archived before removal.
 - If a reference update would modify a file in an excluded zone (e.g., `.secrets/`), flag it for manual update instead.
-- If anything goes wrong during execution, STOP and report. Don't try to fix it silently.
+- If anything unexpected occurs during execution, stop and report rather than attempting silent recovery.
 
 ---
 
 ## Phase 6: Catalog Generation
 
-### Procedure
+### Steps
 
 1. **Generate or update the living catalog** at `~/CATALOG.md`:
    - Top-level directory map with purposes
@@ -197,7 +191,7 @@ Using the inventory from Phase 2, classify every significant file and directory.
    - Conventions (naming, depth, where new files of each type should go)
    - Last audit date and summary
 
-2. **The catalog is the deliverable.** This is what other agents reference when deciding where to store a file. It should be:
+2. **The catalog is the primary deliverable.** Other agents reference it when deciding where to store a file. It should be:
    - Scannable (table format where possible)
    - Authoritative (single source of truth for "where does X go?")
    - Maintainable (updated by Lexi on each audit, not manually)
@@ -222,4 +216,4 @@ For scans after the initial full audit:
 
 ## Slash Command
 
-This skill responds to `/lexi` as a slash command trigger. The user can also invoke it by saying "audit my files", "organize", "run lexi", "clean up my files", "file audit", "catalog", or similar.
+This skill responds to `/lexi` as a slash command trigger. Also invoked by "audit my files", "organize", "run lexi", "clean up my files", "file audit", "catalog", or similar.
