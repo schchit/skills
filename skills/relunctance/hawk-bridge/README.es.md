@@ -33,6 +33,21 @@ Los agentes IA olvidan todo después de cada sesión. **hawk-bridge** conecta el
 
 ---
 
+## ❌ Without vs ✅ With hawk-bridge (TODO: translate)
+
+| Scenario | ❌ Without hawk-bridge | ✅ With hawk-bridge |
+|----------|------------------------|---------------------|
+| **New session starts** | Blank — knows nothing about you | ✅ Injects relevant memories automatically |
+| **User repeats a preference** | "I told you before..." | Remembers from session 1 |
+| **Long task runs for days** | Restart = start over | Task state persists, resumes seamlessly |
+| **Context gets large** | Token bill skyrockets, 💸 | 5 compression strategies keep it lean |
+| **Duplicate info** | Same fact stored 10 times | SimHash dedup — stored once |
+| **Memory recall** | All similar, redundant injection | MMR diverse recall — no repetition |
+| **Memory management** | Everything piles up forever | 4-tier decay — noise fades, signal stays |
+| **Self-improvement** | Repeats the same mistakes | importance + access_count tracking → smart promotion |
+| **Multi-agent team** | Each agent starts fresh, no shared context | Shared LanceDB — all agents learn from each other |
+
+
 ## ✨ Funcionalidades principales
 
 | # | Funcionalidad | Descripción |
@@ -325,7 +340,6 @@ Después de instalar, elige tu modo de embedding — todo mediante variables de 
 export OLLAMA_BASE_URL=http://localhost:11434
 
 # ② sentence-transformers CPU local (gratis, sin GPU, modelo ~90MB)
-export USE_LOCAL_EMBEDDING=1
 
 # ③ Jina AI free tier (requiere clave API gratuita de jina.ai)
 export JINA_API_KEY=tu_clave_gratuita
@@ -372,7 +386,6 @@ Sin claves API en archivos de configuración — solo variables de entorno.
 | **sentence-transformers** | CPU local | ❌ | ⭐⭐⭐ | ⚡⚡ |
 | **Ollama** | GPU local | ❌ | ⭐⭐⭐⭐ | ⚡⚡⚡⚡ |
 | **Jina AI** | Cloud | ✅ gratis | ⭐⭐⭐⭐ | ⚡⚡⚡⚡ |
-| **Minimax** | Cloud | ✅ | ⭐⭐⭐⭐⭐ | ⚡⚡⚡⚡⚡ |
 
 **Por defecto**: BM25-only — funciona inmediatamente con cero configuración.
 
@@ -382,9 +395,8 @@ Sin claves API en archivos de configuración — solo variables de entorno.
 
 ```
 ¿Tienes OLLAMA_BASE_URL?      → Híbrido completo: vector + BM25 + RRF
-¿Tienes USE_LOCAL_EMBEDDING=1? → sentence-transformers + BM25 + RRF
 ¿Tienes JINA_API_KEY?          → Jina vectores + BM25 + RRF
-¿Tienes MINIMAX_API_KEY?     → Minimax vectores + BM25 + RRF
+Has QWEN_API_KEY?          → Qianwen (阿里云 DashScope) + BM25 + RRF
 ¿Nada configurado?             → BM25-only (solo palabras clave, sin llamadas API)
 ```
 
@@ -442,7 +454,6 @@ hawk-bridge/
 | **Runtime** | Node.js 18+ (ESM), Python 3.12+ |
 | **Vector DB** | LanceDB (local, serverless) |
 | **Recuperación** | BM25 + búsqueda vectorial ANN + fusión RRF |
-| **Embedding** | Ollama / sentence-transformers / Jina AI / OpenAI / Minimax |
 | **Eventos Hook** | `agent:bootstrap` (recall), `message:sent` (capture) |
 | **Dependencias** | Cero dependencia dura — todo opcional con auto-fallback |
 | **Persistencia** | Sistema de archivos local, sin DB externa requerida |

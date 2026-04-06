@@ -1,12 +1,24 @@
 // Embeddings module — handles vectorization
-// Supports: OpenClaw (auto-config), Ollama (local free), Jina AI, Cohere, OpenAI
+// Supports: OpenAI, Qianwen (阿里云), Jina AI, Cohere, Ollama, OpenAI-Compatible
 
 import { HawkConfig } from './types.js';
-import { getConfig } from './config.js';
+
+const FETCH_TIMEOUT_MS = 15000;
+
+/** Fetch with AbortController timeout — prevents hanging on network issues */
+async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const resp = await fetch(url, { ...init, signal: controller.signal });
+    return resp;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 export class Embedder {
   private config: HawkConfig['embedding'];
-  private openai: any;
 
   constructor(config: HawkConfig['embedding']) {
     this.config = config;
@@ -15,10 +27,10 @@ export class Embedder {
   async embed(texts: string[]): Promise<number[][]> {
     const { provider } = this.config;
 
-    if (provider === 'minimax') {
-      return this.embedMinimax(texts);
-    } else if (provider === 'openclaw') {
-      return this.embedOpenClaw(texts);
+    if (provider === 'qianwen') {
+      return this.embedQianwen(texts);
+    } else if (provider === 'openai-compat') {
+      return this.embedOpenAICompat(texts);
     } else if (provider === 'ollama') {
       return this.embedOllama(texts);
     } else if (provider === 'jina') {
@@ -35,69 +47,72 @@ export class Embedder {
     return vectors[0];
   }
 
-  // ---- OpenClaw/Minimax: uses already-configured provider ----
-  private async embedOpenClaw(texts: string[]): Promise<number[][]> {
-    const baseURL = this.config.baseURL || 'https://api.minimaxi.com/v1';
-    const apiKey = this.config.apiKey || process.env.MINIMAX_API_KEY || '';
-
-    const resp = await fetch(`${baseURL}/embeddings`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: this.config.model || 'embedding-2-normal',
-        type: 'db',
-        texts: texts,
-      }),
-    });
-
+  // ---- Qianwen (阿里云 DashScope) — OpenAI-compatible, 国内首选 ----
+  private async embedQianwen(texts: string[]): Promise<number[][]> {
+    const apiKey = this.config.apiKey || process.env.QWEN_API_KEY || '';
+    const baseURL = this.config.baseURL || 'https://dashscope.aliyuncs.com/api/v1';
+    const resp = await fetchWithTimeout(
+      `${baseURL}/services/embeddings/text-embedding/text-embedding`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: this.config.model || 'text-embedding-v1',
+          input: { text: texts },
+        }),
+      }
+    );
     if (!resp.ok) {
-      const errText = await resp.text();
-      throw new Error(`OpenClaw/Minimax embedding error: ${resp.status} ${errText}`);
+      const err = await resp.text();
+      throw new Error(`Qianwen embedding error: ${resp.status} ${err}`);
     }
     const data = await resp.json() as any;
-    if (!data.vectors || !data.vectors[0]) {
+    // Qianwen response: { output: { embeddings: [{ embedding: number[] }] }
+    if (!data.output?.embeddings?.length) {
       throw new Error(`No vectors returned: ${JSON.stringify(data)}`);
     }
-    return data.vectors;
+    return data.output.embeddings.map((e: any) => e.embedding);
   }
 
-  // ---- OpenAI ----
-  // ---- Minimax embeddings ----
-  private async embedMinimax(texts: string[]): Promise<number[][]> {
-    const baseURL = this.config.baseURL || 'https://api.minimaxi.com/v1';
-    const apiKey = this.config.apiKey || process.env.MINIMAX_API_KEY || '';
-
-    const resp = await fetch(`${baseURL}/embeddings`, {
+  // ---- OpenAI-Compatible (generic endpoint — user provides baseURL + apiKey) ----
+  private async embedOpenAICompat(texts: string[]): Promise<number[][]> {
+    const baseURL = this.config.baseURL;
+    const apiKey = this.config.apiKey;
+    if (!baseURL || !apiKey) {
+      throw new Error('openai-compat provider requires both baseURL and apiKey in config');
+    }
+    const resp = await fetchWithTimeout(`${baseURL}/embeddings`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: this.config.model || 'embedding-2-normal',
-        type: 'db',
-        texts: texts,
+        model: this.config.model || 'text-embedding-3-small',
+        input: texts,
       }),
     });
-
     if (!resp.ok) {
-      const errText = await resp.text();
-      throw new Error(`Minimax embedding error: ${resp.status} ${errText}`);
+      const err = await resp.text();
+      throw new Error(`OpenAI-compatible embedding error: ${resp.status} ${err}`);
     }
     const data = await resp.json() as any;
-    if (!data.vectors || !data.vectors[0]) {
+    if (!data.data?.length) {
       throw new Error(`No vectors returned: ${JSON.stringify(data)}`);
     }
-    return data.vectors;
+    return data.data.map((item: any) => item.embedding);
   }
 
   // ---- OpenAI ----
   private async embedOpenAI(texts: string[]): Promise<number[][]> {
     const { OpenAI } = await import('openai');
-    const client = new OpenAI({ apiKey: this.config.apiKey || process.env.OPENAI_API_KEY });
+    const client = new OpenAI({
+      apiKey: this.config.apiKey || process.env.OPENAI_API_KEY,
+      timeout: FETCH_TIMEOUT_MS,
+    });
     const model = this.config.model || 'text-embedding-3-small';
     const resp = await client.embeddings.create({ model, input: texts });
     return resp.data.map((item: any) => item.embedding);
@@ -107,7 +122,7 @@ export class Embedder {
   private async embedJina(texts: string[]): Promise<number[][]> {
     const apiKey = this.config.apiKey || process.env.JINA_API_KEY || '';
     const model = this.config.model || 'jina-embeddings-v5-small';
-    const resp = await fetch('https://api.jina.ai/v1/embeddings', {
+    const resp = await fetchWithTimeout('https://api.jina.ai/v1/embeddings', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -123,7 +138,7 @@ export class Embedder {
   // ---- Cohere (free tier) ----
   private async embedCohere(texts: string[]): Promise<number[][]> {
     const apiKey = this.config.apiKey || process.env.COHERE_API_KEY || '';
-    const resp = await fetch('https://api.cohere.ai/v1/embed', {
+    const resp = await fetchWithTimeout('https://api.cohere.ai/v1/embed', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -144,20 +159,16 @@ export class Embedder {
   private async embedOllama(texts: string[]): Promise<number[][]> {
     const baseURL = (this.config.baseURL || process.env.OLLAMA_BASE_URL || 'http://localhost:11434').replace(/\/$/, '');
     const model = this.config.model || process.env.OLLAMA_EMBED_MODEL || 'nomic-embed-text';
-    const results: number[][] = [];
-
-    // Ollama /api/embed accepts { model, input } where input is a string OR array
-    const resp = await fetch(`${baseURL}/api/embed`, {
+    const resp = await fetchWithTimeout(`${baseURL}/api/embed`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model, input: texts }),
     });
     if (!resp.ok) {
-      const errText = await resp.text();
-      throw new Error(`Ollama embedding error: ${resp.status} ${errText}`);
+      const err = await resp.text();
+      throw new Error(`Ollama embedding error: ${resp.status} ${err}`);
     }
     const data = await resp.json() as any;
-    // Response: { embeddings: number[][] } or { embeddings: number[] }
     if (Array.isArray(data.embeddings) && Array.isArray(data.embeddings[0])) {
       return data.embeddings;
     } else if (Array.isArray(data.embeddings)) {

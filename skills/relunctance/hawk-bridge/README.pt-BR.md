@@ -33,6 +33,21 @@ Agentes IA esquecem tudo após cada sessão. **hawk-bridge** conecta o sistema d
 
 ---
 
+## ❌ Without vs ✅ With hawk-bridge (TODO: translate)
+
+| Scenario | ❌ Without hawk-bridge | ✅ With hawk-bridge |
+|----------|------------------------|---------------------|
+| **New session starts** | Blank — knows nothing about you | ✅ Injects relevant memories automatically |
+| **User repeats a preference** | "I told you before..." | Remembers from session 1 |
+| **Long task runs for days** | Restart = start over | Task state persists, resumes seamlessly |
+| **Context gets large** | Token bill skyrockets, 💸 | 5 compression strategies keep it lean |
+| **Duplicate info** | Same fact stored 10 times | SimHash dedup — stored once |
+| **Memory recall** | All similar, redundant injection | MMR diverse recall — no repetition |
+| **Memory management** | Everything piles up forever | 4-tier decay — noise fades, signal stays |
+| **Self-improvement** | Repeats the same mistakes | importance + access_count tracking → smart promotion |
+| **Multi-agent team** | Each agent starts fresh, no shared context | Shared LanceDB — all agents learn from each other |
+
+
 ## ✨ Funcionalidades principais
 
 | # | Funcionalidade | Descrição |
@@ -44,7 +59,6 @@ Agentes IA esquecem tudo após cada sessão. **hawk-bridge** conecta o sistema d
 | 5 | **4 Providers de embedding** | Ollama (local) / sentence-transformers (CPU) / Jina AI (API gratuita) / OpenAI |
 | 6 | **Degradação elegante** | Alterna automaticamente quando chaves API não estão disponíveis |
 | 7 | **Injeção contextual** | Score BM25 usado diretamente quando não há embedder disponível |
-| 8 | **Seed Memory** | Pré-preenchida com estrutura da equipe, normas e contexto do projeto |
 | 9 | **Recall sub-100ms** | Índice ANN LanceDB para recuperação instantânea |
 | 10 | **Instalação multiplataforma** | Um comando, funciona no Ubuntu/Debian/Fedora/Arch/Alpine/openSUSE |
 
@@ -325,7 +339,6 @@ Após instalar, escolha seu modo de embedding — tudo via variáveis de ambient
 export OLLAMA_BASE_URL=http://localhost:11434
 
 # ② sentence-transformers CPU local (grátis, sem GPU, modelo ~90MB)
-export USE_LOCAL_EMBEDDING=1
 
 # ③ Jina AI free tier (requer chave API gratuita de jina.ai)
 export JINA_API_KEY=sua_chave_gratuita
@@ -372,7 +385,6 @@ Sem chaves API em arquivos de configuração — apenas variáveis de ambiente.
 | **sentence-transformers** | CPU local | ❌ | ⭐⭐⭐ | ⚡⚡ |
 | **Ollama** | GPU local | ❌ | ⭐⭐⭐⭐ | ⚡⚡⚡⚡ |
 | **Jina AI** | Cloud | ✅ grátis | ⭐⭐⭐⭐ | ⚡⚡⚡⚡ |
-| **Minimax** | Cloud | ✅ | ⭐⭐⭐⭐⭐ | ⚡⚡⚡⚡⚡ |
 
 **Padrão**: BM25-only — funciona imediatamente com zero configuração.
 
@@ -382,27 +394,12 @@ Sem chaves API em arquivos de configuração — apenas variáveis de ambiente.
 
 ```
 Tem OLLAMA_BASE_URL?      → Híbrido completo: vetor + BM25 + RRF
-Tem USE_LOCAL_EMBEDDING=1?→ sentence-transformers + BM25 + RRF
 Tem JINA_API_KEY?         → Jina vetores + BM25 + RRF
-Tem MINIMAX_API_KEY?     → Minimax vetores + BM25 + RRF
+Has QWEN_API_KEY?          → Qianwen (阿里云 DashScope) + BM25 + RRF
 Nada configurado?          → BM25-only (apenas palavras-chave, sem chamadas API)
 ```
 
 Sem chave API = sem crash = degradação elegante.
-
----
-
-## 🌱 Seed Memory
-
-Na primeira instalação, 11 memórias fundacionais são populadas automaticamente:
-
-- Estrutura da equipe (papéis main/wukong/bajie/bailong/tseng)
-- Normas de colaboração (workflow GitHub inbox → done)
-- Contexto do projeto (hawk-bridge, qujingskills, gql-openclaw)
-- Preferências de comunicação
-- Princípios de execução
-
-Isso garante que hawk-recall tenha algo para injetar desde o primeiro dia.
 
 ---
 
@@ -442,7 +439,6 @@ hawk-bridge/
 | **Runtime** | Node.js 18+ (ESM), Python 3.12+ |
 | **Vector DB** | LanceDB (local, serverless) |
 | **Recuperação** | BM25 + busca vetorial ANN + fusão RRF |
-| **Embedding** | Ollama / sentence-transformers / Jina AI / OpenAI / Minimax |
 | **Eventos Hook** | `agent:bootstrap` (recall), `message:sent` (capture) |
 | **Dependências** | Zero dependência rígida — tudo opcional com auto-fallback |
 | **Persistência** | Sistema de arquivos local, sem DB externa necessária |

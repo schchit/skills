@@ -34,6 +34,22 @@ AI agents forget everything after each session. **hawk-bridge** bridges OpenClaw
 
 ---
 
+## ❌ Without vs ✅ With hawk-bridge
+
+| Scenario | ❌ Without hawk-bridge | ✅ With hawk-bridge |
+|----------|------------------------|---------------------|
+| **New session starts** | Blank — knows nothing about you | ✅ Injects relevant memories automatically |
+| **User repeats a preference** | "I told you before..." | Remembers from session 1 |
+| **Long task runs for days** | Restart = start over | Task state persists, resumes seamlessly |
+| **Context gets large** | Token bill skyrockets, 💸 | 5 compression strategies keep it lean |
+| **Duplicate info** | Same fact stored 10 times | SimHash dedup — stored once |
+| **Memory recall** | All similar, redundant injection | MMR diverse recall — no repetition |
+| **Memory management** | Everything piles up forever | 4-tier decay — noise fades, signal stays |
+| **Self-improvement** | Repeats the same mistakes | importance + access_count tracking → smart promotion |
+| **Multi-agent team** | Each agent starts fresh, no shared context | Shared LanceDB — all agents learn from each other |
+
+---
+
 ## 🦅 What problem does it solve?
 
 **Without hawk-bridge:** AI agents forget everything — across sessions, across agents, and spend too much on LLM tokens.
@@ -117,15 +133,21 @@ Session (persistent, on disk)
 | 1 | **Auto-Capture Hook** | `message:sent` → hawk extracts 6 categories of memories automatically |
 | 2 | **Auto-Recall Hook** | `agent:bootstrap` → hawk injects relevant memories before first response |
 | 3 | **Hybrid Retrieval** | BM25 + vector search + RRF fusion — no API key required for baseline |
-| 4 | **Zero-Config Fallback** | Works out-of-the-box in BM25-only mode, no API keys needed |
-| 5 | **4 Embedding Providers** | Ollama (local) / sentence-transformers (CPU) / Jina AI (free API) / OpenAI |
+| 4 | **Zero-Config Fallback** | Works out-of-the-box, no API keys needed (Jina free tier default) |
+| 5 | **5 Embedding Providers** | Ollama (local GPU) / Jina AI (free cloud) / Qianwen / OpenAI / Cohere |
 | 6 | **Graceful Degradation** | Automatically falls back when API keys are unavailable |
 | 7 | **Context-Aware Injection** | BM25 rank score used directly when no embedder available |
-| 8 | **Seed Memory** | Pre-populated with generic AI agent team concepts — customize after install |
+| 8 | — | (seed memory removed) |
 | 9 | **Sub-100ms Recall** | LanceDB ANN index for instant retrieval |
-| 10 | **Cross-Platform Install** | One command, works on Ubuntu/Debian/Fedora/Arch/Alpine/openSUSE |
-| 11 | **SimHash Auto-Dedup** | 64-bit fingerprint dedup — prevents duplicate memories from being stored |
+| 10 | **Cross-Platform Install** | One command, works on all major Linux distros |
+| 11 | **Auto-Dedup** | Text-similarity dedup before storage — prevents duplicate memories |
 | 12 | **MMR Diverse Recall** | Maximal Marginal Relevance — relevant AND diverse, reduces context size |
+| 13 | **28-Rule Text Normalizer** | Cleans markdown, URLs, punctuation, timestamps, emojis, HTML, debug logs |
+| 14 | **Sensitive Info Sanitizer** | Auto-redacts API keys, phone numbers, emails, IDs, credit cards on capture |
+| 15 | **TTL / Expiry** | Memories auto-expire after configurable TTL (default 30 days) |
+| 16 | **Recall MinScore Gate** | Memories below relevance threshold are not injected into context |
+| 17 | **Audit Logging** | All capture/skip/reject/recall events logged to `~/.hawk/audit.log` |
+| 18 | **Harmful Content Filter** | Rejects violent/fraud/hack/CSAM content at capture time |
 
 ---
 
@@ -356,7 +378,7 @@ openclaw plugins install /tmp/hawk-bridge
 
 ```bash
 # 1. System deps
-sudo apt-get update && sudo apt-get install -y nodejs npm python3 python3-pip git curl
+sudo zypper install -y nodejs npm python3 python3-pip git curl
 
 # 2. Clone repo
 git clone git@github.com:relunctance/hawk-bridge.git /tmp/hawk-bridge
@@ -383,98 +405,6 @@ node dist/seed.js
 openclaw plugins install /tmp/hawk-bridge
 ```
 
-### Fedora / RHEL / CentOS / Rocky / AlmaLinux
-
-```bash
-# 1. System deps
-sudo dnf install -y nodejs npm python3 python3-pip git curl
-
-# 2. Clone repo
-git clone git@github.com:relunctance/hawk-bridge.git /tmp/hawk-bridge
-cd /tmp/hawk-bridge
-
-# 3. Python deps
-pip3 install lancedb openai tiktoken rank-bm25 sentence-transformers --break-system-packages
-
-# 4. Ollama (optional)
-curl -fsSL https://ollama.com/install.sh | sh
-ollama pull nomic-embed-text
-
-# 5. context-hawk
-git clone git@github.com:relunctance/context-hawk.git ~/.openclaw/workspace/context-hawk
-ln -sf ~/.openclaw/workspace/context-hawk/hawk ~/.openclaw/hawk
-
-# 6. npm + build
-npm install && npm run build
-
-# 7. Seed memory
-node dist/seed.js
-
-# 8. Activate
-openclaw plugins install /tmp/hawk-bridge
-```
-
-### Arch / Manjaro / EndeavourOS
-
-```bash
-# 1. System deps
-sudo pacman -Sy --noconfirm nodejs npm python python-pip git curl
-
-# 2. Clone repo
-git clone git@github.com:relunctance/hawk-bridge.git /tmp/hawk-bridge
-cd /tmp/hawk-bridge
-
-# 3. Python deps
-pip3 install lancedb openai tiktoken rank-bm25 sentence-transformers --break-system-packages
-
-# 4. Ollama (optional)
-curl -fsSL https://ollama.com/install.sh | sh
-ollama pull nomic-embed-text
-
-# 5. context-hawk
-git clone git@github.com:relunctance/context-hawk.git ~/.openclaw/workspace/context-hawk
-ln -sf ~/.openclaw/workspace/context-hawk/hawk ~/.openclaw/hawk
-
-# 6. npm + build
-npm install && npm run build
-
-# 7. Seed memory
-node dist/seed.js
-
-# 8. Activate
-openclaw plugins install /tmp/hawk-bridge
-```
-
-### Alpine
-
-```bash
-# 1. System deps
-apk add --no-cache nodejs npm python3 py3-pip git curl
-
-# 2. Clone repo
-git clone git@github.com:relunctance/hawk-bridge.git /tmp/hawk-bridge
-cd /tmp/hawk-bridge
-
-# 3. Python deps
-pip3 install lancedb openai tiktoken rank-bm25 sentence-transformers --break-system-packages
-
-# 4. Ollama (optional)
-curl -fsSL https://ollama.com/install.sh | sh
-ollama pull nomic-embed-text
-
-# 5. context-hawk
-git clone git@github.com:relunctance/context-hawk.git ~/.openclaw/workspace/context-hawk
-ln -sf ~/.openclaw/workspace/context-hawk/hawk ~/.openclaw/hawk
-
-# 6. npm + build
-npm install && npm run build
-
-# 7. Seed memory
-node dist/seed.js
-
-# 8. Activate
-openclaw plugins install /tmp/hawk-bridge
-```
 
 ### openSUSE / SUSE Linux Enterprise
 
@@ -555,8 +485,9 @@ openclaw plugins install /tmp/hawk-bridge
 After install, choose your embedding mode — all via environment variables:
 
 ```bash
-# ① Default: sentence-transformers (local CPU, no API key needed — works out of the box)
-# No environment variables needed!
+# ① Default: Qianwen 阿里云 DashScope (no API key needed by default!)
+# Works out of the box. Set API key for higher rate limits:
+export QWEN_API_KEY=your_qwen_key
 
 # ② Ollama local GPU (recommended for quality — free, no API key)
 export OLLAMA_BASE_URL=http://localhost:11434
@@ -566,11 +497,25 @@ export JINA_API_KEY=your_free_key
 # ⚠️ Proxy required in China: set HTTP/SOCKS proxy below
 export HTTPS_PROXY=http://YOUR_PROXY_HOST:PORT
 
-# ④ BM25-only fallback (no embedding needed — keyword search only)
+# ④ OpenAI (paid, high quality)
+export OPENAI_API_KEY=sk-...
+
+# ⑤ BM25-only fallback (no embedding needed — keyword search only)
 # No environment variables needed
 ```
 
-### 🔑 Get Your Free Jina API Key (Recommended)
+### 🔑 Get Your Qianwen API Key (Recommended — 国内首选)
+
+阿里云 DashScope 提供免费额度，新用户有赠券：
+
+1. **注册** https://dashscope.console.aliyun.com/ (可用阿里云账号)
+2. **开通服务**: 搜索 "百炼" → 文本嵌入 → 开通
+3. **获取 Key**: https://dashscope.console.aliyun.com/apiKey → 创建 API-KEY
+4. **配置**:
+```bash
+```
+
+### 🔑 Get Your Free Jina API Key
 
 Jina AI offers a **generous free tier** — no credit card required:
 
@@ -581,27 +526,23 @@ Jina AI offers a **generous free tier** — no credit card required:
 
 > ⚠️ **Important: Jina AI requires a proxy in China (api.jina.ai is blocked).** Set `HTTPS_PROXY` to your proxy URL (e.g. `http://192.168.1.109:10808`).
 
-### ~/.hawk/config.json (Recommended for Jina)
-
-For best results with Jina, create `~/.hawk/config.json`:
+### ~/.hawk/config.json
 
 ```json
 {
-  "openai_api_key": "jina_YOUR_KEY_HERE",
-  "embedding_model": "jina-embeddings-v3",
+  "openai_api_key": "YOUR_API_KEY",
+  "embedding_model": "text-embedding-v1",
   "embedding_dimensions": 1024,
-  "base_url": "https://api.jina.ai/v1",
-  "proxy": "http://YOUR_PROXY_HOST:PORT"
+  "base_url": "https://dashscope.aliyuncs.com/api/v1"
 }
 ```
 
-| Field | Description |
-|-------|-------------|
-| `openai_api_key` | Your Jina API key (starts with `jina_`) |
-| `embedding_model` | Model name: `jina-embeddings-v3` (recommended) |
-| `embedding_dimensions` | Vector size: 1024 for jina-embeddings-v3 |
-| `base_url` | Must be `https://api.jina.ai/v1` |
-| `proxy` | HTTP proxy URL (required in China) |
+| Provider | Field | Description |
+|---------|-------|-------------|
+| Jina | `JINA_API_KEY` env | Jina API Key starts with `jina_` |
+| Ollama | `OLLAMA_BASE_URL` env | e.g. `http://localhost:11434` |
+| OpenAI | `OPENAI_API_KEY` env | OpenAI API Key |
+| Generic | `base_url` + `apiKey` | Any OpenAI-compatible endpoint |
 
 ### openclaw.json
 
@@ -628,7 +569,6 @@ No API keys in config files — environment variables only.
 | **sentence-transformers** | Local CPU | ❌ | ⭐⭐⭐ | ⚡⚡ |
 | **Ollama** | Local GPU | ❌ | ⭐⭐⭐⭐ | ⚡⚡⚡⚡ |
 | **Jina AI** | Cloud | ✅ free | ⭐⭐⭐⭐ | ⚡⚡⚡⚡ |
-| **Minimax** | Cloud | ✅ | ⭐⭐⭐⭐⭐ | ⚡⚡⚡⚡⚡ |
 
 **Default**: BM25-only — works immediately with zero configuration.
 
@@ -637,28 +577,17 @@ No API keys in config files — environment variables only.
 ## 🔄 Degradation Logic
 
 ```
-Has OLLAMA_BASE_URL?       → Full hybrid: vector + BM25 + RRF
-Has USE_LOCAL_EMBEDDING=1? → sentence-transformers + BM25 + RRF
+Has OLLAMA_BASE_URL?        → Ollama embeddings + BM25 + RRF
 Has JINA_API_KEY?          → Jina embeddings + BM25 + RRF
-Has MINIMAX_API_KEY?      → Minimax embeddings + BM25 + RRF
-Nothing configured?        → BM25-only (pure keyword, no API calls)
+Has QWEN_API_KEY?          → Qianwen (阿里云 DashScope) + BM25 + RRF
+Has OPENAI_API_KEY?        → OpenAI embeddings + BM25 + RRF
+Has COHERE_API_KEY?        → Cohere embeddings + BM25 + RRF
+Nothing configured?          → BM25-only (pure keyword, no API calls)
 ```
 
 No API key = no crash = graceful degradation.
 
 ---
-
-## 🌱 Seed Memory
-
-On first install, 11 foundational memories are seeded automatically:
-
-- Team structure (main/wukong/bajie/bailong/tseng roles)
-- Collaboration norms (GitHub inbox → done workflow)
-- Project context (hawk-bridge, qujingskills, gql-openclaw)
-- Communication preferences
-- Operating principles
-
-These ensure hawk-recall has something to inject from day one.
 
 ---
 
@@ -675,9 +604,8 @@ hawk-bridge/
 │   ├── index.ts               # Plugin entry point
 │   ├── config.ts              # OpenClaw config reader + env detection
 │   ├── lancedb.ts             # LanceDB wrapper
-│   ├── embeddings.ts           # 5 embedding providers
+│   ├── embeddings.ts           # 6 embedding providers (Qianwen/Ollama/Jina/Cohere/OpenAI/OpenAI-Compatible)
 │   ├── retriever.ts            # Hybrid search (BM25 + vector + RRF)
-│   ├── seed.ts                # Seed memory initializer
 │   └── hooks/
 │       ├── hawk-recall/       # agent:bootstrap hook
 │       │   ├── handler.ts
@@ -697,7 +625,6 @@ hawk-bridge/
 | **Runtime** | Node.js 18+ (ESM), Python 3.12+ |
 | **Vector DB** | LanceDB (local, serverless) |
 | **Retrieval** | BM25 + ANN vector search + RRF fusion |
-| **Embedding** | Ollama / sentence-transformers / Jina AI / OpenAI / Minimax |
 | **Hook Events** | `agent:bootstrap` (recall), `message:sent` (capture) |
 | **Dependencies** | Zero hard dependencies — all optional with auto-fallback |
 | **Persistence** | Local filesystem, no external DB required |

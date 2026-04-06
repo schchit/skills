@@ -33,6 +33,21 @@ AI Agent 每次會話結束就會遺忘一切。**hawk-bridge** 將 OpenClaw 的
 
 ---
 
+## ❌ Without vs ✅ With hawk-bridge (TODO: translate)
+
+| Scenario | ❌ Without hawk-bridge | ✅ With hawk-bridge |
+|----------|------------------------|---------------------|
+| **New session starts** | Blank — knows nothing about you | ✅ Injects relevant memories automatically |
+| **User repeats a preference** | "I told you before..." | Remembers from session 1 |
+| **Long task runs for days** | Restart = start over | Task state persists, resumes seamlessly |
+| **Context gets large** | Token bill skyrockets, 💸 | 5 compression strategies keep it lean |
+| **Duplicate info** | Same fact stored 10 times | SimHash dedup — stored once |
+| **Memory recall** | All similar, redundant injection | MMR diverse recall — no repetition |
+| **Memory management** | Everything piles up forever | 4-tier decay — noise fades, signal stays |
+| **Self-improvement** | Repeats the same mistakes | importance + access_count tracking → smart promotion |
+| **Multi-agent team** | Each agent starts fresh, no shared context | Shared LanceDB — all agents learn from each other |
+
+
 ## ✨ 核心功能
 
 | # | 功能 | 說明 |
@@ -325,7 +340,6 @@ openclaw plugins install /tmp/hawk-bridge
 export OLLAMA_BASE_URL=http://localhost:11434
 
 # ② sentence-transformers CPU 本地（完全免費，無需 GPU，約 90MB 模型）
-export USE_LOCAL_EMBEDDING=1
 
 # ③ Jina AI 免費額度（需從 jina.ai 申請免費 Key）
 export JINA_API_KEY=你的免費key
@@ -372,7 +386,6 @@ export JINA_API_KEY=jina_你的KEY
 | **sentence-transformers** | 本地 CPU | ❌ | ⭐⭐⭐ | ⚡⚡ |
 | **Ollama** | 本地 GPU | ❌ | ⭐⭐⭐⭐ | ⚡⚡⚡⚡ |
 | **Jina AI** | 雲端 | ✅ 免費 | ⭐⭐⭐⭐ | ⚡⚡⚡⚡ |
-| **Minimax** | 雲端 | ✅ | ⭐⭐⭐⭐⭐ | ⚡⚡⚡⚡⚡ |
 
 **預設**：BM25-only — 零設定即可執行。
 
@@ -382,9 +395,7 @@ export JINA_API_KEY=jina_你的KEY
 
 ```
 有 OLLAMA_BASE_URL？      → 全量混合：向量 + BM25 + RRF
-有 USE_LOCAL_EMBEDDING=1？→ sentence-transformers + BM25 + RRF
 有 JINA_API_KEY？         → Jina 向量 + BM25 + RRF
-有 MINIMAX_API_KEY？     → Minimax 向量 + BM25 + RRF
 什麼都沒配置？             → BM25-only（純關鍵詞，無 API 呼叫）
 ```
 
@@ -442,7 +453,6 @@ hawk-bridge/
 | **執行環境** | Node.js 18+ (ESM)、Python 3.12+ |
 | **向量資料庫** | LanceDB（本地、無伺服器） |
 | **檢索方式** | BM25 + ANN 向量搜尋 + RRF 融合 |
-| **向量生成** | Ollama / sentence-transformers / Jina AI / OpenAI / Minimax |
 | **Hook 事件** | `agent:bootstrap`（召回）、`message:sent`（捕獲） |
 | **依賴** | 零硬依賴 — 全部可選，自動降級 |
 | **持久化** | 本地檔案系統，無需外部資料庫 |

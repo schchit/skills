@@ -33,6 +33,21 @@ Gli agenti IA dimenticano tutto dopo ogni sessione. **hawk-bridge** collega il s
 
 ---
 
+## ❌ Without vs ✅ With hawk-bridge (TODO: translate)
+
+| Scenario | ❌ Without hawk-bridge | ✅ With hawk-bridge |
+|----------|------------------------|---------------------|
+| **New session starts** | Blank — knows nothing about you | ✅ Injects relevant memories automatically |
+| **User repeats a preference** | "I told you before..." | Remembers from session 1 |
+| **Long task runs for days** | Restart = start over | Task state persists, resumes seamlessly |
+| **Context gets large** | Token bill skyrockets, 💸 | 5 compression strategies keep it lean |
+| **Duplicate info** | Same fact stored 10 times | SimHash dedup — stored once |
+| **Memory recall** | All similar, redundant injection | MMR diverse recall — no repetition |
+| **Memory management** | Everything piles up forever | 4-tier decay — noise fades, signal stays |
+| **Self-improvement** | Repeats the same mistakes | importance + access_count tracking → smart promotion |
+| **Multi-agent team** | Each agent starts fresh, no shared context | Shared LanceDB — all agents learn from each other |
+
+
 ## ✨ Funzionalità principali
 
 | # | Funzionalità | Descrizione |
@@ -44,7 +59,6 @@ Gli agenti IA dimenticano tutto dopo ogni sessione. **hawk-bridge** collega il s
 | 5 | **4 Provider di embedding** | Ollama (locale) / sentence-transformers (CPU) / Jina AI (API gratuita) / OpenAI |
 | 6 | **Degradazione elegante** | Passa automaticamente quando le chiavi API non sono disponibili |
 | 7 | **Iniezione contestuale** | Punteggio BM25 usato direttamente quando non c'è embedder disponibile |
-| 8 | **Seed Memory** | Pre-popolata con struttura del team, norme e contesto del progetto |
 | 9 | **Recall sub-100ms** | Indice ANN LanceDB per recupero istantaneo |
 | 10 | **Installazione multipiattaforma** | Un comando, funziona su Ubuntu/Debian/Fedora/Arch/Alpine/openSUSE |
 
@@ -325,7 +339,6 @@ Dopo l'installazione, scegli la modalità di embedding — tutto tramite variabi
 export OLLAMA_BASE_URL=http://localhost:11434
 
 # ② sentence-transformers CPU locale (gratis, nessuna GPU, modello ~90MB)
-export USE_LOCAL_EMBEDDING=1
 
 # ③ Jina AI free tier (richiede chiave API gratuita da jina.ai)
 export JINA_API_KEY=la_tua_chiave_gratuita
@@ -372,7 +385,6 @@ Nessuna chiave API nei file di configurazione — solo variabili d'ambiente.
 | **sentence-transformers** | CPU locale | ❌ | ⭐⭐⭐ | ⭐⚡ |
 | **Ollama** | GPU locale | ❌ | ⭐⭐⭐⭐ | ⚡⚡⚡⚡ |
 | **Jina AI** | Cloud | ✅ gratis | ⭐⭐⭐⭐ | ⚡⚡⚡⚡ |
-| **Minimax** | Cloud | ✅ | ⭐⭐⭐⭐⭐ | ⚡⚡⚡⚡⚡ |
 
 **Predefinito**: BM25-only — funziona subito con zero configurazione.
 
@@ -382,27 +394,12 @@ Nessuna chiave API nei file di configurazione — solo variabili d'ambiente.
 
 ```
 OLLAMA_BASE_URL presente?      → Ibrido completo: vettore + BM25 + RRF
-USE_LOCAL_EMBEDDING=1 presente?→ sentence-transformers + BM25 + RRF
 JINA_API_KEY presente?         → Jina vettori + BM25 + RRF
-MINIMAX_API_KEY presente?     → Minimax vettori + BM25 + RRF
+Has QWEN_API_KEY?          → Qianwen (阿里云 DashScope) + BM25 + RRF
 Niente configurato?             → BM25-only (solo parole chiave, nessuna chiamata API)
 ```
 
 Nessuna chiave API = nessun crash = degradazione elegante.
-
----
-
-## 🌱 Seed Memory
-
-Alla prima installazione, 11 ricordi fondamentali vengono seedati automaticamente:
-
-- Struttura del team (ruoli main/wukong/bajie/bailong/tseng)
-- Norme di collaborazione (workflow GitHub inbox → done)
-- Contesto del progetto (hawk-bridge, qujingskills, gql-openclaw)
-- Preferenze di comunicazione
-- Principi di esecuzione
-
-Questo assicura che hawk-recall abbia qualcosa da iniettare dal primo giorno.
 
 ---
 
@@ -442,7 +439,6 @@ hawk-bridge/
 | **Runtime** | Node.js 18+ (ESM), Python 3.12+ |
 | **Vector DB** | LanceDB (locale, serverless) |
 | **Recupero** | BM25 + ricerca vettoriale ANN + fusione RRF |
-| **Embedding** | Ollama / sentence-transformers / Jina AI / OpenAI / Minimax |
 | **Eventi Hook** | `agent:bootstrap` (recall), `message:sent` (capture) |
 | **Dipendenze** | Zero dipendenze hard — tutto opzionale con auto-fallback |
 | **Persistenza** | File system locale, nessun DB esterno richiesto |

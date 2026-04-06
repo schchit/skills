@@ -7,6 +7,12 @@
 import { HawkDB } from './lancedb.js';
 import { Embedder } from './embeddings.js';
 import { getConfig, hasEmbeddingProvider } from './config.js';
+import {
+  BM25_K1, BM25_B, RRF_K, RRF_VECTOR_WEIGHT,
+  NOISE_SIMILARITY_THRESHOLD,
+  VECTOR_SEARCH_MULTIPLIER, BM25_SEARCH_MULTIPLIER,
+  RERANK_CANDIDATE_MULTIPLIER,
+} from './constants.js';
 import type { RetrievedMemory } from './types.js';
 
 export class HybridRetriever {
@@ -16,15 +22,32 @@ export class HybridRetriever {
   private corpus: string[] = [];
   private corpusIds: string[] = [];
   private noisePrototypes: number[][] = [];
+  private bm25Dirty: boolean = false;   // set true when new memories are stored
+  private bm25BuildPromise: Promise<void> | null = null;  // prevents concurrent rebuilds
 
   constructor(db: HawkDB, embedder: Embedder) {
     this.db = db;
     this.embedder = embedder;
   }
 
+  /** Call this after store() to invalidate the BM25 index — next search() will rebuild */
+  markDirty(): void {
+    this.bm25Dirty = true;
+  }
+
   // ---------- BM25 Setup ----------
 
-  async buildBm25Index(): Promise<void> {
+  private async _ensureBm25Index(): Promise<void> {
+    if (!this.bm25Dirty && this.bm25) return;
+    if (this.bm25BuildPromise) return this.bm25BuildPromise;
+
+    this.bm25BuildPromise = this._buildBm25Index();
+    await this.bm25BuildPromise;
+    this.bm25BuildPromise = null;
+    this.bm25Dirty = false;
+  }
+
+  private async _buildBm25Index(): Promise<void> {
     try {
       const { BM25Okapi } = await import('rank_bm25');
       const allMemories = await this.db.getAllTexts();
@@ -34,8 +57,8 @@ export class HybridRetriever {
       this.corpusIds = allMemories.map(m => m.id);
       this.corpus = allMemories.map(m => m.text.toLowerCase());
       this.bm25 = new BM25Okapi(this.corpus);
-    } catch (e) {
-      // rank_bm25 not installed, skip BM25
+    } catch {
+      // rank_bm25 not installed, skip BM25 silently (BM25 fallback still works)
       console.warn('[hawk-bridge] rank_bm25 not available, BM25 disabled');
     }
   }
@@ -80,16 +103,14 @@ export class HybridRetriever {
         this.noisePrototypes = await this.embedder.embed(noiseTexts);
       }
     } catch (e) {
-      console.warn('[hawk-bridge] Noise prototype embedding failed, skipping:', e);
+      console.warn('[hawk-bridge] Noise prototype embedding failed, noise filter disabled:', (e as Error).message);
     }
   }
 
-  private isNoise(embedding: number[], threshold = 0.82): boolean {
-    if (!this.noisePrototypes.length) return false;
-
+  private isNoise(embedding: number[]): boolean {
     for (const prototype of this.noisePrototypes) {
       const sim = cosineSimilarity(embedding, prototype);
-      if (sim >= threshold) return true;
+      if (sim >= NOISE_SIMILARITY_THRESHOLD) return true;
     }
     return false;
   }
@@ -99,17 +120,16 @@ export class HybridRetriever {
   private rrfFusion(
     vectorResults: Array<{ id: string; score: number }>,
     bm25Results: Array<{ id: string; score: number }>,
-    k = 60
   ): Array<{ id: string; rrfScore: number; vectorScore: number; bm25Score: number }> {
     const rrfMap = new Map<string, { rrfScore: number; vectorScore: number; bm25Score: number }>();
 
     // Vector results
     for (let rank = 0; rank < vectorResults.length; rank++) {
       const item = vectorResults[rank];
-      const score = 1 / (k + rank + 1);
+      const score = 1 / (RRF_K + rank + 1);
       const existing = rrfMap.get(item.id) || { rrfScore: 0, vectorScore: 0, bm25Score: 0 };
       rrfMap.set(item.id, {
-        rrfScore: existing.rrfScore + score * 0.7, // vector weight
+        rrfScore: existing.rrfScore + score * RRF_VECTOR_WEIGHT, // vector weight
         vectorScore: item.score,
         bm25Score: existing.bm25Score,
       });
@@ -118,10 +138,10 @@ export class HybridRetriever {
     // BM25 results
     for (let rank = 0; rank < bm25Results.length; rank++) {
       const item = bm25Results[rank];
-      const score = 1 / (k + rank + 1);
+      const score = 1 / (RRF_K + rank + 1);
       const existing = rrfMap.get(item.id) || { rrfScore: 0, vectorScore: 0, bm25Score: 0 };
       rrfMap.set(item.id, {
-        rrfScore: existing.rrfScore + score * 0.3, // BM25 weight
+        rrfScore: existing.rrfScore + score * (1 - RRF_VECTOR_WEIGHT), // BM25 weight
         vectorScore: existing.vectorScore,
         bm25Score: item.score,
       });
@@ -194,8 +214,11 @@ export class HybridRetriever {
     topK: number = 5,
     scope?: string
   ): Promise<RetrievedMemory[]> {
-    // Ensure indexes are built
-    if (!this.bm25) await this.buildBm25Index();
+    // Clamp topK to prevent abuse
+    topK = Math.min(Math.max(1, topK), 100);
+
+    // Ensure indexes are built (with dirty-flag rebuild)
+    await this._ensureBm25Index();
     if (!this.noisePrototypes.length) await this.buildNoisePrototypes();
 
     const hasEmbedding = hasEmbeddingProvider();
@@ -204,7 +227,7 @@ export class HybridRetriever {
       // Full pipeline: vector + BM25 + RRF + rerank
       try {
         const queryVector = await this.embedder.embedQuery(query);
-        const vectorResults = await this.db.search(queryVector, topK * 4, 0.0, scope);
+        const vectorResults = await this.db.search(queryVector, topK * VECTOR_SEARCH_MULTIPLIER, 0.0, scope);
 
         const vectorRanked = vectorResults
           .map((r, i) => ({ id: r.id, score: 1 - i * 0.01, text: r.text }))
@@ -215,19 +238,24 @@ export class HybridRetriever {
           .map((id, i) => ({ id, score: bm25Scores[i], text: this.corpus[i] }))
           .filter(item => item.score > 0)
           .sort((a, b) => b.score - a.score)
-          .slice(0, topK * 4);
+          .slice(0, topK * BM25_SEARCH_MULTIPLIER);
 
         const fused = this.rrfFusion(vectorRanked, bm25Ranked);
-        const noiseFiltered = [];
 
+        // Batch-fetch all fused IDs at once (N+1 query fix)
+        const fusedIds = fused.map(f => f.id);
+        const fetched = await this.db.getByIds(fusedIds);
+        // fetched is already a MemoryMap
+
+        const noiseFiltered = [];
         for (const item of fused) {
-          const memory = await this.db.getById(item.id);
+          const memory = fetched.get(item.id);
           if (!memory) continue;
           if (this.isNoise(memory.vector)) continue;
           noiseFiltered.push({ ...item, text: memory.text, vector: memory.vector });
         }
 
-        const candidates = noiseFiltered.slice(0, topK * 3).map(item => ({
+        const candidates = noiseFiltered.slice(0, topK * RERANK_CANDIDATE_MULTIPLIER).map(item => ({
           id: item.id,
           text: item.text,
           score: item.rrfScore,
@@ -240,7 +268,7 @@ export class HybridRetriever {
         for (const item of noiseFiltered) {
           const rerankScore = idToRerank.get(item.id);
           if (rerankScore === undefined) continue;
-          const memory = await this.db.getById(item.id);
+          const memory = fetched.get(item.id);
           if (!memory) continue;
           results.push({
             id: item.id,
@@ -267,14 +295,17 @@ export class HybridRetriever {
       .sort((a, b) => b.score - a.score)
       .slice(0, topK * 3);
 
-    // No rerank needed - just use BM25 scores directly
+    // Batch-fetch BM25 results (N+1 query fix)
+    const bm25Ids = bm25Ranked.map(b => b.id);
+    const fetchedBm25 = await this.db.getByIds(bm25Ids);
+    // fetchedBm25 is already a MemoryMap
     const idToScore = new Map(bm25Ranked.map(item => [item.id, item.score]));
 
     const results: RetrievedMemory[] = [];
     for (const item of bm25Ranked) {
       const score = idToScore.get(item.id);
       if (score === undefined) continue;
-      const memory = await this.db.getById(item.id);
+      const memory = fetchedBm25.get(item.id);
       if (!memory) continue;
       results.push({
         id: item.id,

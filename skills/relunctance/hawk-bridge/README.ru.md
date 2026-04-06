@@ -33,6 +33,21 @@ AI агенты забывают всё после каждой сессии. **
 
 ---
 
+## ❌ Without vs ✅ With hawk-bridge (TODO: translate)
+
+| Scenario | ❌ Without hawk-bridge | ✅ With hawk-bridge |
+|----------|------------------------|---------------------|
+| **New session starts** | Blank — knows nothing about you | ✅ Injects relevant memories automatically |
+| **User repeats a preference** | "I told you before..." | Remembers from session 1 |
+| **Long task runs for days** | Restart = start over | Task state persists, resumes seamlessly |
+| **Context gets large** | Token bill skyrockets, 💸 | 5 compression strategies keep it lean |
+| **Duplicate info** | Same fact stored 10 times | SimHash dedup — stored once |
+| **Memory recall** | All similar, redundant injection | MMR diverse recall — no repetition |
+| **Memory management** | Everything piles up forever | 4-tier decay — noise fades, signal stays |
+| **Self-improvement** | Repeats the same mistakes | importance + access_count tracking → smart promotion |
+| **Multi-agent team** | Each agent starts fresh, no shared context | Shared LanceDB — all agents learn from each other |
+
+
 ## ✨ Ключевые функции
 
 | # | Функция | Описание |
@@ -44,7 +59,6 @@ AI агенты забывают всё после каждой сессии. **
 | 5 | **4 провайдера эмбеддингов** | Ollama (локально) / sentence-transformers (CPU) / Jina AI (бесплатное API) / OpenAI |
 | 6 | **Graceful Degradation** | Автоматически переключается при недоступности API-ключей |
 | 7 | **Контекстное внедрение** | Оценка BM25 используется напрямую при отсутствии эмбеддера |
-| 8 | **Seed Memory** | Предзаполнена структурой команды, нормами и контекстом проекта |
 | 9 | **Sub-100ms Recall** | ANN-индекс LanceDB для мгновенного поиска |
 | 10 | **Кроссплатформенная установка** | Одна команда для Ubuntu/Debian/Fedora/Arch/Alpine/openSUSE |
 
@@ -325,7 +339,6 @@ openclaw plugins install /tmp/hawk-bridge
 export OLLAMA_BASE_URL=http://localhost:11434
 
 # ② sentence-transformers CPU локально (бесплатно, без GPU, модель ~90MB)
-export USE_LOCAL_EMBEDDING=1
 
 # ③ Jina AI бесплатный тариф (требуется бесплатный API-ключ с jina.ai)
 export JINA_API_KEY=ваш_бесплатный_ключ
@@ -372,7 +385,6 @@ API-ключи не в файлах конфигурации — только п
 | **sentence-transformers** | Локальный CPU | ❌ | ⭐⭐⭐ | ⭐⚡ |
 | **Ollama** | Локальный GPU | ❌ | ⭐⭐⭐⭐ | ⚡⚡⚡⚡ |
 | **Jina AI** | Облако | ✅ бесплатно | ⭐⭐⭐⭐ | ⚡⚡⚡⚡ |
-| **Minimax** | Облако | ✅ | ⭐⭐⭐⭐⭐ | ⚡⚡⚡⚡⚡ |
 
 **По умолчанию**: BM25-only — работает сразу без настройки.
 
@@ -382,27 +394,12 @@ API-ключи не в файлах конфигурации — только п
 
 ```
 Есть OLLAMA_BASE_URL?      → Полный гибрид: вектор + BM25 + RRF
-Есть USE_LOCAL_EMBEDDING=1? → sentence-transformers + BM25 + RRF
 Есть JINA_API_KEY?          → Jina векторы + BM25 + RRF
-Есть MINIMAX_API_KEY?      → Minimax векторы + BM25 + RRF
+Has QWEN_API_KEY?          → Qianwen (阿里云 DashScope) + BM25 + RRF
 Ничего не настроено?        → BM25-only (только ключевые слова, без API-вызовов)
 ```
 
 Нет API-ключа = нет сбоя = Graceful Degradation.
-
----
-
-## 🌱 Seed Memory
-
-При первой установке 11 фундаментальных воспоминаний автоматически засеваются:
-
-- Структура команды (роли main/wukong/bajie/bailong/tseng)
-- Нормы сотрудничества (workflow GitHub inbox → done)
-- Контекст проекта (hawk-bridge, qujingskills, gql-openclaw)
-- Предпочтения коммуникации
-- Принципы выполнения
-
-Это гарантирует, что hawk-recall имеет что внедрять с первого дня.
 
 ---
 
@@ -442,7 +439,6 @@ hawk-bridge/
 | **Runtime** | Node.js 18+ (ESM), Python 3.12+ |
 | **Vector DB** | LanceDB (локальная, serverless) |
 | **Поиск** | BM25 + ANN векторный поиск + RRF-фьюжн |
-| **Эмбеддинги** | Ollama / sentence-transformers / Jina AI / OpenAI / Minimax |
 | **Hook-события** | `agent:bootstrap` (recall), `message:sent` (capture) |
 | **Зависимости** | Ноль жестких зависимостей — всё опционально с авто-fallback |
 | **Персистентность** | Локальная файловая система, без внешней БД |

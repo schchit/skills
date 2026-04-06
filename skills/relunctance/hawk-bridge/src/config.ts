@@ -4,6 +4,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { DEFAULT_MIN_SCORE, DEFAULT_EMBEDDING_DIM } from './constants.js';
 import type { HawkConfig } from './types.js';
 
 const OPENCLAW_CONFIG_PATH = path.join(os.homedir(), '.openclaw', 'openclaw.json');
@@ -63,11 +64,11 @@ export function getDefaultModelId(): string {
 
 const DEFAULT_CONFIG: HawkConfig = {
   embedding: {
-    provider: 'sentence-transformers', // Local CPU, no API key needed
+    provider: 'qianwen', // 阿里云 DashScope, 国内首选
     apiKey: '',
-    model: 'all-MiniLM-L6-v2',
-    baseURL: '',
-    dimensions: 384,
+    model: 'text-embedding-v1',
+    baseURL: 'https://dashscope.aliyuncs.com/api/v1',
+    dimensions: 1024,  // Qianwen text-embedding-v1 输出 1024 维
   },
   llm: {
     provider: 'groq',  // Default: free groq Llama-3, no API key needed
@@ -77,13 +78,20 @@ const DEFAULT_CONFIG: HawkConfig = {
   },
   recall: {
     topK: 5,
-    minScore: 0.6,
+    minScore: DEFAULT_MIN_SCORE,  // from constants.ts
     injectEmoji: '🦅',
+  },
+  audit: {
+    enabled: true,
   },
   capture: {
     enabled: true,
     maxChunks: 3,
     importanceThreshold: 0.5,
+    ttlMs: 30 * 24 * 60 * 60 * 1000,  // 30 days
+    maxChunkSize: 2000,
+    minChunkSize: 20,
+    dedupSimilarity: 0.95,
   },
   python: {
     pythonPath: 'python3.12',
@@ -91,56 +99,59 @@ const DEFAULT_CONFIG: HawkConfig = {
   },
 };
 
-let cachedConfig: HawkConfig | null = null;
+// Promise-based cache prevents concurrent initialization
+let configPromise: Promise<HawkConfig> | null = null;
 
 export async function getConfig(): Promise<HawkConfig> {
-  if (cachedConfig) return cachedConfig;
+  if (!configPromise) {
+    configPromise = (async () => {
+      const config: HawkConfig = { ...DEFAULT_CONFIG };
 
-  const config: HawkConfig = { ...DEFAULT_CONFIG };
+      // Env var overrides (highest priority) — OLLAMA > QWEN > JINA > default
+      if (process.env.OLLAMA_BASE_URL) {
+        config.embedding.provider = 'ollama';
+        config.embedding.baseURL = process.env.OLLAMA_BASE_URL;
+        config.embedding.model = process.env.OLLAMA_EMBED_MODEL || 'nomic-embed-text';
+        config.embedding.dimensions = 768;  // nomic-embed-text is 768-dim
+      } else if (process.env.QWEN_API_KEY || process.env.DASHSCOPE_API_KEY) {
+        config.embedding.provider = 'qianwen';
+        config.embedding.apiKey = process.env.QWEN_API_KEY || process.env.DASHSCOPE_API_KEY || '';
+        config.embedding.baseURL = 'https://dashscope.aliyuncs.com/api/v1';
+        config.embedding.model = 'text-embedding-v1';
+        config.embedding.dimensions = 1024;
+      } else if (process.env.JINA_API_KEY) {
+        config.embedding.provider = 'jina';
+        config.embedding.apiKey = process.env.JINA_API_KEY;
+        config.embedding.baseURL = '';
+        config.embedding.model = 'jina-embeddings-v5-small';
+        config.embedding.dimensions = 1024;
+      } else if (process.env.OPENAI_API_KEY) {
+        config.embedding.provider = 'openai';
+        config.embedding.apiKey = process.env.OPENAI_API_KEY;
+        config.embedding.baseURL = '';
+        config.embedding.model = 'text-embedding-3-small';
+        config.embedding.dimensions = 1536;
+      } else if (process.env.COHERE_API_KEY) {
+        config.embedding.provider = 'cohere';
+        config.embedding.apiKey = process.env.COHERE_API_KEY;
+        config.embedding.baseURL = '';
+        config.embedding.model = 'embed-english-v3.0';
+        config.embedding.dimensions = 1024;
+      }
 
-  // Read MINIMAX_API_KEY from env (user provided)
-  const minimaxApiKey = process.env.MINIMAX_API_KEY || '';
-
-  // Auto-detect from openclaw.json
-  const provider = getConfiguredProvider('minimax');
-  if (provider) {
-    config.llm.baseURL = provider.baseUrl || 'https://api.minimaxi.com/anthropic';
-    config.llm.model = getDefaultModelId() || 'MiniMax-M2.7';
-    config.llm.provider = 'openclaw';
+      return config;
+    })();
   }
-
-  // Env var overrides — priority: explicit env vars
-  if (minimaxApiKey) {
-    // Use Minimax for both LLM and embedding
-    config.embedding.provider = 'minimax';
-    config.embedding.apiKey = minimaxApiKey;
-    config.embedding.baseURL = 'https://api.minimaxi.com/v1';
-    config.embedding.model = 'embedding-2-normal';
-    config.embedding.dimensions = 1024;
-    config.llm.apiKey = minimaxApiKey;
-    config.llm.provider = 'minimax';
-  }
-  if (process.env.OLLAMA_BASE_URL) {
-    config.embedding.provider = 'ollama';
-    config.embedding.baseURL = process.env.OLLAMA_BASE_URL;
-  }
-  if (process.env.JINA_API_KEY) {
-    config.embedding.provider = 'jina';
-    config.embedding.apiKey = process.env.JINA_API_KEY;
-  }
-
-  // Ollama: auto-detect from env or explicit config
-  if (process.env.OLLAMA_BASE_URL || config.embedding.provider === 'ollama') {
-    config.embedding.provider = 'ollama';
-    config.embedding.baseURL = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-    config.embedding.model = process.env.OLLAMA_EMBED_MODEL || 'nomic-embed-text';
-  }
-
-  cachedConfig = config;
-  return config;
+  return configPromise;
 }
 
 export function hasEmbeddingProvider(): boolean {
-  // sentence-transformers always available (local CPU, no API key needed)
-  return true;
+  return !!(
+    process.env.OLLAMA_BASE_URL ||
+    process.env.QWEN_API_KEY ||
+    process.env.DASHSCOPE_API_KEY ||
+    process.env.JINA_API_KEY ||
+    process.env.OPENAI_API_KEY ||
+    process.env.COHERE_API_KEY
+  );
 }
