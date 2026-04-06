@@ -71,6 +71,62 @@ All emails sent from: **[Business Name]** <[business-email]>
 </div>
 ```
 
+## Appointment Reminder
+
+**Subject:** Reminder: Your Appointment Tomorrow - [SERVICE]
+
+```html
+<div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+  <p>Dear [NAME],</p>
+  <p>This is a friendly reminder that you have an upcoming appointment with
+  <strong>[BUSINESS_NAME]</strong>.</p>
+  <p><strong>Date:</strong> [DATE]<br>
+  <strong>Time:</strong> [TIME]<br>
+  <strong>Service:</strong> [SERVICE]</p>
+  <p>We look forward to seeing you!</p>
+  <!-- OPTIONAL: Cancel/reschedule block. Include ONLY if the business allows it. -->
+  <!-- [REMINDER_CHANGE_BLOCK] -->
+  <hr style="margin: 25px 0;">
+  <!-- OPTIONAL: Policy footer. Include if the business wants a policy reminder. -->
+  <!-- [REMINDER_POLICY_FOOTER] -->
+  <p><strong>Warm regards,</strong><br>
+  <strong>[BUSINESS_NAME]</strong></p>
+</div>
+```
+
+### Optional: Cancel/reschedule block
+
+Include this block **only** if the business allows changes within 24 hours.
+Remove entirely if the business enforces a no-changes policy close to appointments.
+
+```html
+<p>Need to make changes? Please contact us as soon as possible by replying to
+this email or calling <strong>[PHONE_NUMBER]</strong>.</p>
+```
+
+### Optional: Policy footer
+
+Include when the business wants to reinforce their policy in the reminder.
+Customise the text per business.
+
+Example (strict policy):
+
+```html
+<p style="font-size: 0.9em; color: #666;">
+  <strong>Please note:</strong> Cancellations within 48 hours of your appointment
+  or no-shows will incur a charge as per our booking policy.
+</p>
+```
+
+Example (flexible policy):
+
+```html
+<p style="font-size: 0.9em; color: #666;">
+  Need to reschedule? No problem — just let us know at least 2 hours before
+  your appointment time.
+</p>
+```
+
 ## Booking Policy Block
 
 Replace `[BOOKING_POLICY]` with the business-specific policy. Example:
@@ -86,15 +142,12 @@ Replace `[BOOKING_POLICY]` with the business-specific policy. Example:
 </p>
 ```
 
-## Sending via Gmail SMTP
+## Sending via SMTP
 
-```bash
-curl --url "smtps://smtp.gmail.com:465" \
-  --ssl-reqd \
-  --mail-from "[FROM_EMAIL]" \
-  --mail-rcpt "[TO_EMAIL]" \
-  --user "[FROM_EMAIL]:[APP_PASSWORD]" \
-  -T email.eml
-```
+Credentials must be stored as environment variables in `openclaw.json` under `env`:
+- `SMTP_HOST` (e.g. smtp.gmail.com)
+- `SMTP_USER` (the sending email address)
+- `SMTP_PASSWORD` (app password, never a primary password)
 
-Build `email.eml` with MIME headers for HTML content and .ics attachment.
+Use the agent's standard email-sending capability with these environment variables.
+Build the email with MIME headers for HTML content and .ics attachment.
