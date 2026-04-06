@@ -1,11 +1,17 @@
 {
   "owner": "sealawyer2026",
   "slug": "zhang-legal-research",
-  "displayName": "Zhang Legal Research",
+  "displayName": "九章-法律检索专家",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774704809655,
-    "commit": "https://github.com/openclaw/skills/commit/9477d02505d0f26fa2341bef2a9980b525e6333f"
+    "version": "1.5.0",
+    "publishedAt": 1775099042821,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774704809655,
+      "commit": "https://github.com/openclaw/skills/commit/9477d02505d0f26fa2341bef2a9980b525e6333f"
+    }
+  ]
 }
