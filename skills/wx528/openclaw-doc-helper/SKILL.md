@@ -13,7 +13,7 @@ description: |
   - Answering any OpenClaw-specific question
   - Suggesting configuration changes
   - Providing technical details about OpenClaw features
-version: 1.0.0
+version: 1.0.3
 author: 文轩先师
 ---
 
@@ -46,6 +46,48 @@ Use this skill when the user asks about:
 
 5. **Cite sources** - Mention that the information comes from docs.openclaw.ai
 
+## Configuration Validation (User-Guided)
+
+When suggesting configuration changes, guide the user to validate and view their configuration:
+
+**Validate configuration:**
+
+```bash
+# Validate entire configuration
+openclaw config validate
+```
+
+**View specific configuration sections:**
+
+```bash
+# View all plugins configuration
+openclaw config get plugins
+
+# View gateway settings
+openclaw config get gateway
+
+# View models configuration
+openclaw config get models
+
+# View channels configuration
+openclaw config get channels
+
+# View agents configuration
+openclaw config get agents
+
+# View specific channel (e.g., Feishu)
+openclaw config get channels.feishu
+
+# View nested values
+openclaw config get agents.defaults.model.primary
+openclaw config get channels.whatsapp.enabled
+```
+
+**Explain the validation output to the user:**
+- If `valid: true` → configuration is correct, can proceed
+- If errors → explain what needs to be fixed based on the error messages
+- If warnings → inform user but note it's not blocking
+
 ## Key Documentation URLs
 
 - Main docs: https://docs.openclaw.ai
@@ -62,9 +104,19 @@ Action:
 1. Fetch `https://docs.openclaw.ai/config` or search for "channel configuration"
 2. Analyze the configuration documentation
 3. Provide step-by-step instructions based on official docs
+4. Remind user to run `openclaw config validate` after making changes
 
 ## Notes
 
 - Always prefer official documentation over general knowledge
 - If documentation is unclear or missing, say so and suggest checking the GitHub repo
 - Keep answers concise but complete
+- **Security Note**: This skill does NOT execute any local commands. Users must run validation commands themselves.
+
+## Safety & Security
+
+This skill is **instruction-only** with no code execution:
+- ✅ Only uses `web_fetch` and `web_search` tools
+- ✅ Does NOT execute local commands or access files
+- ✅ Does NOT require API keys or credentials
+- ✅ Users retain full control over their system
