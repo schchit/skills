@@ -20,22 +20,24 @@ tags: [art, aesthetics, design, van-gogh, post-impressionism, visual-arts, taste
 
 Use these tokens to guide AI-generated content toward Van Gogh's aesthetic:
 
-- **Swirling brushwork** — Energetic, visible strokes that convey movement and emotion
-- **Thick impasto** — Heavy paint application creating tactile, three-dimensional texture
-- **Emotional color** — Color chosen for psychological impact rather than naturalistic accuracy
-- **Starry night** — Cosmic, swirling skies that merge the celestial with the terrestrial
-- **Sunflowers** — Bold, radiant botanical subjects as symbols of vitality and decay
-- **Cypress trees** — Dark, flame-like vertical forms that anchor turbulent compositions
-- **Self-portraits** — Unflinching psychological introspection through the artist's own face
-- **Peasant life** — Dignified depictions of rural labor and humble domestic scenes
+- **Swirling brushwork** — Energetic, visible strokes that convey movement and emotion; the paint itself becomes a carrier of feeling
+- **Thick impasto** — Heavy paint application creating tactile, three-dimensional texture that casts real shadows on the canvas
+- **Emotional color** — Color chosen for psychological impact rather than naturalistic accuracy; yellows that radiate warmth, blues that ache with loneliness
+- **Rhythmic contour** — Undulating outlines that give objects a pulsing, living quality, as if the landscape itself breathes
+- **Saturated complementaries** — Bold juxtaposition of complementary hues (yellow against violet, orange against blue) pushed to maximum intensity
+- **Turbulent atmosphere** — Skies, fields, and spaces rendered as dynamic forces rather than static backdrops; nature as emotional mirror
+- **Humble subject matter** — Peasant shoes, simple chairs, modest bedrooms elevated to profound significance through intensity of vision
+- **Radiating energy** — Compositions that emanate outward from focal points like heat or light, creating a sense of vibration across the surface
 
 ## Anti-Tokens (What to Avoid)
 
 These qualities are antithetical to Van Gogh's aesthetic:
 
-- Smooth finish
-- Restrained palette
-- Academic composition
+- **Smooth, blended finish** — Van Gogh's surface is always active; eliminating brushwork removes the emotional charge
+- **Restrained or muted palette** — His color is never timid; desaturation contradicts the core of his visual language
+- **Academic composition** — Rigid, rule-bound arrangements suppress the spontaneous, felt quality of his spatial organization
+- **Photographic naturalism** — Literal transcription of appearance misses the point; Van Gogh painted what he felt, not what he saw
+- **Decorative detachment** — Surface beauty without emotional investment; every mark must carry conviction
 
 ---
 
@@ -47,14 +49,15 @@ When your AI agent needs to generate or evaluate content in Van Gogh's style, re
 You are a design assistant. Apply the Van Gogh aesthetic:
 - Use swirling brushwork and thick impasto textures
 - Choose emotional color over naturalistic accuracy
-- Avoid smooth finishes and restrained palettes
+- Push saturated complementaries to maximum intensity
+- Avoid smooth finishes, muted palettes, and photographic naturalism
 ```
 
 ## Get the Full Skill
 
 This is a **preview** of the Van Gogh Taste Skill. The full version includes:
 
-- **Color palette** with hex values and mood descriptors
+- **Color palette** in OKLCH format with mood descriptors
 - **Application rules** for UI design, branding, illustration, writing, and photography
 - **Evaluation criteria** to score how well content matches this aesthetic
 - **Exemplar works** with analysis

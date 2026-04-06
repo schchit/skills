@@ -10,7 +10,7 @@ An aesthetic skill package capturing Vincent van Gogh's distinctive artistic vis
 
 ## Style Tokens
 
-`bold-impasto` · `swirling-motion` · `complementary-contrast` · `emotional-color` · `visible-brushwork` · `nocturnal-luminance` · `rustic-warmth` · `expressive-distortion`
+`swirling-brushwork` · `thick-impasto` · `emotional-color` · `rhythmic-contour` · `saturated-complementaries` · `turbulent-atmosphere` · `humble-subject-matter` · `radiating-energy`
 
 ## Usage
 
@@ -18,9 +18,9 @@ Install via ClawHub and reference in your AI agent's configuration.
 
 ## Want More?
 
-This is a free preview. Get full palette data, application rules, and advanced fusion capabilities at [InspiredHub](https://inspiredhub.ai/taste).
+This is a free preview. Get full palette data, application rules, and advanced fusion capabilities at [InspiredHub](https://inspiredhub.ai/taste)
 
 - **Artist tier** ($19.9/mo): Full skill downloads with palette & application rules
 - **Studio tier** ($49.9/mo): Skill Fusion Engine — combine multiple aesthetic skills
 
-Visit [inspiredhub.ai/taste](https://inspiredhub.ai/taste) to explore all skills.
+Visit [inspiredhub.ai/taste](https://inspiredhub.ai/taste) to explore all skills
