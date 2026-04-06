@@ -1,6 +1,13 @@
+# FILE_META
+# INPUT:  message nodes + system prompt + session metadata
+# OUTPUT: Anthropic trajectory dict (system/tools/messages)
+# POS:    skill lib — called by scan_and_convert.py, depends on tool_registry.py
+# MISSION: Convert OpenClaw message nodes to Anthropic trajectory format.
+
 """Convert OpenClaw .jsonl message nodes to Anthropic trajectory format."""
 
-from .metadata_stripper import is_system_startup_message
+from __future__ import annotations
+
 from .session_index import is_allowed_model
 from .tool_registry import get_tool_schemas
 
@@ -207,10 +214,6 @@ def convert_to_trajectory(
         if role == "user":
             # Extract user text — preserve metadata prefixes as-is (Q09)
             raw_text = _extract_user_text(content)
-
-            # Skip system startup messages
-            if is_system_startup_message(raw_text):
-                continue
 
             if not raw_text.strip():
                 continue

@@ -1,16 +1,46 @@
+# FILE_META
+# INPUT:  OpenClaw config file (openclaw.json)
+# OUTPUT: JSON status report (fixes applied, restart flag)
+# POS:    skill scripts — Step 1, called first in workflow
+# MISSION: Validate and auto-fix OpenClaw configuration for data collection.
+
 #!/usr/bin/env python3
 """Check and auto-fix OpenClaw environment for ClawTraces.
 
-Ensures diagnostics.cacheTrace is enabled with includeSystem=true
-in openclaw.json. Modifies the config automatically if needed.
+Ensures:
+  1. diagnostics.cacheTrace is enabled with includeSystem=true
+  2. agents.defaults.thinkingDefault is at least "high"
+  3. per-agent thinkingDefault (agents.list[].thinkingDefault) is at least "high"
+  4. models matching ClawTraces whitelist have reasoning=true in providers
+
+Modifies openclaw.json automatically if needed.
 
 Usage:
     python env_check.py
 """
 
+from __future__ import annotations
+
 import json
 import os
+import re
 import sys
+
+# Thinking levels ordered from lowest to highest
+THINKING_LEVEL_ORDER = ["off", "minimal", "low", "medium", "high", "xhigh"]
+MIN_THINKING_LEVEL = "high"
+
+# Model patterns that ClawTraces collects — same as session_index.py
+TRAJECTORY_MODEL_PATTERNS = [
+    re.compile(r"sonnet[_\-.]?4[_\-.]?6", re.IGNORECASE),
+    re.compile(r"opus[_\-.]?4[_\-.]?5", re.IGNORECASE),
+    re.compile(r"opus[_\-.]?4[_\-.]?6", re.IGNORECASE),
+]
+
+
+def _is_trajectory_model(model_id: str) -> bool:
+    """Check if a model ID matches the ClawTraces collection whitelist."""
+    return any(p.search(model_id) for p in TRAJECTORY_MODEL_PATTERNS)
 
 
 def get_openclaw_config_path() -> str:
@@ -40,21 +70,22 @@ def save_config(config_path: str, config: dict):
 
 
 def check_and_fix(config_path: str | None = None) -> dict:
-    """Check cache-trace config and auto-fix if needed.
+    """Check environment config and auto-fix if needed.
 
     Returns dict with:
         - ok: bool — whether config is now correct
         - changed: bool — whether config was modified
         - needs_restart: bool — whether OpenClaw needs restart
         - message: str — human-readable status
+        - fixes: list[str] — what was fixed
     """
     if config_path is None:
         config_path = get_openclaw_config_path()
 
     config = load_config(config_path)
-    changed = False
+    fixes = []
 
-    # Ensure diagnostics.cacheTrace exists
+    # ── 1. Ensure diagnostics.cacheTrace ──────────────────────
     if "diagnostics" not in config:
         config["diagnostics"] = {}
     if "cacheTrace" not in config["diagnostics"]:
@@ -62,25 +93,71 @@ def check_and_fix(config_path: str | None = None) -> dict:
 
     cache_trace = config["diagnostics"]["cacheTrace"]
 
-    # Check and fix enabled
     if cache_trace.get("enabled") is not True:
         cache_trace["enabled"] = True
-        changed = True
+        fixes.append("开启 diagnostics.cacheTrace.enabled（记录完整对话日志）")
 
-    # Check and fix includeSystem
     if cache_trace.get("includeSystem") is not True:
         cache_trace["includeSystem"] = True
-        changed = True
+        fixes.append("开启 diagnostics.cacheTrace.includeSystem（记录 system prompt）")
 
-    if changed:
+    # ── 2. Ensure thinking level >= "high" ────────────────────
+    min_idx = THINKING_LEVEL_ORDER.index(MIN_THINKING_LEVEL)
+
+    def _needs_upgrade(current: str | None) -> bool:
+        if current is None or current not in THINKING_LEVEL_ORDER:
+            return True
+        return THINKING_LEVEL_ORDER.index(current) < min_idx
+
+    # 2a. Global default
+    if "agents" not in config:
+        config["agents"] = {}
+    if "defaults" not in config["agents"]:
+        config["agents"]["defaults"] = {}
+
+    global_thinking = config["agents"]["defaults"].get("thinkingDefault")
+    if _needs_upgrade(global_thinking):
+        config["agents"]["defaults"]["thinkingDefault"] = MIN_THINKING_LEVEL
+        fixes.append(
+            f"全局 agents.defaults.thinkingDefault: "
+            f"{global_thinking or 'unset'} → {MIN_THINKING_LEVEL}（提升推理质量）"
+        )
+
+    # 2b. Per-agent overrides
+    for agent in config.get("agents", {}).get("list", []):
+        agent_thinking = agent.get("thinkingDefault")
+        if agent_thinking is not None and _needs_upgrade(agent_thinking):
+            agent_id = agent.get("id", "unknown")
+            agent["thinkingDefault"] = MIN_THINKING_LEVEL
+            fixes.append(
+                f"Agent「{agent_id}」thinkingDefault: "
+                f"{agent_thinking} → {MIN_THINKING_LEVEL}（提升推理质量）"
+            )
+
+    # ── 3. Ensure reasoning=true for whitelist models in providers ─
+    providers = config.get("models", {}).get("providers", {})
+    for provider_name, provider_cfg in providers.items():
+        for model in provider_cfg.get("models", []):
+            model_id = model.get("id", "")
+            if _is_trajectory_model(model_id) and model.get("reasoning") is not True:
+                old_val = model.get("reasoning", "unset")
+                model["reasoning"] = True
+                fixes.append(
+                    f"模型 {model_id}（{provider_name}）reasoning: "
+                    f"{old_val} → true（启用推理能力）"
+                )
+
+    if fixes:
         save_config(config_path, config)
         return {
             "ok": True,
             "changed": True,
             "needs_restart": True,
+            "fixes": fixes,
             "message": (
-                f"已自动更新 {config_path}，开启了 cache-trace 诊断。\n"
-                "需要重启 OpenClaw 使配置生效。"
+                f"已自动修改 {config_path}，具体变更：\n"
+                + "\n".join(f"  • {f}" for f in fixes)
+                + "\n\n需要重启 OpenClaw 使配置生效。"
             ),
         }
 
@@ -88,11 +165,43 @@ def check_and_fix(config_path: str | None = None) -> dict:
         "ok": True,
         "changed": False,
         "needs_restart": False,
-        "message": "cache-trace 配置正常。",
+        "fixes": [],
+        "message": "配置正常（cache-trace 已开启，thinking level 已达标，模型 reasoning 已启用）。",
     }
 
 
+MIN_PYTHON_VERSION = (3, 10)
+
+
+def check_python_version() -> dict | None:
+    """Check if Python version meets minimum requirement.
+
+    Returns error dict if version is too low, None if OK.
+    """
+    if sys.version_info < MIN_PYTHON_VERSION:
+        required = ".".join(str(v) for v in MIN_PYTHON_VERSION)
+        current = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+        return {
+            "ok": False,
+            "changed": False,
+            "needs_restart": False,
+            "fixes": [],
+            "message": (
+                f"Python 版本不满足要求：当前 {current}，最低需要 {required}。\n"
+                f"当前 python3 路径：{sys.executable}\n"
+                f"请升级 Python 后重试。macOS 推荐用 Homebrew：brew install python@3.12"
+            ),
+        }
+    return None
+
+
 def main():
+    # Check Python version first
+    version_error = check_python_version()
+    if version_error:
+        print(json.dumps(version_error, ensure_ascii=False, indent=2))
+        sys.exit(1)
+
     result = check_and_fix()
     print(json.dumps(result, ensure_ascii=False, indent=2))
     if result["changed"]:

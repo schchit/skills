@@ -1,3 +1,9 @@
+# FILE_META
+# INPUT:  tool names, cwd, model, thinking level
+# OUTPUT: reconstructed system prompt string
+# POS:    skill lib — fallback for cache_trace.py, called by scan_and_convert.py
+# MISSION: Reconstruct system prompt from workspace files when cache-trace is unavailable.
+
 """Extract session metadata from OpenClaw JSONL logs and reconstruct system prompts.
 
 Reconstruction logic is reverse-engineered from OpenClaw's buildAgentSystemPrompt()

@@ -1,8 +1,14 @@
-#!/usr/bin/env python3
-"""Scan local OpenClaw sessions, filter, convert to Anthropic trajectory format.
+# FILE_META
+# INPUT:  OpenClaw session .jsonl files
+# OUTPUT: {session_id}.trajectory.json + .stats.json + candidates.json
+# POS:    skill scripts — Step 2, core pipeline, depends on all lib modules
+# MISSION: Scan local sessions, filter by quality, convert to Anthropic trajectory format.
 
-Merged scan + convert pipeline (V2). Outputs trajectory files and a candidates
-list for agent semantic quality review.
+#!/usr/bin/env python3
+"""Scan local OpenClaw sessions, filter, convert to trajectory format.
+
+Merged scan + convert pipeline (V2). Outputs trajectory files (OpenAI format)
+and a candidates list for agent semantic quality review.
 
 Usage:
     python scan_and_convert.py [--sessions-dir PATH] [--output-dir PATH]
@@ -24,10 +30,16 @@ from lib.metadata_stripper import strip_metadata_prefix, is_system_startup_messa
 from lib.system_prompt_builder import extract_session_metadata, build_system_prompt
 from lib.cache_trace import get_cache_trace_path, build_session_system_prompt_index
 from lib.quality_checker import check_quality, extract_user_messages_for_review
+from lib.paths import get_default_output_dir
+from convert_to_openai import convert_trajectory as convert_to_openai_format
 
 MIN_TURNS = 5
-DEFAULT_OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "output")
+DEFAULT_OUTPUT_DIR = get_default_output_dir()
 MANIFEST_FILENAME = "manifest.json"
+
+# Limits for user_messages in candidates.json (semantic review only)
+REVIEW_MAX_MESSAGES = 5    # keep first N user messages
+REVIEW_MAX_CHARS = 300     # truncate each message to N chars
 
 
 def _load_manifest(output_dir: str) -> dict:
@@ -193,11 +205,129 @@ def _find_latest_session_ids(all_sessions: list[dict]) -> set[str]:
     return latest_ids
 
 
+def _filter_by_since(sessions: list[dict], since: float) -> list[dict]:
+    """Filter sessions to only include those modified after the given timestamp."""
+    return [s for s in sessions if _get_session_created_time(s) >= since]
+
+
+def _extract_first_user_message(file_path: str, max_lines: int = 100) -> str:
+    """Extract the first user message text from a .jsonl file (lightweight).
+
+    Scans up to max_lines to find the first substantive user message,
+    strips metadata prefixes, and truncates to 80 chars for display.
+    """
+    try:
+        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+            for i, line in enumerate(f):
+                if i >= max_lines:
+                    break
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    node = json.loads(line)
+                    if node.get("type") != "message":
+                        continue
+                    msg = node.get("message", {})
+                    if msg.get("role") != "user":
+                        continue
+                    for block in msg.get("content", []):
+                        if isinstance(block, dict) and block.get("type") == "text":
+                            text = block.get("text", "")
+                            if is_system_startup_message(text):
+                                break
+                            text = strip_metadata_prefix(text)
+                            if text:
+                                # Truncate and collapse whitespace
+                                text = " ".join(text.split())
+                                if len(text) > 80:
+                                    text = text[:80] + "..."
+                                return text
+                            break
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    continue
+    except OSError:
+        pass
+    return ""
+
+
+def list_qualifying_sessions(
+    sessions_dirs: list[str],
+    output_dir: str,
+    limit: int | None = None,
+    since: float | None = None,
+) -> list[dict]:
+    """Lightweight scan: list qualifying sessions without full .jsonl parsing.
+
+    Returns summary dicts sorted by modification time (newest first).
+    """
+    all_qualifying = []
+    for sessions_dir in sessions_dirs:
+        qualifying = get_qualifying_sessions(sessions_dir)
+        all_qualifying.extend(qualifying)
+
+    if not all_qualifying:
+        return []
+
+    # Skip latest sessions (may be active)
+    latest_sids = _find_latest_session_ids(all_qualifying)
+    all_qualifying = [s for s in all_qualifying if s["session_id"] not in latest_sids]
+
+    # Skip already-processed
+    skip_ids = _get_skip_session_ids(output_dir)
+    all_qualifying = [s for s in all_qualifying if s["session_id"] not in skip_ids]
+
+    # Filter by date
+    if since:
+        all_qualifying = _filter_by_since(all_qualifying, since)
+
+    # Sort newest first
+    all_qualifying.sort(key=_get_session_created_time, reverse=True)
+
+    # Apply limit
+    if limit and limit > 0:
+        all_qualifying = all_qualifying[:limit]
+
+    # Build cache-trace index to indicate availability
+    cache_trace_path = get_cache_trace_path()
+    system_prompt_index = build_session_system_prompt_index(cache_trace_path)
+
+    result = []
+    for s in all_qualifying:
+        file_path = s["file_path"]
+        try:
+            mtime = os.path.getmtime(file_path)
+            fsize = os.path.getsize(file_path)
+        except OSError:
+            continue
+
+        result.append({
+            "session_id": s["session_id"],
+            "agent_id": s["agent_id"],
+            "model": s["model"],
+            "modified": datetime.fromtimestamp(mtime, tz=timezone.utc).strftime("%Y-%m-%d %H:%M"),
+            "file_size_kb": round(fsize / 1024),
+            "topic": _extract_first_user_message(file_path),
+            "has_cache_trace": s["session_id"] in system_prompt_index,
+        })
+
+    return result
+
+
 def scan_and_convert(
     sessions_dirs: list[str],
     output_dir: str,
+    session_ids: list[str] | None = None,
+    limit: int | None = None,
+    since: float | None = None,
 ) -> list[dict]:
     """Scan sessions, filter, convert, and output trajectory files.
+
+    Args:
+        session_ids: If provided, only process these specific sessions
+            (skip latest/submitted filters — user explicitly chose them).
+        limit: If provided, only process the N most recent sessions.
+        since: If provided, only process sessions modified after this timestamp.
 
     Returns list of candidate dicts for agent semantic review, each containing:
         - session_id, turns, domain, output_path
@@ -213,27 +343,55 @@ def scan_and_convert(
         print("No qualifying sessions found (model filter).", file=sys.stderr)
         return []
 
-    # Skip the latest session per agent (might still be active)
-    latest_sids = _find_latest_session_ids(all_qualifying)
-    if latest_sids:
+    if session_ids:
+        # Explicit selection: only filter by requested IDs, skip auto-filters
+        requested = set(session_ids)
+        all_qualifying = [s for s in all_qualifying if s["session_id"] in requested]
+        found = {s["session_id"] for s in all_qualifying}
+        missing = requested - found
+        if missing:
+            print(f"Warning: session(s) not found or not qualifying: {', '.join(missing)}", file=sys.stderr)
+        if not all_qualifying:
+            print("No matching sessions to process.", file=sys.stderr)
+            return []
+    else:
+        # Auto mode: apply all filters
+        # Skip the latest session per agent (might still be active)
+        latest_sids = _find_latest_session_ids(all_qualifying)
+        if latest_sids:
+            before = len(all_qualifying)
+            all_qualifying = [s for s in all_qualifying if s["session_id"] not in latest_sids]
+            skipped = before - len(all_qualifying)
+            if skipped:
+                print(f"Skipped {skipped} latest session(s) (may still be active): {', '.join(latest_sids)}", file=sys.stderr)
+
+        # Skip already-submitted and rejected sessions
+        skip_ids = _get_skip_session_ids(output_dir)
+        if skip_ids:
+            before = len(all_qualifying)
+            all_qualifying = [s for s in all_qualifying if s["session_id"] not in skip_ids]
+            skipped = before - len(all_qualifying)
+            if skipped:
+                print(f"Skipped {skipped} already-processed session(s) (submitted or rejected).", file=sys.stderr)
+
+        if not all_qualifying:
+            print("No new sessions to process.", file=sys.stderr)
+            return []
+
+    # Filter by date (applies to both explicit and auto modes)
+    if since and not session_ids:
         before = len(all_qualifying)
-        all_qualifying = [s for s in all_qualifying if s["session_id"] not in latest_sids]
+        all_qualifying = _filter_by_since(all_qualifying, since)
         skipped = before - len(all_qualifying)
         if skipped:
-            print(f"Skipped {skipped} latest session(s) (may still be active): {', '.join(latest_sids)}", file=sys.stderr)
+            print(f"Filtered out {skipped} session(s) older than cutoff date.", file=sys.stderr)
 
-    # Skip already-submitted and rejected sessions
-    skip_ids = _get_skip_session_ids(output_dir)
-    if skip_ids:
-        before = len(all_qualifying)
-        all_qualifying = [s for s in all_qualifying if s["session_id"] not in skip_ids]
-        skipped = before - len(all_qualifying)
-        if skipped:
-            print(f"Skipped {skipped} already-processed session(s) (submitted or rejected).", file=sys.stderr)
-
-    if not all_qualifying:
-        print("No new sessions to process.", file=sys.stderr)
-        return []
+    # Apply limit: sort by time (newest first), take top N
+    if limit and limit > 0 and not session_ids:
+        all_qualifying.sort(key=_get_session_created_time, reverse=True)
+        if len(all_qualifying) > limit:
+            print(f"Limiting to {limit} most recent session(s) out of {len(all_qualifying)}.", file=sys.stderr)
+            all_qualifying = all_qualifying[:limit]
 
     # Build cache-trace system prompt index
     cache_trace_path = get_cache_trace_path()
@@ -270,13 +428,13 @@ def scan_and_convert(
                 print(f"  Quality skip ({quality_reason}): {session_id}", file=sys.stderr)
                 continue
 
-            # Get system prompt: prefer cache-trace, fallback to reconstruction
+            # Get system prompt: prefer cache-trace, fallback depends on mode
             real_system_prompt = system_prompt_index.get(session_id)
             session_meta = extract_session_metadata(nodes)
             if real_system_prompt:
                 system_prompt_source = "cache_trace"
-            else:
-                # Reconstruct from session metadata (fallback)
+            elif session_ids:
+                # Explicit mode: user chose this session, allow reconstruction fallback
                 real_system_prompt = build_system_prompt(
                     tool_names=session_meta.get("tool_names", []),
                     cwd=session_meta.get("cwd", ""),
@@ -286,6 +444,10 @@ def scan_and_convert(
                 )
                 system_prompt_source = "reconstructed"
                 print(f"  Reconstructed system prompt (no cache-trace): {session_id}", file=sys.stderr)
+            else:
+                # Auto mode: skip sessions without cache-trace (pre-cache-trace historical sessions)
+                print(f"  Skipped (no cache-trace): {session_id}", file=sys.stderr)
+                continue
 
             # Convert to trajectory
             trajectory = convert_to_trajectory(
@@ -307,6 +469,8 @@ def scan_and_convert(
             # Extract session stats (separate from trajectory)
             stats = _extract_session_stats(nodes, messages)
             stats["system_prompt_source"] = system_prompt_source
+            stats["cwd"] = session_meta.get("cwd", "")
+            stats["agent_id"] = session_info.get("agent_id", "")
             stats["model"] = model
             stats["provider"] = session_meta.get("provider", "unknown")
             stats["thinking"] = session_meta.get("thinking_level", "off")
@@ -315,11 +479,33 @@ def scan_and_convert(
             stats["domain"] = "pending"
             stats["title"] = None
 
-            # Write trajectory file
+            # Convert to OpenAI format (final output format)
+            openai_traj = convert_to_openai_format(trajectory, stats)
+
+            # Calculate reasoning stats from OpenAI format
+            _pure_text = 0
+            _rc_with_tc = 0
+            _rc_pure = 0
+            for _m in openai_traj.get("messages", []):
+                if _m.get("role") != "assistant":
+                    continue
+                _has_tc = len(_m.get("tool_calls", [])) > 0
+                _has_rc = isinstance(_m.get("reasoning_content", ""), str) and _m.get("reasoning_content", "").strip() != ""
+                if _has_tc:
+                    if _has_rc:
+                        _rc_with_tc += 1
+                else:
+                    _pure_text += 1
+                    if _has_rc:
+                        _rc_pure += 1
+            stats["effective_asst"] = _pure_text + _rc_with_tc
+            stats["reasoning_asst"] = _rc_pure + _rc_with_tc
+
+            # Write trajectory file (OpenAI format)
             output_filename = f"{session_id}.trajectory.json"
             output_path = os.path.join(output_dir, output_filename)
             with open(output_path, "w", encoding="utf-8") as f:
-                json.dump(trajectory, f, ensure_ascii=False, indent=2)
+                json.dump(openai_traj, f, ensure_ascii=False, indent=2)
 
             # Write stats file alongside trajectory
             stats_filename = f"{session_id}.stats.json"
@@ -327,11 +513,16 @@ def scan_and_convert(
             with open(stats_path, "w", encoding="utf-8") as f:
                 json.dump(stats, f, ensure_ascii=False, indent=2)
 
-            # Extract user messages for semantic review
-            review_messages = [
-                msg["content"] for msg in trajectory["messages"]
-                if msg.get("role") == "user" and isinstance(msg.get("content"), str)
-            ]
+            # Extract user messages for semantic review (truncated to save tokens)
+            review_messages = []
+            for msg in trajectory["messages"]:
+                if msg.get("role") == "user" and isinstance(msg.get("content"), str):
+                    text = msg["content"]
+                    if len(text) > REVIEW_MAX_CHARS:
+                        text = text[:REVIEW_MAX_CHARS] + "..."
+                    review_messages.append(text)
+                    if len(review_messages) >= REVIEW_MAX_MESSAGES:
+                        break
 
             # Prefix hash for dedup
             prefix_hash = _compute_prefix_hash(messages)
@@ -367,13 +558,17 @@ def scan_and_convert(
             dropped = len(group) - 1
             print(f"  Prefix dedup: kept {best['session_id']} ({best['turns']} turns), dropped {dropped}", file=sys.stderr)
 
-            # Clean up trajectory files of dropped candidates
+            # Clean up trajectory and stats files of dropped candidates
             for c in group:
                 if c["session_id"] != best["session_id"]:
-                    try:
-                        os.remove(c["output_path"])
-                    except OSError:
-                        pass
+                    for path in (
+                        c["output_path"],
+                        c["output_path"].replace(".trajectory.json", ".stats.json"),
+                    ):
+                        try:
+                            os.remove(path)
+                        except OSError:
+                            pass
 
     # Remove internal fields from output
     for c in candidates:
@@ -386,7 +581,20 @@ def main():
     parser = argparse.ArgumentParser(description="Scan and convert OpenClaw sessions to trajectories")
     parser.add_argument("--sessions-dir", help="Override sessions directory path")
     parser.add_argument("--output-dir", "-o", default=DEFAULT_OUTPUT_DIR, help="Output directory")
+    parser.add_argument("--list-only", action="store_true", help="List qualifying sessions without processing")
+    parser.add_argument("--sessions", nargs="+", metavar="ID", help="Only process these specific session IDs")
+    parser.add_argument("--limit", type=int, metavar="N", help="Only process the N most recent sessions")
+    parser.add_argument("--since", metavar="DATE", help="Only process sessions modified after DATE (YYYY-MM-DD)")
     args = parser.parse_args()
+
+    # Parse --since into a timestamp
+    since_ts = None
+    if args.since:
+        try:
+            since_ts = datetime.strptime(args.since, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp()
+        except ValueError:
+            print(f"Error: --since must be in YYYY-MM-DD format, got '{args.since}'", file=sys.stderr)
+            sys.exit(1)
 
     # Create output dir
     os.makedirs(args.output_dir, exist_ok=True)
@@ -400,8 +608,14 @@ def main():
         print("No OpenClaw sessions directories found.", file=sys.stderr)
         sys.exit(1)
 
+    # List-only mode: lightweight scan, output JSON list, exit
+    if args.list_only:
+        sessions = list_qualifying_sessions(sessions_dirs, args.output_dir, limit=args.limit, since=since_ts)
+        print(json.dumps(sessions, ensure_ascii=False, indent=2))
+        return
+
     print(f"Scanning {len(sessions_dirs)} agent(s)...", file=sys.stderr)
-    candidates = scan_and_convert(sessions_dirs, args.output_dir)
+    candidates = scan_and_convert(sessions_dirs, args.output_dir, session_ids=args.sessions, limit=args.limit, since=since_ts)
     print(f"\nGenerated {len(candidates)} candidate trajectory(ies).", file=sys.stderr)
 
     if candidates:

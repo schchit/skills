@@ -1,3 +1,9 @@
+# FILE_META
+# INPUT:  cache-trace.jsonl log file
+# OUTPUT: dict mapping session_id → system prompt
+# POS:    skill lib — primary system prompt source, called by scan_and_convert.py
+# MISSION: Extract real system prompts from OpenClaw's cache-trace log.
+
 """Parse cache-trace.jsonl to extract real system prompts by session ID."""
 
 import json

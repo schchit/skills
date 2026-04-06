@@ -1,3 +1,9 @@
+# FILE_META
+# INPUT:  message nodes
+# OUTPUT: (pass/fail, reason) tuple
+# POS:    skill lib — called by scan_and_convert.py
+# MISSION: Numeric heuristic quality check on conversation content.
+
 """Content quality checks for trajectory candidates (numeric heuristics).
 
 These are fast, offline checks run before the agent's semantic quality judgment.

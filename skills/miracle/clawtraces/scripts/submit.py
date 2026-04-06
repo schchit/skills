@@ -1,9 +1,17 @@
+# FILE_META
+# INPUT:  .trajectory.json files + API key
+# OUTPUT: server submission confirmation + manifest.json updates
+# POS:    skill scripts — Step 4, depends on lib/auth.py and lib/paths.py
+# MISSION: Upload converted trajectories to the ClawTraces collection server.
+
 #!/usr/bin/env python3
 """Submit converted trajectory files to the ClawTraces collection server.
 
 Usage:
     python submit.py [--output-dir PATH] [--count-only]
 """
+
+from __future__ import annotations
 
 import argparse
 import json
@@ -15,9 +23,11 @@ from urllib.error import HTTPError, URLError
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from lib.auth import get_server_url, get_stored_key, handle_401
+from lib.auth import get_server_url, get_stored_key, handle_401, get_ssl_context, _format_connection_error
 
-DEFAULT_OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "output")
+from lib.paths import get_default_output_dir
+
+DEFAULT_OUTPUT_DIR = get_default_output_dir()
 MANIFEST_FILENAME = "manifest.json"
 
 
@@ -47,24 +57,12 @@ def _load_stats(trajectory_path: str) -> str | None:
     return None
 
 
-def _resolve_openai_path(trajectory_path: str) -> str:
-    """Resolve .openai.json path from a .trajectory.json path."""
-    return trajectory_path.replace(".trajectory.json", ".openai.json")
-
-
 def upload_file(server_url: str, secret_key: str, file_path: str, force: bool = False) -> dict:
     """Upload a trajectory file to the server, with optional stats.
-
-    Prefers .openai.json over .trajectory.json if it exists.
 
     Args:
         force: If True, overwrite existing submission with same session_id.
     """
-    # Prefer OpenAI format if available
-    openai_path = _resolve_openai_path(file_path)
-    if os.path.isfile(openai_path):
-        file_path = openai_path
-
     filename = os.path.basename(file_path)
 
     with open(file_path, "rb") as f:
@@ -112,16 +110,22 @@ def upload_file(server_url: str, secret_key: str, file_path: str, force: bool = 
     )
 
     try:
-        with urlopen(req, timeout=30) as resp:
+        with urlopen(req, timeout=30, context=get_ssl_context()) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except HTTPError as e:
         if e.code == 401:
             handle_401()
             return {"error": "unauthorized"}
         error_body = e.read().decode("utf-8", errors="replace")
-        return {"error": f"HTTP {e.code}", "detail": error_body}
+        try:
+            parsed = json.loads(error_body)
+            if "error" not in parsed:
+                parsed["error"] = f"HTTP {e.code}"
+            return parsed
+        except (json.JSONDecodeError, ValueError):
+            return {"error": f"HTTP {e.code}", "detail": error_body}
     except URLError as e:
-        return {"error": f"Connection failed: {e.reason}"}
+        return {"error": _format_connection_error(e.reason)}
 
 
 def query_count(server_url: str, secret_key: str) -> dict:
@@ -130,15 +134,22 @@ def query_count(server_url: str, secret_key: str) -> dict:
     req = Request(url, headers={"X-Secret-Key": secret_key, "User-Agent": "ClawTraces/1.0"}, method="GET")
 
     try:
-        with urlopen(req, timeout=10) as resp:
+        with urlopen(req, timeout=10, context=get_ssl_context()) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except HTTPError as e:
         if e.code == 401:
             handle_401()
             return {"error": "unauthorized"}
-        return {"error": str(e)}
+        error_body = e.read().decode("utf-8", errors="replace")
+        try:
+            parsed = json.loads(error_body)
+            if "error" not in parsed:
+                parsed["error"] = f"HTTP {e.code}"
+            return parsed
+        except (json.JSONDecodeError, ValueError):
+            return {"error": f"HTTP {e.code}", "detail": error_body}
     except URLError as e:
-        return {"error": str(e)}
+        return {"error": _format_connection_error(e.reason)}
 
 
 def submit_all(output_dir: str, server_url: str, secret_key: str) -> dict:
@@ -161,16 +172,36 @@ def submit_all(output_dir: str, server_url: str, secret_key: str) -> dict:
         return {
             "success_count": 0,
             "error_count": 0,
+            "review_skip_count": 0,
             "new_files": 0,
             "server_total": count_result.get("count", "unknown"),
+            "workspace_threshold": count_result.get("workspace_threshold", 5),
+            "workspace_submitted": count_result.get("workspace_submitted", False),
         }
 
     success_count = 0
     error_count = 0
+    review_skip_count = 0
     auth_failed = False
 
     for filename in new_files:
         file_path = os.path.join(output_dir, filename)
+
+        # Validate that agent review (step 3) has been completed
+        stats_path = file_path.replace(".trajectory.json", ".stats.json")
+        try:
+            if os.path.isfile(stats_path):
+                with open(stats_path, "r", encoding="utf-8") as f:
+                    stats_data = json.load(f)
+                if stats_data.get("domain", "pending") == "pending" or not (stats_data.get("title") or "").strip():
+                    print(f"  Skipped (pending review): {filename}")
+                    review_skip_count += 1
+                    continue
+        except (json.JSONDecodeError, OSError):
+            print(f"  Skipped (stats unreadable): {filename}")
+            review_skip_count += 1
+            continue
+
         print(f"  Uploading: {filename}...", end=" ", flush=True)
 
         result = upload_file(server_url, secret_key, file_path)
@@ -179,6 +210,17 @@ def submit_all(output_dir: str, server_url: str, secret_key: str) -> dict:
             print("FAILED (unauthorized)")
             error_count += 1
             auth_failed = True
+            break
+        elif result.get("error") == "account_disabled":
+            msg = result.get("message", "账号已被禁用")
+            print(f"FAILED ({msg})")
+            error_count += 1
+            auth_failed = True
+            break
+        elif result.get("error") in ("daily_limit_exceeded", "total_limit_exceeded"):
+            msg = result.get("message", result["error"])
+            print(f"STOPPED ({msg})")
+            error_count += 1
             break
         elif result.get("error") == "duplicate":
             # Already on server — record in manifest to avoid retrying
@@ -191,7 +233,7 @@ def submit_all(output_dir: str, server_url: str, secret_key: str) -> dict:
             manifest["submitted"] = submitted
             save_manifest(output_dir, manifest)
         elif "error" in result:
-            print(f"FAILED ({result['error']})")
+            print(f"FAILED ({result.get('message') or result['error']})")
             error_count += 1
         else:
             print("OK")
@@ -205,15 +247,34 @@ def submit_all(output_dir: str, server_url: str, secret_key: str) -> dict:
 
     # Only query server count if auth is still valid
     server_total: int | str = "unknown"
+    workspace_threshold = 5
+    workspace_submitted = False
+    daily_count: int | str = "unknown"
+    daily_submission_limit = 0
+    total_submission_limit = 0
     if not auth_failed:
         count_result = query_count(server_url, secret_key)
         server_total = count_result.get("count", "unknown")
+        workspace_threshold = count_result.get("workspace_threshold", 5)
+        workspace_submitted = count_result.get("workspace_submitted", False)
+        daily_count = count_result.get("daily_count", "unknown")
+        daily_submission_limit = count_result.get("daily_submission_limit", 0)
+        total_submission_limit = count_result.get("total_submission_limit", 0)
+
+    if review_skip_count > 0:
+        print(f"\n  {review_skip_count} file(s) skipped (pending agent review — run step 3 first).", file=sys.stderr)
 
     return {
         "success_count": success_count,
         "error_count": error_count,
+        "review_skip_count": review_skip_count,
         "new_files": len(new_files),
         "server_total": server_total,
+        "workspace_threshold": workspace_threshold,
+        "workspace_submitted": workspace_submitted,
+        "daily_count": daily_count,
+        "daily_submission_limit": daily_submission_limit,
+        "total_submission_limit": total_submission_limit,
     }
 
 
@@ -293,8 +354,19 @@ def main():
         return
 
     result = submit_all(args.output_dir, server_url, key)
-    print(f"\nDone: {result['success_count']} uploaded, {result['error_count']} failed")
+    review_skipped = result.get('review_skip_count', 0)
+    if review_skipped:
+        print(f"\nDone: {result['success_count']} uploaded, {result['error_count']} failed, {review_skipped} skipped (pending review)")
+    else:
+        print(f"\nDone: {result['success_count']} uploaded, {result['error_count']} failed")
     print(f"Your total submissions: {result['server_total']}")
+
+    daily_limit = result.get("daily_submission_limit", 0)
+    total_limit = result.get("total_submission_limit", 0)
+    if daily_limit > 0:
+        print(f"Daily quota: {result.get('daily_count', '?')}/{daily_limit}")
+    if total_limit > 0:
+        print(f"Total quota: {result['server_total']}/{total_limit}")
 
 
 if __name__ == "__main__":

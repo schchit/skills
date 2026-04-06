@@ -1,3 +1,9 @@
+# FILE_META
+# INPUT:  session_id + reason pairs
+# OUTPUT: manifest.json updates + trajectory file deletions
+# POS:    skill scripts — utility, depends on lib/paths.py
+# MISSION: Mark sessions as rejected and clean up trajectory files.
+
 #!/usr/bin/env python3
 """Reject sessions and record them in manifest to avoid re-processing.
 
@@ -12,7 +18,11 @@ import os
 import sys
 from datetime import datetime, timezone
 
-DEFAULT_OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "output")
+sys.path.insert(0, os.path.dirname(__file__))
+
+from lib.paths import get_default_output_dir
+
+DEFAULT_OUTPUT_DIR = get_default_output_dir()
 MANIFEST_FILENAME = "manifest.json"
 
 

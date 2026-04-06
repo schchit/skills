@@ -1,3 +1,9 @@
+# FILE_META
+# INPUT:  .trajectory.json + .stats.json (Anthropic format)
+# OUTPUT: .openai.json (OpenAI format)
+# POS:    skill scripts — utility, standalone
+# MISSION: Convert Anthropic trajectory format to OpenAI format with model_config.
+
 #!/usr/bin/env python3
 """Convert Anthropic trajectory files to OpenAI format with model_config.
 
@@ -7,11 +13,16 @@ Usage:
     python convert_to_openai.py [--input-dir PATH] [--output-dir PATH]
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import os
 import sys
 import glob
+
+sys.path.insert(0, os.path.dirname(__file__))
+from lib.paths import get_default_output_dir
 
 
 # Default max_tokens by model (maxTokens / 3, from OpenClaw model catalog)
@@ -39,7 +50,7 @@ def _normalize_provider(model: str) -> str:
         return "alibaba"
     if "deepseek" in model_lower:
         return "deepseek"
-    return "unknown"
+    return "anthropic"
 
 
 def _resolve_max_tokens(model: str, stats: dict) -> int | None:
@@ -63,7 +74,9 @@ def _resolve_max_tokens(model: str, stats: dict) -> int | None:
 
 def build_model_config(stats: dict, model: str) -> dict:
     """Build model_config object from stats and model info."""
-    provider = stats.get("provider") or _normalize_provider(model)
+    provider = stats.get("provider")
+    if not provider or provider == "unknown":
+        provider = _normalize_provider(model)
     thinking = stats.get("thinking", stats.get("thinking_level", "off"))
     max_tokens = _resolve_max_tokens(model, stats)
 
@@ -255,7 +268,7 @@ def main():
     parser.add_argument("--output-dir", "-o", help="Output directory (default: same as input)")
     args = parser.parse_args()
 
-    input_dir = args.input_dir or os.path.join(os.path.dirname(__file__), "..", "output")
+    input_dir = args.input_dir or get_default_output_dir()
     input_dir = os.path.expanduser(input_dir)
     output_dir = args.output_dir or input_dir
     output_dir = os.path.expanduser(output_dir)

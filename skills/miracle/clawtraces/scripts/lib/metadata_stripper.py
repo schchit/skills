@@ -1,3 +1,9 @@
+# FILE_META
+# INPUT:  raw user message text
+# OUTPUT: cleaned message text
+# POS:    skill lib — called by converter.py
+# MISSION: Strip Sender JSON metadata and timestamp prefixes from user messages.
+
 """Strip metadata prefixes from OpenClaw user messages.
 
 OpenClaw prepends Sender metadata and timestamps to user messages when

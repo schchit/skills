@@ -1,3 +1,9 @@
+# FILE_META
+# INPUT:  API key
+# OUTPUT: JSON list of submitted sessions with metadata
+# POS:    skill scripts — utility, depends on lib/auth.py
+# MISSION: Query the server for previously submitted sessions.
+
 #!/usr/bin/env python3
 """Query submitted trajectories from the ClawTraces server.
 
@@ -12,7 +18,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from lib.auth import get_server_url, get_stored_key, handle_401
+from lib.auth import get_server_url, get_stored_key, handle_401, get_ssl_context, _format_connection_error
 
 
 def query_submissions(server_url: str, secret_key: str,
@@ -25,16 +31,22 @@ def query_submissions(server_url: str, secret_key: str,
     req = Request(url, headers={"X-Secret-Key": secret_key, "User-Agent": "ClawTraces/1.0"}, method="GET")
 
     try:
-        with urlopen(req, timeout=30) as resp:
+        with urlopen(req, timeout=30, context=get_ssl_context()) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except HTTPError as e:
         if e.code == 401:
             handle_401()
             return {"error": "unauthorized"}
         error_body = e.read().decode("utf-8", errors="replace")
-        return {"error": f"HTTP {e.code}", "detail": error_body}
+        try:
+            parsed = json.loads(error_body)
+            if "error" not in parsed:
+                parsed["error"] = f"HTTP {e.code}"
+            return parsed
+        except (json.JSONDecodeError, ValueError):
+            return {"error": f"HTTP {e.code}", "detail": error_body}
     except URLError as e:
-        return {"error": f"Connection failed: {e.reason}"}
+        return {"error": _format_connection_error(e.reason)}
 
 
 def main():
@@ -53,7 +65,7 @@ def main():
     result = query_submissions(server_url, key, args.page, args.page_size)
 
     if "error" in result:
-        print(f"Error: {result['error']}", file=sys.stderr)
+        print(f"Error: {result.get('message') or result['error']}", file=sys.stderr)
         sys.exit(1)
 
     # Output formatted result

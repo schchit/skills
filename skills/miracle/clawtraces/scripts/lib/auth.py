@@ -1,15 +1,81 @@
+# FILE_META
+# INPUT:  phone number + SMS code (interactive)
+# OUTPUT: API key stored in .env
+# POS:    skill lib — called by submit.py, query.py
+# MISSION: Handle phone+SMS authentication flow and API key management.
+
 """Authentication flow for ClawTraces: phone + SMS verification code → API key."""
+
+from __future__ import annotations
 
 import json
 import os
+import ssl
 import sys
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
-ENV_FILE_PATH = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
+try:
+    from lib.paths import get_env_file_path
+except ImportError:
+    from paths import get_env_file_path
+
+ENV_FILE_PATH = get_env_file_path()
+
+# ── SSL context (fixes macOS certificate issues) ──────────────────────
+
+_ssl_context: ssl.SSLContext | None = None
+
+# Bundled Mozilla CA certificate bundle — works on any Python version
+# without requiring certifi, pip, or valid system certificates.
+_BUNDLED_CACERT = os.path.join(os.path.dirname(__file__), "cacert.pem")
+
+
+def get_ssl_context() -> ssl.SSLContext:
+    """Return an SSL context that works on any Python/macOS version.
+
+    Priority:
+    1. Bundled cacert.pem (ships with the skill, zero dependencies)
+    2. certifi package (if user happens to have it installed)
+    3. System default (last resort)
+    """
+    global _ssl_context
+    if _ssl_context is not None:
+        return _ssl_context
+
+    # 1. Bundled CA cert — always available, no dependencies
+    if os.path.isfile(_BUNDLED_CACERT):
+        _ssl_context = ssl.create_default_context(cafile=_BUNDLED_CACERT)
+        return _ssl_context
+
+    # 2. certifi package
+    try:
+        import certifi
+        _ssl_context = ssl.create_default_context(cafile=certifi.where())
+        return _ssl_context
+    except ImportError:
+        pass
+
+    # 3. System default (may fail on old macOS Python)
+    _ssl_context = ssl.create_default_context()
+    return _ssl_context
+
+
+def _format_connection_error(reason) -> str:
+    """Format URLError.reason into a user-friendly message."""
+    reason_str = str(reason)
+    if "CERTIFICATE_VERIFY_FAILED" in reason_str:
+        return (
+            "SSL 证书验证失败。这通常是 macOS Python 环境的已知问题。\n"
+            "请尝试以下任一方法修复：\n"
+            "  1. pip install --upgrade certifi\n"
+            "  2. 如果是 Python 官方安装器：运行 /Applications/Python 3.x/Install Certificates.command\n"
+            "  3. brew install ca-certificates （Homebrew 用户）"
+        )
+    return f"Connection failed: {reason_str}"
 KEY_ENV_VAR = "CLAWTRACES_SECRET_KEY"
 SERVER_URL_ENV_VAR = "CLAWTRACES_SERVER_URL"
-DEFAULT_SERVER_URL = "https://api.clawd.how"
+DEFAULT_SERVER_URL = "https://api.shixiann.com"
 
 
 def _load_env_file() -> dict[str, str]:
@@ -117,16 +183,19 @@ def _api_call(server_url: str, path: str, body: dict | None = None,
     req = Request(url, data=data, headers=headers, method=method)
 
     try:
-        with urlopen(req, timeout=30) as resp:
+        with urlopen(req, timeout=30, context=get_ssl_context()) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except HTTPError as e:
         error_body = e.read().decode("utf-8", errors="replace")
         try:
-            return json.loads(error_body)
+            parsed = json.loads(error_body)
         except (json.JSONDecodeError, ValueError):
-            return {"error": f"HTTP {e.code}", "detail": error_body}
+            parsed = {}
+        if "error" not in parsed:
+            parsed["error"] = f"HTTP {e.code}"
+        return parsed
     except URLError as e:
-        return {"error": f"Connection failed: {e.reason}"}
+        return {"error": _format_connection_error(e.reason)}
 
 
 def _normalize_phone(phone: str) -> str:

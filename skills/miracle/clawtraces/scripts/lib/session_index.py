@@ -1,3 +1,9 @@
+# FILE_META
+# INPUT:  OpenClaw sessions directory
+# OUTPUT: list of qualifying session dicts (model, path, agent_id)
+# POS:    skill lib — called by scan_and_convert.py
+# MISSION: Discover and filter sessions by model whitelist.
+
 """Parse OpenClaw sessions.json index for quick model filtering."""
 
 import json

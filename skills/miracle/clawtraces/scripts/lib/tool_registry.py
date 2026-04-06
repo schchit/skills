@@ -1,3 +1,9 @@
+# FILE_META
+# INPUT:  tool call records from conversation
+# OUTPUT: Anthropic-format tool schema array
+# POS:    skill lib — called by converter.py
+# MISSION: Maintain built-in tool schemas and infer schemas for unknown tools.
+
 """Built-in OpenClaw tool schema definitions and schema inference for unknown tools.
 
 Schemas are extracted from the OpenClaw source code (pi-coding-agent core tools

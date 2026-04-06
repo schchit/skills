@@ -1,3 +1,9 @@
+# FILE_META
+# INPUT:  .jsonl session file (OpenClaw DAG format)
+# OUTPUT: ordered list of message nodes (final conversation chain)
+# POS:    skill lib — called by scan_and_convert.py
+# MISSION: Parse DAG structure and extract final conversation chain via parent-id traceback.
+
 """DAG traversal for OpenClaw .jsonl session logs.
 
 OpenClaw logs are append-only JSONL where nodes form a DAG via id + parentId.
