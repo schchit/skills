@@ -1,11 +1,17 @@
 {
   "owner": "niyazmft",
   "slug": "zulip-bridge",
-  "displayName": "💬 Zulip Bridge",
+  "displayName": "Openclaw Zulip Bridge",
   "latest": {
-    "version": "2026.3.31",
-    "publishedAt": 1774900911044,
-    "commit": "https://github.com/openclaw/skills/commit/16451f0f5af91854bf66439e84ff2e70ccc0265a"
+    "version": "2026.4.5",
+    "publishedAt": 1775251907337,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "2026.3.31",
+      "publishedAt": 1774900911044,
+      "commit": "https://github.com/openclaw/skills/commit/16451f0f5af91854bf66439e84ff2e70ccc0265a"
+    }
+  ]
 }

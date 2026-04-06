@@ -17,9 +17,6 @@ export type ResolvedZulipAccount = {
   apiKeySource: ZulipTokenSource;
   emailSource: ZulipEmailSource;
   baseUrlSource: ZulipBaseUrlSource;
-  // Aliases for OpenClaw status display (maps apiKey → token)
-  token?: string;
-  tokenSource: ZulipTokenSource;
   config: ZulipAccountConfig;
   enableAdminActions?: boolean;
   chatmode?: ZulipChatMode;
@@ -83,6 +80,18 @@ function resolveZulipRequireMention(config: ZulipAccountConfig): boolean | undef
   return config.requireMention;
 }
 
+export function getZulipEnvSecret(name: string): string | undefined {
+  return process.env[name]?.trim();
+}
+
+export function hasZulipEnvSecrets(): boolean {
+  return (
+    Boolean(getZulipEnvSecret("ZULIP_API_KEY")) &&
+    Boolean(getZulipEnvSecret("ZULIP_EMAIL")) &&
+    Boolean(getZulipEnvSecret("ZULIP_URL"))
+  );
+}
+
 export function resolveZulipAccount(params: {
   cfg: OpenClawConfig;
   accountId?: string | null;
@@ -97,11 +106,11 @@ export function resolveZulipAccount(params: {
   const enabled = baseEnabled && accountEnabled;
 
   const allowEnv = accountId === DEFAULT_ACCOUNT_ID;
-  const envApiKey = allowEnv ? process.env.ZULIP_API_KEY?.trim() : undefined;
-  const envEmail = allowEnv ? process.env.ZULIP_EMAIL?.trim() : undefined;
-  const envUrl = allowEnv ? process.env.ZULIP_URL?.trim() : undefined;
-  const envSite = allowEnv ? process.env.ZULIP_SITE?.trim() : undefined;
-  const envRealm = allowEnv ? process.env.ZULIP_REALM?.trim() : undefined;
+  const envApiKey = allowEnv ? getZulipEnvSecret("ZULIP_API_KEY") : undefined;
+  const envEmail = allowEnv ? getZulipEnvSecret("ZULIP_EMAIL") : undefined;
+  const envUrl = allowEnv ? getZulipEnvSecret("ZULIP_URL") : undefined;
+  const envSite = allowEnv ? getZulipEnvSecret("ZULIP_SITE") : undefined;
+  const envRealm = allowEnv ? getZulipEnvSecret("ZULIP_REALM") : undefined;
   const configApiKey = merged.apiKey?.trim();
   const configEmail = merged.email?.trim();
   const configUrl =
@@ -154,9 +163,6 @@ export function resolveZulipAccount(params: {
     apiKeySource,
     emailSource,
     baseUrlSource,
-    // Expose token/tokenSource aliases for OpenClaw status display
-    token: apiKey,
-    tokenSource: apiKeySource,
     config: merged,
     enableAdminActions: merged.enableAdminActions,
     chatmode: merged.chatmode,

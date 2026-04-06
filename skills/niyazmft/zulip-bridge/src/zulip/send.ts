@@ -48,15 +48,6 @@ function isHttpUrl(value: string): boolean {
   return /^https?:\/\//i.test(value);
 }
 
-function resolveZulipLocalPath(value: string): string | null {
-  if (value.startsWith("file://")) {
-    return fileURLToPath(value);
-  }
-  if (!isHttpUrl(value)) {
-    return value;
-  }
-  return null;
-}
 
 async function writeTempFile(buffer: Buffer, filename: string): Promise<string> {
   const dir = await fsPromises.mkdtemp(path.join(os.tmpdir(), "zulip-upload-"));
@@ -114,6 +105,13 @@ function parseZulipTarget(raw: string): ZulipTarget {
   return { kind: "stream", stream: trimmed };
 }
 
+/**
+ * Sends a message to a Zulip stream or user.
+ * Security: This function implements "read-and-send" hardening by:
+ * 1. Rejecting non-HTTP protocols for `mediaUrl` to prevent local file exfiltration.
+ * 2. Downloading remote media to a controlled temporary file before uploading to Zulip.
+ * 3. Only calling `uploadZulipFile` with paths to these verified temporary files.
+ */
 export async function sendMessageZulip(
   to: string,
   text: string,
@@ -165,12 +163,10 @@ export async function sendMessageZulip(
   let tempFileCleanup = false;
 
   if (mediaUrl) {
-    const localPath = resolveZulipLocalPath(mediaUrl);
     const isZulipHosted = isHttpUrl(mediaUrl) && mediaUrl.startsWith(baseUrl);
-    if (localPath && fs.existsSync(localPath)) {
-      const upload = await uploadZulipFile(client, localPath);
-      mediaUrl = upload.url;
-    } else if (isHttpUrl(mediaUrl) && !isZulipHosted) {
+    const isRemote = isHttpUrl(mediaUrl);
+
+    if (isRemote && !isZulipHosted) {
       const maxBytes = (cfg.agents?.defaults?.mediaMaxMb ?? 5) * 1024 * 1024;
       const fetched = await core.channel.media.fetchRemoteMedia({
         url: mediaUrl,
@@ -201,6 +197,14 @@ export async function sendMessageZulip(
       if (tempFileCleanup && tempFilePath) {
         await fsPromises.unlink(tempFilePath).catch(() => undefined);
       }
+    } else if (!isRemote) {
+      core.log?.(
+        formatZulipLog("zulip outbound security warning: rejected non-http mediaUrl", {
+          accountId: account.accountId,
+          mediaUrl,
+        }),
+      );
+      mediaUrl = undefined;
     }
     message = normalizeMessage(message, mediaUrl);
   }
