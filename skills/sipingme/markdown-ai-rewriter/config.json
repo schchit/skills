@@ -1,20 +1,25 @@
 {
   "skill": {
     "name": "markdown-ai-rewriter",
-    "version": "0.3.6",
+    "version": "1.1.0",
     "enabled": true,
     "autoInvoke": true
   },
   "commands": {
     "rewrite": {
-      "script": "./scripts/rewrite.js",
+      "script": "./scripts/run.js",
       "args": ["rewrite"],
       "description": "重写 Markdown 文件"
     },
     "check-quota": {
-      "script": "./scripts/rewrite.js",
+      "script": "./scripts/run.js",
       "args": ["check-quota"],
       "description": "检查剩余配额"
+    },
+    "help": {
+      "script": "./scripts/postinstall.js",
+      "args": [],
+      "description": "显示使用帮助和 API 配置方式"
     }
   },
   "environment": {
@@ -33,13 +38,40 @@
       "GLM_API_KEY",
       "DOUBAO_API_KEY",
       "WENXIN_API_KEY",
-      "MINIMAX_API_KEY"
+      "MINIMAX_API_KEY",
+      "KLING_API_KEY",
+      "RUNWAY_API_KEY"
     ]
+  },
+  "install": {
+    "type": "npx",
+    "package": "markdown-ai-rewriter",
+    "version": "^1.1.0",
+    "execution": "npx --yes markdown-ai-rewriter@^1.1.0",
+    "global": false,
+    "autoInstall": false,
+    "autoUpdate": false,
+    "riskLevel": "moderate",
+    "riskReason": "通过 npx 动态拉取并执行第三方 npm 包，存在供应链风险。使用前请审计源码。",
+    "requiresApproval": true,
+    "source": {
+      "type": "npm",
+      "registry": "https://registry.npmjs.org",
+      "package": "markdown-ai-rewriter",
+      "repository": "https://github.com/sipingme/markdown-ai-rewriter",
+      "license": "MIT",
+      "audit": "https://github.com/sipingme/markdown-ai-rewriter/blob/main/src/index.ts"
+    },
+    "verification": {
+      "command": "npx --yes markdown-ai-rewriter@^1.1.0 --version",
+      "expectedOutput": "1.1"
+    }
   },
   "dependencies": {
     "npm": [
-      "markdown-ai-rewriter@^0.3.3"
-    ]
+      "markdown-ai-rewriter@^1.1.0"
+    ],
+    "note": "Package is executed via npx at runtime, no global installation required"
   },
   "permissions": {
     "filesystem": {
@@ -48,6 +80,7 @@
     },
     "network": {
       "domains": [
+        "registry.npmjs.org",
         "api.openai.com",
         "api.anthropic.com",
         "*.openai.azure.com",
