@@ -3,9 +3,15 @@
   "slug": "hyros",
   "displayName": "Hyros",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774299900203,
-    "commit": "https://github.com/openclaw/skills/commit/d7a2b34dff38ae4c6da96aef6d5f259a86789fc9"
+    "version": "1.0.2",
+    "publishedAt": 1775166748948,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774299900203,
+      "commit": "https://github.com/openclaw/skills/commit/d7a2b34dff38ae4c6da96aef6d5f259a86789fc9"
+    }
+  ]
 }
