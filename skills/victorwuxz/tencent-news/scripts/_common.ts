@@ -1,15 +1,12 @@
-import { chmod, mkdir, rename, unlink, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { chmod, mkdir, rename, unlink } from "node:fs/promises";
+import { createHash } from "node:crypto";
 
-export const API_KEY_ENV = "TENCENT_NEWS_APIKEY";
 export const BASE_DOWNLOAD_URL = "https://mat1.gtimg.com/qqcdn/qqnews/cli/hub";
-export const DEFAULT_UPDATE_WINDOW_SECONDS = 43200;
+export const DEFAULT_CHECKSUM_URL = `${BASE_DOWNLOAD_URL}/checksums.txt`;
 
 const SCRIPT_DIR = import.meta.dir.replaceAll("\\", "/");
 export const SKILL_DIR = SCRIPT_DIR.replace(/\/[^/]+$/, "");
-
-const home = (process.env.HOME || process.env.USERPROFILE || "").replaceAll("\\", "/");
-export const CONFIG_DIR = `${home}/.config/tencent-news-cli`;
-export const CONFIG_FILE = `${CONFIG_DIR}/config.json`;
 
 export function fail(msg: string): never {
   console.error(`Error: ${msg}`);
@@ -27,22 +24,6 @@ export function normalizeApiKey(raw: string): string {
 
 function formatError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-function escapePosixSingleQuoted(value: string): string {
-  return value.replace(/'/g, "'\\''");
-}
-
-function escapePowerShellSingleQuoted(value: string): string {
-  return value.replace(/'/g, "''");
-}
-
-function quotePosix(value: string): string {
-  return `'${escapePosixSingleQuoted(value)}'`;
-}
-
-function quotePowerShell(value: string): string {
-  return `'${escapePowerShellSingleQuoted(value)}'`;
 }
 
 function parentDir(path: string): string {
@@ -83,17 +64,6 @@ async function replaceFile(sourcePath: string, targetPath: string) {
   await cleanupFile(backupPath);
 }
 
-async function writeTextFileAtomic(path: string, content: string) {
-  await mkdir(parentDir(path), { recursive: true });
-  const tempPath = createTempSiblingPath(path, "tmp");
-  try {
-    await writeFile(tempPath, content, "utf8");
-    await replaceFile(tempPath, path);
-  } finally {
-    await cleanupFile(tempPath);
-  }
-}
-
 interface CommandResult {
   stdout: string;
   stderr: string;
@@ -128,17 +98,19 @@ export interface PlatformInfo {
   os: string;
   arch: string;
   isWindows: boolean;
-  detectedShell: string;
-  profilePath: string | null;
   cliFilename: string;
   cliPath: string;
+  cliSource: "global" | "local" | "none";
   cliDownloadUrl: string;
-  lastCheckFile: string;
-  helpCommand: string;
-  versionCommand: string;
 }
 
-export function detectPlatform(): PlatformInfo {
+export interface DetectPlatformOptions {
+  preferGlobal?: boolean;
+}
+
+export function detectPlatform(options: DetectPlatformOptions = {}): PlatformInfo {
+  const preferGlobal = options.preferGlobal ?? true;
+
   let os: string;
   switch (process.platform) {
     case "win32":  os = "windows"; break;
@@ -156,37 +128,42 @@ export function detectPlatform(): PlatformInfo {
 
   const isWindows = os === "windows";
   const cliFilename = isWindows ? "tencent-news-cli.exe" : "tencent-news-cli";
-  const cliPath = `${SKILL_DIR}/${cliFilename}`;
+  const localCliPath = `${SKILL_DIR}/${cliFilename}`;
   const cliDownloadUrl = `${BASE_DOWNLOAD_URL}/${os}-${arch}/${cliFilename}`;
-  const lastCheckFile = `${SKILL_DIR}/.last-update-check-${os}-${arch}`;
 
-  let detectedShell: string;
-  let profilePath: string | null;
+  // Detect global CLI: use `where` on Windows, `which` on others
+  let cliPath = localCliPath;
+  let cliSource: "global" | "local" | "none" = "none";
 
-  if (isWindows) {
-    detectedShell = "powershell";
-    profilePath = `${home}/Documents/WindowsPowerShell/Microsoft.PowerShell_profile.ps1`;
-  } else {
-    const shell = process.env.SHELL || "/bin/sh";
-    detectedShell = shell.split("/").pop() || "sh";
-    switch (detectedShell) {
-      case "zsh":  profilePath = `${home}/.zshrc`;  break;
-      case "bash": profilePath = `${home}/.bashrc`; break;
-      default:     profilePath = null;
+  if (existsSync(localCliPath)) {
+    cliPath = localCliPath;
+    cliSource = "local";
+  } else if (preferGlobal) {
+    try {
+      const whichCmd = isWindows ? "where" : "which";
+      const proc = Bun.spawnSync([whichCmd, cliFilename], { stdout: "pipe", stderr: "pipe" });
+      if (proc.exitCode === 0) {
+        const globalPath = proc.stdout.toString().trim().split(/\r?\n/)[0];
+        if (globalPath) {
+          // Verify global CLI is functional by calling help
+          const helpProc = Bun.spawnSync([globalPath, "help"], { stdout: "pipe", stderr: "pipe" });
+          if (helpProc.exitCode === 0) {
+            cliPath = globalPath;
+            cliSource = "global";
+          }
+        }
+      }
+    } catch {
+      // Ignore errors in global detection, fall through to local
     }
   }
 
-  const helpCommand = isWindows
-    ? `& ${quotePowerShell(cliPath)} help`
-    : `${quotePosix(cliPath)} help`;
-  const versionCommand = isWindows
-    ? `& ${quotePowerShell(cliPath)} version`
-    : `${quotePosix(cliPath)} version`;
+  if (cliSource === "none") {
+    cliPath = localCliPath;
+  }
 
   return {
-    os, arch, isWindows, detectedShell, profilePath,
-    cliFilename, cliPath, cliDownloadUrl, lastCheckFile,
-    helpCommand, versionCommand,
+    os, arch, isWindows, cliFilename, cliPath, cliSource, cliDownloadUrl,
   };
 }
 
@@ -194,15 +171,8 @@ export function getPlatformJson(p: PlatformInfo) {
   return {
     os: p.os,
     arch: p.arch,
-    detectedShell: p.detectedShell,
-    preferredShell: p.detectedShell,
-    profilePath: p.profilePath,
-    cliFilename: p.cliFilename,
     cliPath: p.cliPath,
-    cliDownloadUrl: p.cliDownloadUrl,
-    lastCheckFile: p.lastCheckFile,
-    helpCommand: p.helpCommand,
-    versionCommand: p.versionCommand,
+    cliSource: p.cliSource,
   };
 }
 
@@ -211,20 +181,6 @@ export async function downloadFile(url: string, outputPath: string) {
   if (!resp.ok) fail(`download failed: ${resp.status} ${resp.statusText} from ${url}`);
   await mkdir(parentDir(outputPath), { recursive: true });
   await Bun.write(outputPath, resp);
-}
-
-export async function readLastCheckEpoch(file: string): Promise<number> {
-  const f = Bun.file(file);
-  if (!(await f.exists())) return 0;
-  const raw = (await f.text()).trim();
-  const val = parseInt(raw, 10);
-  return isNaN(val) ? 0 : val;
-}
-
-export async function writeLastCheckEpoch(file: string, epoch?: number): Promise<number> {
-  const ts = epoch ?? Math.floor(Date.now() / 1000);
-  await Bun.write(file, `${ts}\n`);
-  return ts;
 }
 
 export async function runCliVersion(cliPath: string): Promise<string> {
@@ -241,6 +197,59 @@ export interface CliVersionInfo {
   need_update?: boolean;
   release_notes?: string;
   download_urls?: Record<string, string>;
+}
+
+function getPlatformBinaryPath(downloadUrl: string): string {
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(downloadUrl);
+  } catch (error) {
+    fail(`invalid download url for checksum verification: ${downloadUrl}: ${formatError(error)}`);
+  }
+
+  const segments = parsedUrl.pathname.split("/").filter(Boolean);
+  if (segments.length < 2) {
+    fail(`could not determine platform path from download url: ${downloadUrl}`);
+  }
+
+  return `${segments[segments.length - 2]}/${segments[segments.length - 1]}`;
+}
+
+async function fetchChecksumForPlatform(checksumUrl: string, downloadUrl: string): Promise<string> {
+  const platformBinaryPath = getPlatformBinaryPath(downloadUrl);
+  const resp = await fetch(checksumUrl).catch((error: unknown) =>
+    fail(`failed to fetch checksums from ${checksumUrl}: ${formatError(error)}`),
+  );
+
+  if (!resp.ok) {
+    fail(`failed to fetch checksums from ${checksumUrl}: ${resp.status} ${resp.statusText}`);
+  }
+
+  const text = await resp.text().catch((error: unknown) =>
+    fail(`failed to read checksums from ${checksumUrl}: ${formatError(error)}`),
+  );
+
+  for (const line of text.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    // format: "<sha256>  <path>" (two spaces between hash and path)
+    const match = trimmed.match(/^([0-9a-fA-F]{64})\s+(.+)$/);
+    if (match) {
+      const [, hash, filePath] = match;
+      if (filePath === platformBinaryPath) {
+        return hash.toLowerCase();
+      }
+    }
+  }
+
+  fail(`no matching checksum found for ${platformBinaryPath} in ${checksumUrl}`);
+}
+
+async function computeFileSha256(filePath: string): Promise<string> {
+  const fileContent = await Bun.file(filePath).arrayBuffer();
+  const hash = createHash("sha256");
+  hash.update(Buffer.from(fileContent));
+  return hash.digest("hex");
 }
 
 export function parseCliVersionJson(raw: string, context: string): CliVersionInfo {
@@ -263,10 +272,24 @@ export interface InstallCliResult {
   versionInfo: CliVersionInfo;
 }
 
-export async function downloadAndInstallCli(downloadUrl: string, cliPath: string): Promise<InstallCliResult> {
+export async function downloadAndInstallCli(
+  downloadUrl: string,
+  cliPath: string,
+  checksumUrl: string,
+): Promise<InstallCliResult> {
   const tempPath = createTempSiblingPath(cliPath, "download");
   try {
     await downloadFile(downloadUrl, tempPath);
+
+    const expectedHash = await fetchChecksumForPlatform(checksumUrl, downloadUrl);
+    const actualHash = await computeFileSha256(tempPath).catch((error: unknown) =>
+      fail(`failed to compute sha256 for ${tempPath}: ${formatError(error)}`),
+    );
+    if (actualHash !== expectedHash) {
+      fail(`checksum verification failed for ${downloadUrl}\n  expected: ${expectedHash}\n  actual:   ${actualHash}`);
+    }
+    console.error("Checksum verification passed.");
+
     const rawVersionOutput = await runCliVersion(tempPath);
     const versionInfo = parseCliVersionJson(rawVersionOutput, `${tempPath} version`);
     await replaceFile(tempPath, cliPath);
@@ -279,129 +302,67 @@ export async function downloadAndInstallCli(downloadUrl: string, cliPath: string
   }
 }
 
-// ── Config-file helpers ──
-
-export async function readConfigApiKey(): Promise<string> {
-  const f = Bun.file(CONFIG_FILE);
-  if (!(await f.exists())) return "";
-  try {
-    const cfg = await f.json();
-    if (!cfg || typeof cfg !== "object" || Array.isArray(cfg)) return "";
-    const value = (cfg as Record<string, unknown>)[API_KEY_ENV];
-    return typeof value === "string" ? normalizeApiKey(value) : "";
-  } catch {
-    return "";
-  }
+function extractApiKey(output: string): string | null {
+  const match = output.match(/API Key\s*:\s*(.+)$/m);
+  if (!match) return null;
+  const value = normalizeApiKey(match[1] || "");
+  return value || null;
 }
 
-export async function writeConfigApiKey(key: string) {
-  const normalizedKey = normalizeApiKey(key);
-  let nextConfig: Record<string, unknown> = {};
-  const f = Bun.file(CONFIG_FILE);
-  if (await f.exists()) {
-    try {
-      const existing = await f.json();
-      if (!existing || typeof existing !== "object" || Array.isArray(existing)) {
-        fail(`existing config file is not a JSON object: ${CONFIG_FILE}`);
-      }
-      nextConfig = { ...(existing as Record<string, unknown>) };
-    } catch {
-      fail(`existing config file is not valid JSON: ${CONFIG_FILE}`);
-    }
-  }
+function includesMissingApiKeyMessage(output: string): boolean {
+  return /未设置 API Key/i.test(output) || /not set/i.test(output);
+}
 
-  nextConfig[API_KEY_ENV] = normalizedKey;
-  await writeTextFileAtomic(CONFIG_FILE, JSON.stringify(nextConfig, null, 2) + "\n");
+async function ensureCliExecutable(cliPath: string): Promise<void> {
+  if (!(await Bun.file(cliPath).exists())) fail(`cli not found at ${cliPath}`);
   if (process.platform !== "win32") {
-    await chmod(CONFIG_FILE, 0o600).catch(() => {});
+    await chmod(cliPath, 0o755).catch(() => {});
   }
 }
 
-// ── API-key state ──
+async function runCliCommand(p: PlatformInfo, args: string[]): Promise<CommandResult> {
+  await ensureCliExecutable(p.cliPath);
+  return runCommand([p.cliPath, ...args], `${p.cliPath} ${args.join(" ")}`);
+}
 
-export async function getApiKeyState(p: PlatformInfo) {
-  const present = !!process.env[API_KEY_ENV];
-  const result: Record<string, any> = {
-    envVar: API_KEY_ENV,
-    present,
-    configFile: CONFIG_FILE,
-    detectedShell: p.detectedShell,
-    preferredShell: p.detectedShell,
-    profilePath: p.profilePath,
-    canAutoConfigure: true,
-    verificationCommand: p.isWindows
-      ? "$env:TENCENT_NEWS_APIKEY"
-      : 'printf \'%s\\n\' "$TENCENT_NEWS_APIKEY"',
+export interface ApiKeyState {
+  status: "configured" | "missing" | "error";
+  present: boolean;
+  error: string | null;
+}
+
+export async function getApiKeyState(p: PlatformInfo): Promise<ApiKeyState> {
+  if (p.cliSource !== "global" && !(await Bun.file(p.cliPath).exists())) {
+    return {
+      status: "error",
+      present: false,
+      error: "CLI not found, cannot check API key.",
+    };
+  }
+
+  const result = await runCliCommand(p, ["apikey-get"]);
+  const rawOutput = result.output;
+
+  if (result.exitCode === 0) {
+    const key = extractApiKey(rawOutput);
+    return {
+      status: key ? "configured" : "error",
+      present: !!key,
+      error: key ? null : "CLI apikey-get succeeded, but API key could not be parsed from output.",
+    };
+  }
+
+  if (includesMissingApiKeyMessage(rawOutput) || result.exitCode === 2) {
+    return {
+      status: "missing",
+      present: false,
+      error: null,
+    };
+  }
+
+  return {
+    status: "error",
+    present: false,
+    error: rawOutput || `apikey-get failed with exit code ${result.exitCode}.`,
   };
-
-  if (!present) {
-    const cfgVal = await readConfigApiKey();
-    if (cfgVal) {
-      result.configFileHasKey = true;
-      result.restoreCommand = p.isWindows
-        ? `$env:${API_KEY_ENV} = ${quotePowerShell(cfgVal)}`
-        : `export ${API_KEY_ENV}=${quotePosix(cfgVal)}`;
-    } else {
-      result.configFileHasKey = false;
-    }
-  }
-
-  return result;
-}
-
-// ── Set API key ──
-
-export interface SetApiKeyResult {
-  storage: string;
-  profilePath: string | null;
-  sessionCommand: string;
-}
-
-export async function setApiKeyEnv(p: PlatformInfo, key: string): Promise<SetApiKeyResult> {
-  const normalizedKey = normalizeApiKey(key);
-  if (!normalizedKey) fail("API key is empty after normalization");
-
-  let storage: string;
-  let profilePath = p.profilePath;
-
-  if (p.isWindows) {
-    await runCommandOrFail([
-      "powershell", "-NoProfile", "-Command",
-      `[Environment]::SetEnvironmentVariable('${API_KEY_ENV}', ${quotePowerShell(normalizedKey)}, 'User')`,
-    ], "persist API key to the Windows user environment");
-    storage = "windows-user-env";
-  } else if (p.os === "darwin") {
-    const target = profilePath || `${home}/.profile`;
-    await updateShellProfile(target, normalizedKey);
-    profilePath = target;
-    try {
-      await runCommand(["launchctl", "setenv", API_KEY_ENV, normalizedKey], "launchctl setenv");
-    } catch {}
-    storage = "macos-env";
-  } else {
-    const target = profilePath || `${home}/.profile`;
-    await updateShellProfile(target, normalizedKey);
-    profilePath = target;
-    storage = "linux-shell-profile";
-  }
-
-  await writeConfigApiKey(normalizedKey);
-
-  const sessionCommand = p.isWindows
-    ? `$env:${API_KEY_ENV} = ${quotePowerShell(normalizedKey)}`
-    : `export ${API_KEY_ENV}=${quotePosix(normalizedKey)}`;
-
-  return { storage, profilePath, sessionCommand };
-}
-
-async function updateShellProfile(profilePath: string, key: string) {
-  let content = "";
-  const f = Bun.file(profilePath);
-  if (await f.exists()) {
-    content = await f.text();
-  }
-  const regex = new RegExp(`^\\s*export\\s+${API_KEY_ENV}=.*$`, "gm");
-  content = content.replace(regex, "").replace(/\n{3,}/g, "\n\n");
-  content = content.trimEnd() + `\nexport ${API_KEY_ENV}=${quotePosix(key)}\n`;
-  await writeTextFileAtomic(profilePath, content);
 }

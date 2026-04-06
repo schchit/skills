@@ -3,11 +3,16 @@
   "slug": "tencent-news",
   "displayName": "tencent-news",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1774601492363,
-    "commit": "https://github.com/openclaw/skills/commit/8cae0057fb31878e9f8015a96174a74c6afed5b7"
+    "version": "1.0.7",
+    "publishedAt": 1775026209643,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1774601492363,
+      "commit": "https://github.com/openclaw/skills/commit/8cae0057fb31878e9f8015a96174a74c6afed5b7"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1774528634739,
