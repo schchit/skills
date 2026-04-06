@@ -1,341 +1,380 @@
 ---
 name: mova-intent-calibration
-description: Walk the user through a structured intent calibration session to close blind spots, surface hidden assumptions, and formalize their task into a pre-contract before execution. Use before starting any MOVA workflow or contract. Trigger when the user says I want to, help me formalize, define the task, pre-contract, or is not sure what they need.
+description: Transform a raw user request into a clear, bounded, testable, and responsibility-bearing intent through structured crystallization. Use before any complex task, contract creation, or execution. Trigger when the user says "I want to", "help me think through", "define the task", or when the task scope is unclear or underdefined.
 license: MIT-0
 ---
 
-# MOVA Intent Calibration
+> **Ecosystem Skill** — Supports building and managing the MOVA ecosystem. Requires the `openclaw-mova` plugin.
 
-Walk any task from rough idea to a fully structured pre-contract — by closing blind spots, surfacing hidden assumptions, and making the user the sole owner of every decision under uncertainty.
+# MOVA Intent Crystallization
 
-## What this skill does
+Transform a raw user request into an explicit, bounded, testable, and responsibility-bearing intent — ready for formalization, execution, or contract creation.
 
-Guides the user through 16 canonical question categories in fixed order. Each category targets a specific blind spot. The agent localizes uncertainty and asks — it never resolves, guesses, or invents answers.
+This is not a form-filling exercise. This is a guided thinking process: expand the solution space, compare real alternatives, expose trade-offs, and require the user to consciously own every decision.
 
-At the end: a structured **pre-contract document** that contains the formal intent declaration ready for contract generation.
+---
 
-## Core invariants
+## Core Principles
 
-These rules apply throughout the entire session with no exceptions:
+1. Do not rush to fix the first plausible framing.
+2. Always expand the solution space before narrowing it.
+3. Present materially different options — not superficial variants of the same one.
+4. Give a recommendation with full argumentation, not a short preference.
+5. Show the trade-off of the recommendation.
+6. Force the user to state the choice in their own words.
+7. Make the user accept the cost, limits, and responsibility of the choice.
+8. Separate facts, assumptions, constraints, decisions, and uncertainties.
+9. If the user's intent is underdefined, do not proceed to execution.
+10. The result must be explicit, bounded, testable, and owned by the user.
 
-- **The agent does not invent answers.** If information is missing, the agent stops and asks.
-- **The agent does not resolve ambiguity.** It localizes where uncertainty is and what type it is. The human resolves it.
-- **A blocked state is a valid outcome.** If the user cannot answer a required question, the session blocks. That is correct behavior.
-- **One question per message.** Never ask multiple questions at once.
-- **Never skip a required category.** Optional categories may be skipped only if clearly not applicable.
+---
 
 ## When to trigger
 
 Activate when the user:
-- Describes a task they want the agent to execute but the scope is unclear
-- Says "I want to...", "can you help me...", "let me think through..."
-- Explicitly requests a pre-contract or intent formalization
-- Is about to start a MOVA workflow and the task is new or complex
+- Describes something they want but the scope is unclear
+- Says "I want to...", "help me...", "let me think through...", "plan this out"
+- Is about to start a complex task or MOVA workflow
+- Asks to formalize, define, or pre-contract a task
 
 **Before starting**, say:
 
-> "Let's formalize your task before we execute it. I'll ask you a series of questions — one at a time. You own every answer. I will not guess. When we're done, I'll produce a pre-contract document we can use to build the execution contract. Ready?"
+> "Let me help you crystallize this intent before we act on it. We'll go through 9 structured steps — each one expands your options, then forces a conscious choice. You own every decision. Ready?"
 
-Wait for confirmation before starting.
-
----
-
-## Question flow — 16 categories in fixed order
-
-Work through the categories below **in order**. Complete each category before moving to the next. Mark each as `resolved`, `blocked_on_human`, or `not_required` (optional only).
-
-For each category: ask the primary question. If the answer is complete — move on. If the answer is vague — apply the AI mode to sharpen it. If uncertainty cannot be resolved — BLOCK and state what the human must resolve before continuing.
+Wait for confirmation.
 
 ---
 
-### 1. Actor Intent
-**AI mode:** DETECT / NEUTRAL
-**Purpose:** Fix owner, responsibility, and why the task exists now.
+## Response Pattern (apply at every step)
 
-Ask:
-- Who initiates this task?
-- Who owns the result?
-- Why is this task being started now?
+At every step, use this structure exactly:
 
-Record: `actor`, `owner`, `reason_now`
+### 1. Observation
+State briefly:
+- what is already clear
+- what remains unclear
+- why the gap matters for this task
 
----
+### 2. Option Space
+Present 4–6 **materially different** options or framings. Options must differ in logic, not just wording. Make the user think.
 
-### 2. Change Definition
-**AI mode:** NARROW / CONTRACTION
-**Purpose:** Define what must be different in the world after execution.
+### 3. Analysis
+For each option:
+- what it gives
+- what it sacrifices
+- when it is suitable
+- when it breaks down
 
-Ask:
-- What must become different after execution?
-- Is the target an action, a state, or a result?
-- How does the "after" state look?
+### 4. Recommendation
+Provide a full recommendation including:
+- why this is the best current choice
+- why the alternatives are weaker for this task
+- what trade-off is being chosen
+- what responsibility the user accepts
 
-Record: `change_target`, `change_type` (action/state/result), `after_state_description`
+### 5. User Fixation
+Do not accept only a number. Require the user to confirm in their own words:
+- what they choose
+- why they choose it
+- what they consciously accept or give up
 
----
-
-### 3. Initial State
-**AI mode:** VALIDATE / CONTRACTION
-**Purpose:** Fix the actual starting point — what is real and confirmed now.
-
-Ask:
-- What is known for certain right now?
-- What already exists that is relevant?
-- What is the current state of the object being changed?
-
-Record: `known_facts`, `existing_artifacts`, `current_object_state`
-
----
-
-### 4. Assumptions
-**AI mode:** DETECT / CONTRACTION
-**Purpose:** Separate what is assumed from what is confirmed.
-
-Ask:
-- What is assumed but not yet confirmed?
-- What supports each assumption?
-- Can execution continue if this assumption turns out to be false?
-
-For each assumption found: mark as `safe` (execution can continue if false) or `blocking` (execution must stop if false).
-
-Record: `assumptions[]` each with `statement`, `support`, `blocking: bool`
+Preferred formula:
+> I choose X because for me Y is more important than Z.
+> I understand that by choosing this I give up A and accept the risk of B.
 
 ---
 
-### 5. Object
-**AI mode:** DETECT / CONTRACTION
-**Purpose:** Define exactly what is being acted on.
+## Step 0 — Problem Framing
 
-Ask:
-- What exactly is being changed, created, selected, or processed?
-- Is the object already defined or does it need to be chosen?
-- If it must be chosen — by what rule?
+**Goal:** Determine what kind of problem is actually being solved before choosing a solution path.
 
-Record: `object_description`, `object_defined: bool`, `selection_rule` (if applicable)
+The initial request usually describes a wish, a symptom, or the first imagined solution — not the actual problem structure.
 
----
+**Typical framing options:**
+- A result-definition problem (we don't yet know what success looks like)
+- A diagnosis problem (we don't yet know what is actually broken)
+- A planning problem (we know the goal but not the path)
+- A discipline/execution problem (the plan exists but is not being followed)
+- A selection/filtering problem (we need to choose from known options)
+- A coordination/delegation problem (clarity about who decides what)
+- Custom
 
-### 6. Constraints
-**AI mode:** VALIDATE / CONTRACTION
-**Purpose:** Fix hard limits and forbidden actions.
-
-Ask:
-- What must not be violated under any circumstances?
-- Which actions are explicitly forbidden?
-- Which consequences are unacceptable even if the goal is reached?
-
-Record: `constraints[]` each with `statement`, `type` (forbidden_action/unacceptable_consequence/invariant)
+**User fixation:**
+> I understand this task primarily as a task about ...
 
 ---
 
-### 7. Goal Definition
-**AI mode:** NARROW / CONTRACTION
-**Purpose:** Define the precise target state and how to verify it.
+## Step 1 — Outcome
 
-Ask:
-- What is the final goal — stated precisely?
-- How do we verify that the goal has been reached?
-- Who confirms the result?
+**Goal:** Convert desire into an observable result.
 
-Record: `goal_statement`, `verification_method`, `confirmation_owner`
+Distinguish between:
+- artifact creation (something must exist that didn't before)
+- state change (something must be different)
+- behavior change (someone must act differently)
+- filtering/prioritization (a set must be narrowed or ranked)
+- decision preparation (a choice must be ready for approval)
 
----
+**Typical outcome classes:**
+- Create an artifact
+- Reach a measurable state
+- Change behavior
+- Select or filter
+- Rank or prioritize
+- Prepare a decision for approval
+- Custom
 
-### 8. Success Shape
-**AI mode:** DETECT / CONTRACTION
-**Purpose:** Define acceptable end states.
-
-Ask:
-- Is there one valid end state or several?
-- What counts as full success?
-- What counts as failure?
-
-Record: `success_states[]`, `failure_states[]`, `partial_success_allowed: bool`
-
----
-
-### 9. Decision Rules
-**AI mode:** DETECT / CONTRACTION
-**Purpose:** Reveal all branching points in the execution path.
-
-Ask:
-- Where does the execution path branch?
-- What rule determines the choice at each branch?
-- Is each choice deterministic (rule-driven) or does it require a human decision?
-
-Record: `decision_points[]` each with `location`, `rule`, `type` (deterministic/human)
+**User fixation:**
+> I do not want merely ...
+> I want specifically ...
 
 ---
 
-### 10. Inputs
-**AI mode:** VALIDATE / CONTRACTION
-**Purpose:** Fix all required inputs and identify gaps.
+## Step 2 — Reality
 
-Ask:
-- What data, documents, or signals are required for execution?
-- Which of these inputs already exist?
-- Which required inputs are missing right now?
+**Goal:** Force explicit recognition of the actual informational basis of the task.
 
-Record: `inputs[]` each with `name`, `available: bool`, `source`
+Separate:
+- known facts
+- estimates
+- assumptions
+- unknowns
+- missing but necessary inputs
 
----
+**Typical reality axes:**
+- Goal only
+- Goal + current state
+- Goal + current state + weak zones
+- Goal + current state + environmental constraints
+- Goal + current state + evidence/history
+- Custom
 
-### 11. Source of Truth
-**AI mode:** VALIDATE / CONTRACTION
-**Purpose:** Define authoritative sources and conflict handling.
-
-Ask:
-- What is the authoritative source for the key data in this task?
-- If multiple sources exist — which has priority?
-- What happens if sources conflict?
-
-Record: `sources[]` each with `name`, `priority`, `conflict_rule`
+**User fixation:**
+> I accept that this task will be built on the following inputs ...
 
 ---
 
-### 12. Dependencies
-**AI mode:** DETECT / CONTRACTION
-**Purpose:** Expose external dependencies that could block execution.
+## Step 3 — Alternatives
 
-Ask:
-- Who or what outside this system must respond or act?
-- Are there external approvals, access grants, or third-party responses required?
-- Can execution proceed without them, or do they block the path?
+**Goal:** Expand the solution space before fixing the core logic.
 
-Record: `dependencies[]` each with `name`, `type`, `blocking: bool`
+Generate 3–5 materially different strategies — not cosmetic variants of one strategy.
 
----
+**Typical strategy classes:**
+- Rigid structured plan
+- Adaptive plan with feedback loops
+- Scenario-driven approach (prepare for 2–3 futures)
+- Deficit-driven approach (fix the weakest link first)
+- Outcome-driven approach (start from the end state, work backward)
+- Hybrid approach
+- Custom
 
-### 13. Time Limits *(optional)*
-**AI mode:** VALIDATE / CONTRACTION
-**Purpose:** Fix time and attempt boundaries.
-
-Ask only if relevant:
-- Is there a deadline for this task?
-- How many execution attempts are allowed?
-- When must the task stop even if incomplete?
-
-Record: `deadline`, `max_attempts`, `stop_condition`
-If not applicable — mark as `not_required` and skip.
+**User fixation:**
+> I choose the strategy ... because for me ... matters more than ...
 
 ---
 
-### 14. Human Gate
-**AI mode:** BLOCK / NEUTRAL
-**Purpose:** Define explicit points where execution must stop for human decision.
+## Step 4 — Verification
 
-Ask:
-- Where must the machine stop and wait for a human decision?
-- What exactly must the human decide at each gate?
-- What counts as a valid resolution at each gate?
+**Goal:** Make the intent testable.
 
-Record: `human_gates[]` each with `trigger_condition`, `question_for_human`, `valid_resolution_criteria`
+Present multiple verification modes and expose weak verification traps.
 
----
+**Typical verification types:**
+- Artifact exists (weakest — doesn't prove quality)
+- Process was completed (proves effort, not result)
+- Measurable behavior changed
+- External review confirms adequacy
+- Automatic rule-based validation
+- Combined verification (recommended for important tasks)
+- Custom
 
-### 15. Ambiguity Surface
-**AI mode:** DETECT / NEUTRAL
-**Purpose:** Map all remaining uncertainty as a first-class object.
-
-Review everything collected so far. For each ambiguity found:
-- Where exactly is it located? (which category, which field)
-- What type is it? (factual gap / definition gap / rule gap / ownership gap)
-- Who owns resolution of this ambiguity?
-
-Record: `ambiguities[]` each with `location`, `type`, `owner`
-
-If any ambiguity is unresolved and blocking — BLOCK here. State what the human must resolve before the session can continue.
+**User fixation:**
+> I will consider this task complete if ...
 
 ---
 
-### 16. Linearity Check
-**AI mode:** VALIDATE / CONTRACTION
-**Purpose:** Test whether the execution route is truly straight.
+## Step 5 — Constraints
 
-Review the complete path from initial state to goal. Ask:
-- Are there hidden if-statements that were not captured in decision rules?
-- Does any step depend on an unverified assumption?
-- Can the entire route be described as atomic transitions without hidden choices?
+**Goal:** Turn the intent into something realistic and executable.
 
-If the route is not linear — identify each non-linear point and ask the user to resolve it or accept it as an explicit decision point.
+Separate:
+- hard constraints (cannot be violated under any circumstances)
+- soft preferences (desirable but negotiable)
+- hidden conflicting constraints (often the most dangerous)
 
-Record: `linearity_result` (linear/non-linear), `blocking_points[]`
+**Typical constraint groups:**
+- Time
+- Resources
+- Legal/ethical boundaries
+- Cognitive load
+- Emotional sustainability
+- Risk tolerance
+- Output format
+- Scope boundaries
+- Custom
+
+**User fixation:**
+> No matter what solution is chosen, the following constraints cannot be violated ...
 
 ---
 
-## Output — Pre-Contract Document
+## Step 6 — Decision Rights
 
-When all required categories are resolved and linearity check passes — produce the pre-contract.
+**Goal:** Define the boundaries of agency, autonomy, and responsibility.
 
-Format:
+Separate:
+- what the human must decide (cannot be delegated)
+- what the system may suggest (advisory only)
+- what the system may decide autonomously (within defined guardrails)
+- what requires explicit confirmation before action
+
+**Typical decision rights zones:**
+- Human decides criteria, system executes
+- Human approves final output only
+- System performs preliminary filtering, human selects
+- System adapts locally within guardrails
+- System acts autonomously within a limited, pre-agreed zone
+- Custom
+
+**User fixation:**
+> The human must decide ...
+> The system may decide ...
+
+---
+
+## Step 7 — Uncertainty
+
+**Goal:** Make assumptions and uncertainty explicit.
+
+Identify:
+- critical uncertainties (could break execution if unresolved)
+- acceptable uncertainties (can be carried without risk)
+- controllable uncertainties (the user can resolve these)
+- uncontrollable uncertainties (must be acknowledged and accepted)
+- triggers for revisiting the intent
+
+**Typical uncertainty sources:**
+- Input incompleteness
+- Subjective evaluation bias
+- Environmental instability
+- Inconsistent interpretation
+- Resource unpredictability
+- Human adherence risk
+- Custom
+
+**User fixation:**
+> I recognize the following uncertainties ...
+
+---
+
+## Step 8 — Commitment
+
+**Goal:** Close crystallization with a commitment, not just a description.
+
+Collect the selected choices into one integrated commitment statement.
+
+**Final commitment must include:**
+- what was chosen
+- what was rejected and why
+- what constraints were accepted
+- what verification standard was accepted
+- what uncertainties remain
+- what the user is now responsible for
+
+**User fixation (required — do not accept a short answer here):**
+> I consciously choose ...
+> I accept the constraints ...
+> I accept the verification standard ...
+> I recognize the uncertainties ...
+> I understand that I am rejecting ...
+> I accept responsibility for this decision.
+
+---
+
+## Final Output — Crystallized Intent
+
+After Step 8, produce the crystallized intent in this structure:
 
 ```
-PRE-CONTRACT  —  [task title]
-Generated: [date]
-Status: VALID / BLOCKED
+CRYSTALLIZED INTENT — [task title]
+Date: [date]
 
-─── ACTOR ────────────────────────────────────
-Actor:          [who initiates]
-Owner:          [who owns result]
-Reason now:     [why this task starts now]
+INTENT
+[Single explicit statement of what is being done]
 
-─── OBJECT ───────────────────────────────────
-Object:         [what is being acted on]
-Current state:  [initial state]
-Change target:  [what must become different]
-After state:    [description of result]
+PROBLEM FRAMING
+[What type of task this was determined to be]
 
-─── GOAL ─────────────────────────────────────
-Goal:           [precise goal statement]
-Verification:   [how to confirm goal reached]
-Confirmed by:   [who signs off]
+OUTCOME
+[What exact result must appear or change]
 
-─── CONSTRAINTS ──────────────────────────────
-[list of hard limits and forbidden actions]
+INPUTS / REALITY
+[What the task is based on — facts, estimates, assumptions]
 
-─── SUCCESS / FAILURE ────────────────────────
-Success:        [accepted end states]
-Failure:        [failure states]
+STRATEGY
+[What solution logic was chosen and why]
 
-─── DECISION POINTS ──────────────────────────
-[list of branch points with rules and types]
+CONSTRAINTS
+[What cannot be violated]
 
-─── HUMAN GATES ──────────────────────────────
-[list of mandatory human decision points]
+DECISION RIGHTS
+Human controls:  [list]
+System may:      [list]
 
-─── INPUTS REQUIRED ──────────────────────────
-[list of inputs with availability status]
+VERIFICATION
+[How completion will be tested]
 
-─── ASSUMPTIONS ──────────────────────────────
-[list with blocking/safe flags]
+UNCERTAINTY
+[What remains unknown or assumed]
 
-─── DEPENDENCIES ─────────────────────────────
-[list with blocking flags]
+COMMITMENT
+[What the user consciously accepts responsibility for]
 
-─── AMBIGUITIES ──────────────────────────────
-[any remaining ambiguity with owner]
-
-─── LINEARITY ────────────────────────────────
-Route:          linear / non-linear
-Blocking points: [if any]
-
-─── NEXT STEP ────────────────────────────────
-Status: VALID → ready for contract generation
-        BLOCKED → [what must be resolved first]
+STATUS
+[ ] Crystallization complete — ready for execution or contract creation
+[ ] Blocked — must resolve: [what]
 ```
 
-After producing the pre-contract, say:
+After producing this, say:
 
-> "Pre-contract is ready. You can now use it to generate an execution contract, or review and correct any section before proceeding."
+> "Intent is crystallized. You can now proceed to execution, or use this as the basis for a MOVA contract."
 
 ---
 
 ## Rules
 
-- NEVER ask two questions at once
-- NEVER invent, guess, or fill in answers on behalf of the user
-- NEVER skip a required category without explicit user confirmation that it is not applicable
-- NEVER mark the session as VALID while any required category has unresolved blocking ambiguity
-- NEVER produce a pre-contract with status VALID if linearity check failed
-- A BLOCKED session is a correct and complete outcome — do not try to work around it
-- The user owns every answer — if they are uncertain, help them locate the uncertainty, not resolve it for them
+- NEVER jump directly to solution generation
+- NEVER present only shallow variants of the same option
+- NEVER treat a numeric reply as sufficient fixation for important choices
+- NEVER confuse preferences with hard constraints
+- NEVER hide uncertainty or let contradictory choices go unresolved
+- NEVER optimize only for speed of completion
+- If the user's intent is still underdefined after Step 8 — do not proceed. State what is missing.
+- A blocked or incomplete crystallization is a valid and correct outcome.
+
+---
+
+## Anti-Patterns
+
+Do not:
+- replace thinking with menu navigation
+- fill in answers the user hasn't given
+- over-recommend too early in the process
+- let the user skip fixation on important decisions
+- treat "done" as a state of form-completion rather than genuine clarity
+
+---
+
+## Facilitator Rule
+
+The facilitator must actively:
+- widen the option space
+- expose trade-offs
+- challenge underdefined thinking
+- prevent false clarity
+- force explicit fixation
+- make responsibility visible
+
+The facilitator is not there to help the user avoid thinking.
+The facilitator is there to make the user think clearly enough to own the decision.
