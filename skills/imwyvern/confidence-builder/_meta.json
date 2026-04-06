@@ -3,11 +3,16 @@
   "slug": "confidence-builder",
   "displayName": "Confidence Builder Skill",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1774896565658,
-    "commit": "https://github.com/openclaw/skills/commit/ef4f775e1f42b44a9bc8854e7fb400d8b8739c0d"
+    "version": "1.0.2",
+    "publishedAt": 1775319360980,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1774896565658,
+      "commit": "https://github.com/openclaw/skills/commit/ef4f775e1f42b44a9bc8854e7fb400d8b8739c0d"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1774581051315,
