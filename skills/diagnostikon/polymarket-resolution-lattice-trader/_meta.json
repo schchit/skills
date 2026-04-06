@@ -1,11 +1,17 @@
 {
   "owner": "diagnostikon",
   "slug": "polymarket-resolution-lattice-trader",
-  "displayName": "Resolution Lattice Trader",
+  "displayName": "Polymarket Resolution Lattice Trader",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774302291576,
-    "commit": "https://github.com/openclaw/skills/commit/e9463e579f7b806da91a93a83985a888254d53ed"
+    "version": "1.0.1",
+    "publishedAt": 1775317324189,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774302291576,
+      "commit": "https://github.com/openclaw/skills/commit/e9463e579f7b806da91a93a83985a888254d53ed"
+    }
+  ]
 }
