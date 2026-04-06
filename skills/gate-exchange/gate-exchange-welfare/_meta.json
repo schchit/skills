@@ -1,11 +1,17 @@
 {
   "owner": "gate-exchange",
   "slug": "gate-exchange-welfare",
-  "displayName": "Gate Exchange Welfare",
+  "displayName": "gate-exchange-welfare",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774689397334,
-    "commit": "https://github.com/openclaw/skills/commit/da9d467d42a2f6d603e3c3753c3aa46fc2f8083f"
+    "version": "1.0.2",
+    "publishedAt": 1775184647434,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774689397334,
+      "commit": "https://github.com/openclaw/skills/commit/da9d467d42a2f6d603e3c3753c3aa46fc2f8083f"
+    }
+  ]
 }
