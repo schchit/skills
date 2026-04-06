@@ -1,5 +1,6 @@
 ---
 name: ideonomy
+version: "0.3.1"
 description: Structured creative reasoning through ideonomic lenses. Use when stuck on a problem, need fresh perspectives, want to think more creatively or systematically, or need to explore a problem from multiple angles. Based on Patrick Gunkel's "science of ideas" — systematic combinatorial thinking across 28 reasoning divisions.
 ---
 
@@ -7,19 +8,29 @@ description: Structured creative reasoning through ideonomic lenses. Use when st
 
 Structured creative reasoning using ideonomic divisions as thinking lenses.
 
+## Installation
+
+```bash
+npm install -g @clawdactual/ideonomy-engine
+```
+
+Verify with:
+
+```bash
+ideonomy --help
+```
+
 ## Quick Start
 
 ```bash
-cd ~/Personal/ideonomy-engine
-
 # Basic reasoning (auto-selects profile based on problem keywords)
-npx tsx src/index.ts reason "Your problem statement here"
+ideonomy reason "Your problem statement here"
 
 # Concise mode (just core questions, one per lens)
-npx tsx src/index.ts reason --concise "Your problem statement here"
+ideonomy reason --concise "Your problem statement here"
 
 # JSON output (structured, machine-parseable)
-npx tsx src/index.ts reason --json "Your problem statement here"
+ideonomy reason --json "Your problem statement here"
 ```
 
 ## Profiles
@@ -50,9 +61,9 @@ Auto-selection scores problem text against profile keywords. Override with `--pr
 ## Other Commands
 
 ```bash
-npx tsx src/index.ts profiles          # list all profiles
-npx tsx src/index.ts divisions         # list all 28 reasoning divisions
-npx tsx src/index.ts division ANALOGIES # detail for one division
+ideonomy profiles          # list all profiles
+ideonomy divisions         # list all 28 reasoning divisions
+ideonomy division ANALOGIES # detail for one division
 ```
 
 ## How to Use the Output
