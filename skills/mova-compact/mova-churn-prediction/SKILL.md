@@ -5,6 +5,8 @@ license: MIT-0
 metadata: {"openclaw":{"plugin":{"name":"MOVA","installCmd":"openclaw plugins install openclaw-mova"},"dataSentToExternalServices":[{"service":"MOVA API (api.mova-lab.eu)","data":"segment ID, analysis period, customer behavior features, churn probability scores, model version, human decision, audit metadata"},{"service":"Customer events connector (read-only)","data":"customer activity signals (logins, transactions, support tickets, feature usage) for the specified segment and period"},{"service":"Churn model connector (read-only)","data":"customer feature vectors evaluated by churn prediction model"},{"service":"CRM connector (read-only)","data":"customer profile and segment metadata lookup"}]}}
 ---
 
+> **Contract Skill** — A ready-to-use MOVA HITL workflow. Requires the `openclaw-mova` plugin.
+
 # MOVA Churn Prediction
 
 Run an AI churn risk assessment on your customer segment — get a ranked at-risk list with contributing factor breakdown, then route the retention campaign decision through a mandatory human approval gate with a full audit trail.
