@@ -290,55 +290,230 @@ def generate_html_report(archive: SoulArchive, output_path: str = None, lang: st
         t["bf_stability"]: (1 - (bf.get("neuroticism", 0) or 0)) * 100
     }, ensure_ascii=False)
 
-    # ---- MBTI Inference ----
-    def infer_mbti(bf_data, emotional_data, topics_data, episodic_data=None):
-        """Infer MBTI from Big Five + emotional patterns + topics + episodes. Returns (type_str, dims)."""
-        extraversion = bf_data.get("extraversion", 0.5) or 0.5
-        openness = bf_data.get("openness", 0.5) or 0.5
-        agreeableness = bf_data.get("agreeableness", 0.5) or 0.5
-        conscientiousness = bf_data.get("conscientiousness", 0.5) or 0.5
+    # ---- MBTI Inference (multi-signal holistic derivation) ----
+    def infer_mbti(ps, emotional_data, topics_data, episodic_data=None):
+        """Infer MBTI from the FULL personality profile — not just Big Five.
+        Uses decision_style, communication_preference, values, strengths, planning_style,
+        group_role, and behavioral patterns as first-class signals.
+        Works for both Chinese and English personality data.
+        Returns (type_str, dims).
+        """
+        bf = ps.get("big_five", {})
+        extraversion = bf.get("extraversion", 0.5) or 0.5
+        openness = bf.get("openness", 0.5) or 0.5
+        agreeableness = bf.get("agreeableness", 0.5) or 0.5
+        conscientiousness = bf.get("conscientiousness", 0.5) or 0.5
 
-        # E / I  ← extraversion
+        # Helper: check if ANY keyword appears in a text (substring match, not equality)
+        def _any_kw_in(text, keywords):
+            if not text:
+                return False
+            text_lower = str(text).lower()
+            return any(kw.lower() in text_lower for kw in keywords)
+
+        # --- E / I: social energy direction ---
         e_score = extraversion
-        letter_e = "E" if extraversion >= 0.5 else "I"
-        conf_e = round(abs(extraversion - 0.5) * 2, 2)
+        social_energy = str(ps.get("social_energy", "")).lower()
+        if _any_kw_in(social_energy, ["外倾", "高", "强", "extrovert", "outgoing"]):
+            e_score = min(e_score + 0.15, 1.0)
+        elif _any_kw_in(social_energy, ["内倾", "低", "弱", "introvert", "reserved"]):
+            e_score = max(e_score - 0.15, 0.0)
+        letter_e = "E" if e_score >= 0.5 else "I"
+        conf_e = round(min(abs(e_score - 0.5) * 2.5, 1.0), 2)
 
-        # S / N  ← openness + topic diversity
+        # --- S / N: information gathering preference ---
         topics = topics_data.get("topics", [])
         topic_count = len(topics)
-        abstract_keywords = ["哲学", "未来", "意义", "宇宙", "AI", "哲学", "理论", "概念", "抽象",
-                             "philosophy", "future", "meaning", "universe", "concept", "abstract"]
-        abstract_count = sum(1 for tp in topics if any(kw in str(tp.get("name", "")) for kw in abstract_keywords))
+        abstract_keywords = [
+            "哲学", "未来", "意义", "宇宙", "AI", "理论", "概念", "抽象",
+            "pattern", "principle", "system", "framework", "philosophy",
+            "future", "meaning", "universe", "concept", "abstract", "theory"
+        ]
+        abstract_count = sum(
+            1 for tp in topics
+            if _any_kw_in(tp.get("name", ""), abstract_keywords)
+        )
         abstract_ratio = abstract_count / max(topic_count, 1)
-        # Combine openness with abstract tendency
-        n_score = (openness * 0.7 + min(abstract_ratio * 2, 1.0) * 0.3)
+        n_score = openness * 0.7 + min(abstract_ratio * 2, 1.0) * 0.3
         letter_n = "N" if n_score >= 0.5 else "S"
         conf_n = round(min(abs(n_score - 0.5) * 2.5, 1.0), 2)
 
-        # T / F  ← agreeableness + emotional memory frequency
+        # --- T / F: decision-making style ---
+        # T = rational/analytical/direct/systematic decision making
+        # F = empathetic/harmony-oriented/people-centered decision making
+        t_signals = []
+        f_signals = []
+
+        decision_style = str(ps.get("decision_style", "") or "")
+        decision_making = str(ps.get("decision_making", "") or "")
+        comm_pref = str(ps.get("communication_preference", "") or "")
+        comm_style = ps.get("communication_style", {}) or {}
+        if isinstance(comm_style, str):
+            # comm_style might be a description string — treat as text for keyword matching
+            comm_style_text = comm_style
+            comm_style = {}
+        else:
+            comm_style_text = comm_style.get("tone", "")
+        values = ps.get("values", []) or []
+        strengths = ps.get("strengths", []) or []
+        conflict_approach = str(ps.get("conflict_approach", "") or "")
+        group_role = str(ps.get("group_role", "") or "")
+        work_style = str(ps.get("work_style", "") or "")
+
+        # T signal: rational/analytical keywords in decision style (SUBSTRING match)
+        t_decision_kw = ["分析", "理性", "逻辑", "优缺点", "评估", "判断", "客观",
+                          "reason", "logical", "rational", "analyze", "evaluate",
+                          "objective", "systematic", "evidence", "data-driven"]
+        for kw in t_decision_kw:
+            if kw.lower() in decision_style.lower() or kw.lower() in decision_making.lower():
+                t_signals.append(1.0)
+
+        # T signal: direct/efficient communication style (SUBSTRING match)
+        t_comm_kw = ["直接", "高效", "简洁", "惜字如金", "不废话",
+                      "direct", "efficient", "concise", "factual", "blunt", "no-nonsense"]
+        if _any_kw_in(comm_pref, t_comm_kw) or _any_kw_in(comm_style_text, t_comm_kw):
+            t_signals.append(0.8)
+
+        # T signal: analytical/strategic strengths (SUBSTRING match)
+        t_strength_kw = ["分析", "理性", "逻辑", "战略", "系统", "技术", "思维",
+                          "reason", "logical", "strategic", "systematic", "analytical",
+                          "technical", "thinking", "problem-solving"]
+        for s in strengths:
+            if _any_kw_in(s, t_strength_kw):
+                t_signals.append(0.6)
+
+        # T signal: leadership/ownership role (SUBSTRING match)
+        t_role_kw = ["owner", "architect", "决策者", "leader", "发起者", "initiator",
+                      "strategist", "主导", "负责人"]
+        if _any_kw_in(group_role, t_role_kw):
+            t_signals.append(0.5)
+
+        # T signal: independent/systematic work style
+        t_work_kw = ["独立", "系统", "independent", "systematic", "structured"]
+        if _any_kw_in(work_style, t_work_kw):
+            t_signals.append(0.3)
+
+        # T signal: direct/confrontational conflict approach
+        t_conflict_kw = ["直面", "对抗", "解决问题", "confront", "direct", "problem-solving"]
+        if _any_kw_in(conflict_approach, t_conflict_kw):
+            t_signals.append(0.5)
+
+        # F signal: empathetic/relationship values (precise keywords to avoid false positives)
+        f_value_kw = ["情感连接", "共情", "人情味", "人际", "关怀", "温暖",
+                       "emotional connection", "empathy", "warmth", "caring",
+                       "relationship", "feeling", "compassion"]
+        for v in values:
+            if _any_kw_in(v, f_value_kw):
+                f_signals.append(0.8)
+
+        # F signal: empathetic/warm communication style
+        f_comm_kw = ["共鸣", "共情", "温暖", "关怀", "耐心",
+                      "empathetic", "warm", "caring", "patient", "supportive"]
+        if _any_kw_in(comm_pref, f_comm_kw) or _any_kw_in(comm_style_text, f_comm_kw):
+            f_signals.append(0.8)
+
+        # F signal: harmony-oriented conflict approach
+        f_conflict_kw = ["和解", "协调", "包容", "妥协",
+                          "harmony", "accommodate", "compromise", "mediate"]
+        if _any_kw_in(conflict_approach, f_conflict_kw):
+            f_signals.append(0.6)
+
+        # F signal: emotional richness (many triggers = emotionally attuned)
         emo_triggers = emotional_data.get("triggers", {})
         emotional_count = sum(len(v) for v in emo_triggers.values())
-        # High agreeableness + rich emotions → Feeling; low → Thinking
-        f_score = agreeableness * 0.6 + min(emotional_count / 20, 1) * 0.4
+        if emotional_count >= 15:
+            f_signals.append(min(emotional_count / 30, 1.0) * 0.4)
+
+        # Combine T/F signals
+        t_total = sum(t_signals)
+        f_total = sum(f_signals)
+        total = t_total + f_total
+
+        if total == 0:
+            # No signals: use agreeableness as weak proxy (high agreeableness → slight F lean)
+            t_ratio = 0.5 - (agreeableness - 0.5) * 0.2
+        else:
+            # t_ratio = how much T dominates (0..1, >0.5 = T dominant)
+            t_ratio = t_total / total
+
+        # f_score: 0 = pure T, 1 = pure F, 0.5 = balanced
+        # t_ratio > 0.5 → T dominant → f_score < 0.5
+        f_score = 1.0 - t_ratio
+        f_score = max(0.05, min(0.95, f_score))
         letter_t = "F" if f_score >= 0.5 else "T"
         conf_t = round(min(abs(f_score - 0.5) * 2.5, 1.0), 2)
 
-        # J / P  ← conscientiousness + planned vs spontaneous in memories
+        # --- J / P: lifestyle / structure orientation ---
+        j_signals = []
+        p_signals = []
+
+        planning_style = str(ps.get("planning_style", "") or "")
+        risk_tolerance = str(ps.get("risk_tolerance", "") or "")
+
+        # J signal: conscientiousness as anchor
+        j_signals.append(conscientiousness)
+
+        # J signal: decisive/action-oriented style
+        j_decision_kw = ["快速决断", "立即行动", "果断", "高效", "快速",
+                          "decisive", "action", "quick", "efficient", "determined"]
+        if _any_kw_in(decision_style, j_decision_kw) or _any_kw_in(decision_making, j_decision_kw):
+            j_signals.append(0.9)
+
+        # J signal: execution/control strengths
+        j_strength_kw = ["决断", "执行", "控制", "组织", "统筹", "落地",
+                          "decisive", "execute", "control", "organize", "lead", "deliver"]
+        for s in strengths:
+            if _any_kw_in(s, j_strength_kw):
+                j_signals.append(0.6)
+
+        # J signal: leadership/ownership role
+        j_role_kw = ["owner", "architect", "决策者", "leader", "发起者", "initiator", "主导"]
+        if _any_kw_in(group_role, j_role_kw):
+            j_signals.append(0.7)
+
+        # J signal: structured planning → J; flexible/iterative → P
+        j_plan_kw = ["计划", "结构", "安排", "固定", "plan", "struct", "schedule", "organized"]
+        p_plan_kw = ["弹性", "灵活", "迭代", "适应", "flexible", "adaptive", "iterative", "agile"]
+        if _any_kw_in(planning_style, j_plan_kw):
+            j_signals.append(0.6)
+        if _any_kw_in(planning_style, p_plan_kw):
+            p_signals.append(0.5)
+
+        # P signal: high risk tolerance + exploration
+        p_risk_kw = ["高", "冒险", "探索", "high", "adventurous", "exploratory"]
+        if _any_kw_in(risk_tolerance, p_risk_kw):
+            p_signals.append(0.4)
+
+        # Episodic: planned vs spontaneous events (weak supporting signal)
         episodes = episodic_data or []
-        planned_count = sum(1 for ep in episodes if any(kw in str(ep.get("event", ""))
-            for kw in ["计划", "安排", "预约", "决定", "计划", "plan", "schedule", "decided"]))
-        spontaneous_count = len(episodes) - planned_count
-        plan_ratio = planned_count / max(len(episodes), 1)
-        j_score = conscientiousness * 0.7 + plan_ratio * 0.3
+        planned_kw = ["计划", "安排", "预约", "决定", "目标",
+                       "plan", "schedule", "decided", "goal"]
+        spontaneous_kw = ["突然", "临时", "意外", "spontaneous", "sudden", "impromptu"]
+        if episodes:
+            planned_count = sum(1 for ep in episodes if _any_kw_in(ep.get("event", ""), planned_kw))
+            spontaneous_count = sum(1 for ep in episodes if _any_kw_in(ep.get("event", ""), spontaneous_kw))
+            plan_ratio = planned_count / max(len(episodes), 1)
+            if plan_ratio > 0.5:
+                j_signals.append(plan_ratio * 0.3)
+            elif spontaneous_count > planned_count:
+                p_signals.append(spontaneous_count / max(len(episodes), 1) * 0.2)
+
+        j_total = sum(j_signals)
+        p_total = sum(p_signals)
+        jp_total = j_total + p_total
+        j_score = j_total / max(jp_total, 1) if jp_total > 0 else 0.5
+        j_score = max(0.05, min(0.95, j_score))
         letter_j = "J" if j_score >= 0.5 else "P"
         conf_j = round(min(abs(j_score - 0.5) * 2.5, 1.0), 2)
 
         mbti_type = letter_e + letter_n + letter_t + letter_j
-        # score = percentage toward the LEFT label in each gauge bar
-        # E/I: e_score is E-leaning (high = E), left=E → use e_score directly
-        # S/N: n_score is N-leaning (high = N), left=N → use n_score directly
-        # T/F: f_score is F-leaning (high = F), left=T → use (1 - f_score)
-        # J/P: j_score is J-leaning (high = J), left=J → use j_score directly
+
+        # Gauge bar scores:
+        # Each score represents how far toward the LEFT label (first letter listed).
+        # E/I: score = e_score (high = E, left)
+        # N/S: score = n_score (high = N, left)
+        # T/F: score = (1 - f_score) = t_score (high = T, left)
+        # J/P: score = j_score (high = J, left)
         t_display_score = round((1 - f_score) * 100)
         dims = [
             {"letter": letter_e, "other": "I", "label": t.get("mbti_E", "E"), "other_label": t.get("mbti_I", "I"),
@@ -381,7 +556,7 @@ def generate_html_report(archive: SoulArchive, output_path: str = None, lang: st
     if ep_dir.exists():
         for f in sorted(ep_dir.glob("*.jsonl"), reverse=True):
             if archive.crypto is not None:
-                episodes.extend(archive.crypto.read_encrypted_jsonl(f))
+                episodes.extend(archive.crypto.read_sealed_records(f))
             else:
                 with open(f, 'r', encoding='utf-8') as fh:
                     for line in fh:
@@ -393,8 +568,8 @@ def generate_html_report(archive: SoulArchive, output_path: str = None, lang: st
                 break
     episodes_json = json.dumps(episodes[:20], ensure_ascii=False)
 
-    # MBTI with episodes now available
-    mbti_type, mbti_dims = infer_mbti(bf, emotional, topics_data, episodes)
+    # MBTI: always infer from full personality data (multi-signal holistic derivation)
+    mbti_type, mbti_dims = infer_mbti(ps, emotional, topics_data, episodes)
     mbti_json = json.dumps({"type": mbti_type, "dims": mbti_dims,
                              "note": t.get("mbti_note", ""),
                              "title": t.get("mbti_title", "MBTI")}, ensure_ascii=False)
@@ -1095,14 +1270,14 @@ def main():
     parser.add_argument("--lang", choices=["zh", "en"], default=None,
                         help="Report language: zh (Chinese) or en (English). "
                              "Auto-detected from user name if not specified.")
-    parser.add_argument("--password", help="Encryption password (if encryption is enabled)")
+    parser.add_argument("--access-key", help="Access key (if data protection is enabled)")
 
     args = parser.parse_args()
     archive = SoulArchive(args.soul_dir)
 
-    # Read version from SKILL.md front matter (手动解析，避免依赖 PyYAML)
+    # Read version from SKILL.md front matter
     skill_dir = Path(__file__).parent.parent
-    skill_version = "v1.3.0"
+    skill_version = "unknown"
     skill_md = skill_dir / "SKILL.md"
     if skill_md.exists():
         try:
@@ -1120,10 +1295,10 @@ def main():
         print("❌ Soul archive not initialized. Run soul_init.py first.")
         sys.exit(1)
 
-    # Auto-initialize crypto if encryption is enabled
+    # Auto-initialize crypto if data protection is enabled
     config = archive.load_config()
     if config.get("encryption"):
-        archive.init_crypto_from_config(password=args.password)
+        archive.init_crypto_from_config(password=args.access_key)
 
     if not args.output:
         print("❌ 请通过 --output 指定报告输出路径（建议输出到工作目录，非数据目录）")

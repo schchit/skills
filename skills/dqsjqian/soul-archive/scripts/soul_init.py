@@ -40,8 +40,8 @@ def main():
     parser = argparse.ArgumentParser(description="🧬 灵魂存档初始化")
     parser.add_argument("--soul-dir", type=Path, default=DEFAULT_SOUL_DIR,
                         help=f"灵魂数据目录路径（默认: {DEFAULT_SOUL_DIR}）")
-    parser.add_argument("--enable-encryption", action="store_true",
-                        help="启用数据加密（AES-256-GCM）")
+    parser.add_argument("--enable-protection", action="store_true",
+                        help="启用数据保护")
     args = parser.parse_args()
 
     soul_dir = args.soul_dir
@@ -108,7 +108,7 @@ def main():
         "sensitive_topics_filter": True,
         "require_confirmation_for": ["health", "finance", "intimate_relationships"],
         "data_retention_days": None,
-        "encryption": True,
+        "encryption": False,
         "auto_reflect": True,
         "agent_self_improvement": {
             "enabled": True,
@@ -118,20 +118,23 @@ def main():
         }
     }
 
-    # Handle encryption setup
+    # Handle data protection setup
     crypto = None
-    if args.enable_encryption:
+    if args.enable_protection:
         sys.path.insert(0, str(Path(__file__).parent))
-        from soul_crypto import SoulCrypto, prompt_password, encrypt_archive
+        from soul_crypto import SoulCrypto, prompt_password, protect_data_files, create_verify_file
 
         print()
-        print("🔐 正在设置数据加密...")
-        print("   ⚠️  请牢记此密码！密码丢失将无法恢复数据，没有后门。")
+        print("🔐 正在设置数据保护...")
+        print("   ⚠️  请牢记此访问密钥！访问密钥丢失将无法恢复数据，无恢复机制。")
         print()
         password = prompt_password(confirm=True)
 
         salt = SoulCrypto.generate_salt()
         crypto_inst = SoulCrypto(password, salt)
+
+        # Create protected verification file
+        create_verify_file(soul_dir, crypto_inst)
 
         config_data["encryption"] = True
         config_data["encryption_algorithm"] = "AES-256-GCM"
@@ -139,6 +142,11 @@ def main():
         config_data["encryption_salt"] = base64.b64encode(salt).decode("ascii")
         config_data["encryption_verify"] = crypto_inst.create_verify_token()
         crypto = crypto_inst
+    else:
+        # No protection → create plain verification file
+        sys.path.insert(0, str(Path(__file__).parent))
+        from soul_crypto import create_verify_file
+        create_verify_file(soul_dir, crypto=None)
 
     write_json(soul_dir / "config.json", config_data)
 
@@ -272,15 +280,15 @@ def main():
     print(f"   📋 配置文件: {soul_dir / 'config.json'}")
     print(f"   🔒 隐私提示: 数据存储在用户主目录下，不会进入任何 git 仓库")
 
-    # Encrypt all data files if encryption is enabled
+    # Apply privacy protection if enabled
     if crypto is not None:
-        encrypted_files = encrypt_archive(soul_dir, crypto)
-        if encrypted_files:
-            print(f"   🔐 加密已启用: {len(encrypted_files)} 个数据文件已加密 (AES-256-GCM)")
+        protected_files = protect_data_files(soul_dir, crypto)
+        if protected_files:
+            print(f"   🔐 数据保护已启用: {len(protected_files)} 个文件已保护 (AES-256-GCM)")
         else:
-            print(f"   🔐 加密已启用: 数据文件将在写入时自动加密")
+            print(f"   🔐 数据保护已启用: 数据文件将在写入时自动保护")
     else:
-        print(f"   💡 提示: 可通过 --enable-encryption 启用数据加密")
+        print(f"   💡 提示: 可通过 --enable-protection 启用数据保护")
 
     print()
     print("   下一步:")

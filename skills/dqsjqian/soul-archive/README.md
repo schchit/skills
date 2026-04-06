@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://python.org)
 [![Core: Zero Deps](https://img.shields.io/badge/Core-Zero%20Deps-green.svg)](#tech-stack)
-[![Encryption: Optional](https://img.shields.io/badge/Encryption-AES--256--GCM-orange.svg)](#encryption)
+[![Data Protection: Optional](https://img.shields.io/badge/Data%20Protection-AES--256--GCM-orange.svg)](#data-protection)
 [![Privacy First](https://img.shields.io/badge/Privacy-Local%20Only-purple.svg)](#privacy-by-design)
 
 [中文](./README_CN.md) · [Quick Start](#quick-start) · [Architecture](#architecture) · [Four Modes](#four-modes) · [Privacy](#privacy-by-design)
@@ -122,7 +122,7 @@ Soul Archive extracts personality data across **7 core dimensions**, each with d
 
 - Python 3.10+
 - Zero third-party dependencies for core functionality
-- `cryptography` package required only if you enable encryption (`pip install cryptography`)
+- `cryptography` package required only if you enable data protection (`pip install cryptography`)
 
 ### Initialize
 
@@ -318,26 +318,26 @@ python3 scripts/soul_reflect.py --mode patterns
 | 🚫 **Git Isolation** | Data lives outside any project directory, safe from accidental commits |
 | 🤫 **Silent Collection** | Never tells the user "I'm recording you" during conversation |
 | ⚙️ **Minimal Defaults** | Relationships and voice dimensions are OFF by default |
-| 🔐 **AES-256-GCM Encryption** | Strongly recommended -- encrypt all sensitive data files |
+| 🔐 **AES-256-GCM Data Protection** | Strongly recommended -- protect all sensitive data files |
 
-### 🔐 Encryption
+### 🔐 Data Protection
 
-Soul Archive supports **AES-256-GCM** encryption for all sensitive data files.
+Soul Archive supports **AES-256-GCM** data protection for all sensitive data files.
 
-> ⚠️ **Strongly recommended.** Soul Archive stores highly sensitive personal data (identity, personality, language fingerprints, emotional patterns, relationships). If data files are exposed without encryption, the consequences are irreversible. With AES-256-GCM encryption enabled, files are unreadable without the password.
+> ⚠️ **Strongly recommended.** Soul Archive stores highly sensitive personal data (identity, personality, language fingerprints, emotional patterns, relationships). If data files are exposed without protection, the consequences are irreversible. With AES-256-GCM data protection enabled, files are unreadable without the access key.
 
 ```bash
-# Initialize with encryption enabled
-python3 scripts/soul_init.py --enable-encryption
+# Initialize with data protection enabled
+python3 scripts/soul_init.py --enable-protection
 ```
 
-- **Algorithm**: AES-256-GCM (authenticated encryption)
+- **Algorithm**: AES-256-GCM (authenticated, tamper-resistant)
 - **Key derivation**: PBKDF2-HMAC-SHA256 (600,000 iterations)
 - **Scope**: All identity, personality, language, memory, and relationship files
-- **No backdoor**: Lost password = lost data
-- **Password input**: Interactive prompt (recommended), `SOUL_PASSWORD` env var (ensure your environment is secure), or `--password` flag (not recommended -- leaks into shell history)
-- **Dependency**: `pip install cryptography` (optional; install only if you enable encryption)
-- **Env var**: `SOUL_PASSWORD` -- only required when encryption is enabled
+- **No recovery**: Lost access key = lost data
+- **Access key input**: Interactive prompt (recommended), `SOUL_PASSWORD` env var (ensure your environment is secure), or `--access-key` flag (not recommended -- leaks into shell history)
+- **Dependency**: `pip install cryptography` (optional; install only if you enable data protection)
+- **Env var**: `SOUL_PASSWORD` -- only required when data protection is enabled
 
 ---
 
@@ -345,7 +345,7 @@ python3 scripts/soul_init.py --enable-encryption
 
 | Layer | Technology |
 |-------|-----------|
-| Core Language | Python 3 (pure standard library for core; `cryptography` package optional for encryption) |
+| Core Language | Python 3 (pure standard library for core; `cryptography` package optional for data protection) |
 | Init Script | Python (cross-platform) / Bash (macOS & Linux) |
 | Data Format | JSON (structured) / JSONL (time-series logs) |
 | Report Output | HTML + Chart.js (interactive visualization) |
@@ -388,7 +388,7 @@ Total = Σ(dimension score × weight) × cold_start_penalty:
 - [ ] Multi-soul management (separate archives for family/friends)
 - [ ] Soul import/export (cross-platform migration)
 - [ ] Web UI management dashboard
-- [x] Encrypted storage option (AES-256-GCM)
+- [x] Data protection option (AES-256-GCM)
 - [x] AI self-improvement engine (self-reflection, self-critique, pattern learning)
 
 ---

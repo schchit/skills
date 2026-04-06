@@ -284,7 +284,7 @@ def build_soul_prompt(archive: SoulArchive) -> str:
     if ep_dir.exists():
         for f in sorted(ep_dir.glob("*.jsonl"), reverse=True):
             if archive.crypto is not None:
-                episodes.extend(archive.crypto.read_encrypted_jsonl(f))
+                episodes.extend(archive.crypto.read_sealed_records(f))
             else:
                 with open(f, 'r', encoding='utf-8') as fh:
                     for line in fh:
@@ -360,7 +360,7 @@ def main():
                         help=f"灵魂数据目录路径（默认: {default_soul_dir}）")
     parser.add_argument("--mode", default="prompt", choices=["prompt", "summary", "json"],
                         help="输出模式：prompt=完整角色prompt, summary=简短摘要, json=结构化数据")
-    parser.add_argument("--password", help="加密密码（如果启用了加密）")
+    parser.add_argument("--access-key", help="数据保护访问密钥（如果启用了数据保护）")
 
     args = parser.parse_args()
     archive = SoulArchive(args.soul_dir)
@@ -369,10 +369,10 @@ def main():
         print("❌ 灵魂存档尚未初始化。请先运行 soul_init.py")
         sys.exit(1)
 
-    # Auto-initialize crypto if encryption is enabled
+    # Auto-initialize crypto if data protection is enabled
     config = archive.load_config()
     if config.get("encryption"):
-        archive.init_crypto_from_config(password=args.password)
+        archive.init_crypto_from_config(password=args.access_key)
 
     if args.mode == "prompt":
         print(build_soul_prompt(archive))

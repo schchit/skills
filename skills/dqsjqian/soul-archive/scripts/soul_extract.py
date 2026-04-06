@@ -222,13 +222,13 @@ def ensure_dir(path: Path):
 
 
 def load_json(path: Path, default=None, crypto=None):
-    """加载 JSON 文件，不存在则返回默认值。支持加密文件透明解密。"""
+    """加载 JSON 文件，不存在则返回默认值。支持隐私保护文件透明读取。"""
     if path.exists():
         if crypto is not None:
             try:
-                return crypto.decrypt_file(path)
+                return crypto.unseal_file(path)
             except Exception:
-                # decrypt_file already handles both encrypted and plain files;
+                # unseal_file already handles both sealed and plain files;
                 # if it still fails, the file may be corrupted -- don't try plain read
                 pass
         # Plain text JSON read
@@ -236,26 +236,26 @@ def load_json(path: Path, default=None, crypto=None):
             with open(path, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except (UnicodeDecodeError, json.JSONDecodeError):
-            # Likely an encrypted file read without crypto -- return default
+            # Likely a protected file read without crypto -- return default
             pass
     return default if default is not None else {}
 
 
 def save_json(path: Path, data: dict, crypto=None):
-    """保存 JSON 文件。如果 crypto 不为 None，则加密写入。"""
+    """保存 JSON 文件。如果 crypto 不为 None，则保护写入。"""
     ensure_dir(path.parent)
     if crypto is not None:
-        crypto.encrypt_file_save(path, data)
+        crypto.seal_file_save(path, data)
     else:
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
 
 def append_jsonl(path: Path, record: dict, crypto=None):
-    """追加一行到 JSONL 文件。如果 crypto 不为 None，则加密写入。"""
+    """追加一行到 JSONL 文件。如果 crypto 不为 None，则保护写入。"""
     ensure_dir(path.parent)
     if crypto is not None:
-        crypto.append_encrypted_jsonl(path, record)
+        crypto.append_sealed_record(path, record)
     else:
         with open(path, 'a', encoding='utf-8') as f:
             f.write(json.dumps(record, ensure_ascii=False) + '\n')
@@ -271,7 +271,7 @@ def now_iso():
 # ============================================================
 
 class SoulArchive:
-    """灵魂存档管理器 ---- 管理 .skills_data/soul-archive/ 目录的读写，支持加密"""
+    """灵魂存档管理器 ---- 管理 .skills_data/soul-archive/ 目录的读写，支持数据保护"""
 
     def __init__(self, soul_dir: str, crypto=None):
         self.root = Path(soul_dir)
@@ -302,12 +302,19 @@ class SoulArchive:
         return load_json(self.config_path, DEFAULT_CONFIG.copy())
 
     def init_crypto_from_config(self, password: str = None):
-        """Initialize crypto from config if encryption is enabled."""
+        """Initialize privacy protection based on config and current file state.
+
+        Automatically reconciles the protection state with user configuration.
+        Password is always verified before any data file is accessed.
+        """
         config = self.load_config()
-        if config.get("encryption"):
-            sys.path.insert(0, str(Path(__file__).parent))
-            from soul_crypto import get_crypto_from_config
-            self.crypto = get_crypto_from_config(config, password)
+        sys.path.insert(0, str(Path(__file__).parent))
+        from soul_crypto import ensure_privacy_state, PrivacyProtectionError
+        try:
+            self.crypto = ensure_privacy_state(self.root, config, password)
+        except PrivacyProtectionError as e:
+            print(f"❌ {e}")
+            sys.exit(1)
 
     def load_all(self) -> dict:
         """加载全部灵魂数据"""
@@ -754,7 +761,7 @@ class SoulArchive:
         if ep_dir.exists():
             for f in ep_dir.glob("*.jsonl"):
                 if c is not None:
-                    ep_count += len(c.read_encrypted_jsonl(f))
+                    ep_count += len(c.read_sealed_records(f))
                 else:
                     with open(f, 'r', encoding='utf-8') as fh:
                         ep_count += sum(1 for _ in fh)
@@ -962,17 +969,15 @@ def main():
     parser.add_argument("--input", help="对话内容（纯文本，直接传入）")
     parser.add_argument("--mode", default="auto", choices=["auto", "manual", "status"],
                         help="模式：auto=自动提取, manual=手动, status=仅查看状态")
-    parser.add_argument("--password", help="加密密码（不推荐在命令行使用，建议交互输入或设置 SOUL_PASSWORD 环境变量）")
+    parser.add_argument("--access-key", help="访问密钥（不推荐在命令行使用，建议交互输入或设置 SOUL_ACCESS_KEY 环境变量）")
 
     args = parser.parse_args()
 
     archive = SoulArchive(args.soul_dir)
 
-    # Auto-initialize crypto if encryption is enabled
+    # Auto-initialize crypto with migration support (handles cases C & D)
     if archive.is_initialized():
-        config = archive.load_config()
-        if config.get("encryption"):
-            archive.init_crypto_from_config(password=args.password)
+        archive.init_crypto_from_config(password=args.access_key)
 
     if args.mode == "status":
         if not archive.is_initialized():

@@ -33,7 +33,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 # ============================================================
-# Encryption support (optional)
+# Data protection support (optional)
 # ============================================================
 
 def _try_import_crypto():
@@ -47,11 +47,11 @@ def _try_import_crypto():
 
 
 def load_json(path: Path, default=None, crypto=None):
-    """Load JSON file, return default if not exists. Supports encrypted files."""
+    """Load JSON file, return default if not exists. Supports sealed files."""
     if path.exists():
-        if crypto and hasattr(crypto, 'decrypt_file'):
+        if crypto and hasattr(crypto, 'unseal_file'):
             try:
-                return crypto.decrypt_file(path)
+                return crypto.unseal_file(path)
             except Exception:
                 pass
         raw = path.read_text(encoding='utf-8')
@@ -60,10 +60,10 @@ def load_json(path: Path, default=None, crypto=None):
 
 
 def save_json(path: Path, data: dict, crypto=None):
-    """Save JSON file, supports encryption."""
+    """Save JSON file, supports privacy protection."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    if crypto and hasattr(crypto, 'encrypt_file_save'):
-        crypto.encrypt_file_save(path, data)
+    if crypto and hasattr(crypto, 'seal_file_save'):
+        crypto.seal_file_save(path, data)
     else:
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
@@ -72,8 +72,8 @@ def save_json(path: Path, data: dict, crypto=None):
 def append_jsonl(path: Path, entry: dict, crypto=None):
     """Append a JSON line to a JSONL file."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    if crypto and hasattr(crypto, 'append_encrypted_jsonl'):
-        crypto.append_encrypted_jsonl(path, entry)
+    if crypto and hasattr(crypto, 'append_sealed_record'):
+        crypto.append_sealed_record(path, entry)
     else:
         line = json.dumps(entry, ensure_ascii=False)
         with open(path, 'a', encoding='utf-8') as f:
@@ -85,8 +85,8 @@ def read_jsonl(path: Path, crypto=None) -> list:
     if not path.exists():
         return []
     entries = []
-    if crypto and hasattr(crypto, 'read_encrypted_jsonl'):
-        return crypto.read_encrypted_jsonl(path)
+    if crypto and hasattr(crypto, 'read_sealed_records'):
+        return crypto.read_sealed_records(path)
     with open(path, 'r', encoding='utf-8') as f:
             for line in f:
                 line = line.strip()
@@ -224,13 +224,18 @@ class AgentMemory:
         (self.agent_dir / "episodes").mkdir(parents=True, exist_ok=True)
 
     def init_crypto_from_config(self, password: str = None):
-        """Initialize encryption from config.json."""
-        get_crypto = _try_import_crypto()
-        if get_crypto is None:
+        """Initialize privacy protection from config.json."""
+        try:
+            sys.path.insert(0, str(Path(__file__).parent))
+            from soul_crypto import ensure_privacy_state, PrivacyProtectionError
+        except ImportError:
             return
         config = load_json(self.soul_dir / "config.json", {})
-        if config.get("encryption"):
-            self.crypto = get_crypto(config, password)
+        try:
+            self.crypto = ensure_privacy_state(self.soul_dir, config, password)
+        except PrivacyProtectionError as e:
+            print(f"❌ {e}")
+            sys.exit(1)
 
     # --- Patterns ---
     def load_patterns(self) -> dict:
@@ -368,14 +373,27 @@ def main():
                         help="工作模式")
     parser.add_argument("--input", type=str, default=None,
                         help="输入内容（反思/批评/学习的文本）")
-    parser.add_argument("--password", type=str, default=None,
-                        help="加密密码")
+    parser.add_argument("--access-key", type=str, default=None,
+                        help="访问密钥")
     args = parser.parse_args()
 
     import os
-    password = args.password or os.environ.get("SOUL_PASSWORD")
+    password = args.access_key or os.environ.get("SOUL_PASSWORD")
 
     agent = AgentMemory(args.soul_dir)
+    config_path = args.soul_dir / "config.json"
+    if config_path.exists():
+        import json
+        config = json.loads(config_path.read_text())
+        if config.get("encryption") and not password:
+            try:
+                import getpass
+                password = getpass.getpass("🔐 灵魂存档已启用数据保护，请输入访问密钥: ")
+            except Exception:
+                password = None
+            if not password:
+                print("❌ 需要访问密钥才能读取受保护的灵魂存档。请设置 SOUL_ACCESS_KEY 环境变量或使用 --access-key 参数。")
+                return
     if password:
         agent.init_crypto_from_config(password=password)
 
