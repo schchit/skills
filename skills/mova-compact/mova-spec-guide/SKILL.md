@@ -4,6 +4,8 @@ description: Answer questions about the MOVA specification language — schemas 
 license: MIT-0
 ---
 
+> **Ecosystem Skill** — Supports building and managing the MOVA ecosystem. Requires the `openclaw-mova` plugin.
+
 # MOVA Spec Guide
 
 Answer any question about the MOVA language — from basic concepts to schema-level validation — by reading the canonical spec documents in the workspace and referencing the public repository.
