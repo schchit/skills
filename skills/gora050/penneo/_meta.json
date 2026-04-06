@@ -3,9 +3,15 @@
   "slug": "penneo",
   "displayName": "Penneo",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775009021615,
-    "commit": "https://github.com/openclaw/skills/commit/ed3c93323af93943b3a3289d942c93c8997e97aa"
+    "version": "1.0.2",
+    "publishedAt": 1775170285888,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775009021615,
+      "commit": "https://github.com/openclaw/skills/commit/ed3c93323af93943b3a3289d942c93c8997e97aa"
+    }
+  ]
 }
