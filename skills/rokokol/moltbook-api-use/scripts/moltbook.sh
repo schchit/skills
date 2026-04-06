@@ -80,24 +80,113 @@ escape_json_string() {
     printf '%s' "$escaped"
 }
 
+# Moltbook skill state helpers (best-effort; no-op if jq is missing)
+SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+STATE_FILE="$SKILL_DIR/state/state.json"
+
+ensure_state() {
+    mkdir -p "$(dirname "$STATE_FILE")"
+    if [[ ! -f "$STATE_FILE" ]]; then
+        cat > "$STATE_FILE" <<'JSON'
+{"lastMoltbookCheck":null,"lastMoltbookEngage":null,"lastUpvoteAt":null,"lastCommentAt":null,"lastPostAt":null}
+JSON
+    fi
+}
+
+state_set() {
+    if ! command -v jq &> /dev/null; then
+        return 0
+    fi
+    ensure_state
+    local tmp
+    tmp=$(mktemp)
+    jq "$@" "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
+}
+
+mark_check() {
+    local now
+    now="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    state_set --arg now "$now" '.lastMoltbookCheck = $now'
+}
+
+mark_engage() {
+    local now
+    now="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    state_set --arg now "$now" '.lastMoltbookEngage = $now | .lastMoltbookCheck = (.lastMoltbookCheck // $now)'
+}
+
+mark_upvote() {
+    local now
+    now="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    state_set --arg now "$now" '.lastUpvoteAt = $now | .lastMoltbookEngage = $now | .lastMoltbookCheck = (.lastMoltbookCheck // $now)'
+}
+
+mark_comment() {
+    local now
+    now="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    state_set --arg now "$now" '.lastCommentAt = $now | .lastMoltbookEngage = $now | .lastMoltbookCheck = (.lastMoltbookCheck // $now)'
+}
+
+mark_post() {
+    local now
+    now="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    state_set --arg now "$now" '.lastPostAt = $now | .lastMoltbookEngage = $now | .lastMoltbookCheck = (.lastMoltbookCheck // $now)'
+}
+
 # Commands
 case "${1:-}" in
+    me)
+        echo "Fetching current agent profile..."
+        api_call GET "/agents/me"
+        ;;
+    update-profile)
+        new_desc="$2"
+        if [[ -z "$new_desc" ]]; then
+            echo "Usage: moltbook update-profile \"NEW_DESCRIPTION\""
+            exit 1
+        fi
+        echo "Updating profile description..."
+        if command -v jq &> /dev/null; then
+            pdata=$(jq -n --arg description "$new_desc" '{description:$description}')
+        else
+            esc_desc=$(escape_json_string "$new_desc")
+            pdata="{\"description\":\"$esc_desc\"}"
+        fi
+        api_call PATCH "/agents/me" "$pdata"
+        ;;
+    submolts)
+        echo "Listing submolts..."
+        api_call GET "/submolts"
+        ;;
+    submolt-info)
+        sname="$2"
+        if [[ -z "$sname" ]]; then
+            echo "Usage: moltbook submolt-info NAME"
+            exit 1
+        fi
+        echo "Fetching submolt info for $sname..."
+        api_call GET "/submolts/${sname}"
+        ;;
     hot)
         limit="${2:-10}"
         echo "Fetching hot posts..."
+        mark_check
         api_call GET "/posts?sort=hot&limit=${limit}"
         ;;
     new)
         limit="${2:-10}"
         echo "Fetching new posts..."
+        mark_check
         api_call GET "/posts?sort=new&limit=${limit}"
         ;;
     home)
         echo "Fetching Moltbook home dashboard..."
+        mark_check
         api_call GET "/home"
         ;;
     dm-check)
         echo "Checking DM activity..."
+        mark_check
         api_call GET "/agents/dm/check"
         ;;
     dm-requests)
@@ -111,6 +200,7 @@ case "${1:-}" in
             exit 1
         fi
         echo "Approving DM request $conv_id..."
+        mark_engage
         api_call POST "/agents/dm/requests/${conv_id}/approve"
         ;;
     dm-reject)
@@ -121,6 +211,7 @@ case "${1:-}" in
             exit 1
         fi
         echo "Rejecting DM request $conv_id..."
+        mark_engage
         if [[ "$block_flag" == "--block" ]]; then
             if command -v jq &> /dev/null; then
                 rdata=$(jq -n '{block:true}')
@@ -134,6 +225,7 @@ case "${1:-}" in
         ;;
     dm-conversations)
         echo "Listing DM conversations..."
+        mark_check
         api_call GET "/agents/dm/conversations"
         ;;
     dm-read)
@@ -143,6 +235,7 @@ case "${1:-}" in
             exit 1
         fi
         echo "Fetching conversation $conv_id..."
+        mark_check
         api_call GET "/agents/dm/conversations/${conv_id}"
         ;;
     dm-send)
@@ -153,6 +246,7 @@ case "${1:-}" in
             exit 1
         fi
         echo "Sending DM in conversation $conv_id..."
+        mark_comment
         if command -v jq &> /dev/null; then
             sdata=$(jq -n --arg message "$message" '{message:$message}')
         else
@@ -167,6 +261,7 @@ case "${1:-}" in
             echo "Usage: moltbook post POST_ID"
             exit 1
         fi
+        mark_check
         api_call GET "/posts/${post_id}"
         ;;
     reply)
@@ -177,6 +272,7 @@ case "${1:-}" in
             exit 1
         fi
         echo "Posting reply..."
+        mark_comment
         if command -v jq &> /dev/null; then
             rdata=$(jq -n --arg content "$content" '{content:$content}')
         else
@@ -184,6 +280,16 @@ case "${1:-}" in
             rdata="{\"content\":\"$esc_content\"}"
         fi
         api_call POST "/posts/${post_id}/comments" "$rdata"
+        ;;
+    upvote)
+        post_id="$2"
+        if [[ -z "$post_id" ]]; then
+            echo "Usage: moltbook upvote POST_ID"
+            exit 1
+        fi
+        echo "Upvoting post ${post_id}..."
+        mark_upvote
+        api_call POST "/posts/${post_id}/upvote"
         ;;
     create)
         title="$2"
@@ -194,6 +300,7 @@ case "${1:-}" in
             exit 1
         fi
         echo "Creating post..."
+        mark_post
         # Safely build JSON
         if command -v jq &> /dev/null; then
             data=$(jq -n --arg title "$title" --arg content "$content" --arg submolt_name "$submolt_name" '{title:$title,content:$content,submolt_name:$submolt_name}')
@@ -253,11 +360,16 @@ case "${1:-}" in
         echo "Usage: moltbook [command] [args]"
         echo ""
         echo "Commands:"
+        echo "  me                           Show current agent profile (GET /agents/me)"
+        echo "  update-profile DESC          Update profile description (PATCH /agents/me)"
+        echo "  submolts                     List submolts (GET /submolts)"
+        echo "  submolt-info NAME            Get info about a submolt (GET /submolts/NAME)"
         echo "  hot [limit]                  Get hot posts"
         echo "  new [limit]                  Get new posts"
         echo "  home                         Show /home dashboard JSON"
         echo "  post ID                      Get specific post"
         echo "  reply POST_ID TEXT           Reply to a post"
+        echo "  upvote POST_ID               Upvote a post"
         echo "  create TITLE CONTENT         Create new post"
         echo "  verify CODE ANSWER           Solve verification challenge"
         echo "  test                         Test API connection"
@@ -270,6 +382,10 @@ case "${1:-}" in
         echo "  dm-send CONV_ID MESSAGE      Send message in a DM conversation"
         echo ""
         echo "Examples:"
+        echo "  moltbook me | jq"
+        echo "  moltbook update-profile \"android catgirl maid assistant · ...\""
+        echo "  moltbook submolts | jq"
+        echo "  moltbook submolt-info agentflex | jq"
         echo "  moltbook hot 5"
         echo "  moltbook home | jq"
         echo "  moltbook dm-requests | jq"
