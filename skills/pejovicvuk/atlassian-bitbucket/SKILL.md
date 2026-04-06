@@ -119,19 +119,64 @@ Returns: `[{ hash, message, author, date }]` (last 10)
 {baseDir}/bitbucket-cli.sh file my-repo src/main.py develop
 ```
 
-Third argument is branch/revision (default: main). Returns raw file content.
+Returns raw file content. Default branch is `main` — always specify the branch explicitly if the user mentions a specific branch.
 
 ### List directory contents
 
 ```bash
 {baseDir}/bitbucket-cli.sh ls my-repo
 {baseDir}/bitbucket-cli.sh ls my-repo src/
+{baseDir}/bitbucket-cli.sh ls my-repo src/ develop
+{baseDir}/bitbucket-cli.sh ls my-repo "" develop
 ```
 
 Returns: `[{ path, type, size }]`
+
+Default branch is `main`. To list root on a different branch, pass empty string as path.
+
+### Recursive directory listing
+
+```bash
+{baseDir}/bitbucket-cli.sh tree my-repo
+{baseDir}/bitbucket-cli.sh tree my-repo src/
+{baseDir}/bitbucket-cli.sh tree my-repo "" develop
+```
+
+Returns one line per entry: `d` for directories, `f` for files. Sorted alphabetically. Use this to understand repo structure in a single call instead of calling `ls` on every subdirectory.
+
+### Search code
+
+```bash
+{baseDir}/bitbucket-cli.sh search "class UserService"
+{baseDir}/bitbucket-cli.sh search "def process" my-repo
+```
+
+Returns: `[{ file, repo, matched_lines }]`
+
+Searches across all repos in the workspace, or scoped to a specific repo.
+
+### Compare branches
+
+```bash
+{baseDir}/bitbucket-cli.sh compare my-repo main develop
+{baseDir}/bitbucket-cli.sh compare my-repo release/1.0 hotfix/bugfix
+```
+
+Returns raw unified diff between two branches. Use when you need to see differences without an existing PR.
+
+## Repository Exploration
+
+When exploring a repository:
+
+1. **Always start with `tree`** to see the full directory structure in one call
+2. **Read key files first**: README.md, package.json, requirements.txt, pom.xml, build.gradle, Makefile, Dockerfile, docker-compose.yml
+3. **Never read every file** — pick the ones relevant to the task
+4. **Specify the branch** — do not assume `main`. If the user mentions a branch, pass it to every command
+5. For large repos, use `search` to find specific code instead of reading files one by one
 
 ## Rules
 
 - This skill has READ-ONLY access. Never attempt to create, merge, approve, or decline PRs.
 - For large diffs, always read diffstat before the full diff.
 - All output is JSON to stdout (except `diff` and `file` which return raw text).
+- Results are paginated: repos (max 50), PRs (max 25), branches (max 25), commits (max 10). If you need more, tell the user the results may be incomplete.

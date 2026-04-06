@@ -28,7 +28,9 @@ bb_get() {
     http_code=$(echo "$response" | tail -1)
     body=$(echo "$response" | sed '$d')
     if [ "$http_code" -ge 400 ]; then
-        echo "{\"error\": \"HTTP $http_code\", \"url\": \"$1\"}" >&2
+        local err="{\"error\": \"HTTP $http_code\", \"url\": \"$1\"}"
+        echo "$err" >&2
+        echo "$err"
         exit 1
     fi
     echo "$body"
@@ -40,7 +42,9 @@ bb_get_raw() {
     http_code=$(echo "$body" | tail -1)
     body=$(echo "$body" | sed '$d')
     if [ "$http_code" -ge 400 ]; then
-        echo "Error: HTTP $http_code fetching $1" >&2
+        local err="{\"error\": \"HTTP $http_code\", \"url\": \"$1\"}"
+        echo "$err" >&2
+        echo "$err"
         exit 1
     fi
     echo "$body"
@@ -245,6 +249,55 @@ print(json.dumps(entries,indent=2))
 "
 }
 
+cmd_tree() {
+    local repo="${1:?Usage: bitbucket-cli.sh tree REPO [PATH] [REV]}"
+    local path="${2:-}"
+    local rev="${3:-main}"
+    local url="$BASE/repositories/$WS/$repo/src/$rev/$path?max_depth=100&pagelen=100"
+    bb_get "$url" | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+entries=[]
+for v in d.get('values',[]):
+    t='d' if v.get('type')=='commit_directory' else 'f'
+    entries.append((v.get('path',''),t))
+entries.sort(key=lambda x:x[0])
+for path,t in entries:
+    print(f'{t} {path}')
+"
+}
+
+cmd_search() {
+    local query="${1:?Usage: bitbucket-cli.sh search QUERY [REPO]}"
+    local repo="${2:-}"
+    local encoded_query
+    encoded_query=$(urlencode "$query")
+    local url="$BASE/search/code?search_query=$encoded_query&pagelen=10"
+    if [ -n "$repo" ]; then
+        url="$url&search_in=$WS/$repo"
+    fi
+    bb_get "$url" | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+results=[]
+for v in d.get('values',[]):
+    f=v.get('file',{})
+    results.append({
+        'file':f.get('path'),
+        'repo':(f.get('links',{}).get('self',{}).get('href','').split('/src/')[0].split('/')[-1] if f.get('links') else None),
+        'matched_lines':len(v.get('content_matches',[]))
+    })
+print(json.dumps(results,indent=2))
+"
+}
+
+cmd_compare() {
+    local repo="${1:?Usage: bitbucket-cli.sh compare REPO BASE_REF HEAD_REF}"
+    local base_ref="${2:?Usage: bitbucket-cli.sh compare REPO BASE_REF HEAD_REF}"
+    local head_ref="${3:?Usage: bitbucket-cli.sh compare REPO BASE_REF HEAD_REF}"
+    bb_get_raw "$BASE/repositories/$WS/$repo/diff/$base_ref..$head_ref"
+}
+
 # --- Dispatch ---
 CMD="${1:-help}"; shift || true
 case "$CMD" in
@@ -259,6 +312,9 @@ case "$CMD" in
     commits)     cmd_commits "$@";;
     file)        cmd_file "$@";;
     ls)          cmd_ls "$@";;
+    tree)        cmd_tree "$@";;
+    search)      cmd_search "$@";;
+    compare)     cmd_compare "$@";;
     help|--help|-h)
         echo "Usage: bitbucket-cli.sh <command> [args]"
         echo ""
@@ -274,6 +330,9 @@ case "$CMD" in
         echo "  commits REPO [BRANCH]          Recent commits on a branch"
         echo "  file REPO FILEPATH [REV]       Read file contents"
         echo "  ls REPO [PATH] [REV]           List directory contents"
+        echo "  tree REPO [PATH] [REV]         Recursive directory listing"
+        echo "  search QUERY [REPO]            Search code in workspace or repo"
+        echo "  compare REPO BASE HEAD         Diff between two branches"
         echo ""
         echo "Env: ATLASSIAN_EMAIL, BITBUCKET_API_TOKEN, BITBUCKET_WORKSPACE";;
     *) echo "{\"error\":\"Unknown command: $CMD\"}" >&2; exit 1;;
