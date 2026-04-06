@@ -475,4 +475,4 @@ See `gen_report.py` in this skill directory for the complete, production-ready i
 |------|-------------|
 | `sc_detailed_data.json` | Raw API data for all sites (reproducible) |
 | `report_charts/*.png` | Generated chart images (temp, /tmp/) |
-| `search_console_report_YYYY-MM-DD.pdf` | Final PDF report (date-stamped, never overwritten) |
+| `project/reports/search_console_report_YYYY-MM-DD.pdf` | Final PDF report (date-stamped, never overwritten) |

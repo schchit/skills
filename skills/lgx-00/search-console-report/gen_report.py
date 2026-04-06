@@ -181,7 +181,7 @@ print("Charts done.")
 # Usable width: A4 (21cm) - 2*1.2cm = 18.6cm.
 # All charts and tables use 18.6cm width accordingly.
 # ---------------------------------------------------------------
-OUTPUT = f"/Users/admin/.accio/accounts/7083102932/agents/DID-F456DA-2B0D4C/project/search_console_report_{datetime.date.today()}.pdf"
+OUTPUT = f"/Users/admin/.accio/accounts/7083102932/agents/DID-F456DA-2B0D4C/project/reports/search_console_report_{datetime.date.today()}.pdf"
 doc = SimpleDocTemplate(OUTPUT, pagesize=A4,
                         leftMargin=1.2*cm, rightMargin=1.2*cm,
                         topMargin=1.2*cm, bottomMargin=1.2*cm)
