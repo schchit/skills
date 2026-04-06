@@ -10,7 +10,6 @@
  * 
  * 配置（优先级：环境变量 > config.json）：
  *   - CHENGXIN_API_KEY（环境变量）
- *   - CHENGXIN_API_SECRET（环境变量）
  *   - 或创建 config.json 文件（见 config.example.json）
  */
 
@@ -24,7 +23,7 @@ const path = require('path');
 const API_URL = 'https://wx.17u.cn/skills/gateway/api/v1/gateway/resource';
 
 // 版本号
-const API_VERSION = '0.1.0';
+const API_VERSION = '0.2.0';
 
 // 配置读取（优先级：环境变量 > config.json）
 let API_KEY = process.env.CHENGXIN_API_KEY;
@@ -171,7 +170,7 @@ function format_train_result(train_data, use_table = false, use_plain_link = fal
     return '未找到相关火车票信息';
   }
   
-  const trains = train_data.trainList.slice(0, 5);
+  const trains = train_data.trainList;
   let output = '🚄 火车票查询结果：\n\n';
   
   if (use_table) {
