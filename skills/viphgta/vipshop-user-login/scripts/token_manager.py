@@ -16,7 +16,6 @@ from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
 
 
-# AI-Generated Begin
 @dataclass
 class TokenInfo:
     """Token信息数据类 - 简化版，主要保存cookies用于后续请求"""
@@ -62,9 +61,7 @@ class TokenInfo:
             return "未知"
         dt = datetime.fromtimestamp(expire_timestamp)
         return dt.strftime("%Y-%m-%d %H:%M:%S")
-# AI-Generated End
     
-    # AI-Generated Begin
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典 - 只保存必要的字段"""
         return {
@@ -72,7 +69,6 @@ class TokenInfo:
             "created_at": self.created_at,
             "expires_at": self.expires_at
         }
-    # AI-Generated End
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'TokenInfo':
@@ -80,7 +76,6 @@ class TokenInfo:
         return cls(**data)
 
 
-# AI-Generated Begin
 class TokenManager:
     """Token管理器 - 单用户模式，固定key存储"""
     
@@ -99,7 +94,6 @@ class TokenManager:
         self._ensure_storage_dir()
         self._token_info: Optional[TokenInfo] = None  # 单用户，直接存储TokenInfo
         self._load_tokens()
-# AI-Generated End
     
     def _ensure_storage_dir(self):
         """确保存储目录存在"""
@@ -107,7 +101,6 @@ class TokenManager:
         # 设置目录权限，仅所有者可读写
         os.chmod(self.token_file.parent, 0o700)
     
-    # AI-Generated Begin
     def _load_tokens(self):
         """从文件加载token（单用户模式）"""
         if not self.token_file.exists():
@@ -127,9 +120,7 @@ class TokenManager:
                 self.token_file.unlink()
         except Exception as e:
             print(f"[TokenManager] 加载token失败: {e}")
-    # AI-Generated End
     
-    # AI-Generated Begin
     def _save_tokens(self):
         """保存token到文件（单用户模式）"""
         try:
@@ -151,9 +142,7 @@ class TokenManager:
         except Exception as e:
             print(f"[TokenManager] 保存token失败: {e}")
             return False
-    # AI-Generated End
     
-    # AI-Generated Begin
     def save_token(self, user_id: str, token_info: TokenInfo) -> bool:
         """
         保存登录态（单用户模式，新登录会覆盖旧登录态）
@@ -167,9 +156,7 @@ class TokenManager:
         """
         self._token_info = token_info
         return self._save_tokens()
-    # AI-Generated End
     
-    # AI-Generated Begin
     def get_token(self, user_id: str = "") -> Optional[TokenInfo]:
         """
         获取当前登录态（单用户模式，user_id参数被忽略）
@@ -200,9 +187,7 @@ class TokenManager:
         if token and token.cookies:
             return token.cookies
         return {}
-    # AI-Generated End
     
-    # AI-Generated Begin
     def get_valid_token(self, user_id: str = "") -> Optional[str]:
         """
         获取有效的access_token字符串（单用户模式）
@@ -217,9 +202,7 @@ class TokenManager:
         if token_info and not token_info.is_expired:
             return token_info.access_token
         return None
-    # AI-Generated End
     
-    # AI-Generated Begin
     def remove_token(self, user_id: str = "") -> bool:
         """
         清除登录态
@@ -238,9 +221,7 @@ class TokenManager:
                 print(f"[TokenManager] 删除token文件失败: {e}")
                 return False
         return True
-    # AI-Generated End
     
-    # AI-Generated Begin
     def list_users(self) -> list:
         """
         检查是否有登录态
@@ -251,9 +232,7 @@ class TokenManager:
         if self._token_info is not None:
             return [self.SINGLE_USER_KEY]
         return []
-    # AI-Generated End
     
-    # AI-Generated Begin
     def clear_all_tokens(self) -> bool:
         """
         清除登录态
@@ -262,9 +241,7 @@ class TokenManager:
             是否清除成功
         """
         return self.remove_token()
-    # AI-Generated End
     
-    # AI-Generated Begin
     def get_token_summary(self, user_id: str = "") -> Optional[Dict[str, Any]]:
         """
         获取登录态的摘要信息
@@ -286,9 +263,7 @@ class TokenManager:
             "created_at": token.created_at,
             "is_expired": token.is_expired
         }
-    # AI-Generated End
     
-    # AI-Generated Begin
     def print_all_tokens(self):
         """打印当前登录态信息"""
         if not self._token_info:
@@ -306,41 +281,12 @@ class TokenManager:
             print(f"状态: {status}")
             print(f"过期时间: {expire_time}")
             print("-" * 60)
-    # AI-Generated End
 
 
 # 便捷函数
 def get_default_manager() -> TokenManager:
     """获取默认的Token管理器实例"""
     return TokenManager()
-
-
-def save_token_from_response(user_id: str, response_data: Dict[str, Any], 
-                             nickname: Optional[str] = None) -> bool:
-    """
-    从API响应数据中保存token
-    
-    Args:
-        user_id: 用户ID
-        response_data: API响应数据，包含token信息
-        nickname: 用户昵称
-        
-    Returns:
-        是否保存成功
-    """
-    manager = get_default_manager()
-    
-    token_info = TokenInfo(
-        access_token=response_data.get("access_token") or response_data.get("token"),
-        token_type=response_data.get("token_type", "Bearer"),
-        expires_in=response_data.get("expires_in", 3600),
-        refresh_token=response_data.get("refresh_token"),
-        scope=response_data.get("scope"),
-        user_id=user_id,
-        nickname=nickname
-    )
-    
-    return manager.save_token(user_id, token_info)
 
 
 if __name__ == "__main__":
@@ -352,12 +298,10 @@ if __name__ == "__main__":
     
     # 测试保存token
     test_token = TokenInfo(
-        access_token="test_access_token_12345",
-        token_type="Bearer",
-        expires_in=3600,
-        refresh_token="test_refresh_token_67890",
+        cookies={"PASSPORT_ACCESS_TOKEN": "test_access_token_12345"},
         user_id="test_user_001",
-        nickname="测试用户"
+        nickname="测试用户",
+        expires_at=time.time() + 3600
     )
     
     manager.save_token("test_user_001", test_token)

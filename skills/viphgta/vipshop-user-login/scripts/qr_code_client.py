@@ -19,11 +19,6 @@ import tempfile
 import subprocess
 import platform
 from typing import Optional, Tuple
-
-# 设置 stdout 编码为 UTF-8，解决 Windows 下中文显示问题
-if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 from pathlib import Path
 
 import requests
@@ -44,7 +39,6 @@ class QRCodeClient:
             image_endpoint: 获取二维码图片接口路径，如 /qrLogin/getQrImage
             session: 可选的共享session，用于保持Cookie会话
         """
-        # AI-Generated Begin
         self.base_url = base_url.rstrip('/')
         self.init_endpoint = init_endpoint
         self.image_endpoint = image_endpoint
@@ -62,7 +56,6 @@ class QRCodeClient:
                 'Referer': f'{self.base_url}/',
                 'Origin': self.base_url,
             })
-        # AI-Generated End
     
     def init_qr_code(self, where_from: str = "") -> Tuple[bool, Optional[str], Optional[dict]]:
         """
@@ -129,12 +122,10 @@ class QRCodeClient:
             content_type = response.headers.get('Content-Type', '')
             
             # 判断响应类型 - 直接返回图片流
-            # AI-Generated Begin
             if 'image' in content_type:
                 # 提取格式，去除 charset 等后缀，如 "image/png;charset=UTF-8" -> "png"
                 image_format = content_type.split('/')[-1].split(';')[0].strip() if '/' in content_type else 'png'
                 return True, response.content, image_format
-            # AI-Generated End
             else:
                 print(f"[QRCodeClient] 未知的响应类型: {content_type}")
                 return False, None, None
@@ -190,7 +181,6 @@ class QRCodeClient:
         Returns:
             是否保存成功
         """
-        # AI-Generated Begin
         try:
             # 保存到文件
             file_path = self.save_qr_image(image_bytes, 'png')
@@ -208,7 +198,6 @@ class QRCodeClient:
         except Exception as e:
             print(f"[QRCodeClient] 保存二维码失败: {e}")
             return False
-        # AI-Generated End
     
     def open_qr_image(self, image_bytes: bytes, image_format: str = 'png') -> bool:
         """
@@ -221,7 +210,6 @@ class QRCodeClient:
         Returns:
             是否成功打开
         """
-        # AI-Generated Begin
         try:
             # 使用固定目录保存二维码
             qr_dir = Path.home() / ".vipshop-user-login" / "qr_codes"
@@ -286,7 +274,6 @@ class QRCodeClient:
                     pass
         except Exception as e:
             print(f"[QRCodeClient] 清理二维码文件失败: {e}")
-    # AI-Generated End
     
     def save_qr_image(self, image_bytes: bytes, image_format: str = 'png', 
                      output_path: Optional[str] = None) -> Optional[str]:

@@ -16,9 +16,9 @@ mars_cid 生成器模块
     is_valid = MarsCidGenerator.validate(mars_cid)
 """
 
-import random
 import time
 import re
+import secrets
 from typing import Optional
 
 
@@ -110,8 +110,8 @@ class MarsCidGenerator:
         Returns:
             随机十六进制字符串，例如：bb534acdd50ba1519bb4dcf534112ddc
         """
-        hex_chars = "0123456789abcdef"
-        return ''.join(random.choice(hex_chars) for _ in range(length))
+        import secrets
+        return secrets.token_hex(length // 2)
     
     @staticmethod
     def validate(mars_cid: str) -> bool:

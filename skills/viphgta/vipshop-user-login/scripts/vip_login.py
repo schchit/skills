@@ -15,7 +15,7 @@ import sys
 import time
 import os
 import argparse
-from typing import Optional, Callable
+from typing import Optional, Callable, Dict, Any
 from dataclasses import dataclass
 
 # 设置 stdout 编码为 UTF-8，解决 Windows 下中文显示问题
@@ -79,7 +79,6 @@ class VIPLoginManager:
         Args:
             config: 配置对象，默认使用内置Config
         """
-        # AI-Generated Begin
         self.config = config or Config()
         
         # 创建共享session以保持Cookie会话
@@ -93,7 +92,6 @@ class VIPLoginManager:
             'Content-Type': 'application/x-www-form-urlencoded',  # AI-Generated: 必须设置
         })
         
-        # AI-Generated: 设置 mars_cid cookie（设备标识）
         mars_cid = get_mars_cid()
         self.session.cookies.set('mars_cid', mars_cid, domain='.vip.com')
         
@@ -114,7 +112,6 @@ class VIPLoginManager:
         )
         
         self.token_manager = TokenManager()
-        # AI-Generated End
     
     def login(self,
               where_from: str = "",
@@ -265,7 +262,6 @@ class VIPLoginManager:
             
             return LoginResult(success=False, message=message, qr_token=qr_token)
         
-        # AI-Generated Begin
         # 从登录确认响应中提取cookies (set-cookie headers)
         # 只保存必要的cookie：PASSPORT_ACCESS_TOKEN 和 mars_cid
         cookies = {}
@@ -322,9 +318,7 @@ class VIPLoginManager:
                 cookies['PASSPORT_ACCESS_TOKEN'] = session_cookies['PASSPORT_ACCESS_TOKEN']
             if 'mars_cid' in session_cookies:
                 cookies['mars_cid'] = session_cookies['mars_cid']
-        # AI-Generated End
         
-        # AI-Generated Begin
         # 保存登录态（只包含必要的cookie）
         token_info = TokenInfo(
             cookies=cookies,
@@ -338,7 +332,6 @@ class VIPLoginManager:
 
         # 清理二维码文件
         self.qr_client.cleanup_qr_files()
-        # AI-Generated End
 
         return LoginResult(
             success=True,
@@ -364,7 +357,7 @@ class VIPLoginManager:
         with open(pending_file, 'w') as f:
             json.dump(data, f)
     
-    def _load_pending_login(self) -> Optional[dict[str, any]]:
+    def _load_pending_login(self) -> Optional[Dict[str, Any]]:
         """加载待处理的登录信息"""
         import json
         from pathlib import Path
@@ -480,7 +473,6 @@ class VIPLoginManager:
             if 'mars_cid' in session_cookies:
                 cookies['mars_cid'] = session_cookies['mars_cid']
         
-        # AI-Generated Begin
         # 保存登录态（只包含必要的cookie）
         token_info = TokenInfo(
             cookies=cookies,
@@ -496,7 +488,6 @@ class VIPLoginManager:
         # 显示过期时间
         expire_readable = token_info.expire_datetime
         print(f"\n⏰ Token过期时间: {expire_readable}")
-        # AI-Generated End
 
         return LoginResult(
             success=True,
@@ -621,7 +612,7 @@ def main():
         if pending:
             print(f"继续登录流程，qrToken: {pending['qr_token'][:20]}...")
             result = manager.login(
-                where_from=pending.get('where_from', ''),
+                where_from=pending.get('where_from', 'AIClaw'),
                 qr_token_to_poll=pending['qr_token']
             )
         else:
@@ -630,12 +621,12 @@ def main():
     elif args.poll:
         # 使用指定的qrToken继续轮询
         result = manager.login(
-            where_from=args.where_from or "",
+            where_from=args.where_from or "AIClaw",
             qr_token_to_poll=args.poll
         )
     else:
         # 执行新的登录
-        where_from = args.where_from or ""
+        where_from = args.where_from or "AIClaw"
         result = manager.login(where_from=where_from)
     
     print("\n" + "=" * 60)

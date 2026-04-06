@@ -20,11 +20,6 @@ import io
 import time
 import threading
 from enum import Enum
-
-# 设置 stdout 编码为 UTF-8，解决 Windows 下中文显示问题
-if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 from typing import Optional, Callable, Dict, Any
 from dataclasses import dataclass
 
@@ -74,7 +69,6 @@ class StatusPoller:
             timeout: 总超时时间（秒），二维码有效期约3分钟
             session: 可选的共享session，用于保持Cookie会话
         """
-        # AI-Generated Begin
         self.base_url = base_url.rstrip('/')
         self.check_endpoint = check_endpoint
         self.poll_interval = poll_interval
@@ -93,7 +87,6 @@ class StatusPoller:
                 'Referer': f'{self.base_url}/',
                 'Origin': self.base_url,
             })
-        # AI-Generated End
         
         self._stop_event = threading.Event()
         self._polling_thread: Optional[threading.Thread] = None

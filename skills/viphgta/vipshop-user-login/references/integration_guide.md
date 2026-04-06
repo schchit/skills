@@ -69,9 +69,9 @@ else:
 from scripts.token_manager import TokenManager
 
 manager = TokenManager()
-token_info = manager.get_token("current_user")
+token_info = manager.get_token()
 
-if token_info and not manager.is_expired("current_user"):
+if token_info:
     cookies = token_info.cookies
     user_id = token_info.user_id
     nickname = token_info.nickname
@@ -111,16 +111,14 @@ from scripts.token_manager import TokenManager
 
 manager = TokenManager()
 
-# 检查是否存在登录态
-if manager.has_token("current_user"):
-    # 检查是否过期
-    if not manager.is_expired("current_user"):
-        print("登录态有效")
-        cookies = manager.get_cookies()
-    else:
-        print("登录态已过期，需要重新登录")
+# 获取登录态（get_token 内部已处理过期逻辑）
+token_info = manager.get_token()
+
+if token_info:
+    print("登录态有效")
+    cookies = manager.get_cookies()
 else:
-    print("未登录，请先执行扫码登录")
+    print("未登录或登录态已过期，请先执行扫码登录")
 ```
 
 ## 完整示例：获取用户信息
@@ -142,7 +140,6 @@ def get_vip_user_info():
         data = json.load(f)
     
     cookies = data.get("cookies", {})
-    cookies = user_data.get("cookies", {})
     
     if not cookies:
         return {"error": "登录态无效"}
