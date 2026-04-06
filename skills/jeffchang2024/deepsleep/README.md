@@ -1,173 +1,153 @@
-# 🌙 DeepSleep
-
-**Two-phase daily memory persistence for AI agents.**
+# 🧠 DeepSleep v3.0
 
 > Like humans need sleep for memory consolidation, AI agents need DeepSleep to persist context across sessions.
 
-![DeepSleep Overview](overview.png)
+Two-phase daily memory persistence for [OpenClaw](https://github.com/openclaw/openclaw) AI agents.
 
-## What is DeepSleep?
+## What It Does
 
-AI agents wake up fresh every session — they forget everything. DeepSleep solves this with a two-phase nightly process:
+AI agents wake up fresh every session — no memory of yesterday's conversations, decisions, or context. DeepSleep fixes this with a nightly pack + dispatch cycle:
 
-1. **🛌 Phase 1: Deep Sleep Pack (23:40)** — Collects all conversations from the day, generates summaries, extracts action items, and stores everything to disk.
-2. **☀️ Phase 2: Morning Dispatch (00:10)** — Reads yesterday's packed summary and delivers personalized morning briefs to each chat group.
+1. **Pack (23:50)** — Scans all active group chats, extracts key decisions/lessons/progress with importance tiers, detects cross-group correlations
+2. **Dispatch (same session)** — Sends personalized morning briefs only to groups with real content, updates per-group memory snapshots with tiered retention
+3. **Restore (on demand)** — When the agent receives a message in any group, it loads that group's memory snapshot before replying
+4. **Audit (weekly)** — Self-reviews pack quality by comparing raw conversations vs summaries
 
-## Features
+The result: your agent remembers what happened yesterday, knows what's on the agenda today, and never asks you to repeat yourself.
 
-- **Auto-discovery** — Automatically finds all active sessions (groups, DMs, new groups) — no manual list maintenance
-- **Smart filtering** — Keeps decisions, lessons, preferences, relationships, milestones; skips noise
-- **Schedule memory** — Future-dated reminders stored in `schedule.md` with automatic due-date alerts
-- **Open Questions** — Tracks unresolved questions across days for continuity
-- **Tomorrow section** — Clear, actionable next-steps for each morning
-- **Merge, not append** — Long-term memory stays lean by updating in place
-- **Per-group dispatch** — Each group gets only its own relevant summary
+## What's New in v3.0
+
+- 🔴 **Unified cron** — Pack + dispatch in one job (was two). Saves token overhead + eliminates timing gaps
+- 🔴 **Silent day fast path** — No history pull when nothing happened. From ~80K tokens to <5K tokens on quiet days
+- 🔴 **Smart晨报** — Only sends briefs when there's real content, P0 due items, or stale OQs. No more "nothing happened" noise
+- 🟡 **Memory importance tiers** — 🔴P0/🟡P1/🟢P2 per entry. Different retention (7/5/3 days). Phase 3 prioritizes P0+P1
+- 🟡 **Cross-group correlation** — Detects related topics across groups for holistic context
+- 🟡 **OQ health tracking** — Warns at 7 days, escalates at 14 days, archives at 30 days
+- 🟡 **Schedule priorities** — P0/P1/P2 with differentiated reminder frequency. P0 overdue = daily nag
+- 🟢 **Memory quality audit** — Weekly self-check catches missed info and miscategorizations
+- 🟢 **dispatch_policy flag** — Pack tells dispatch whether to send or stay silent
 
 ## Architecture
 
 ```
-                    23:40                           00:10
-                  ┌────────┐                     ┌────────┐
-  Active Groups ──▸│  Pack  │──▸ memory/日期.md ──▸│Dispatch│──▸ Group A: 📋
-  DMs ────────────▸│ Phase  │──▸ MEMORY.md       │ Phase  │──▸ Group B: 📋
-  New Groups ─────▸│   1    │──▸ schedule.md     │   2    │──▸ Group C: 📋
-                  └────────┘                     └────────┘
+23:50  Unified Cron → Isolated agentTurn (timeout: 900s)
+         │
+         ├── PACK
+         │   ├── Lock date → sessions_list
+         │   ├── Active? → parallel sessions_history → summarize with tiers
+         │   │           → cross-group correlation → OQ health check
+         │   │           → schedule update → write daily file (policy: active)
+         │   │
+         │   └── Silent? → fast path: carry-forward with decay
+         │                → write daily file (policy: silent) [<5K tokens]
+         │
+         └── DISPATCH (same session)
+             ├── Check dispatch_policy
+             ├── active → smart send per group → tiered snapshot merge
+             └── silent → snapshot timestamp update only (no messages)
+
+On-demand  Phase 3: Restore
+             └── Load snapshot → priority P0+P1 → check correlations → schedule P0 items
+
+Weekly     Phase 4: Audit
+             └── Compare raw history vs summaries → log findings
+```
+
+## Requirements
+
+- [OpenClaw](https://github.com/openclaw/openclaw) with cron support
+- `tools.sessions.visibility` set to `all`
+- At least one active group chat session
+
+## Quick Start
+
+```bash
+# 1. Enable cross-session visibility
+openclaw config set tools.sessions.visibility all
+openclaw gateway restart
+
+# 2. Create unified cron (23:50 local time)
+openclaw cron add \
+  --name "deepsleep" \
+  --cron "50 23 * * *" \
+  --tz "Your/Timezone" \
+  --session isolated \
+  --message "Execute DeepSleep v3.0. Read the deepsleep skill pack-instructions.md and follow it strictly. After pack completes, continue with dispatch (pack-instructions.md Step 6)." \
+  --timeout-seconds 900 \
+  --no-deliver
+
+# 3. Optional: Weekly audit (Sunday 10:00)
+openclaw cron add \
+  --name "deepsleep-audit" \
+  --cron "0 10 * * 0" \
+  --tz "Your/Timezone" \
+  --session isolated \
+  --message "Execute DeepSleep Phase 4 memory quality audit. Read deepsleep SKILL.md Phase 4 section." \
+  --timeout-seconds 600 \
+  --no-deliver
+
+# 4. Initialize schedule
+mkdir -p memory
+echo "# Schedule\n\n| Key | Date | Source | Item | Priority | Status |\n|-----|------|--------|------|----------|--------|" > memory/schedule.md
+
+# 5. Add Phase 3 restore to AGENTS.md (see SKILL.md)
+```
+
+### Migration from v2.x
+
+```bash
+# Remove old two-cron setup
+openclaw cron remove <pack-job-id>
+openclaw cron remove <dispatch-job-id>
+
+# Add unified cron (see above)
 ```
 
 ## File Structure
 
 ```
-workspace/
-├── MEMORY.md                      # Long-term curated memory (merge-updated)
-├── memory/
-│   ├── YYYY-MM-DD.md             # Daily records (morning report + summary + todos)
-│   └── schedule.md               # Future-dated reminders with triggers
-└── skills/deepsleep/
-    ├── SKILL.md                  # Skill definition
-    ├── pack-instructions.md      # Phase 1 detailed instructions
-    └── dispatch-instructions.md  # Phase 2 detailed instructions
+deepsleep/
+├── SKILL.md                    # Full skill definition (OpenClaw reads this)
+├── pack-instructions.md        # Phase 1+2 instructions (cron reads this)
+├── dispatch-instructions.md    # Standalone dispatch (for manual/recovery use)
+├── README.md                   # This file
+├── chat-id-mapping.local.md    # Group name → chat_id mapping (not in git)
+├── .gitignore
+└── references/
+    └── design.md               # Architecture & design decisions
 ```
 
-## Daily Summary Template
+## Runtime Files (generated)
 
-```markdown
-## Daily Summary (DeepSleep)
-
-### [Group Name]
-- Concise summary of key discussions and decisions
-
-### Direct Messages
-- (DM content if any)
-
-### 🔮 Open Questions
-- Unresolved questions, tracked across days
-
-### 📋 Tomorrow
-- Actionable next steps
-
-### Todo
-- [ ] Immediate action items
+```
+memory/
+├── YYYY-MM-DD.md              # Daily summaries with importance tiers
+├── schedule.md                # Task tracking with priorities + dedup keys
+├── dispatch-lock.md           # Prevents duplicate sends
+├── dispatch-log.md            # Send history (rolling 30 entries)
+├── audit-log.md               # Weekly quality audit findings
+└── groups/
+    └── <chat_id>.md           # Per-group snapshots (tiered retention)
 ```
 
-## Filtering Criteria
+## Token Economics
 
-Inspired by [memory-reflect](https://clawhub.ai) best practices:
+| Scenario | v2.1 | v3.0 |
+|---|---|---|
+| Active day (6 groups) | ~10万 tokens | ~8万 tokens (tiered filtering) |
+| Silent day | ~8万 tokens | **<0.5万 tokens** (fast path) |
+| Dispatch (active) | ~3万 tokens | **0** (same session as pack) |
+| Dispatch (silent) | ~3万 tokens | **~0.2万 tokens** (snapshot update only) |
 
-| Type | Action | Example |
-|------|--------|---------|
-| Decisions | ✅ Keep | "Chose platform A over B" |
-| Lessons | ✅ Keep | "Config X blocks cross-session reads" |
-| Preferences | ✅ Keep | "User prefers midnight dispatch" |
-| Relationships | ✅ Keep | "Bot Y responds slowly" |
-| Milestones | ✅ Keep | "Feature Z completed" |
-| Transient | ❌ Skip | Heartbeats, weather checks, routine ops |
-| Already captured | ❌ Skip | Already in MEMORY.md |
+**Estimated monthly savings**: ~150万 tokens (assuming 50% silent days)
 
-## Setup
+## Version History
 
-### 1. Install the skill
-
-```bash
-# From ClawHub
-clawhub install deepsleep
-
-# Or clone from GitHub
-git clone https://github.com/JeffChang2024/deepsleep.git skills/deepsleep
-```
-
-### 2. Create the cron jobs
-
-```bash
-# Phase 1: Pack at 23:40 local time
-openclaw cron add \
-  --name "deepsleep-pack" \
-  --cron "40 23 * * *" \
-  --tz "Your/Timezone" \
-  --system-event "Execute DeepSleep Phase 1. Read skills/deepsleep/pack-instructions.md and follow the process." \
-  --timeout-seconds 180
-
-# Phase 2: Dispatch at 00:10 local time
-openclaw cron add \
-  --name "deepsleep-dispatch" \
-  --cron "10 0 * * *" \
-  --tz "Your/Timezone" \
-  --system-event "Execute DeepSleep Phase 2. Read skills/deepsleep/dispatch-instructions.md and follow the process." \
-  --timeout-seconds 120
-```
-
-### 3. Enable cross-session visibility
-
-```bash
-openclaw config set tools.sessions.visibility all
-openclaw gateway restart
-```
-
-### 4. Initialize schedule file
-
-Create `memory/schedule.md`:
-
-```markdown
-# Schedule — Future Reminders
-
-| Date | Source | Item | Status |
-|------|--------|------|--------|
-```
-
-## Requirements
-
-- [OpenClaw](https://github.com/openclaw/openclaw) (any recent version)
-- `tools.sessions.visibility` set to `all` (for cross-session history access)
-- Cron jobs must use `systemEvent` mode (runs in main session for full permissions)
-
-## Customization
-
-- **Timing**: Adjust cron schedules to match your timezone and sleep habits
-- **Filtering**: Edit `pack-instructions.md` to tune what gets kept vs skipped
-- **Dispatch targets**: Phase 2 auto-discovers groups from the packed summary — no hardcoded list needed
-- **Long-term memory**: Adjust merge strategy in `pack-instructions.md` step 5
-
-## Inspirations & Credits
-
-Built with insights from the OpenClaw community:
-
-| Project | What we borrowed |
-|---------|-----------------|
-| [agent-sleep](https://clawhub.ai) | Multi-level sleep concept, forgetting curve ideas |
-| [memory-reflect](https://clawhub.ai) | Filtering criteria, merge-not-append strategy |
-| [jarvis-memory-architecture](https://clawhub.ai) | Cron inbox pattern, sub-agent context templates |
-| [memory-curator](https://clawhub.ai) | Open Questions + Tomorrow sections, index-first architecture |
-
-## Roadmap
-
-- [ ] **Forgetting curve** — Auto-decay low-frequency memories, strengthen high-frequency ones
-- [ ] **Index layer** — Master index file when daily files grow numerous
-- [ ] **Diary layer** — Separate factual summaries from personal reflections
-- [ ] **Cron inbox** — Sub-agents report back via shared inbox file
+- **v3.0** (2026-04-04): Unified cron, silent fast path, importance tiers, cross-group correlation, OQ health, schedule priorities, quality audit
+- **v2.2** (2026-04-01): Silent Day Carry-Forward + Decay 4-tier system
+- **v2.1** (2026-03-31): Midnight race fix, dispatch dedup, DM privacy, schedule key dedup, rolling snapshots, send logging, MEMORY.md guard rails
+- **v2.0** (2026-03-29): Initial release, three-phase architecture
 
 ## License
 
-MIT License — use it, fork it, make it better.
-
----
-
-*Made with 🌙 by JeffreyBOT*
+MIT
