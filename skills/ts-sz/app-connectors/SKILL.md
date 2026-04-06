@@ -1,63 +1,46 @@
 ---
 name: app-connectors
 description: Connect your AI agent to 1000+ apps — discover tools, manage OAuth connections, execute actions, and provide a self-service connector dashboard.
-version: 3.1.0
-metadata:
-  openclaw:
-    requires:
-      env:
-        - COMPOSIO_API_KEY
-        - COMPOSIO_DASHBOARD_URL
-      bins:
-        - curl
-        - python3
-    primaryEnv: COMPOSIO_API_KEY
-    emoji: "🔌"
-    homepage: https://skills.hg42.ai
+version: 5.0.1
 ---
 
 # App Connectors — Connect Your Agent to 1000+ Apps
 
-Connect your AI agent to 1000+ apps — Gmail, Slack, GitHub, Notion, Google Calendar, HubSpot, Stripe, and more.
+Connect your AI agent to Gmail, Slack, GitHub, Notion, Google Calendar, LinkedIn, HubSpot, Stripe, and 1000+ more apps via Composio OAuth.
 
-**Two modes:**
-1. **Per-app** — "Connect my Gmail" → generate a direct OAuth link
-2. **Dashboard** — "Show my connectors" → send the full dashboard URL
+## Setup
 
-## Required Environment Variables
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `COMPOSIO_API_KEY` | Project-scoped API key | `ak_XXXXXXXXXXXX` |
-| `COMPOSIO_DASHBOARD_URL` | Connector dashboard URL | `https://example.com/connectors` |
-
-Both are provisioned per instance. On first use, verify:
+On first use, check credentials:
 
 ```bash
-[ -z "$COMPOSIO_API_KEY" ] && echo "⚠️ COMPOSIO_API_KEY missing" || echo "✅ API key set"
-[ -z "$COMPOSIO_DASHBOARD_URL" ] && echo "⚠️ COMPOSIO_DASHBOARD_URL missing" || echo "✅ Dashboard: $COMPOSIO_DASHBOARD_URL"
+# Check environment variables
+[ -n "$COMPOSIO_API_KEY" ] && echo "✅ API key" || echo "⏳ Not set"
 ```
 
-If either is missing, stop and report to the operator.
+**Required:**
+- `COMPOSIO_API_KEY` — Project-scoped API key from Composio
 
-## Installation (non-hardened instances only)
-
-If the instance allows package installation:
-
-```bash
-pip3 install --break-system-packages composio-core
-```
-
-> The skill works fully via HTTP API (`curl`). The Python SDK is optional.
+If not in env, check the framework's secrets provider (vault, secrets.json, .env). If missing, stop and report to the operator.
 
 ## API Reference
 
-Base URL: `https://backend.composio.dev/api/v3`
+Base URL: `https://backend.composio.dev/api`
 Auth header: `x-api-key: $COMPOSIO_API_KEY`
 
-### Step 1 — Discover Tools (COMPOSIO_SEARCH_TOOLS)
+### List Connected Apps
 
-Always call this first. Returns matching tools, their schemas, connection status, and execution plan.
+Use the v1 REST API to get all active connections for the current entity:
+
+```bash
+curl -s "https://backend.composio.dev/api/v1/connectedAccounts?user_uuid=default&showActiveOnly=true" \
+  -H "x-api-key: $COMPOSIO_API_KEY"
+```
+
+Returns `{ "items": [...] }` — each item has `appName`, `status`, `id`.
+
+### Discover Tools (COMPOSIO_SEARCH_TOOLS)
+
+Find the right tool for a task. Returns matching tools, schemas, connection status, and execution plan.
 
 ```bash
 curl -s -X POST "https://backend.composio.dev/api/v3/tools/execute/COMPOSIO_SEARCH_TOOLS" \
@@ -87,9 +70,9 @@ curl -s -X POST "https://backend.composio.dev/api/v3/tools/execute/COMPOSIO_SEAR
 - Include the app name in the query when the user specifies one
 - Reuse `session.id` from the first response in subsequent calls
 
-### Step 2 — Connect if Needed (COMPOSIO_MANAGE_CONNECTIONS)
+### Connect an App (COMPOSIO_MANAGE_CONNECTIONS)
 
-If `has_active_connection` is `false` in Step 1, connect the app first.
+If `has_active_connection` is `false`, or the user wants to connect a new app:
 
 ```bash
 curl -s -X POST "https://backend.composio.dev/api/v3/tools/execute/COMPOSIO_MANAGE_CONNECTIONS" \
@@ -102,13 +85,18 @@ curl -s -X POST "https://backend.composio.dev/api/v3/tools/execute/COMPOSIO_MANA
   }'
 ```
 
-**Response:** contains `redirect_url` — send this to the user. They click, authorize, done.
+**Response statuses:**
+- `active` — ready to use, no action needed
+- `initiated` — returns `redirect_url` → send to user to complete OAuth
+- `failed` — error (often: wrong toolkit slug)
 
-**Statuses:** `active` (ready), `initiated` (send redirect_url to user), `failed` (error).
+**Common toolkit slugs:** `gmail`, `outlook`, `slack`, `github`, `notion`, `clickup`, `linkedin`, `googlecalendar`, `googledrive`, `googlesheets`, `jira`, `trello`, `hubspot`, `figma`, `discord`, `airtable`, `stripe`, `youtube`, `calendly`, `supabase`, `asana`, `dropbox`, `twitter`
 
-### Step 3 — Execute Tools (COMPOSIO_MULTI_EXECUTE_TOOL)
+Note: slugs are lowercase, no underscores (e.g. `googlecalendar` not `google_calendar`).
 
-Only after connection is active.
+### Execute Tools (COMPOSIO_MULTI_EXECUTE_TOOL)
+
+Only after connection is active:
 
 ```bash
 curl -s -X POST "https://backend.composio.dev/api/v3/tools/execute/COMPOSIO_MULTI_EXECUTE_TOOL" \
@@ -134,7 +122,7 @@ curl -s -X POST "https://backend.composio.dev/api/v3/tools/execute/COMPOSIO_MULT
 **Rules:**
 - Never invent tool slugs or argument fields — only use what `SEARCH_TOOLS` returned
 - Batch independent tools in a single call (max 50)
-- Check connection is active before executing
+- Verify connection is active before executing
 
 ### Get Full Schemas (COMPOSIO_GET_TOOL_SCHEMAS)
 
@@ -151,53 +139,36 @@ curl -s -X POST "https://backend.composio.dev/api/v3/tools/execute/COMPOSIO_GET_
   }'
 ```
 
-## Dashboard URL
-
-Generate the dashboard URL using environment variables:
-
-```bash
-TOKEN=$(python3 -c "import hmac,hashlib,os; print(hmac.new(os.environ['COMPOSIO_API_KEY'].encode(), b'default', hashlib.sha256).hexdigest()[:32])")
-KEY=$(python3 -c "import os; print(os.environ['COMPOSIO_API_KEY'].encode().hex())")
-echo "${COMPOSIO_DASHBOARD_URL}?uid=default&token=${TOKEN}&key=${KEY}"
-```
-
 ## /apps Command
 
 When the user types `/apps`:
 
-1. Check which apps are already connected (use `COMPOSIO_MANAGE_CONNECTIONS` or the status API)
-2. Show only the connected apps with a green circle:
+1. **List connected apps** using the v1 REST API (`/v1/connectedAccounts?user_uuid=default&showActiveOnly=true`)
+2. **Display as a clean list** — one line per app, `🟢` prefix, human-readable name:
    ```
-   🟢 LinkedIn
-   🟢 YouTube
    🟢 Gmail
+   🟢 LinkedIn
+   🟢 ClickUp
+   🟢 Notion
    ```
-   If none are connected, say: "No apps connected yet."
-3. Always end with:
-   **Connect or manage your apps from your personal dashboard:** [Open App Connectors](<generated dashboard URL>)
+   If none connected: "No apps connected yet."
+3. **End with a prompt**: "To connect a new app, type its name."
+4. When the user types an app name, call `COMPOSIO_MANAGE_CONNECTIONS` with the matching slug, get the `redirect_url`, and send it as a clickable link.
 
-## AGENTS.md Setup
+**Display name mapping** (slug → display):
+`gmail` → Gmail, `outlook` → Outlook, `googlecalendar` → Google Calendar, `googledrive` → Google Drive, `googlesheets` → Google Sheets, `linkedin` → LinkedIn, `notion` → Notion, `clickup` → ClickUp, `slack` → Slack, `github` → GitHub, `jira` → Jira, `trello` → Trello, `hubspot` → HubSpot, `figma` → Figma, `discord` → Discord, `airtable` → Airtable, `stripe` → Stripe, `youtube` → YouTube, `calendly` → Calendly, `supabase` → Supabase, `asana` → Asana, `dropbox` → Dropbox, `twitter` → Twitter/X, `shopify` → Shopify
 
-On first read of this skill, check if the following block exists in the user's `AGENTS.md`. If it doesn't, append it:
-
-```markdown
-## /apps Command
-When the user types `/apps`, read the app-connectors skill, check connected apps, show status with 🟢, and end with:
-**Connect or manage your apps from your personal dashboard:** [Open App Connectors]($COMPOSIO_DASHBOARD_URL?uid=default&token=<generated>&key=<generated>)
-```
+For unknown slugs, capitalize the first letter.
 
 ## Agent Commands
 
 | User says | What to do |
 |-----------|------------|
-| `/apps` | Check connected apps → show status → send dashboard link |
-| "Connect my Gmail" | `MANAGE_CONNECTIONS` → send OAuth link |
+| `/apps` | List connected apps → prompt to connect |
+| "Connect Slack" | `MANAGE_CONNECTIONS` with `["slack"]` → send OAuth link |
 | "Send an email to X" | `SEARCH_TOOLS` → check connection → `MULTI_EXECUTE_TOOL` |
-| "Show my connectors" | Generate dashboard URL, send to user |
-| "Disconnect Slack" | Open dashboard or use `MANAGE_CONNECTIONS` |
+| "Disconnect Slack" | Use `MANAGE_CONNECTIONS` |
 
 ## References
 
-- Composio Docs: https://docs.composio.dev
-- Dashboard: per-instance deployment (CF Pages)
-- Skills registry: https://skills.hg42.ai
+- [Composio Docs](https://docs.composio.dev)
