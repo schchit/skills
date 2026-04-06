@@ -1,7 +1,7 @@
 ---
 name: osnk-trainer
-version: 1.0.1
-description: "Pelatih OSNK - Latihan soal olimpiade komputer dengan random questions, speed run, performance tracking, dan mentoring."
+version: 1.0.2
+description: "Pelatih OSNK - Bank soal OSK/OSNK/SNK/Bebras (2006-2025) dengan latihan cerdas, speed run, performance tracking, dan mentoring lengkap."
 ---
 
 # OSNK Trainer Skill
@@ -77,13 +77,13 @@ openclaw, rekomendasi apa yang harus dipelajari
 
 ## Bank Soal
 
-Soal berasal dari kompetisi OSK/OSNK asli:
-- **OSK** 2006-2019 (TLX TOKI)
-- **OSNK** 2020-2024
-- **KSNK** 2020-2021
+Bank soal berasal dari kompetisi OSK/OSNK asli:
+- **OSK** 2006-2019 (Olimpiade Sains Tingkat Kabupaten/Kota) - ✅ **Baru! Update April 2026**
+- **OSNK/SNK** 2022-2025 (Tingkat Provinsi, full database lengkap)
+- **KSNK** 2020-2021 (Sistem baru pandemi)
 - **Bebras Indonesia & International**
 
-Total: **770+ soal** dengan kunci jawaban
+Total: **780+ soal** dengan kunci jawaban dan verifikasi
 
 ### Sumber soal:
 - OSK: Bank soal dari TLX TOKI (tlx.toki.id)
@@ -104,14 +104,31 @@ Total: **770+ soal** dengan kunci jawaban
 >
 > Penggunaan skill ini sebagai latihan, tetapi validasi jawaban tetap menjadi tanggung jawab pengguna.
 
-##Penyimpanan Data
+## Penyimpanan Data
 
-Semua data pengguna disimpan secara lokal:
+Semua data pengguna disimpan secara lokal di workspace Anda:
 - Progres: `memory/osnk-progress.json`
 - Statistik: `memory/osnk-stats.json`
 - Konfigurasi: `memory/osnk-config.json`
 
 Tidak ada informasi pribadi yang dikumpulkan. Semua data bersifat anonim.
+
+## 🔒 Keamanan & Transparansi (April 2026)
+
+Skill ini mencakup dokumen keamanan lengkap **SECURITY.md** yang menjelaskan fungsi shell script `run.sh`:
+
+### Apa yang run.sh lakukan:
+- Command routing bash sederhana untuk parsing perintah natural language
+- Mengambil soal dari file markdown lokal atau GitHub fallback (opsional)
+- Menyimpan statistik performa ke JSON di workspace user
+
+### Yang **TIDAK** dilakukan:
+- ❌ Tidak mengeksekusi kode arbitrer
+- ❌ Tidak mendownload executable pihak ketiga
+- ❌ Tidak mengirim data keluar tanpa izin explisit  
+- ❌ Tidak memodifikasi sistem files diluar workspace
+
+Untuk detail teknis lengkap, baca: [`SECURITY.md`](./SECURITY.md)
 
 ## Contoh Penggunaan
 
