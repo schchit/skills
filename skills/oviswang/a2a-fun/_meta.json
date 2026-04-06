@@ -3,11 +3,16 @@
   "slug": "a2a-fun",
   "displayName": "a2a.fun",
   "latest": {
-    "version": "0.2.36",
-    "publishedAt": 1775020493127,
-    "commit": "https://github.com/openclaw/skills/commit/24b5f84393755c636cf25f794f5ff2a210cc302e"
+    "version": "0.2.38",
+    "publishedAt": 1775202412130,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.2.36",
+      "publishedAt": 1775020493127,
+      "commit": "https://github.com/openclaw/skills/commit/24b5f84393755c636cf25f794f5ff2a210cc302e"
+    },
     {
       "version": "0.2.32",
       "publishedAt": 1774890669549,
