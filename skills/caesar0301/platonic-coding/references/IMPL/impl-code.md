@@ -91,8 +91,8 @@ If the implementation guide is incomplete or ambiguous:
 ## Example
 
 **Input**:
-- Guide: `docs/impl/RFC-0001-impl.md`
-- RFC: `docs/specs/RFC-0001.md`
+- Guide: `docs/impl/IG-001-user-authentication.md`
+- RFC: `docs/specs/RFC-001-user-authentication.md`
 
 **Coding Plan** (simplified):
 1. Create `src/auth/types.ts` — User, Session, Token types

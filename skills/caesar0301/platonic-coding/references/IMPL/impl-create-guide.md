@@ -117,6 +117,8 @@ A complete implementation guide document containing:
 - Configuration options
 - Testing strategy
 
+**Naming Convention**: Implementation guides should follow the naming pattern `IG-<number>-semantic-short-desc.md` (e.g., `IG-053-cli-command-nesting.md`).
+
 ## Validation
 
 After creating the guide:
@@ -128,12 +130,12 @@ After creating the guide:
 ## Example
 
 **Input**:
-- RFC: `docs/specs/RFC-0042.md` (Message Queue Protocol)
+- RFC: `docs/specs/RFC-042-message-queue.md` (Message Queue Protocol)
 - Target Module: `acme-queue`
 - Language: Rust
 - Framework: Tokio (async runtime)
 
-**Output**: `docs/impl/RFC-0042-impl.md`
+**Output**: `docs/impl/IG-042-message-queue-protocol.md`
 
 The guide would include:
 - Crate structure for `acme-queue`

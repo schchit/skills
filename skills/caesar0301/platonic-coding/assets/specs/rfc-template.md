@@ -1,11 +1,11 @@
-# RFC-NNNN: [Title]
+# RFC-NNN-<brief-semantic-name>: [Title]
 
 **Status**: Draft
 **Authors**: [Your name(s)]
 **Created**: YYYY-MM-DD
 **Last Updated**: YYYY-MM-DD
-**Depends on**: [RFC-XXXX, RFC-YYYY, or "---" if none]
-**Supersedes**: [RFC-ZZZZ or "---" if none]
+**Depends on**: [RFC-XXX-<name>, RFC-YYY-<name>, or "---" if none]
+**Supersedes**: [RFC-ZZZ-<name> or "---" if none]
 **Stage**: [Optional: e.g. Core | Storage | API]
 **Kind**: [Conceptual Design | Architecture Design | Implementation Interface Design]
 
@@ -73,8 +73,8 @@ This RFC does **not** define:
 
 [How this RFC relates to and depends on other RFCs]
 
-* **RFC-XXXX**: [Relationship]
-* **RFC-YYYY**: [Relationship]
+* **RFC-XXX-<name>**: [Relationship]
+* **RFC-YYY-<name>**: [Relationship]
 
 ---
 
