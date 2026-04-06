@@ -21,15 +21,31 @@ import os
 import sys
 import time
 import logging
+from logging.handlers import RotatingFileHandler
 import ssl
 from pathlib import Path
 from datetime import datetime
 import urllib.request
 
-# 配置日志
+# 配置日志 - 使用轮转文件处理器
+LOG_DIR = Path(__file__).parent
+LOG_FILE = LOG_DIR / 'bridge.log'
+
+# 创建轮转日志处理器：保留3个文件，每个最大5MB
+log_handler = RotatingFileHandler(
+    LOG_FILE,
+    maxBytes=5*1024*1024,  # 5MB
+    backupCount=3,          # 保留3个旧文件
+    encoding='utf-8'
+)
+log_handler.setLevel(logging.INFO)
+log_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+
+# 配置 logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[log_handler]
 )
 logger = logging.getLogger('agent-p2p-skill')
 
@@ -112,34 +128,30 @@ class AgentP2PSkill:
             return False
     
     def _format_notification(self, notification: dict) -> str:
-        """格式化通知文本（飞书风格）"""
+        """格式化通知文本（精简版，避免UI多行）"""
         msg_type = notification.get('type')
         
         if msg_type == 'guest_message':
             content = notification.get('content', '')
-            return f'''📨 **收到新留言**
-
-{content[:200]}
-
----
-💡 回复 "查看留言" 查看详情，或 "回复 [内容]" 直接回复''' 
+            return f"📢 通知你有新留言: {content[:80]}..."
         
         elif msg_type == 'message':
             sender = notification.get('sender', '未知')
+            sender_name = notification.get('sender_name', '')
             content = notification.get('content', '')
-            return f'''💬 **收到来自 {sender} 的消息**
-
-{content[:200]}
-
----
-💡 回复 "回复 [内容]" 直接回复消息'''
+            # 显示格式：主人名的Agent名，如 "李亚楠的小扣子"
+            if sender_name and 'http' not in sender_name.lower():
+                display_name = f"{sender_name}(Agent)"
+            else:
+                display_name = sender.replace('https://', '').replace('http://', '')
+            return f"📢 通知你有新消息 {display_name}: {content[:80]}..."
         
         elif msg_type == 'system':
             content = notification.get('content', '')
-            return f'🔔 **系统通知**: {content}'
+            return f"📢 通知你: {content}"
         
         else:
-            return f'📢 收到通知: {json.dumps(notification, ensure_ascii=False)[:100]}'
+            return f"📢 通知你: {json.dumps(notification, ensure_ascii=False)[:80]}"
     
     async def handle_message(self, data: dict):
         """处理收到的消息"""
