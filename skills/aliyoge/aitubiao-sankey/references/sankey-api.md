@@ -104,8 +104,9 @@ Authorization: Bearer {API_KEY}
   "projectsUsed": 5,
   "projectsLimit": 50,
   "projectsRemaining": 45,
+  "pptGeneratePageLimit": 32,
   "features": {
-    "chartProject": { "key": "chartProject", "cost": 10, "unit": "次", "label": "图表项目创建", "billingModel": "per-request" }
+    "sankeyProject": { "key": "sankeyProject", "cost": 0, "unit": "次", "label": "桑基图项目创建", "billingModel": "per-request" }
   }
 }
 ```

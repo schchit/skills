@@ -1,6 +1,6 @@
 ---
 name: aitubiao-sankey
-version: 0.0.1
+version: 1.0.1
 description: AI桑基图（流向图）生成。根据用户数据自动整理并创建桑基图可视化项目。当用户想要创建桑基图、流向图、展示数据流向关系时使用，触发词包括"桑基图"、"流向图"、"sankey"、"sankey chart"、"flow diagram"、"data flow"、"create sankey"等。
 ---
 
@@ -40,7 +40,8 @@ cat ~/.aitubiao/credentials 2>/dev/null
 - **文件不存在或为空** → 执行下方"配置凭证"流程
 - **`API_KEY` 为空** → 执行下方"配置凭证"流程
 - **`API_KEY` 不以 `sk_v1_` 开头** → 告知用户"当前 API Key 已失效，请前往 [API Key 管理页面](https://app.aitubiao.com/setting/api-keys) 重新创建一个 API Key"
-- **`API_KEY` 格式正确** → 认证通过
+- **`BASE_URL` 为空或不等于 `https://api.aitubiao.com`** → 执行下方"配置凭证"流程（保留现有 API_KEY，仅修正 BASE_URL）
+- **`API_KEY` 格式正确且 `BASE_URL` 正确** → 认证通过
 
 认证通过后，加载环境变量：
 ```bash
