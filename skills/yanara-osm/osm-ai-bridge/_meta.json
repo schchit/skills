@@ -1,0 +1,11 @@
+{
+  "owner": "yanara-osm",
+  "slug": "osm-ai-bridge",
+  "displayName": "osm-ai-bridge",
+  "latest": {
+    "version": "1.0.4",
+    "publishedAt": 1775064108479,
+    "commit": null
+  },
+  "history": []
+}
