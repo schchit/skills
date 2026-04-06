@@ -3,11 +3,16 @@
   "slug": "ourmem",
   "displayName": "Ourmem",
   "latest": {
-    "version": "1.1.0",
-    "publishedAt": 1774921697340,
-    "commit": "https://github.com/openclaw/skills/commit/de97af5650b7d6f9588adfcda04dddfdb6e249a9"
+    "version": "1.1.1",
+    "publishedAt": 1775137014180,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1774921697340,
+      "commit": "https://github.com/openclaw/skills/commit/de97af5650b7d6f9588adfcda04dddfdb6e249a9"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1774817147797,
