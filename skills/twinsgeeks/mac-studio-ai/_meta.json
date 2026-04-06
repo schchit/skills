@@ -1,11 +1,17 @@
 {
   "owner": "twinsgeeks",
   "slug": "mac-studio-ai",
-  "displayName": "Mac Studio AI — Mac Studio Local LLM, Image Gen, STT on M4 Ultra",
+  "displayName": "Mac Studio Ai",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1774941208848,
-    "commit": "https://github.com/openclaw/skills/commit/0ab981f418cea358edab2dcf8b9e962330eaa8d6"
+    "version": "1.0.3",
+    "publishedAt": 1775254704372,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1774941208848,
+      "commit": "https://github.com/openclaw/skills/commit/0ab981f418cea358edab2dcf8b9e962330eaa8d6"
+    }
+  ]
 }
