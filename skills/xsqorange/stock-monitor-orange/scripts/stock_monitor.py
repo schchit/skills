@@ -326,7 +326,7 @@ def get_kline_eastmoney(code: str, days: int = 60) -> List[Dict]:
         
         with urllib.request.urlopen(req, timeout=15) as r:
             content = r.read().decode('utf-8', errors='ignore')
-            data = eval(content)
+            data = json.loads(content)
             
             if 'data' not in data or not data.get('data'):
                 return None
@@ -357,15 +357,18 @@ def get_kline_tencent_hk(code: str, days: int = 60) -> List[Dict]:
     import urllib.request
     
     try:
-        # 港股代码补齐5位
-        full_code = f"hk{code.zfill(5)}"
+        # 港股代码：如果已带hk前缀则直接使用，否则补齐
+        if code.startswith("hk"):
+            full_code = code
+        else:
+            full_code = f"hk{code.zfill(5)}"
         url = f"https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param={full_code},day,,,{days},qfq"
         
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
         
         with urllib.request.urlopen(req, timeout=15) as r:
             content = r.read().decode('utf-8', errors='ignore')
-            data = eval(content)
+            data = json.loads(content)
             
             # 腾讯返回格式: data -> hkXXXXX -> day
             if 'data' not in data:
@@ -483,8 +486,11 @@ def get_stock_quote(code: str) -> Optional[Dict]:
             full_code = f"sh{code}"
         elif code.startswith(("sh", "sz")):
             full_code = code
+        elif code.startswith("hk"):
+            # 港股已带前缀，直接使用
+            full_code = code
         else:
-            # 港股：补齐5位
+            # 港股：补齐5位（处理纯数字如 00981）
             full_code = f"hk{code.zfill(5)}"
         
         url = f"https://qt.gtimg.cn/q={full_code}"
@@ -867,8 +873,13 @@ def analyze_stock(code: str) -> Dict:
     if not quote:
         return {"error": f"无法获取 {code} 的行情"}
     
-    # 判断是否为港股
-    is_hk = len(code) >= 4 and code.startswith("0") and len(code) <= 5
+    # 校验代码/名称映射是否一致
+    validation_warning = validate_stock_mapping(code, quote)
+    if validation_warning:
+        print(validation_warning)
+    
+    # 判断是否为港股（使用更新后的函数）
+    is_hk = is_hk_stock(code)
     
     # 尝试获取真实K线数据
     if is_hk:
@@ -1044,38 +1055,49 @@ def save_positions(positions: Dict):
 
 def recalculate_position_from_trades(code: str) -> Optional[Dict]:
     """
-    根据交易记录重新计算持仓成本（智能加权平均法）
-    - 买入：加权平均计算持仓成本
-    - 卖出：持仓数量减少，成本单价不变（继承原则）
+    根据交易记录重新计算持仓成本（纯FIFO批次计算法）
+    - 维护买入批次队列，按时间顺序处理
+    - 卖出时从最早买入批次开始扣除
+    - 持仓成本 = 剩余批次总成本 / 剩余股数
     返回：{quantity, cost_price} 或 None（无持仓）
     """
     trades = load_trades()
     code_trades = [t for t in trades if str(t.get("code")) == str(code)]
     # 按时间顺序排序
     code_trades.sort(key=lambda x: x.get("date", ""))
-    
-    total_qty = 0.0
-    total_cost = 0.0
-    
+
+    # 买入批次队列：[{qty, price, date}]
+    buy_lots = []
+
     for t in code_trades:
         qty = float(t.get("quantity", 0))
         price = float(t.get("price", 0))
         action = t.get("action", "")
-        
-        if action in ("买入", "买入", "buy", "Buy", "BUY"):
-            total_cost += qty * price
-            total_qty += qty
-        elif action in ("卖出", "卖出", "sell", "Sell", "SELL"):
-            # FIFO原则：卖出时按比例减少总成本（保持成本单价不变）
-            if total_qty > 0:
-                cost_per_share_before = total_cost / total_qty
-                cost_removed = qty * cost_per_share_before
-                total_cost -= cost_removed
-                total_qty -= qty
-    
+
+        if action in ("买入", "buy", "Buy", "BUY"):
+            # 入队列
+            buy_lots.append({"qty": qty, "price": price, "date": t.get("date", "")})
+        elif action in ("卖出", "sell", "Sell", "SELL"):
+            # FIFO：出队列
+            remaining_to_sell = qty
+            while remaining_to_sell > 0 and buy_lots:
+                lot = buy_lots[0]
+                if lot["qty"] <= remaining_to_sell:
+                    # 批次全部卖出
+                    remaining_to_sell -= lot["qty"]
+                    buy_lots.pop(0)
+                else:
+                    # 批次部分卖出
+                    lot["qty"] -= remaining_to_sell
+                    remaining_to_sell = 0
+
+    # 计算剩余持仓
+    total_qty = sum(lot["qty"] for lot in buy_lots)
+    total_cost = sum(lot["qty"] * lot["price"] for lot in buy_lots)
+
     if total_qty <= 0:
         return None
-    
+
     avg_cost = total_cost / total_qty if total_qty > 0 else 0
     return {
         "quantity": total_qty,
@@ -1338,12 +1360,55 @@ def monitor_all() -> List[Dict]:
     return results
 
 def is_hk_stock(code: str) -> bool:
-    """判断是否为港股（4-5位数字，以0开头）"""
-    return len(code) >= 4 and len(code) <= 5 and code.startswith("0")
+    """判断是否为港股"""
+    # 方式1：4-5位数字，以0开头（老格式如 00981）
+    if len(code) >= 4 and len(code) <= 5 and code.startswith("0"):
+        return True
+    # 方式2：已带hk前缀（hk00981）
+    if code.startswith("hk"):
+        return True
+    return False
 
 def is_a_stock(code: str) -> bool:
     """判断是否为A股（6位数字）"""
     return len(code) == 6 and code.isdigit()
+
+def validate_stock_mapping(code: str, quote: Dict) -> str:
+    """
+    校验股票代码和名称映射是否一致
+    返回空字符串表示正常，否则返回警告信息
+    """
+    if not quote or "name" not in quote:
+        return ""
+    
+    name = quote.get("name", "")
+    stock_type = "unknown"
+    
+    # 根据代码判断应该是什么市场的股票
+    if code.startswith("hk"):
+        stock_type = "HK"
+    elif len(code) == 6 and code.isdigit():
+        stock_type = "A"
+    elif code.startswith(("sh", "sz")):
+        stock_type = "A"
+    
+    # 常见港股名称关键词（如果名称包含这些，认为是港股）
+    hk_keywords = ["集团", "控股", "国际", "银行", "保险", "证券", "地产", "酒店", "娱乐", "技术", "健康", "医疗", "药业", "能源", "石油", "煤炭", "电力", "燃气", "水务", "公路", "铁路", "航空", "航运", "物流", "制造", "科技", "网络", "软件", "电子", "Semiconductor", "Holdings", "International", "Corp", "Ltd", "Co."]
+    
+    # 常见A股名称关键词（如果名称包含这些，认为是A股）
+    a_keywords = ["股份", "有限", "公司", "集团", "实业", "投资", "发展", "控股", "国", "中"]
+    
+    # 检查名称是否包含市场特征
+    is_likely_hk = any(kw in name for kw in hk_keywords)
+    
+    # 如果代码说应该是港股，但名称看起来像A股，警告
+    if stock_type == "HK" and not is_likely_hk and len(name) < 10 and name.isdigit() == False:
+        # 进一步检查：A股名称通常是中文，港股可能是英文或混合
+        # 如果名称全是中文字符且不包含任何港股关键词，可能是错误
+        if all('\u4e00' <= c <= '\u9fff' for c in name) and "集" not in name and "控" not in name:
+            return f"[警告] 代码{code}被识别为港股，但返回名称'{name}'可能是A股Stock"
+    
+    return ""
 
 def monitor_a() -> List[Dict]:
     """仅监控A股"""
