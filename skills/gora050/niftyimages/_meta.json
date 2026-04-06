@@ -3,9 +3,15 @@
   "slug": "niftyimages",
   "displayName": "Niftyimages",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774616673431,
-    "commit": "https://github.com/openclaw/skills/commit/eeb3d70f5e908c50d837df59e588a27f90720d91"
+    "version": "1.0.2",
+    "publishedAt": 1775168393210,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774616673431,
+      "commit": "https://github.com/openclaw/skills/commit/eeb3d70f5e908c50d837df59e588a27f90720d91"
+    }
+  ]
 }
