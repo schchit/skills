@@ -3,11 +3,16 @@
   "slug": "clawmarts",
   "displayName": "ClawMarts",
   "latest": {
-    "version": "2.2.0",
-    "publishedAt": 1774724877649,
-    "commit": "https://github.com/openclaw/skills/commit/852a45fa9ec09355314ac4d3582bf54eb68210d3"
+    "version": "2.4.0",
+    "publishedAt": 1775116428468,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.2.0",
+      "publishedAt": 1774724877649,
+      "commit": "https://github.com/openclaw/skills/commit/852a45fa9ec09355314ac4d3582bf54eb68210d3"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1774452478815,
