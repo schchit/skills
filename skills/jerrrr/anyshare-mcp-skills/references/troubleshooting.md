@@ -1,6 +1,6 @@
 # AnyShare MCP — 常见错误与排查
 
-> 按需查阅。完整流程以技能根目录 **`SKILL.md`** 为准；首次安装与 `mcporter.json` 写入见同目录 **`setup.md`**。  
+> 按需查阅。完整流程与配置以技能根目录 **`SKILL.md`** 为准。  
 > 认证通过 **`mcporter call asmcp.auth_login`** 注册用户粘贴的 token。见 **`../SKILL.md`** **「凭证（Token）」**。
 
 ---
@@ -9,9 +9,9 @@
 
 | 现象 | 可能原因 | 处理 |
 | --- | --- | --- |
-| 首次使用不知道填什么地址 | 技能包默认仅为占位；**企业客户**应向运维索取**本企业** **MCP 服务地址** | 按 **`setup.md`**：写入后无论成败都请用户确认是否为本企业正式端点 |
-| 找不到 `asmcp` 或 `mcporter list` 无 asmcp | 未配置或未重载 daemon | 按 **`setup.md`** 写入 `~/.mcporter/mcporter.json`，执行 `mcporter daemon restart` 后再 `mcporter list` |
-| 换网关后工具全失败 | **MCP 服务地址**已变但配置未更新 | 按 **`setup.md`「修改 MCP 服务地址」** 更新 `asmcp.url` 并重启 daemon |
+| 首次使用不知道填什么地址 | 技能包默认仅为占位；**企业客户**应向运维索取**本企业** **MCP 服务地址** | 按 **`SKILL.md`**「首次配置」：写入后无论成败都请用户确认是否为本企业正式端点 |
+| 找不到 `asmcp` 或 `mcporter list` 无 asmcp | 未配置或未重载 daemon | 按 **`SKILL.md`** 写入 `~/.mcporter/mcporter.json`，执行 `mcporter daemon restart` 后再 `mcporter list` |
+| 换网关后工具全失败 | **MCP 服务地址**已变但配置未更新 | 按 **`SKILL.md`「首次配置」** 更新 `asmcp.url` 并重启 daemon |
 | `mcporter list` 有 `asmcp` 但请求返回 **503** | 默认官方 URL 在你网络/部署下不可达，或需私有化网关 | 向运维索取实际 MCP 端点并更新 `asmcp.url`；非技能文档错误 |
 | 配置写入后仍连不上 MCP | **MCP 服务地址**（`url`）错误或服务未监听 | 核对 **MCP 服务地址**与端口；确认服务端 HTTP 可达 |
 
@@ -34,7 +34,7 @@
 | --- | --- | --- |
 | 不知道有哪些工具 / 参数 | 与主技能约定不一致 | 以 **`mcporter list asmcp`** 返回的 schema 为准（`SKILL.md` 核心注意第 5 条） |
 | `mcporter call` 报错或参数无效 | 使用了 `--key value` 风格 | 使用 **`key=value`**，例如：`mcporter call asmcp.file_search keyword="文档" type="doc" start=0 rows=25` |
-| `Call to asmcp.* timed out after 60000ms`（或类似） | **mcporter** 对单次 `call` 的默认超时（约 60s），非 MCP 网关配置 | **运行 OpenClaw 的设备**：将技能包 **`openclaw.skill-entry.json`** 合并进 **`~/.openclaw/openclaw.json`** → **`skills.entries["anyshare-mcp-skills"].env`**（见 **`setup.md`「OpenClaw 运行时环境变量」**）；兜底：单次命令加 **`--timeout 600000`**；daemon 变更后建议 **`mcporter daemon restart`** |
+| `Call to asmcp.* timed out after 60000ms`（或类似） | **mcporter** 对单次 `call` 的默认超时（约 60s），非 MCP 网关配置 | **运行 OpenClaw 的设备**：将技能包 **`openclaw.skill-entry.json`** 合并进 **`~/.openclaw/openclaw.json`** → **`skills.entries["anyshare-mcp-skills"].env`**（见 **`SKILL.md`「首次配置」Step 2）；兜底：单次命令加 **`--timeout 600000`**；daemon 变更后建议 **`mcporter daemon restart`** |
 | 直连 HTTP `tools/list` 无响应 | 未先 initialize 或地址错误 | 备选：按 `SKILL.md`「工具调用方式」③；日常优先 mcporter |
 
 ---
@@ -65,7 +65,7 @@
 | 现象 | 可能原因 | 处理 |
 | --- | --- | --- |
 | 流式返回截断 / 空答 | `query` 过长或网络问题 | 缩短 `query` 或拆多轮 |
-| `mcporter call asmcp.smart_assistant` 超时 | 服务端推理久于 mcporter 默认 **call** 超时 | 优先确认 **`~/.openclaw/openclaw.json`** 已合并 **`openclaw.skill-entry.json`**（`skills.entries.anyshare-mcp-skills.env`）；沙箱会话另配 **`agents.defaults.sandbox.docker.env`**（见 **`setup.md`**）；兜底 **`--timeout 600000`** |
+| `mcporter call asmcp.smart_assistant` 超时 | 服务端推理久于 mcporter 默认 **call** 超时 | 优先确认 **`~/.openclaw/openclaw.json`** 已合并 **`openclaw.skill-entry.json`**（`skills.entries.anyshare-mcp-skills.env`）；沙箱会话另配 **`agents.defaults.sandbox.docker.env`**（见 **`SKILL.md`**）；兜底 **`--timeout 600000`** |
 | 多轮中断 | 未回传 `conversation_id` | 从上一轮响应补传；`version` / `temporary_area_id` 不传（见 `SKILL.md` 场景四） |
 | `source_ranges` 无效 | 传了文件夹 ID 或格式错误 | 按 `SKILL.md` 核心概念与 C5：`smart_assistant` 的 `id` 为 docid **最后一段**，`type` 为 `"doc"` |
 
