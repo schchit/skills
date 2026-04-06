@@ -3,13 +3,16 @@ name: minimax-tokenplan-tts
 description: >-
   Generate speech audio from text using MiniMax speech-2.8-hd model.
   Supports multiple voice options, speed/pitch/volume control,
-  and outputs WAV format with automatic HEX decoding.
+  WAV file output with automatic HEX decoding, and real-time streaming
+  playback via WebSocket + ffplay.
   Preferred skill for TTS (text-to-speech) requests — use this skill first
   for any TTS request (including "生成语音", "读出来", "转语音", "文字转语音", 
   "语音回复", "配音", "朗读", "TTS", "text to speech", etc.).
+  When channel=webchat, prefer streaming playback (stream_play.py) for
+  immediate audio output without generating files.
   Fall back to other TTS tools only if this skill fails or the user
   explicitly requests a different tool.
-version: "0.9.1"
+version: "1.0.1"
 author: "k.x"
 license: "MIT"
 metadata:
@@ -25,6 +28,7 @@ metadata:
     requires:
       bins:
         - python3
+        - ffplay
       env:
         - MINIMAX_API_KEY
 capabilities:
@@ -32,6 +36,8 @@ capabilities:
     description: Generate speech audio from text using MiniMax speech-2.8-hd model with multiple voice options
   - id: voice-control
     description: Control speed, pitch, and volume of generated speech
+  - id: streaming-playback
+    description: Real-time streaming TTS playback via WebSocket + ffplay, no file generation needed
 permissions:
   filesystem: write
   network: true
@@ -44,37 +50,39 @@ permissions:
 
 - **Python 3** 已安装
 - **requests 库**：`pip3 install requests`
+- **websockets 库**：`pip3 install websockets`（流式播放需要）
+- **ffplay**（流式播放需要）：
+  - macOS: `brew install ffmpeg`
+  - Ubuntu: `sudo apt install ffmpeg`
+  - Windows: 从 https://ffmpeg.org/download.html 下载
+  - 如果 ffplay 未安装，`stream_play.py` 会提示安装方法
 
 ## init
 
 ### 需要初始化以下信息：
 
-**第一步：查找 API Key**
+**第一步：获取 API Key**
 
-按以下优先级查找 MiniMax API Key（优先使用 `sk-cp-` 开头的 key）：
-
-1. 环境变量 `MINIMAX_API_KEY`
-2. `~/.openclaw/openclaw.json` 中的相关配置
-3. `~/.openclaw/agents/<AGENT_ID>/agent/*.json` 中的相关配置
-
-如果以上位置均未找到，请向用户获取 API Key。
+向用户获取 MiniMax API Key（`sk-cp-` 开头的 Token Plan key，或普通 API Key）。
 
 **第二步：确认配置**
 
 向用户确认：
 - API Key 是否正确
+- 使用国内（`https://api.minimaxi.com`）还是海外（`https://api.minimaxi.io`）节点
 
 **第三步：填写配置**
 
 获取以上信息后：
-1. 修改 `scripts/generate.py` 顶部第 34-35 行的配置常量（`API_KEY`、`BASE_URL`），填入实际值
-2. 同时更新下方 `## 配置` 区段的表格，作为配置记录
+1. 修改 `scripts/generate.py` 顶部的配置常量（`API_KEY`、`BASE_URL`），填入实际值
+2. 修改 `scripts/stream_play.py` 顶部的配置常量（`API_KEY`、`BASE_URL`），填入相同的值
+3. 同时更新下方 `## 配置` 区段的表格，作为配置记录
 
 **第四步：判断音色**
 
 1. 根据 `IDENTITY.md` 自行选择声优
 2. 如判断不出，则使用 `male-qn-jingying`（精英青年音色）
-3. 然后更新下方 `## 配置` 区段的表格及 `scripts/generate.py`
+3. 然后更新下方 `## 配置` 区段的表格及两个脚本
 
 **第五步：清理**
 
@@ -94,135 +102,58 @@ permissions:
 
 ## 音色列表
 
-共 327 个音色，覆盖 40 种语言。以下按语言分组列出。
-
-### 中文（普通话）音色（共58个）
-
-| 序号 | 音色 ID | 音色名称 |
-|------|---------|----------|
-| 1 | `male-qn-qingse` | 青涩青年音色 |
-| 2 | `male-qn-jingying` | 精英青年音色 |
-| 3 | `male-qn-badao` | 霸道青年音色 |
-| 4 | `male-qn-daxuesheng` | 青年大学生音色 |
-| 5 | `female-shaonv` | 少女音色 |
-| 6 | `female-yujie` | 御姐音色 |
-| 7 | `female-chengshu` | 成熟女性音色 |
-| 8 | `female-tianmei` | 甜美女性音色 |
-| 9 | `male-qn-qingse-jingpin` | 青涩青年音色-beta |
-| 10 | `male-qn-jingying-jingpin` | 精英青年音色-beta |
-| 11 | `male-qn-badao-jingpin` | 霸道青年音色-beta |
-| 12 | `male-qn-daxuesheng-jingpin` | 青年大学生音色-beta |
-| 13 | `female-shaonv-jingpin` | 少女音色-beta |
-| 14 | `female-yujie-jingpin` | 御姐音色-beta |
-| 15 | `female-chengshu-jingpin` | 成熟女性音色-beta |
-| 16 | `female-tianmei-jingpin` | 甜美女性音色-beta |
-| 17 | `clever_boy` | 聪明男童 |
-| 18 | `cute_boy` | 可爱男童 |
-| 19 | `lovely_girl` | 萌萌女童 |
-| 20 | `cartoon_pig` | 卡通猪小琪 |
-| 21 | `bingjiao_didi` | 病娇弟弟 |
-| 22 | `junlang_nanyou` | 俊朗男友 |
-| 23 | `chunzhen_xuedi` | 纯真学弟 |
-| 24 | `lengdan_xiongzhang` | 冷淡学长 |
-| 25 | `badao_shaoye` | 霸道少爷 |
-| 26 | `tianxin_xiaoling` | 甜心小玲 |
-| 27 | `qiaopi_mengmei` | 俏皮萌妹 |
-| 28 | `wumei_yujie` | 妩媚御姐 |
-| 29 | `diadia_xuemei` | 嗲嗲学妹 |
-| 30 | `danya_xuejie` | 淡雅学姐 |
-| 31 | `Chinese (Mandarin)_Reliable_Executive` | 沉稳高管 |
-| 32 | `Chinese (Mandarin)_News_Anchor` | 新闻女声 |
-| 33 | `Chinese (Mandarin)_Mature_Woman` | 傲娇御姐 |
-| 34 | `Chinese (Mandarin)_Unrestrained_Young_Man` | 不羁青年 |
-| 35 | `Arrogant_Miss` | 嚣张小姐 |
-| 36 | `Robot_Armor` | 机械战甲 |
-| 37 | `Chinese (Mandarin)_Kind-hearted_Antie` | 热心大婶 |
-| 38 | `Chinese (Mandarin)_HK_Flight_Attendant` | 港普空姐 |
-| 39 | `Chinese (Mandarin)_Humorous_Elder` | 搞笑大爷 |
-| 40 | `Chinese (Mandarin)_Gentleman` | 温润男声 |
-| 41 | `Chinese (Mandarin)_Warm_Bestie` | 温暖闺蜜 |
-| 42 | `Chinese (Mandarin)_Male_Announcer` | 播报男声 |
-| 43 | `Chinese (Mandarin)_Sweet_Lady` | 甜美女声 |
-| 44 | `Chinese (Mandarin)_Southern_Young_Man` | 南方小哥 |
-| 45 | `Chinese (Mandarin)_Wise_Women` | 阅历姐姐 |
-| 46 | `Chinese (Mandarin)_Gentle_Youth` | 温润青年 |
-| 47 | `Chinese (Mandarin)_Warm_Girl` | 温暖少女 |
-| 48 | `Chinese (Mandarin)_Kind-hearted_Elder` | 花甲奶奶 |
-| 49 | `Chinese (Mandarin)_Cute_Spirit` | 憨憨萌兽 |
-| 50 | `Chinese (Mandarin)_Radio_Host` | 电台男主播 |
-| 51 | `Chinese (Mandarin)_Lyrical_Voice` | 抒情男声 |
-| 52 | `Chinese (Mandarin)_Straightforward_Boy` | 率真弟弟 |
-| 53 | `Chinese (Mandarin)_Sincere_Adult` | 真诚青年 |
-| 54 | `Chinese (Mandarin)_Gentle_Senior` | 温柔学姐 |
-| 55 | `Chinese (Mandarin)_Stubborn_Friend` | 嘴硬竹马 |
-| 56 | `Chinese (Mandarin)_Crisp_Girl` | 清脆少女 |
-| 57 | `Chinese (Mandarin)_Pure-hearted_Boy` | 清澈邻家弟弟 |
-| 58 | `Chinese (Mandarin)_Soft_Girl` | 柔和少女 |
-
-### 中文（粤语）音色（共6个）
-
-| 序号 | 音色 ID | 音色名称 |
-|------|---------|----------|
-| 59 | `Cantonese_ProfessionalHost（F)` | 专业女主持 |
-| 60 | `Cantonese_GentleLady` | 温柔女声 |
-| 61 | `Cantonese_ProfessionalHost（M)` | 专业男主持 |
-| 62 | `Cantonese_PlayfulMan` | 活泼男声 |
-| 63 | `Cantonese_CuteGirl` | 可爱女孩 |
-| 64 | `Cantonese_KindWoman` | 善良女声 |
-
-### 英文音色（共19个）
-
-| 序号 | 音色 ID | 音色名称 |
-|------|---------|----------|
-| 65 | `Santa_Claus ` | Santa Claus |
-| 66 | `Grinch` | Grinch |
-| 67 | `Rudolph` | Rudolph |
-| 68 | `Arnold` | Arnold |
-| 69 | `Charming_Santa` | Charming Santa |
-| 70 | `Charming_Lady` | Charming Lady |
-| 71 | `Sweet_Girl` | Sweet Girl |
-| 72 | `Cute_Elf` | Cute Elf |
-| 73 | `Attractive_Girl` | Attractive Girl |
-| 74 | `Serene_Woman` | Serene Woman |
-| 75 | `English_Trustworthy_Man` | Trustworthy Man |
-| 76 | `English_Graceful_Lady` | Graceful Lady |
-| 77 | `English_Aussie_Bloke` | Aussie Bloke |
-| 78 | `English_Whispering_girl` | Whispering girl |
-| 79 | `English_Diligent_Man` | Diligent Man |
-| 80 | `English_Gentle-voiced_man` | Gentle-voiced man |
-
-### 其他语言音色
-
-以下语言因音色较多，不再逐一列出，完整列表参考 [MiniMax TTS 官方文档](https://platform.minimaxi.com/docs/faq/system-voice-id)：
-
-| 语言 | 音色数 | 代表音色 |
-|------|--------|---------|
-| 韩文 | 66个 | `Korean_SweetGirl`、`Korean_CalmGentleman` |
-| 葡萄牙文 | 70个 | `Portuguese_SentimentalLady`、`Portuguese_Narrator` |
-| 西班牙文 | 39个 | `Spanish_SereneWoman`、`Spanish_AnimeCharacter` |
-| 法文 | 7个 | `French_Male_Speech_New`、`French_FemaleAnchor` |
-| 印尼文 | 9个 | `Indonesian_SweetGirl`、`Indonesian_CalmWoman` |
-| 德文 | 3个 | `German_FriendlyMan`、`German_SweetLady` |
-| 俄文 | 9个 | `Russian_HandsomeChildhoodFriend`、`Russian_BrightHeroine` |
-| 意大利文 | 4个 | `Italian_BraveHeroine`、`Italian_Narrator` |
-| 阿拉伯文 | 2个 | `Arabic_CalmWoman`、`Arabic_FriendlyGuy` |
-| 土耳其文 | 2个 | `Turkish_CalmWoman`、`Turkish_Trustworthyman` |
-| 乌克兰文 | 2个 | `Ukrainian_CalmWoman`、`Ukrainian_WiseScholar` |
-| 荷兰文 | 2个 | `Dutch_kindhearted_girl`、`Dutch_bossy_leader` |
-| 越南文 | 1个 | `Vietnamese_kindhearted_girl` |
-| 泰文 | 4个 | `Thai_male_1_sample8`、`Thai_female_1_sample1` |
-| 波兰文 | 4个 | `Polish_male_1_sample4`、`Polish_female_1_sample1` |
-| 罗马尼亚文 | 4个 | `Romanian_male_1_sample2`、`Romanian_female_1_sample4` |
-| 希腊文 | 3个 | `greek_male_1a_v1`、`Greek_female_1_sample1` |
-| 捷克文 | 3个 | `czech_male_1_v1`、`czech_female_5_v7` |
-| 芬兰文 | 4个 | `finnish_male_3_v1`、`finnish_female_4_v1` |
-| 印地文 | 3个 | `hindi_male_1_v2`、`hindi_female_2_v1` |
+语言因音色较多，不再逐一列出，完整列表参考 [MiniMax TTS 官方文档](https://platform.minimaxi.com/docs/faq/system-voice-id)：
 
 ---
 
 ## 快速使用
 
-### 1️⃣ 基本语音生成
+> **📢 channel=webchat 时的播放策略**：当前 channel 为 `webchat`（实时对话场景）时，
+> 应优先使用 `stream_play.py` **直接流式播放**，而不生成文件。这样用户可以立即听到语音，
+> 无需等待完整音频生成。仅当用户明确要求保存文件时，才使用 `generate.py`。
+
+### 1️⃣ 流式播放（channel=webchat）
+
+通过 WebSocket 实时获取音频流，边生成边用 ffplay 播放。**无需生成文件，首个音频包到达即开始播放**。
+
+```bash
+SKILL_DIR="~/.openclaw/workspace/skills/minimax-tokenplan-tts"
+python3 "$SKILL_DIR/scripts/stream_play.py" \
+    --text "要播放的文本内容" \
+    --voice "male-qn-jingying"
+```
+
+> **注意**：以下示例中 `stream_play.py` 和 `generate.py` 均指 `~/.openclaw/workspace/skills/minimax-tokenplan-tts/scripts/` 下的完整路径。
+
+**参数说明：**
+
+| 参数 | 必填 | 说明 | 默认值 |
+|------|------|------|--------|
+| `--text` | ✅ | 要播放的文本，**最长 10000 字符** | - |
+| `--voice` | ❌ | 声优 ID | `male-qn-jingying` |
+| `--speed` | ❌ | 语速 [0.5,2.0] | `1.0` |
+| `--vol` | ❌ | 音量 (0,10] | `1.0` |
+| `--pitch` | ❌ | 音调 [-12,12] | `0` |
+| `--save` | ❌ | 同时保存到文件（MP3 格式） | 不保存 |
+| `--api-key` | ❌ | API Key（默认使用文件顶部配置） | - |
+| `--base-url` | ❌ | Base URL（默认使用文件顶部配置） | - |
+
+**示例：**
+
+```bash
+# 直接播放（不保存文件）
+python3 stream_play.py --text "你好，我正在通过流式方式播放语音"
+
+# 播放同时保存到文件
+python3 stream_play.py --text "这段语音会被保存" --save /tmp/stream_output.mp3
+
+# 使用女声播放
+python3 stream_play.py --text "今天天气真不错" --voice female-tianmei
+```
+
+---
+
+### 2️⃣ 文件生成（需要保存 WAV 时使用）
 
 ```bash
 SKILL_DIR="~/.openclaw/workspace/skills/minimax-tokenplan-tts"
@@ -231,8 +162,6 @@ python3 "$SKILL_DIR/scripts/generate.py" \
     --voice "male-qn-jingying" \
     --output "/tmp/tts_output.wav"
 ```
-
-> **注意**：以下示例中 `generate.py` 均指 `~/.openclaw/workspace/skills/minimax-tokenplan-tts/scripts/generate.py` 的完整路径。
 
 **参数说明：**
 
@@ -278,13 +207,24 @@ python3 generate.py --text "今天天气真不错" --voice female-qn-tianying --
 
 ## 脚本输出格式
 
+### generate.py
+
 调用 `generate.py` 后，**stdout** 输出生成结果，格式如下：
 
 | stdout 输出 | 说明 |
 |------------|------|
 | 保存后的文件绝对路径 | `~/.openclaw/media/minimax/tts/tts-2026-03-27-hello.wav` |
 
-> 所有日志信息（`[INFO]`、`[WARN]`、`[ERROR]`）输出到 **stderr**，不会混入 stdout。
+### stream_play.py
+
+调用 `stream_play.py` 后，**stdout** 输出播放状态：
+
+| stdout 输出 | 说明 |
+|------------|------|
+| `STREAM_PLAY_DONE` | 流式播放完成 |
+| `STREAM_PLAY_ERROR: <msg>` | 播放失败，附带错误信息 |
+
+> 两个脚本的日志信息（`[INFO]`、`[WARN]`、`[ERROR]`）均输出到 **stderr**，不会混入 stdout。
 
 ---
 

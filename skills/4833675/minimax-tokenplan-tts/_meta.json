@@ -3,9 +3,15 @@
   "slug": "minimax-tokenplan-tts",
   "displayName": "minimax-tokenplan-tts",
   "latest": {
-    "version": "0.9.1",
-    "publishedAt": 1774766843754,
-    "commit": "https://github.com/openclaw/skills/commit/f94a94e34f96d7d4ef72c9dd0af08572552510b8"
+    "version": "1.0.1",
+    "publishedAt": 1775359798249,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.9.1",
+      "publishedAt": 1774766843754,
+      "commit": "https://github.com/openclaw/skills/commit/f94a94e34f96d7d4ef72c9dd0af08572552510b8"
+    }
+  ]
 }
