@@ -20,17 +20,15 @@ git clone https://github.com/clawallex/clawallex-skill.git
 
 ## Quick Start
 
-### 1. Get API Credentials
+After installing the skill, just tell your Agent:
 
-Sign up at [app.clawallex.com](https://app.clawallex.com) and create an API Key pair at **Settings > API Keys**.
+> "Sign up for Clawallex" — to create a new account via browser
+>
+> "Set up Clawallex" — to connect an existing account with your API keys
 
-### 2. Connect
+The Agent handles the rest.
 
-```bash
-python3 scripts/clawallex.py setup --action connect --api-key YOUR_KEY --api-secret YOUR_SECRET
-```
-
-### 3. Pay
+## Manual Usage (for debugging / development)
 
 ```bash
 # One-time payment
@@ -47,6 +45,8 @@ python3 scripts/clawallex.py wallet
 
 | Command | Description |
 |---------|-------------|
+| `signup` | Create a new account via browser — opens signup URL, polls for result, saves credentials |
+| `signup-check` | Poll signup result using an existing token — use if `signup` polling failed |
 | `setup` | Configure credentials |
 | `whoami` | Check API Key binding status |
 | `bootstrap` | Bind client_id to API Key |
@@ -57,7 +57,9 @@ python3 scripts/clawallex.py wallet
 | `recharge-addresses` | Get on-chain deposit addresses |
 | `cards` | List virtual cards |
 | `card-balance` | Check a card's balance |
-| `card-details` | Get card PAN/CVV/expiry (encrypted) |
+| `batch-balances` | Check balances for multiple cards |
+| `update-card` | Update card risk controls (tx limit, MCC whitelist/blacklist) |
+| `card-details` | Get card details — masked PAN, expiry, balance, first/last name, delivery address, tx_limit, allowed/blocked MCC, encrypted PAN/CVV |
 | `transactions` | View transaction history |
 | `x402-address` | Get x402 on-chain payee address |
 

@@ -8,12 +8,14 @@ import http.client
 import hmac
 import json
 import os
+import secrets
 import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+import webbrowser
 
 # ── Constants ──────────────────────────────────────────────────────────
 DEFAULT_BASE_URL = "https://api.clawallex.com"
@@ -23,6 +25,9 @@ CREDENTIALS_DIR = os.path.join(os.path.expanduser("~"), ".clawallex")
 CREDENTIALS_FILE = os.path.join(CREDENTIALS_DIR, "credentials.json")
 CLIENT_IDS_FILE = os.path.join(CREDENTIALS_DIR, "client_ids.json")
 HTTP_TIMEOUT = 30  # seconds
+APP_API_URL = "https://appapi.clawallex.com"
+SIGNUP_POLL_INTERVAL = 2    # seconds between polls
+SIGNUP_TIMEOUT = 300        # seconds total (5 minutes, matches server token TTL)
 
 
 # ── Credential helpers ─────────────────────────────────────────────────
@@ -333,6 +338,51 @@ def require_credentials():
     return client, None
 
 
+def _run_connect(api_key, api_secret, base_url):
+    """Verify credentials via whoami, bootstrap client_id, and save both locally.
+    Calls output_success or output_error and returns the exit code (0 or 1).
+    """
+    temp_client = ClawalexClient(api_key, api_secret, base_url, "")
+
+    # Step 1: Verify credentials with whoami
+    try:
+        whoami = temp_client.get_auth("/auth/whoami")
+    except ApiError as e:
+        return output_error(
+            f"Invalid credentials — API returned: {e}. Check your API Key and Secret at {PORTAL_URL}/dashboard/settings"
+        )
+    except Exception as e:
+        return output_error(f"Cannot reach Clawallex API at {base_url}: {e}")
+
+    # Step 2: Bootstrap client_id
+    if whoami.get("client_id_bound"):
+        real_client_id = whoami["bound_client_id"]
+    else:
+        bootstrap_body = {}
+        local_cid = resolve_client_id(base_url)
+        if local_cid:
+            bootstrap_body["preferred_client_id"] = local_cid
+        try:
+            bootstrap = temp_client.post_auth("/auth/bootstrap", bootstrap_body)
+            real_client_id = bootstrap["client_id"]
+        except ApiError as e:
+            return output_error(f"Bootstrap failed [{e.code}]: {e}")
+
+    save_credentials({
+        "apiKey": api_key,
+        "apiSecret": api_secret,
+        "baseUrl": base_url,
+    })
+    save_client_id(base_url, real_client_id)
+    return output_success({
+        "status": "connected",
+        "client_id": real_client_id,
+        "client_id_bound": True,
+        "credentials_file": CREDENTIALS_FILE,
+    }, f"Clawallex connected! client_id: {real_client_id} (bound on server). "
+       "You can now use pay, subscribe, wallet, and other commands.")
+
+
 def cmd_setup(args):
     """Handle setup subcommand."""
     action = args.action
@@ -368,48 +418,121 @@ def cmd_setup(args):
             return output_error(
                 f"Both --api-key and --api-secret are required. Get them at {PORTAL_URL}/dashboard/settings"
             )
-        base_url = args.base_url
-        temp_client = ClawalexClient(args.api_key, args.api_secret, base_url, "")
-
-        # Step 1: Verify credentials with whoami
-        try:
-            whoami = temp_client.get_auth("/auth/whoami")
-        except ApiError as e:
-            return output_error(
-                f"Invalid credentials — API returned: {e}. Check your API Key and Secret at {PORTAL_URL}/dashboard/settings"
-            )
-        except Exception as e:
-            return output_error(f"Cannot reach Clawallex API at {base_url}: {e}")
-
-        # Step 2: Bootstrap client_id
-        if whoami.get("client_id_bound"):
-            real_client_id = whoami["bound_client_id"]
-        else:
-            bootstrap_body = {}
-            local_cid = resolve_client_id(base_url)
-            if local_cid:
-                bootstrap_body["preferred_client_id"] = local_cid
-            try:
-                bootstrap = temp_client.post_auth("/auth/bootstrap", bootstrap_body)
-                real_client_id = bootstrap["client_id"]
-            except ApiError as e:
-                return output_error(f"Bootstrap failed [{e.code}]: {e}")
-
-        save_credentials({
-            "apiKey": args.api_key,
-            "apiSecret": args.api_secret,
-            "baseUrl": base_url,
-        })
-        save_client_id(base_url, real_client_id)
-        return output_success({
-            "status": "connected",
-            "client_id": real_client_id,
-            "client_id_bound": True,
-            "credentials_file": CREDENTIALS_FILE,
-        }, f"Clawallex connected! client_id: {real_client_id} (bound on server). "
-           "You can now use pay, subscribe, wallet, and other commands.")
+        return _run_connect(args.api_key, args.api_secret, args.base_url)
 
     return output_error(f"Unknown action: {action}")
+
+
+def cmd_signup(args):
+    """Browser-based signup flow: generate token → open browser → poll → connect."""
+    portal_url = (args.portal_url or PORTAL_URL).rstrip("/")
+    app_api_url = (args.app_api_url or APP_API_URL).rstrip("/")
+    base_url = args.base_url or DEFAULT_BASE_URL
+
+    token = secrets.token_hex(32)
+    signup_url = f"{portal_url}/cli-signup?token={token}"
+
+    print(f"Open this URL in your browser: {signup_url}", flush=True)
+    try:
+        webbrowser.open(signup_url)
+    except Exception:
+        pass  # headless / no browser — user will open manually
+
+    poll_url = f"{app_api_url}/api/v1/cli-signup/result/{token}"
+    deadline = time.time() + SIGNUP_TIMEOUT
+
+    while time.time() < deadline:
+        print("Waiting for browser authorization...", flush=True)
+        time.sleep(SIGNUP_POLL_INTERVAL)
+
+        try:
+            req = urllib.request.Request(poll_url, headers={"User-Agent": "clawallex-cli/1.0"})
+            with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as resp:
+                result = json.loads(resp.read().decode())
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return output_error("Token not found or expired. Run signup again to get a new URL.")
+            # 403, 5xx and other transient errors — keep polling
+            print(f"  (poll returned {e.code}, retrying...)", flush=True)
+            continue
+        except Exception:
+            # Network error — keep polling
+            continue
+
+        status = result.get("status")
+
+        if status == "pending":
+            continue
+
+        if status == "ok":
+            api_key = result.get("api_key")
+            api_secret = result.get("api_secret")
+            if not api_key or not api_secret:
+                return output_error("Server returned ok but credentials are missing. Please try signing up again.")
+            return _run_connect(api_key, api_secret, base_url)
+
+        if status == "already_exists":
+            return output_success(
+                {"status": "already_exists"},
+                f"This account already has active API keys. "
+                f"Go to {portal_url}/dashboard/settings to find your keys, "
+                f"then run: clawallex.py setup --action connect --api-key KEY --api-secret SECRET"
+            )
+
+        if status == "cancelled":
+            return output_success({"status": "cancelled"}, "Signup was cancelled. Run signup again if you'd like to try again.")
+
+        return output_error(f"Unexpected status from server: {status}")
+
+    return output_error(
+        f"Signup timed out after {SIGNUP_TIMEOUT // 60} minutes. "
+        "The token has expired. Run signup again to start a new flow."
+    )
+
+
+def cmd_signup_check(args):
+    """Poll once for a signup result using an existing token."""
+    portal_url = (args.portal_url or PORTAL_URL).rstrip("/")
+    app_api_url = (args.app_api_url or APP_API_URL).rstrip("/")
+    base_url = args.base_url or DEFAULT_BASE_URL
+    token = args.token.strip()
+
+    poll_url = f"{app_api_url}/api/v1/cli-signup/result/{token}"
+    try:
+        req = urllib.request.Request(poll_url)
+        with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as resp:
+            result = json.loads(resp.read().decode())
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return output_error("Token not found or expired. Run signup again to get a new URL.")
+        return output_success({"status": "pending"}, f"Poll returned HTTP {e.code}, try again in a moment.")
+    except Exception as e:
+        return output_error(f"Could not reach Clawallex: {e}. Check your network and try again.")
+
+    status = result.get("status")
+
+    if status == "pending":
+        return output_success({"status": "pending"}, "Not yet authorized. Ask the user to complete in the browser, then call signup-check again.")
+
+    if status == "ok":
+        api_key = result.get("api_key")
+        api_secret = result.get("api_secret")
+        if not api_key or not api_secret:
+            return output_error("Server returned ok but credentials are missing. Please try signing up again.")
+        return _run_connect(api_key, api_secret, base_url)
+
+    if status == "already_exists":
+        return output_success(
+            {"status": "already_exists"},
+            f"This account already has active API keys. "
+            f"Go to {portal_url}/dashboard/settings to find your keys, "
+            f"then run: clawallex.py setup --action connect --api-key KEY --api-secret SECRET"
+        )
+
+    if status == "cancelled":
+        return output_error("Signup was cancelled in the browser. Run signup again to start a new flow.")
+
+    return output_error(f"Unexpected status from server: {result.get('status')}")
 
 
 def cmd_whoami(args):
@@ -798,9 +921,9 @@ def add_mode_b_args(parser):
     parser.add_argument("--tx-limit", dest="tx_limit",
                         help="Per-transaction limit in USD (optional, default 100.0000)")
     parser.add_argument("--allowed-mcc", dest="allowed_mcc",
-                        help="MCC whitelist, comma-separated. Mutually exclusive with --blocked-mcc.")
+                        help="MCC whitelist, comma-separated (e.g. '5734,5815')")
     parser.add_argument("--blocked-mcc", dest="blocked_mcc",
-                        help="MCC blacklist, comma-separated. Mutually exclusive with --allowed-mcc.")
+                        help="MCC blacklist, comma-separated (e.g. '7995')")
     parser.add_argument("--client-request-id", dest="client_request_id",
                         help="Idempotency key (auto-generated if omitted)")
     parser.add_argument("--chain-code", dest="chain_code", help="Chain code for Mode B Stage 1")
@@ -827,6 +950,25 @@ def main():
     p_setup.add_argument("--api-key", dest="api_key")
     p_setup.add_argument("--api-secret", dest="api_secret")
     p_setup.add_argument("--base-url", dest="base_url", default=DEFAULT_BASE_URL)
+
+    # ── signup ──
+    p_signup = sub.add_parser("signup", help="Create a new Clawallex account via browser")
+    p_signup.add_argument("--portal-url", dest="portal_url",
+                          help=f"Portal URL (default: {PORTAL_URL})")
+    p_signup.add_argument("--app-api-url", dest="app_api_url",
+                          help=f"App API URL for polling (default: {APP_API_URL})")
+    p_signup.add_argument("--base-url", dest="base_url", default=DEFAULT_BASE_URL,
+                          help=f"Gateway API base URL (default: {DEFAULT_BASE_URL})")
+
+    # ── signup-check ──
+    p_signup_check = sub.add_parser("signup-check", help="Poll signup result using an existing token")
+    p_signup_check.add_argument("--token", required=True, help="Token from signup command")
+    p_signup_check.add_argument("--portal-url", dest="portal_url",
+                                help=f"Portal URL (default: {PORTAL_URL})")
+    p_signup_check.add_argument("--app-api-url", dest="app_api_url",
+                                help=f"App API URL for polling (default: {APP_API_URL})")
+    p_signup_check.add_argument("--base-url", dest="base_url", default=DEFAULT_BASE_URL,
+                                help=f"Gateway API base URL (default: {DEFAULT_BASE_URL})")
 
     # ── whoami ──
     sub.add_parser("whoami", help="Query API Key binding status")
@@ -884,8 +1026,8 @@ def main():
     p_uc.add_argument("--card-id", dest="card_id", required=True)
     p_uc.add_argument("--client-request-id", dest="client_request_id", required=True, help="UUID idempotency key")
     p_uc.add_argument("--tx-limit", dest="tx_limit", help="Per-transaction limit in USD")
-    p_uc.add_argument("--allowed-mcc", dest="allowed_mcc", help="MCC whitelist, comma-separated. Mutually exclusive with --blocked-mcc.")
-    p_uc.add_argument("--blocked-mcc", dest="blocked_mcc", help="MCC blacklist, comma-separated. Mutually exclusive with --allowed-mcc.")
+    p_uc.add_argument("--allowed-mcc", dest="allowed_mcc", help="MCC whitelist, comma-separated")
+    p_uc.add_argument("--blocked-mcc", dest="blocked_mcc", help="MCC blacklist, comma-separated")
 
     # ── card-details ──
     p_cd = sub.add_parser("card-details", help="Get card PAN/CVV/expiry (encrypted)")
@@ -910,6 +1052,8 @@ def main():
         sys.exit(1)
 
     commands = {
+        "signup": cmd_signup,
+        "signup-check": cmd_signup_check,
         "setup": cmd_setup,
         "whoami": cmd_whoami,
         "bootstrap": cmd_bootstrap,

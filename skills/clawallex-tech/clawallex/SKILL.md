@@ -12,31 +12,36 @@ metadata:
 
 Pay for anything with USDC. Clawallex converts your stablecoin balance into virtual cards that work at any online checkout.
 
+## Features
+
+- **Flash Cards** — one-time use virtual cards for single payments
+- **Stream Cards** — reloadable cards for subscriptions, top up with `refill`
+- **Mode A** — pay from your USDC wallet balance
+- **Mode B** — on-chain x402 payment for callers with self-custody wallets (agent or user) — signing is performed by the caller
+- **Zero dependencies** — Python 3.9+ stdlib only
+
 ## Quick Start
 
-### 1. Get API Credentials
+### 1. Set Up Account
 
-Sign up at [Clawallex](https://app.clawallex.com) and create an API Key pair.
+**New user — browser signup (recommended):**
+```bash
+python3 {baseDir}/scripts/clawallex.py signup
+```
+Returns a URL and token. Show the URL to the user, ask them to open it and click Authorize.
+The command polls automatically. If polling fails, retry with the token:
+```bash
+python3 {baseDir}/scripts/clawallex.py signup-check --token <token>
+```
 
-### 2. Connect Account
+**Existing user — connect with API keys:**
 
+Get your API Key and Secret at [app.clawallex.com/dashboard/settings](https://app.clawallex.com/dashboard/settings), then run:
 ```bash
 python3 {baseDir}/scripts/clawallex.py setup --action connect --api-key YOUR_KEY --api-secret YOUR_SECRET
 ```
 
-### 3. Start Using
-
-**One-time payment:**
-```bash
-python3 {baseDir}/scripts/clawallex.py pay --amount 50 --description "OpenAI API credits"
-```
-
-**Subscription:**
-```bash
-python3 {baseDir}/scripts/clawallex.py subscribe --amount 100 --description "AWS monthly billing"
-```
-
-### 4. Smoke Test
+### 2. Verify
 
 ```bash
 python3 {baseDir}/scripts/clawallex.py wallet          # check balance
@@ -45,7 +50,7 @@ python3 {baseDir}/scripts/clawallex.py cards            # list cards
 
 ## Hard Rules
 
-1. **Setup first** — Run `setup --action status` before any payment. If not configured, guide user through `setup --action connect`.
+1. **Setup first** — Run `setup --action status` before any payment. If not configured: use `signup` for new accounts, or `setup --action connect` if the user already has API keys.
 2. **Check balance first** — Run `wallet` before `pay` or `subscribe` to verify sufficient funds (Mode A only).
 3. **Never expose card secrets** — Decrypted PAN/CVV are STRICTLY for filling checkout forms. NEVER display to the user. Show only `masked_pan` from `card-details`.
 4. **Confirm before paying** — Echo amount and description back to user before creating a card.
@@ -84,6 +89,8 @@ python3 {baseDir}/scripts/clawallex.py <command> [args]
 
 | User Intent | Command |
 |-------------|---------|
+| Quick signup — browser-based new account creation (recommended for first-time setup) | `signup` |
+| Check signup result with existing token | `signup-check --token TOKEN` |
 | Connect account | `setup --action connect --api-key KEY --api-secret SECRET` |
 | Check config status | `setup --action status` |
 | Get sign-up link | `setup --action register` |
@@ -94,8 +101,9 @@ python3 {baseDir}/scripts/clawallex.py <command> [args]
 
 | User Intent | Command |
 |-------------|---------|
-| Pay for something | `pay --amount N --description "X" [--tx-limit] [--allowed-mcc] [--blocked-mcc]` — allowed_mcc and blocked_mcc are mutually exclusive |
-| Start subscription | `subscribe --amount N --description "X" [--tx-limit] [--allowed-mcc] [--blocked-mcc]` — allowed_mcc and blocked_mcc are mutually exclusive |
+| Pay for something | `pay --amount N --description "X"` |
+| Pay with custom expiry | `pay --amount N --description "X" --ttl SECONDS` — flash card only; default 86400 (24 h) |
+| Start subscription | `subscribe --amount N --description "X"` |
 | Top up card | `refill --card-id CID --amount N` |
 
 ### Wallet & Cards
@@ -107,8 +115,8 @@ python3 {baseDir}/scripts/clawallex.py <command> [args]
 | List cards | `cards` — returns mode_code (100=Mode A, 200=Mode B) to determine refill path |
 | Check card balance | `card-balance --card-id CID` |
 | Batch check balances | `batch-balances --card-ids CID1,CID2` — multiple cards in one call |
-| Update card controls | `update-card --card-id CID --client-request-id UUID [--tx-limit] [--allowed-mcc] [--blocked-mcc]` — allowed_mcc and blocked_mcc are mutually exclusive |
-| Get card details | `card-details --card-id CID` — returns masked_pan, expiry, balance, first_name, last_name, delivery_address, tx_limit, allowed_mcc, blocked_mcc, encrypted PAN/CVV |
+| Update card controls | `update-card --card-id CID --client-request-id UUID [--tx-limit] [--allowed-mcc] [--blocked-mcc]` |
+| Get card details | `card-details --card-id CID` — returns masked_pan, expiry, balance, first_name, last_name, tx_limit, allowed_mcc, blocked_mcc, encrypted PAN/CVV |
 | View transactions | `transactions` |
 
 ### Advanced (x402 On-Chain)
@@ -123,13 +131,27 @@ When the user wants to use Clawallex for the first time:
 
 1. Run `setup --action status` to check current configuration.
 2. If **not configured**, ask: "Do you have a Clawallex account?"
-   - **Yes**: Ask for API Key and Secret, then run:
+   - **Yes, have API keys**: Ask for API Key and Secret, then run:
      ```
      setup --action connect --api-key KEY --api-secret SECRET
      ```
      This automatically verifies credentials, binds client_id, and saves locally.
-   - **No**: Run `setup --action register` to get the sign-up link.
+   - **No account yet**: Run the browser signup flow:
+     ```
+     signup
+     ```
+     This generates a URL and a token — show the URL to the user and ask them to open it and click Authorize.
+     The command polls automatically. If polling fails or times out, use the token to retry manually:
+     ```
+     signup-check --token <token from signup output>
+     ```
 3. Verify with `wallet` to confirm connection works.
+
+**Signup result statuses** — all returned as `success: true`:
+- `pending` — user hasn't authorized yet, call `signup-check` again
+- `ok` — credentials saved, ready to use
+- `cancelled` — user cancelled, ask if they want to try again
+- `already_exists` — account already has API keys, switch to `setup --action connect`
 
 ## Mode B Flow (x402 On-Chain, Two-Stage)
 
