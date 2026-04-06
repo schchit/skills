@@ -3,9 +3,15 @@
   "slug": "jail-search",
   "displayName": "Skills",
   "latest": {
-    "version": "1.1.0",
-    "publishedAt": 1774774256071,
-    "commit": "https://github.com/openclaw/skills/commit/bb891c194772b0046d35aed6415fdce088f0a571"
+    "version": "1.2.0",
+    "publishedAt": 1775170067475,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1774774256071,
+      "commit": "https://github.com/openclaw/skills/commit/bb891c194772b0046d35aed6415fdce088f0a571"
+    }
+  ]
 }
