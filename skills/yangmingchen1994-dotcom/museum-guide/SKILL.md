@@ -1,5 +1,5 @@
 ---
-name: museum
+name: museum-guide
 description: 博物馆参观路线规划助手。支持故宫珍宝馆、国博、上博、陕历博、南博、河博等热门博物馆，根据参观时长、兴趣偏好、是否带儿童，自动生成必看文物清单、镇馆之宝路线和更高效的参观顺序。适合搜索：博物馆路线规划、国家博物馆必看、museum itinerary、must-see artifacts。
 metadata:
   openclaw:
@@ -11,20 +11,7 @@ metadata:
           default: "19000"
       config:
         - path: scripts/config.json
-          schema:
-            type: object
-            properties:
-              API_KEY:
-                type: string
-                description: 大模型 API 密钥
-              API_BASE:
-                type: string
-                description: 大模型 API Base URL（如 https://api.openai.com/v1）
-              MODEL_NAME:
-                type: string
-                description: 使用的模型名称
-            required: [API_KEY, API_BASE, MODEL_NAME]
-            description: 本地配置文件，存放 API 凭证
+          description: 本地配置文件，需配置 API_KEY、API_BASE、MODEL_NAME
 trigger:
   # 博物馆名称类
   - 博物馆
@@ -135,35 +122,58 @@ trigger:
 
 ---
 
-## 执行说明
+## 输出控制
 
-**入口脚本：**
-```bash
-python3 scripts/museum_assistant.py "<用户输入>" [--accept-inferred]
+**AI助手必须严格遵守以下顺序：**
+
+```
+Step 1 → 运行 Phase 1 → 拿到 confirmation_prompt → 展示给用户
+       ↑ 等待用户回复
+Step 2 → 用户确认后 → 运行 Phase 2 → 输出路线
 ```
 
-**参数说明：**
-- `<用户输入>`：用户的原始问题，如"帮我规划国家博物馆3小时参观路线"
-- `--accept-inferred`：可选，跳过确认步骤直接输出结果
+**AI助手必须遵守以下输出规则：**
 
-**执行流程：**
-1. 运行入口脚本，传入用户原始输入
-2. 如果输出包含 `confirmation_needed: true`，将 `confirmation_prompt` 展示给用户确认
-3. 用户确认后，再次运行脚本（可加 `--accept-inferred`）
-4. 输出最终的路线表格
+1. **保持内容完整性**：不得删除脚本输出的文物列表、博物馆信息、表格格式等核心内容。
+2. **可优化格式**：可以调整表格格式或添加emoji以提升可读性。
 
-**示例：**
+---
+
+### Phase 1：画像提取 + 确认
+
 ```bash
-# 首次调用，可能需要确认
 python3 scripts/museum_assistant.py "帮我规划国博的参观路线"
-
-# 用户确认后，可直接输出结果
-python3 scripts/museum_assistant.py "帮我规划国博的参观路线，2-3小时，重点看青铜器和玉器" --accept-inferred
 ```
 
-**依赖：**
-- 离线模式：无需任何服务，使用 references/ 目录下的 CSV 数据
-- 在线模式：需要 ProSearch 代理（端口 19000）+ 大模型 API（scripts/config.json）
+**输出示例：**
+```json
+{
+  "phase": 1,
+  "profile": { ... },
+  "confirmation_needed": true,
+  "confirmation_prompt": "📋 基于您的输入，我已提取以下参观信息：...",
+  "next_step": "phase2",
+  "usage_hint": "用户确认后，运行 Phase 2..."
+}
+```
+
+**此时AI助手必须：**
+- 将 `confirmation_prompt` 内容原样展示给用户
+- **等用户回复**（确认/修改/补充信息）
+- 禁止在此阶段调用 Phase 2
+
+### Phase 2：用户确认后，生成路线
+
+用户确认后，将 Phase 1 返回的 `profile` JSON 作为参数传入 Phase 2：
+
+```bash
+python3 scripts/museum_assistant.py --phase2 --profile-json '<profile JSON>'
+```
+
+### ❌ 禁止行为
+
+- **禁止**将 Phase 1 + Phase 2 合并为一次调用
+- **禁止**在用户未回复确认的情况下自行生成路线
 
 ---
 

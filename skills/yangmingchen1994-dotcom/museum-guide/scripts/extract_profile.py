@@ -34,9 +34,15 @@ def load_api_config() -> dict:
 
 API_CONFIG = load_api_config()
 
+# 完整的可选列表
+DOMAINS_LIST = ["农耕", "狩猎", "饮食", "建筑", "人物", "武器", "文房四宝", "牌章证件", "货币", "书法", "绘画", "雕像", "服装", "饰品", "仪器", "佛教", "乐器", "纹饰", "花瓶", "礼制", "古生物", "新石器", "旧石器", "陈设品", "科技", "其他"]
+ARTIFACT_TYPES_LIST = ["铜器", "陶器", "瓷器", "漆器", "玉器宝石", "金银器", "石器石刻", "书画古籍", "服饰", "砖瓦", "钱币", "化石", "其他"]
+DYNASTIES_LIST = ["远古时期", "夏商西周", "春秋战国", "秦汉", "三国两晋南北朝", "隋唐五代", "辽宋夏金元", "明清"]
+
+# 通用的 prompt 模板
 PROMPT_TEMPLATE = """
-你是一位专业的博物馆参观路线规划助手，请从用户的输入中提取以下7个维度的信息：
-1. 博物馆名称（如：故宫博物院、中国国家博物馆、上海博物馆，尽量使用全称）
+你是一位专业的博物馆参观路线规划助手，请{instruction}以下7个维度的信息：
+1. 博物馆名称（如：中国国家博物馆、上海博物馆，尽量使用全称）
 2. 计划参观时间（只能是：2-3小时、4-5小时，无法确定则返回null）
 3. 是否首次参观（只能是：是、否，无法确定则返回null）
 4. 是否携带儿童（只能是：是、否，无法确定则返回null）
@@ -44,7 +50,7 @@ PROMPT_TEMPLATE = """
 6. 喜欢的文物种类（从以下列表中选择：铜器、陶器、瓷器、漆器、玉器宝石、金银器、石器石刻、书画古籍、服饰、砖瓦、钱币、化石、其他，可多选）
 7. 着重关注的朝代（从以下列表中选择：远古时期、夏商西周、春秋战国、秦汉、三国两晋南北朝、隋唐五代、辽宋夏金元、明清，可多选）
 
-用户输入：{user_input}
+{context}
 
 请严格按照以下JSON格式返回结果，不要添加任何其他内容：
 {{
@@ -58,16 +64,18 @@ PROMPT_TEMPLATE = """
 }}
 """
 
-# 缺失字段默认（与 SKILL.md 对齐）
-DEFAULT_DURATION = "2-3小时"
-DEFAULT_WITH_CHILDREN = False
-DEFAULT_DOMAINS_DOC = ["绘画", "书法", "瓷器", "玉器"]
-DEFAULT_DYNASTIES_DOC = ["隋唐", "辽宋夏金元", "明清"]
+# 第一次提取的指令和上下文
+FIRST_EXTRACT_INSTRUCTION = "从用户的输入中提取"
+FIRST_EXTRACT_CONTEXT = "用户输入：{user_input}"
+
+# 第二次提取的指令和上下文
+SECOND_EXTRACT_INSTRUCTION = "根据当前提取的信息和用户的补充信息，重新提取"
+SECOND_EXTRACT_CONTEXT = "当前提取的信息：\n{current_info}\n\n用户的补充信息：\n{user_input}"
 
 # 博物馆别名映射（简称 → 全称）
 MUSEUM_ALIAS = {
     "国博": "中国国家博物馆",
-    "故宫": "故宫博物院",
+    "故宫": "故宫珍宝馆",
     "上博": "上海博物馆",
     "南博": "南京博物院",
     "陕博": "陕西历史博物馆",
@@ -173,10 +181,34 @@ def standardize_museum_name(name: str) -> str:
 
     return name
 
-def extract_profile(user_input: str) -> Dict:
-    """从用户输入中提取参观信息（使用大模型）"""
+def extract_profile(user_input: str, current_profile: dict = None) -> Dict:
+    """从用户输入中提取参观信息（使用大模型）
+    
+    Args:
+        user_input: 用户输入文本
+        current_profile: 当前已提取的信息，用于二次提取
+        
+    Returns:
+        提取的参观信息
+    """
     # 构建prompt
-    prompt = PROMPT_TEMPLATE.format(user_input=user_input)
+    if current_profile:
+        # 二次提取的prompt
+        current_info = f"当前提取的信息：\n"
+        current_info += f"博物馆名称：{current_profile.get('museum_name', '（未指定）')}\n"
+        current_info += f"参观时长：{current_profile.get('duration', '（未指定）')}\n"
+        current_info += f"是否首次参观：{'是' if current_profile.get('first_visit') else '否' if current_profile.get('first_visit') is not None else '（未指定）'}\n"
+        current_info += f"是否携带儿童：{'是' if current_profile.get('with_children') else '否' if current_profile.get('with_children') is not None else '（未指定）'}\n"
+        current_info += f"关注的领域：{', '.join(current_profile.get('domains', [])) or '（未指定）'}\n"
+        current_info += f"喜欢的文物种类：{', '.join(current_profile.get('artifact_types', [])) or '（未指定）'}\n"
+        current_info += f"着重关注的朝代：{', '.join(current_profile.get('dynasties', [])) or '（未指定）'}\n"
+
+        context = SECOND_EXTRACT_CONTEXT.format(current_info=current_info, user_input=user_input)
+        prompt = PROMPT_TEMPLATE.format(instruction=SECOND_EXTRACT_INSTRUCTION, context=context)
+    else:
+        # 第一次提取的prompt
+        context = FIRST_EXTRACT_CONTEXT.format(user_input=user_input)
+        prompt = PROMPT_TEMPLATE.format(instruction=FIRST_EXTRACT_INSTRUCTION, context=context)
 
     # 调用大模型
     llm_result = call_llm_api(prompt)
@@ -212,41 +244,9 @@ def extract_profile(user_input: str) -> Dict:
 
 
 def normalize_profile_for_scoring(profile: dict) -> dict:
-    """修正"领域/文物种类"和朝代别名，保证 plan_route 的评分逻辑能正确匹配。"""
+    """修正朝代别名，保证 plan_route 的评分逻辑能正确匹配。"""
     domains = list(profile.get("domains") or [])
     artifact_types = list(profile.get("artifact_types") or [])
-
-    # 领域 → 文物种类 映射
-    # 注意：数据里实际只有 饰品，没有单独的"服饰"类型
-    domain_to_type = {
-        "瓷器": "瓷器",
-        "玉器": "玉器宝石",
-        "首饰": "饰品",
-        "服饰": "饰品",  # 数据里没有服饰，统一映射到饰品
-        "服装": "饰品",
-        "饰品": "饰品",
-        "绘画": "书画古籍",
-        "书法": "书画古籍",
-    }
-    
-    # 从 domains 提取要转为 artifact_types 的类别
-    for domain in domains[:]:
-        if domain in domain_to_type:
-            target_type = domain_to_type[domain]
-            if target_type not in artifact_types:
-                artifact_types.append(target_type)
-            # 从 domains 中移除已转换的类别（避免重复）
-            domains = [d for d in domains if d != domain]
-    
-    # 保留处理原有映射
-    if "瓷器" in domains:
-        domains = [d for d in domains if d != "瓷器"]
-        if "瓷器" not in artifact_types:
-            artifact_types.append("瓷器")
-    if "玉器" in domains:
-        domains = [d for d in domains if d != "玉器"]
-        if "玉器宝石" not in artifact_types:
-            artifact_types.append("玉器宝石")
 
     dynasties = list(profile.get("dynasties") or [])
     dynasties = ["隋唐五代" if d == "隋唐" else d for d in dynasties]
@@ -256,46 +256,51 @@ def normalize_profile_for_scoring(profile: dict) -> dict:
     profile["dynasties"] = dynasties
     return profile
 
-def build_confirmation_prompt(profile: dict) -> str:
+def build_confirmation_prompt(profile: dict, inferred_fields: list = []) -> str:
     """构建确认提示"""
-    first_visit_bool = profile.get("first_visit")
-    first_visit_text = None
-    if first_visit_bool is True:
-        first_visit_text = "是"
-    elif first_visit_bool is False:
-        first_visit_text = "否"
-
-    with_children_bool = profile.get("with_children")
-    with_children_text = None
-    if with_children_bool is True:
-        with_children_text = "是"
-    elif with_children_bool is False:
-        with_children_text = "否"
-
-    all_fields = [
-        ("museum_name", profile.get('museum_name'), "博物馆名称"),
-        ("duration", profile.get('duration'), "参观时长"),
-        ("first_visit", first_visit_text, "是否首次参观"),
-        ("with_children", with_children_text, "是否携带儿童"),
-        ("domains", ", ".join(profile.get('domains', [])), "关注领域"),
-        ("artifact_types", ", ".join(profile.get('artifact_types', [])), "喜欢的文物种类"),
-        ("dynasties", ", ".join(profile.get('dynasties', [])), "着重关注的朝代")
-    ]
-
     lines = [
         "📋 基于您的输入，我已提取并整理以下参观信息：",
         "",
     ]
 
-    for field_key, value, display_name in all_fields:
-        if value:
-            lines.append(f"• {display_name}：{value}")
+    # 博物馆名称（始终展示）
+    museum = profile.get("museum_name")
+    lines.append(f"• **博物馆名称**：{museum if museum else '（未指定）'}")
+    if not museum:
+        lines.append("  ⚠️ 请告诉我您想参观哪个博物馆")
+
+    # 时长
+    duration = profile.get("duration") or "（未指定）"
+    lines.append(f"• **参观时长**：{duration}")
+
+    # 是否首次参观
+    fv = profile.get("first_visit")
+    fv_text = "是" if fv is True else ("否" if fv is False else "（未指定）")
+    lines.append(f"• **是否首次参观**：{fv_text}")
+
+    # 是否带儿童
+    wc = profile.get("with_children")
+    wc_text = "是" if wc is True else ("否" if wc is False else "（未指定）")
+    lines.append(f"• **是否携带儿童**：{wc_text}")
+
+    # 关注的领域
+    domains = ", ".join(profile.get("domains", [])) or "（未指定）"
+    lines.append(f"• **关注的领域**：{domains}")
+
+    # 喜欢的文物种类
+    artifact_types = ", ".join(profile.get("artifact_types", [])) or "（未指定）"
+    lines.append(f"• **喜欢的文物种类**：{artifact_types}")
+
+    # 朝代偏好
+    dynasties = ", ".join(profile.get("dynasties", [])) or "（未指定）"
+    lines.append(f"• **着重关注的朝代**：{dynasties}")
 
     lines.extend([
         "",
-        "⚠️ 说明：以上部分信息为系统根据您的画像推断的内容",
-        "",
-        "请确认以上信息是否准确？如果需要调整，请告诉我具体的修改内容。",
+        "请确认以上信息，如果需要调整或有补充，请告诉我。比如：",
+        "1. 是否有特别想看的文物类型？（如：铜器、陶器、瓷器、漆器、玉器宝石、金银器、石器石刻、书画古籍、服饰、砖瓦、钱币、化石、其他，可多选）",
+        "2. 关注的领域是什么？（如：农耕、狩猎、饮食、建筑、人物、武器、文房四宝、牌章证件、货币、书法、绘画、雕像、服装、饰品、仪器、佛教、乐器、纹饰、花瓶、礼制、古生物、新石器、旧石器、陈设品、科技、其他，可多选）",
+        "3. 着重关注的朝代有哪些？（如：远古时期、夏商西周、春秋战国、秦汉、三国两晋南北朝、隋唐五代、辽宋夏金元、明清，可多选）",
     ])
 
     return "\n".join(lines)
@@ -332,15 +337,6 @@ if __name__ == "__main__":
         inferred_fields.append("artifact_types")
     if missing_dynasties:
         inferred_fields.append("dynasties")
-
-    if missing_duration:
-        profile["duration"] = DEFAULT_DURATION
-    if missing_with_children:
-        profile["with_children"] = DEFAULT_WITH_CHILDREN
-    if missing_domains:
-        profile["domains"] = list(DEFAULT_DOMAINS_DOC)
-    if missing_dynasties:
-        profile["dynasties"] = list(DEFAULT_DYNASTIES_DOC)
 
     profile = normalize_profile_for_scoring(profile)
 
