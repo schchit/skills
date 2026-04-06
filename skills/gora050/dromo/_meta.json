@@ -3,9 +3,15 @@
   "slug": "dromo",
   "displayName": "Dromo",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774645485847,
-    "commit": "https://github.com/openclaw/skills/commit/5b6e6ebc2f9bf6ba7ea905adceb24bf4dc3bd845"
+    "version": "1.0.2",
+    "publishedAt": 1775168444398,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774645485847,
+      "commit": "https://github.com/openclaw/skills/commit/5b6e6ebc2f9bf6ba7ea905adceb24bf4dc3bd845"
+    }
+  ]
 }
