@@ -1,6 +1,6 @@
 # ClawHub Metadata
 
-version: 8.3.1
+version: 8.4.12
 slug: whoop-guru
 name: WHOOP Guru
 description: |

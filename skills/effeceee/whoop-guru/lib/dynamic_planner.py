@@ -6,6 +6,7 @@ Dynamic Planner - 动态训练计划调整
 import os
 import json
 from datetime import datetime, timedelta
+from lib.tz import today_str
 from typing import Dict, List, Optional
 
 # 数据路径 - 使用环境变量
@@ -65,7 +66,7 @@ class DynamicPlanner:
         # 计算本周训练天数从workouts
         workouts = daily_summary.get("workouts", [])
         training_days = len(workouts)
-        today_has_training = len([w for w in workouts if w.get("date", "").startswith(datetime.now().strftime("%Y-%m-%d"))]) > 0 if workouts else False
+        today_has_training = len([w for w in workouts if w.get("date", "").startswith(today_str())]) > 0 if workouts else False
         
         # 计算睡眠债务
         sleep_debt = 0

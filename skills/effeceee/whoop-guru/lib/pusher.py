@@ -21,6 +21,7 @@
 import os
 import sys
 from datetime import datetime, time
+from lib.tz import now as bj_now
 from typing import List, Optional
 
 # 设置路径
@@ -219,6 +220,12 @@ class CoachPushMessage:
         msg += "📈 **HRV专项分析**\n\n"
         msg += "{:.1f}ms — {}\n\n".format(hrv, hrv_coach)
         msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        
+        # 添加马拉松训练部分
+        marathon_section = ""
+        if marathon_section:
+            msg += marathon_section
+        
         msg += "🎯 **今日训练计划**\n\n"
         msg += "**计划类型**：{}\n".format(plan_type)
         msg += "**计划描述**：{}\n".format(plan_desc)
@@ -460,176 +467,160 @@ class CoachPushMessage:
         return msg
     
     @staticmethod
+    @staticmethod
+    @staticmethod
     def checkin_reminder() -> str:
         """
-        20:00 打卡提醒推送 - 激励 + 目标进度 + 打卡统计
+        20:00 打卡提醒推送 - WHOOP数据自动检测 + 确认流程
         """
+        # === 获取数据 ===
+        from lib.checkin_auto import auto_checkin_data
+
         today = get_today_data()
         health_score = _get_health_score()
         ml_pred = _get_ml_prediction()
-        
+
         recovery = today.get('recovery', 0)
-        strain = today.get('strain', 0)
-        has_training = today.get('has_training', False)
-        
+        hrv = today.get('hrv', 0)
+        rhr = today.get('rhr', 0)
+
         hs_score = health_score.get('score', 0)
         ml_p = ml_pred.get('prediction', 50)
-        
-        # ========== LLM分析 ==========
-        user_data = {
-            "recovery": recovery,
-            "hrv": today.get('hrv', 0),
-            "rhr": today.get('rhr', 0),
-            "strain": strain,
-            "has_training": has_training,
-            "sleep_debt": 0,
-            "training_days": 0,
-            "avg_recovery": 0,
-            "health_score": hs_score,
-            "ml_prediction": ml_p,
-        }
-        llm_analysis = _get_llm_analysis(user_data, "morning")
-        
-        # ========== 今日状态 ==========
-        if has_training and strain > 0:
-            today_status = "✅ 今日已完成训练"
-            status_detail = "strain达到{:.1f}，训练效果不错".format(strain)
-        else:
-            today_status = "📝 今日为休息日"
-            status_detail = "充分休息也是训练的一部分"
-        
-        # ========== 打卡重要性 ==========
-        checkin_importance = [
-            "帮助你追踪训练频率和强度变化",
-            "让我更了解你的训练模式和习惯",
-            "发现训练和恢复之间的规律",
-            "保持对训练的正向专注和动力"
-        ]
-        
-        # ========== 打卡示例 ==========
-        if has_training and strain > 0:
-            examples = [
-                ("力量训练", "深蹲 100kg 5x5 全部完成 | 腿部泵感很强"),
-                ("跑步", "间歇跑 5公里 配速5:30 | 呼吸略急促"),
-                ("综合", "CrossFit训练 整体状态不错 | 消耗很大"),
-            ]
-        else:
-            examples = [
-                ("休息", "今天完全休息 | 感觉恢复了一些"),
-                ("拉伸", "睡前做了15分钟拉伸 | 身体放松很多"),
-                ("冥想", "10分钟呼吸练习 | 精神放松"),
-            ]
-        
-        # ========== 打卡统计 ==========
-        streak_info = ""
-        tracker = _get_tracker()
-        if tracker:
-            streak = tracker.get_streak("dongyi")
-            if streak > 0:
-                streak_info = "\n🔥 连续打卡：{}天！继续保持！\n".format(streak)
-            else:
-                streak_info = "\n📝 开始你的第一次打卡吧！\n"
-        
-        # ========== 目标进度 ==========
-        goals_section = ""
-        goals_manager = _get_goals()
-        if goals_manager:
-            active_goals = goals_manager.get_active_goals()
-            if active_goals:
-                goals_section = "\n🎯 **你的目标**\n\n"
-                for goal in active_goals[:3]:
-                    progress = (goal.current / goal.target * 100) if goal.target > 0 else 0
-                    goals_section += "• {}：{:.0f}{} / {:.0f}{} ({:.0f}%)\n".format(
-                        goal.goal_type, goal.current, goal.unit, goal.target, goal.unit, progress
-                    )
-        
-        # ========== 教练激励 ==========
-        if has_training and strain >= 10:
-            motivate = "太棒了！今天的训练强度很大，你付出了很多努力。记录下来，这是你变强的证明！💪"
-        elif has_training:
-            motivate = "完成今天的训练就是进步！来记录一下，我会帮你追踪进步。🌱"
-        else:
-            motivate = "休息也是训练的一部分。今天你选择倾听身体的声音，这是明智的选择。🌙"
-        
-        # ========== 个性化提醒 ==========
-        if ml_p < 50:
-            ml_reminder = "\n📊 预测显示你可能有些疲劳，明天可能也需要休息。打卡时告诉我你现在的身体感受！"
-        elif recovery < 50:
-            ml_reminder = "\n📊 你的恢复评分还有些低，打卡时记录一下睡眠质量和身体感受。"
-        else:
-            ml_reminder = ""
-        
-        # ========== 健康评分 ==========
+
+        auto = auto_checkin_data()
+        has_workout = auto['has_workout']
+        workout = auto.get('workout')
+        strain = auto.get('strain', 0)
+
+        # === 基础信息 ===
         hs_emoji = "🟢" if hs_score >= 70 else "🟡" if hs_score >= 50 else "🔴"
-        
-        # ========== 构建消息 ==========
-        msg = "📊 **训练打卡提醒**\n\n"
+        rec_emoji = "🟢" if recovery >= 70 else "🟡" if recovery >= 50 else "🔴"
+
+        # === 打卡统计 ===
+        tracker = _get_tracker()
+        streak = tracker.get_streak("dongyi") if tracker else 0
+        weekly = tracker.get_weekly_summary("dongyi") if tracker else {}
+
+        # === 目标进度 ===
+        goals_manager = _get_goals()
+        active_goals = goals_manager.get_active_goals() if goals_manager else []
+
+        # === 构建消息 ===
+        msg = "📊 **20:00 训练打卡提醒**\n\n"
         msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        
-        # LLM生成的个性化建议（如果已配置LLM）
-        if llm_analysis:
-            msg += "🤖 **AI教练打卡建议**\n\n"
-            msg += llm_analysis + "\n\n"
+
+        # ---- 今日概况 ----
+        msg += "📋 **今日概况**\n\n"
+        msg += f"• 今日恢复：{rec_emoji} {recovery:.0f}%\n"
+        msg += f"• HRV：{hrv:.1f}ms\n"
+        msg += f"• 静息心率：{rhr:.0f}bpm\n"
+        msg += f"• 健康评分：{hs_emoji} {hs_score:.0f}/100\n"
+        if has_workout:
+            msg += f"• WHOOP记录：✅ 检测到训练（strain {strain:.1f}）\n"
+        else:
+            msg += "• WHOOP记录：📝 今日无训练记录\n"
+        msg += "\n"
+
+        # ---- WHOOP 自动打卡预览 ----
+        if has_workout and workout:
+            sport = workout['sport']
+            dist = workout.get('distance_km')
+            pace = workout.get('pace', 'N/A')
+            avg_hr = workout.get('avg_hr', 0)
+            max_hr = workout.get('max_hr', 0)
+            duration = workout.get('duration_min', 0)
+            zones_formatted = workout.get('zones_formatted', '')
+
+            msg += "✅ **WHOOP 检测到今日训练**\n\n"
+            msg += "📋 **初步打卡内容**（来自WHOOP自动同步）\n\n"
+            msg += "━━━━━━ auto ━━━━━━\n\n"
+            msg += f"**类型**：{sport}\n"
+            if dist:
+                msg += f"**距离**：{dist}km\n"
+            if pace and pace != 'N/A':
+                msg += f"**配速**：{pace}/km\n"
+            if duration:
+                msg += f"**时长**：{duration}min\n"
+            if avg_hr:
+                msg += f"**平均心率**：{avg_hr}bpm\n"
+            if max_hr:
+                msg += f"**最大心率**：{max_hr}bpm\n"
+            if zones_formatted:
+                msg += f"**心率区间**：{zones_formatted}\n"
+            msg += f"**Strain**：{strain:.1f}\n"
+            msg += "\n⏰ *数据来源：WHOOP 自动同步*\n"
+            msg += "*请告诉我感受如何：*\n\n"
+            msg += "💬 **回复示例**：\n"
+            msg += "• `✅` — 确认这个打卡内容，完成记录\n"
+            msg += "• `感觉很好` — 确认打卡并记录感受\n"
+            msg += "• `配速不对，应该是5:30` — 修改后确认\n"
+            msg += "• `不是今天跑的` — 忽略此记录\n\n"
+
+        else:
+            msg += "📝 **今日为休息日**\n\n"
+            msg += "━━━━━━ auto ━━━━━━\n\n"
+            msg += "**类型**：休息/恢复\n\n"
+            msg += "💬 直接回复「✅」即完成今日打卡，或告诉我你今天做了什么其他活动\n\n"
+
+        msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+
+        # ---- 打卡统计 ----
+        msg += "📊 **打卡统计**\n\n"
+        if streak > 0:
+            msg += f"• 连续打卡：{streak}天 🔥\n"
+        else:
+            msg += "• 连续打卡：0天\n"
+        if weekly:
+            msg += f"• 本周打卡：{weekly.get('total_checkins', 0)}次\n"
+            cr = weekly.get('completion_rate', 0)
+            if cr > 0:
+                msg += f"• 本周完成率：{cr:.0f}%\n"
+        msg += "\n"
+
+        # ---- 目标进度 ----
+        if active_goals:
+            msg += "🎯 **当前目标**\n\n"
+            for goal in active_goals[:3]:
+                pct = (goal.current / goal.target * 100) if goal.target > 0 else 0
+                msg += f"• {goal.goal_type}：{goal.current}/{goal.target} {goal.unit}（{pct:.0f}%）\n"
+            msg += "\n"
+
+        # ---- 明日预测 ----
+        msg += "🔮 **明日预测**\n\n"
+        ml_emoji = "🟢" if ml_p >= 70 else "🟡" if ml_p >= 50 else "🔴"
+        msg += f"• 预测恢复：{ml_emoji} {ml_p:.0f}%\n"
+        if ml_p < 50:
+            msg += "• 建议：明天可能需要多休息\n"
+        elif ml_p < 70:
+            msg += "• 建议：明天可以中等强度训练\n"
+        else:
+            msg += "• 建议：明天状态不错，可以正常训练\n"
+
+        msg += "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+
+        # ---- 睡眠反馈征集 ----
+        sleep_data = auto.get('sleep')
+        if sleep_data:
+            sleep_eff = sleep_data.get('sleep_efficiency', 0)
+            deep_sleep = sleep_data.get('deep_sleep_min', 0)
+            msg += "😴 **睡眠反馈**（可选）\n\n"
+            msg += f"WHOOP记录：效率{sleep_eff:.0f}% | 深睡眠{deep_sleep:.0f}min\n"
+            msg += "你觉得今晚睡眠质量如何？\n"
+            msg += "回复示例：`睡眠不错` / `半夜醒来` / `睡得很沉`\n\n"
             msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        
-        msg += "🤖 **教练呼叫** {} \n\n".format(today_status)
-        msg += "{}\n\n".format(status_detail)
-        
-        msg += "🔴 今日恢复：{:.0f}%\n".format(recovery)
-        msg += "{} 健康评分：{:.0f}/100\n".format(hs_emoji, hs_score)
-        msg += "🔮 ML预测明日：{:.0f}%\n\n".format(ml_p)
-        
-        if streak_info:
-            msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            msg += streak_info
-        
-        msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        msg += "💡 **解读**：打卡是训练旅程中非常重要的一环！记录不只是数据，更是你努力和进步的证明。\n\n"
-        msg += "🎯 **打卡的重要性**\n\n"
-        for imp in checkin_importance:
-            msg += "• {}\n".format(imp)
-        msg += "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        msg += "💬 **如何打卡**\n\n"
-        msg += "直接发送你的训练记录给我即可！\n\n"
-        msg += "**格式**：训练内容 | 完成情况 | 身体感受\n\n"
-        msg += "**示例**：\n"
-        for tag, desc in examples:
-            msg += "`{} | {}`\n".format(tag, desc)
-        
-        if goals_section:
-            msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            msg += goals_section
-        
-        msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        msg += "{}\n".format(motivate)
-        
-        if ml_reminder:
-            msg += "{}\n".format(ml_reminder)
-        
-        msg += "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        msg += "🌟 **为什么打卡？**\n\n"
-        msg += "作为你的AI教练，我需要了解：\n"
-        msg += "• 你今天实际训练了什么\n"
-        msg += "• 训练强度和量是多少\n"
-        msg += "• 身体感受如何\n\n"
-        msg += "这些信息帮助我：\n"
-        msg += "• 更精准地分析你的训练模式\n"
-        msg += "• 给出更个性化的建议\n"
-        msg += "• 在你疲惫时提醒休息\n"
-        msg += "• 在你进步时给予鼓励\n\n"
-        msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        msg += "⏰ **随时可以打卡**\n\n"
-        msg += "简单记录也很好：\n"
-        msg += "• \"练了腿\"\n"
-        msg += "• \"跑了步\"\n"
-        msg += "• \"休息了一天\"\n\n"
-        msg += "我都能理解并记录！\n\n"
-        msg += "我是你的AI教练，随时在这里等你！🏋️\n"
-        msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        msg += "📌 **温馨提示**\n\n"
-        msg += "打卡没有硬性要求一天不落，偶尔休息是完全正常的。重要的是保持对自己身体的关注和了解。\n"
+
+        # ---- 结束语 ----
+        if has_workout:
+            msg += "💪 *完成训练就是进步！记录下来，我会帮你追踪成长。*\n"
+        else:
+            msg += "🌙 *休息也是训练的一部分。明天继续加油！*\n"
+
+        msg += "*我是你的AI教练，随时在这里等你！🏋️*\n"
         msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        
+
+        return msg
+
+
         return msg
 
 
@@ -644,7 +635,7 @@ class CoachScheduler:
     
     @staticmethod
     def should_push(push_type: str) -> bool:
-        now = datetime.now()
+        now = bj_now()
         push_time = CoachScheduler.PUSH_TIMES.get(push_type)
         if not push_time:
             return False
