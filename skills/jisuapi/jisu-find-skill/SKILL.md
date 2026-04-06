@@ -1,6 +1,6 @@
 ---
-name: jisu-find-skill
-description: 用 find_skills.py 在 ClawHub 查装 Skill；默认人类可读输出，--json 可结构化；search/list 依赖 clawhub CLI。
+name: "Find Skills - 查找技能"
+description: 用 find_skills.py 在 ClawHub 搜索或列举已装技能，支持 JSON 输出。当用户说：ClawHub 上有没有天气技能、我本地装了哪些 skill，或类似技能发现问题时，使用本技能。
 metadata: { "openclaw": { "emoji": "🔎", "requires": { "bins": ["python3"] } } }
 ---
 
