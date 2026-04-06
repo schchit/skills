@@ -1,11 +1,17 @@
 {
   "owner": "lbs-bmap",
   "slug": "baidu-map-jsapi-uikit",
-  "displayName": "Baidu Map JSAPI UI Kit",
+  "displayName": "Baidu Map JSAPI UI Kit（百度地图官方 JSAPI UI-Kit SKills）",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774937387082,
-    "commit": "https://github.com/openclaw/skills/commit/54b6931831b622e21a40b2d4a5638c801c1820ec"
+    "version": "1.0.1",
+    "publishedAt": 1775210498748,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774937387082,
+      "commit": "https://github.com/openclaw/skills/commit/54b6931831b622e21a40b2d4a5638c801c1820ec"
+    }
+  ]
 }
