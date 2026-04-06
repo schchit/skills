@@ -3,9 +3,15 @@
   "slug": "cyfe",
   "displayName": "Cyfe",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775030702461,
-    "commit": "https://github.com/openclaw/skills/commit/40867586d43440c4b299b11a54de25d4207863bd"
+    "version": "1.0.2",
+    "publishedAt": 1775170489339,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775030702461,
+      "commit": "https://github.com/openclaw/skills/commit/40867586d43440c4b299b11a54de25d4207863bd"
+    }
+  ]
 }
