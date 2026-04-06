@@ -116,6 +116,39 @@ bash {baseDir}/scripts/setup.sh
 ### music_status
 获取硬件连接状态。
 
+### music_set_mode
+切换键盘/设备工作模式。
+- `mode`: `skin` / `free` / `game` / `skin_config` / `drum` / `free_light` / `singing` / `singing_advanced` / `app_connect`
+
+### music_set_octave
+设置键盘音区（8度偏移）。
+- `octave`: 整数，-3~3，0 为默认音区
+
+### music_set_bpm
+设置节拍速度。
+- `bpm`: 整数，20~300
+
+### music_set_beat_type
+设置节拍类型（拍号）。
+- `beat`: `"4/4"` / `"4/3"` / `"8/6"`
+
+### music_chord_light
+根据和弦名称点亮键盘对应按键（教学用）。
+- `chord`: 和弦名称，格式：根音+和弦类型，如 `C`、`Dm`、`G7`、`FMaj7`、`Am7`
+- `position`: 把位偏移，0 为默认，正数升高，负数降低
+
+### music_set_skin
+设置键盘/设备皮肤（色盘）。
+- `skin_id`: 色盘编号，0~127
+- `query`: 若为 true 则仅查询已有皮肤列表
+
+### music_query_device
+查询设备在线状态，获取当前已连接的设备列表。
+
+### music_query_version
+查询设备固件版本信息。
+- `target`: `"all"` / `"box"` / `"keyboard"`
+
 ## 示例
 
 **浏览器连接模式**:

@@ -293,6 +293,155 @@ async def list_tools() -> list[Tool]:
                 "properties": {},
             }
         ),
+        Tool(
+            name="music_set_mode",
+            description="切换键盘/设备工作模式",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "mode": {
+                        "type": "string",
+                        "enum": [
+                            "skin",
+                            "free",
+                            "game",
+                            "skin_config",
+                            "drum",
+                            "free_light",
+                            "singing",
+                            "singing_advanced",
+                            "app_connect"
+                        ],
+                        "description": (
+                            "模式名称：\n"
+                            "  skin         - 皮肤模式（键盘皮肤，音响弹奏）0x00\n"
+                            "  free         - 自由模式（键盘弹奏，音响弹奏）0x01\n"
+                            "  game         - 游戏模式 0x02\n"
+                            "  skin_config  - 皮肤配置/录课模式 0x03\n"
+                            "  drum         - 鼓机模式 0x04\n"
+                            "  free_light   - 自由模式+音符亮灯 0x05\n"
+                            "  singing      - 弹唱模式 0x0E\n"
+                            "  singing_advanced - 弹唱高级模式 0x0D\n"
+                            "  app_connect  - App连接模式 0x7F"
+                        )
+                    }
+                },
+                "required": ["mode"]
+            }
+        ),
+        Tool(
+            name="music_set_octave",
+            description="设置键盘音区（8度偏移）",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "octave": {
+                        "type": "integer",
+                        "minimum": -3,
+                        "maximum": 3,
+                        "description": "8度偏移量：-3~-1 降低，0 默认，1~3 升高"
+                    }
+                },
+                "required": ["octave"]
+            }
+        ),
+        Tool(
+            name="music_set_bpm",
+            description="设置节拍速度（BPM）",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "bpm": {
+                        "type": "integer",
+                        "minimum": 20,
+                        "maximum": 300,
+                        "description": "BPM 速度值，范围 20~300"
+                    }
+                },
+                "required": ["bpm"]
+            }
+        ),
+        Tool(
+            name="music_chord_light",
+            description="根据和弦名称点亮键盘对应按键（教学用）",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "chord": {
+                        "type": "string",
+                        "description": (
+                            "和弦名称，格式：根音+和弦类型，如 C、Dm、G7、FMaj7、Am7。\n"
+                            "根音：C C# D D# E F F# G G# A A# B\n"
+                            "和弦类型：Maj(默认大三和弦) Min m7 Maj7 7 Sus4 add9 m7b5 Aug Dim"
+                        )
+                    },
+                    "position": {
+                        "type": "integer",
+                        "description": "把位偏移，0 为默认把位，正数升高，负数降低",
+                        "default": 0
+                    }
+                },
+                "required": ["chord"]
+            }
+        ),
+        Tool(
+            name="music_query_version",
+            description="查询设备固件版本信息",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "enum": ["all", "box", "keyboard"],
+                        "description": "查询目标：all=广播查所有设备, box=仅盒子, keyboard=仅键盘",
+                        "default": "all"
+                    }
+                }
+            }
+        ),
+        Tool(
+            name="music_set_beat_type",
+            description="设置节拍类型（拍号）",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "beat": {
+                        "type": "string",
+                        "enum": ["4/4", "4/3", "8/6"],
+                        "description": "拍号：4/4(0x00, 默认), 4/3(0x01), 8/6(0x02)"
+                    }
+                },
+                "required": ["beat"]
+            }
+        ),
+        Tool(
+            name="music_set_skin",
+            description="设置键盘/设备皮肤（色盘）",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "skin_id": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 127,
+                        "description": "色盘编号，0 为默认皮肤"
+                    },
+                    "query": {
+                        "type": "boolean",
+                        "description": "若为 true，则仅查询当前已有皮肤列表，不下发设置",
+                        "default": False
+                    }
+                }
+            }
+        ),
+        Tool(
+            name="music_query_device",
+            description="查询设备在线状态，获取当前已连接的设备列表",
+            inputSchema={
+                "type": "object",
+                "properties": {}
+            }
+        ),
     ]
 
 @app.call_tool()
@@ -474,6 +623,150 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             type="text",
             text=json.dumps(status, ensure_ascii=False)
         )]
+
+    elif name == "music_set_mode":
+        MODE_MAP = {
+            "skin":              0x00,
+            "free":              0x01,
+            "game":              0x02,
+            "skin_config":       0x03,
+            "drum":              0x04,
+            "free_light":        0x05,
+            "singing_advanced":  0x0D,
+            "singing":           0x0E,
+            "factory_test":      0x0F,
+            "app_connect":       0x7F,
+        }
+        mode_name = arguments.get("mode")
+        mode_val = MODE_MAP.get(mode_name)
+        if mode_val is None:
+            return [TextContent(type="text", text=json.dumps({"error": f"未知模式: {mode_name}"}, ensure_ascii=False))]
+        result = await gateway.send_command("set_mode", {"mode": mode_val, "mode_name": mode_name})
+        return [TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
+
+    elif name == "music_set_octave":
+        octave = arguments.get("octave", 0)
+        # 协议编码：-3=0x7D -2=0x7E -1=0x7F 0=0x00 1=0x01 2=0x02 3=0x03
+        if octave < 0:
+            octave_val = 0x80 + octave  # -1->0x7F, -2->0x7E, -3->0x7D
+        else:
+            octave_val = octave
+        result = await gateway.send_command("set_octave", {"octave": octave, "octave_val": octave_val})
+        return [TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
+
+    elif name == "music_set_bpm":
+        bpm = arguments.get("bpm", 120)
+        bpm = max(20, min(300, int(bpm)))
+        # 协议：两字节合并，低7位在前，高7位在后
+        low7  = bpm & 0x7F
+        high7 = (bpm >> 7) & 0x7F
+        result = await gateway.send_command("set_bpm", {"bpm": bpm, "low7": low7, "high7": high7})
+        return [TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
+
+    elif name == "music_chord_light":
+        chord_str = arguments.get("chord", "C")
+        position  = arguments.get("position", 0)
+
+        # 根音映射 -> 级别索引 (0x00~0x0B)
+        ROOT_MAP = {
+            "C": 0x00, "C#": 0x01, "Db": 0x01,
+            "D": 0x02, "D#": 0x03, "Eb": 0x03,
+            "E": 0x04,
+            "F": 0x05, "F#": 0x06, "Gb": 0x06,
+            "G": 0x07, "G#": 0x08, "Ab": 0x08,
+            "A": 0x09, "A#": 0x0A, "Bb": 0x0A,
+            "B": 0x0B,
+        }
+        # 和弦类型映射 -> 和弦尾序号
+        SUFFIX_MAP = {
+            "Maj": 0x00, "":    0x00,
+            "Min": 0x01, "m":   0x01,
+            "Maj7": 0x02,
+            "m7":  0x03, "Min7": 0x03, "min7": 0x03,
+            "7":   0x04,
+            "Sus4": 0x05, "sus4": 0x05,
+            "add9": 0x06, "Maj-add9": 0x06,
+            "m7b5": 0x07, "m7-5": 0x07, "Min7b5": 0x07,
+            "Aug":  0x08, "aug":  0x08,
+            "Dim":  0x09, "dim":  0x09,
+        }
+
+        # 解析根音：先尝试2字符（C#/Db），再1字符
+        root_str = ""
+        suffix_str = ""
+        for length in (2, 1):
+            candidate = chord_str[:length]
+            if candidate in ROOT_MAP:
+                root_str   = candidate
+                suffix_str = chord_str[length:]
+                break
+
+        if not root_str:
+            return [TextContent(type="text", text=json.dumps(
+                {"error": f"无法解析和弦根音: {chord_str}"}, ensure_ascii=False))]
+
+        level_idx  = ROOT_MAP[root_str]
+        suffix_idx = SUFFIX_MAP.get(suffix_str, 0x00)
+
+        # 把位编码：默认64(0x40)，每级+/-1
+        position_val = max(0, min(0x7F, 0x40 + position))
+
+        # 和弦索引（键盘位置index）：使用根音对应的白键/黑键序号
+        # 白键 C D E F G A B -> 0~6; 黑键用其前一个白键+1偏移，这里简化为level_idx
+        chord_index = level_idx
+
+        result = await gateway.send_command("chord_light", {
+            "chord":        chord_str,
+            "level_idx":    level_idx,
+            "suffix_idx":   suffix_idx,
+            "chord_index":  chord_index,
+            "position_val": position_val,
+        })
+        return [TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
+
+    elif name == "music_query_version":
+        # 协议 0x06：App -> 设备 询问版本，模版 F0 10 30 7F 7F 20 00 06 F7
+        target = arguments.get("target", "all")
+        # 映射 target 到设备类型/通道，前端根据此参数组装 SysEx
+        TARGET_MAP = {
+            "all":      {"device_type": 0x7F, "channel": 0x7F},  # 广播
+            "box":      {"device_type": 0x10, "channel": 0x10},  # 音乐盒子
+            "keyboard": {"device_type": 0x05, "channel": 0x7F},  # 36键广播
+        }
+        target_params = TARGET_MAP.get(target, TARGET_MAP["all"])
+        result = await gateway.send_command("query_version", {
+            "target": target,
+            **target_params,
+        })
+        return [TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
+
+    elif name == "music_set_beat_type":
+        BEAT_MAP = {"4/4": 0x00, "4/3": 0x01, "8/6": 0x02}
+        beat = arguments.get("beat", "4/4")
+        beat_val = BEAT_MAP.get(beat)
+        if beat_val is None:
+            return [TextContent(type="text", text=json.dumps(
+                {"error": f"不支持的拍号: {beat}"}, ensure_ascii=False))]
+        # 协议 0x20：盒子 -> 设备 下发拍型
+        result = await gateway.send_command("set_beat_type", {"beat": beat, "beat_val": beat_val})
+        return [TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
+
+    elif name == "music_set_skin":
+        query = arguments.get("query", False)
+        if query:
+            # 协议 0x1A：查询已有皮肤
+            result = await gateway.send_command("query_skin", {})
+        else:
+            skin_id = arguments.get("skin_id", 0)
+            skin_id = max(0, min(127, int(skin_id)))
+            # 协议 0x1C：皮肤设置，下发色盘号
+            result = await gateway.send_command("set_skin", {"skin_id": skin_id})
+        return [TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
+
+    elif name == "music_query_device":
+        # 协议 0x01：主机 -> 设备 询问在线状态，模版 F0 7F 30 7F 7F 20 00 01 F7
+        result = await gateway.send_command("query_device", {})
+        return [TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
 
     else:
         return [TextContent(
