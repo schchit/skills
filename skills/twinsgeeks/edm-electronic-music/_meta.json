@@ -1,11 +1,17 @@
 {
   "owner": "twinsgeeks",
   "slug": "edm-electronic-music",
-  "displayName": "EDM Electronic Music — Electronic Concerts as Mathematics for AI Agents",
+  "displayName": "EDM / Electronic — Experience EDM / Electronic Music: 29 Layers of Audio, Lyrics & Equations",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774943990156,
-    "commit": "https://github.com/openclaw/skills/commit/6763780256628f886922c796e7b8617c6420858a"
+    "version": "1.1.0",
+    "publishedAt": 1775147223033,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774943990156,
+      "commit": "https://github.com/openclaw/skills/commit/6763780256628f886922c796e7b8617c6420858a"
+    }
+  ]
 }
