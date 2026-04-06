@@ -1,6 +1,6 @@
 ---
 name: local-stt-workflow
-description: Local speech-to-text workflow for an OpenAI-compatible STT server on http://127.0.0.1:8000/v1. Use when configuring, testing, debugging, or validating audio transcription with `/v1/audio/transcriptions` or `/v1/audio/translations`, especially for OpenClaw audio pipelines, multipart upload compatibility, model registration, streaming SSE behavior, response_format handling, and “did the request reach the server or not?” investigations.
+description: Local speech-to-text workflow for an OpenAI-compatible STT server, typically on http://127.0.0.1:8000/v1. Use when configuring, testing, debugging, or validating audio transcription with `/v1/audio/transcriptions` or `/v1/audio/translations`, especially for OpenClaw audio pipelines, multipart upload compatibility, model registration, streaming SSE behavior, response_format handling, local model-path fallback, and “did the request reach the server or not?” investigations.
 ---
 
 # Local STT Workflow
@@ -8,6 +8,14 @@ description: Local speech-to-text workflow for an OpenAI-compatible STT server o
 Use this skill to debug the **full transcription path**, not just the model.
 
 Default assumption: the local STT server lives at `http://127.0.0.1:8000/v1`.
+
+Current local model-path fallback worth remembering: if the server did not pull a model by name, it may be loading directly from a local path such as `./models/Qwen3-ASR-0.6B-bf16`.
+
+When exact route shape matters, the local OpenAPI document is available at:
+
+- `http://localhost:8000/openapi.json`
+
+Use this OpenAPI doc as a schema/reference source to compare this local `mlx-audio` server against OpenAI’s API. Do not treat it as a health check.
 
 ## Workflow
 
@@ -22,13 +30,15 @@ curl http://127.0.0.1:8000/v1/models
 
 Confirm that the intended STT model exists, usually `qwen3-asr`.
 
+If the model does not appear by pulled registry name, do not assume STT is broken — this server may be running a local-path model such as `./models/Qwen3-ASR-0.6B-bf16`.
+
 If the server is task-gated, ensure STT is enabled:
 
 ```bash
 MLX_AUDIO_SERVER_TASKS=stt uv run python server.py
 ```
 
-If the model is missing, register it before testing clients.
+If the model is missing, register it before testing clients — but first check whether the server is intentionally loading from a local path and verify the exact accepted model IDs through `/v1/models` or `http://localhost:8000/openapi.json`.
 
 ## 2. Prove the raw STT endpoint works
 
@@ -70,15 +80,12 @@ This distinction saves a shitload of time.
 
 This server is designed around **OpenAI-style multipart form upload**.
 
-Expected core fields for `/v1/audio/transcriptions`:
+Expected core fields for `/v1/audio/transcriptions` from the current local OpenAPI schema:
 
-- `file`
-- `model`
-- optional `language`
-- optional `response_format`
-- optional `prompt`
-- optional `stream`
-- optional `timestamp_granularities[]`
+- required: `file`, `model`
+- optional: `language`, `verbose`, `max_tokens`, `chunk_duration`, `frame_threshold`, `stream`, `context`, `prefill_step_size`, `text`
+
+This means the local server is not exposing the same form shape as OpenAI Whisper-style docs. Do not blindly assume `response_format`, `prompt`, or `timestamp_granularities[]` exist just because OpenAI supports them.
 
 If a client is suspected of sending the wrong shape, inspect traffic with a temporary dump proxy or server logs.
 
@@ -95,6 +102,8 @@ Read `references/stt-api.md` when you need exact behavior for:
 - current compatibility limits
 
 Do **not** guess field support from generic OpenAI docs when this local server may intentionally differ.
+
+Current notable mismatch: the local schema exposes `context` and `text`, plus chunking/prefill controls like `chunk_duration`, `frame_threshold`, and `prefill_step_size`, which are not the usual OpenAI STT field set.
 
 ## 6. OpenClaw-specific debugging pattern
 
@@ -116,12 +125,22 @@ Use this order:
 1. `GET /health`
 2. `GET /v1/models`
 3. direct `curl` transcription with the same audio file
-4. direct `curl` translation if relevant
+4. compare request fields against `http://localhost:8000/openapi.json`
 5. OpenAI client compatibility test
 6. OpenClaw integration test
 7. dump-proxy / log inspection only if still ambiguous
 
 ## 8. Common conclusions
+
+### Niche input container bug
+
+Typical signs:
+
+- direct upload of a less-common container like `.m4a` returns `500`
+- server logs mention unsupported format handling during temp write or normalization
+- converting the same source audio to `mp3` or `wav` makes transcription succeed immediately
+
+Conclusion: treat this as an input-container compatibility bug, not an ASR-quality failure. For now, transcode niche formats to `mp3` or `wav` before testing recognition quality.
 
 ### Server good, client bad
 
