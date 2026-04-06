@@ -1,6 +1,6 @@
 ---
 name: reelsmith
-description: Create short-form Facebook Reels packages from ideas, articles, updates, or source material. Use when the user wants a topic turned into a short-form video concept, hook, 30-60 second script, scene-by-scene plan, on-screen text, caption, cover concept, approval-ready reel package, a rough vertical preview video, or a simple narration-ready workflow. Prefer this skill for Facebook Reels workflows focused on planning, packaging, preview generation, and staged production before full automation or direct upload.
+description: Create short-form vertical video packages, preview reels, narrated reels, and AI-video workflows from ideas, articles, updates, or source material. Use when the user wants a topic turned into a short-form video concept, hook, script, scene-by-scene plan, on-screen text, caption, cover concept, approval-ready reel package, rough vertical preview video, narrated reel, or an LTX-powered AI video option for Facebook Reels and similar social formats.
 ---
 
 # Reelsmith
