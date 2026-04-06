@@ -3,11 +3,16 @@
   "slug": "appsignal",
   "displayName": "Appsignal",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1775169184100,
-    "commit": "https://github.com/openclaw/skills/commit/d0509f154eff623c9f0ebcb620ceac72c0bf049f"
+    "version": "1.0.2",
+    "publishedAt": 1775169188044,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1775169184100,
+      "commit": "https://github.com/openclaw/skills/commit/d0509f154eff623c9f0ebcb620ceac72c0bf049f"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1774771476160,
