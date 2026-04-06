@@ -3,9 +3,15 @@
   "slug": "carbone",
   "displayName": "Carbone",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774440212205,
-    "commit": "https://github.com/openclaw/skills/commit/965b0bffa47db7dec6d87bc04c2711b5bafe7ea6"
+    "version": "1.0.2",
+    "publishedAt": 1775167463285,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774440212205,
+      "commit": "https://github.com/openclaw/skills/commit/965b0bffa47db7dec6d87bc04c2711b5bafe7ea6"
+    }
+  ]
 }
