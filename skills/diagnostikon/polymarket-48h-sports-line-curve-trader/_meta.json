@@ -1,11 +1,17 @@
 {
   "owner": "diagnostikon",
   "slug": "polymarket-48h-sports-line-curve-trader",
-  "displayName": "48h Sports Line Curve Trader",
+  "displayName": "Polymarket 48h Sports Line Curve Trader",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774621041369,
-    "commit": "https://github.com/openclaw/skills/commit/508d46f7b3069cfe0ff74c1a5171fdbbc6806304"
+    "version": "1.0.1",
+    "publishedAt": 1775316928327,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774621041369,
+      "commit": "https://github.com/openclaw/skills/commit/508d46f7b3069cfe0ff74c1a5171fdbbc6806304"
+    }
+  ]
 }
