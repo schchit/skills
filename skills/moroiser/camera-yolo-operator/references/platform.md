@@ -1,26 +1,36 @@
 # Platform Notes
 
-## Tested environment
+## Tested environments
 
+### Windows
 - OS: Windows 11
 - GPU: NVIDIA GeForce GTX 1060 6GB
 - OpenClaw install mode: installed directly on Windows
-- Workspace: `C:\Users\25697\.openclaw\workspace`
-- Python: `C:\Users\25697\AppData\Local\Programs\Python\Python311\python.exe`
+- Camera backend: DirectShow
+
+### Linux
+- OS: Linux (generic)
+- GPU: varies
+- OpenClaw install mode: installed directly on Linux
+- Camera backend: V4L2
 
 ## Model location
 
-- YOLO model: `C:\Users\25697\.openclaw\workspace\assets\yolo\yolo11s.pt`
+Store the YOLO model in `workspace/assets/yolo/` or configure the path in `TOOLS.md`.
 
-## Why this skill is Windows-specific
+## Camera device detection
 
-This skill is meant for the notebook's local webcam and a Windows-local Python environment.
+### Linux
+Check available camera devices:
+```bash
+ls /dev/video*
+```
+Typical laptop webcam appears as `/dev/video0` or `/dev/video1`.
 
-It intentionally assumes:
-- Windows paths
-- direct access to local webcam hardware
-- OpenCV camera backend behavior on Windows
-- OpenClaw running on the same Windows host
+Make sure the user has read access to the device, or add the user to the `video` group.
+
+### Windows
+Camera index `0` is typically the built-in notebook webcam. If multiple cameras exist, test indices starting from `0`.
 
 ## Maintenance notes
 
