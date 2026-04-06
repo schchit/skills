@@ -3,9 +3,15 @@
   "slug": "rice-tracker",
   "displayName": "rice-tracker",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774597303975,
-    "commit": "https://github.com/openclaw/skills/commit/8a70a3c3c9c10e479cf21bcd9fb1696b239882a3"
+    "version": "1.0.3",
+    "publishedAt": 1775102085300,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774597303975,
+      "commit": "https://github.com/openclaw/skills/commit/8a70a3c3c9c10e479cf21bcd9fb1696b239882a3"
+    }
+  ]
 }

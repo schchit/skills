@@ -1,74 +1,114 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""每日大米库存检查脚本（供 cron 调用）"""
+"""
+大米系统检查脚本 v2.0 - 库存提醒 + 对账提醒
+"""
+
 import json
-import sys
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 DATA_FILE = Path.home() / ".openclaw" / "workspace" / "rice-shop-records.json"
 
-def days_left(record):
+
+def load_records():
+    if DATA_FILE.exists():
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return []
+
+
+def get_stock_info(record):
+    if not record.get("purchases"):
+        return {"total": 0, "days_left": -1, "expected_date": "无记录"}
+    
+    total_quantity = sum(p.get("quantity", 0) for p in record["purchases"])
+    if total_quantity <= 0:
+        return {"total": 0, "days_left": -1, "expected_date": "已吃完"}
+    
+    dates = [datetime.strptime(p["date"], "%Y-%m-%d").date() for p in record["purchases"]]
+    earliest = min(dates)
+    
     today = date.today()
-    purchased = date.fromisoformat(record["purchase_date"])
-    consumed_per_day = record["daily_rate"]
-    freq = record.get("frequency", "daily")
-    people = record["people"]
-    if freq == "workdays":
-        days = (today - purchased).days + 1
-        workdays = sum(1 for i in range(days)
-                       if (purchased + timedelta(i)).weekday() < 5)
-        total_consumed = workdays * people * consumed_per_day
-    elif freq == "weekends":
-        days = (today - purchased).days + 1
-        weekends = sum(1 for i in range(days)
-                       if (purchased + timedelta(i)).weekday() >= 5)
-        total_consumed = weekends * people * consumed_per_day
+    people = record.get("people", 1)
+    daily_rate = record.get("daily_rate", 0.4)
+    frequency = record.get("frequency", "daily")
+    
+    days_passed = max(0, (today - earliest).days)
+    
+    if frequency == "workdays":
+        workdays = sum(1 for i in range(days_passed + 1) if (earliest + timedelta(i)).weekday() < 5)
+        consumed = workdays * people * daily_rate
+    elif frequency == "weekends":
+        weekends = sum(1 for i in range(days_passed + 1) if (earliest + timedelta(i)).weekday() >= 5)
+        consumed = weekends * people * daily_rate
     else:
-        total_consumed = (today - purchased).days * people * consumed_per_day
-    remaining = record["quantity"] - total_consumed
+        consumed = days_passed * people * daily_rate
+    
+    remaining = total_quantity - consumed
     if remaining <= 0:
-        return -1
-    if freq == "workdays":
-        return round(remaining / (people * consumed_per_day))
-    elif freq == "weekends":
-        return round(remaining * 7 / (2 * people * consumed_per_day))
+        return {"total": total_quantity, "days_left": -1, "expected_date": "已吃完"}
+    
+    if frequency == "workdays":
+        dpj = 7 / (people * daily_rate * 5) if people * daily_rate > 0 else 999
+    elif frequency == "weekends":
+        dpj = 7 / (people * daily_rate * 2) if people * daily_rate > 0 else 999
     else:
-        return round(remaining / (people * consumed_per_day))
+        dpj = 1 / (people * daily_rate) if people * daily_rate > 0 else 999
+    
+    days_left = int(remaining * dpj)
+    expected_date = (today + timedelta(days=days_left)).strftime("%Y-%m-%d")
+    
+    return {"total": total_quantity, "days_left": days_left, "expected_date": expected_date}
 
-def expected_date(record):
-    d = days_left(record)
-    if d < 0:
-        return "已吃完"
-    return (date.today() + timedelta(days=d)).strftime("%m-%d")
 
-def check():
-    if not DATA_FILE.exists():
-        return None, None
-    records = json.loads(DATA_FILE.read_text(encoding="utf-8"))
+def main():
+    records = load_records()
+    today = date.today()
+    
     alerts = []
+    settle_alerts = []
+    
     for r in records:
-        dl = days_left(r)
-        r["days_left"] = dl
-        r["exp_date"] = expected_date(r)
-        if dl < 0:
-            alerts.append(f"🚨 【{r['owner']}】的大米已耗尽，请立即采购！")
-        elif dl <= 3:
-            alerts.append(f"⚠️ 【{r['owner']}】的大米预计 {dl} 天后（{expected_date(r)}）吃完，建议提醒采购。")
-    return alerts, records
+        stock_info = get_stock_info(r)
+        
+        # 库存提醒
+        if stock_info["days_left"] < 0:
+            alerts.append(f"🚨 【{r['owner']}】的大米已耗尽！请立即采购！")
+        elif stock_info["days_left"] <= 3:
+            alerts.append(f"⚠️ 【{r['owner']}】的大米预计 {stock_info['days_left']} 天后（{stock_info['expected_date']}）吃完，建议提醒采购！")
+        
+        # 对账提醒
+        for p in r.get("purchases", []):
+            if not p.get("paid", True) and p.get("settle_date"):
+                try:
+                    settle_d = datetime.strptime(p["settle_date"], "%Y-%m-%d").date()
+                    if settle_d <= today:
+                        acct = "对公转账" if p.get("account_type") == "corporate" else "对私"
+                        amount = p.get("total_amount", 0)
+                        overdue = (today - settle_d).days
+                        settle_alerts.append(f"💰 【{r['owner']}】{p['settle_date']}到期未付款（欠款{amount}元，{acct}），已逾期{overdue}天，请提醒收款！")
+                except:
+                    pass
+    
+    # 输出
+    if alerts or settle_alerts:
+        print(f"🍚 **大米采购管理系统提醒**（{today.strftime('%Y-%m-%d')}）")
+        print()
+        
+        if alerts:
+            print("**📦 库存提醒**")
+            for a in alerts:
+                print(a)
+            print()
+        
+        if settle_alerts:
+            print("**💰 对账提醒**")
+            for a in settle_alerts:
+                print(a)
+    else:
+        print(f"🍚 检查完成（{today.strftime('%Y-%m-%d')}）：所有客户库存充足，无到期未付款项 ✅")
+
 
 if __name__ == "__main__":
-    alerts, records = check()
-    msg_lines = []
-    if alerts:
-        msg_lines.append("🍚 **大米采购提醒**")
-        for a in alerts:
-            msg_lines.append(a)
-        msg_lines.append("")
-        msg_lines.append("请登录系统处理：python3 ~/.openclaw/workspace/skills/rice-tracker/scripts/app.py")
-    else:
-        if records:
-            msg_lines.append(f"🍚 大米检查完毕，今日（{date.today().strftime('%m-%d')}）共 {len(records)} 位客户，库存均充足，无需提醒。")
-        else:
-            msg_lines.append("🍚 大米检查完毕，暂无客户记录。")
-    print("\n".join(msg_lines))
+    main()
