@@ -1,13 +1,18 @@
 {
   "owner": "clhwbd",
   "slug": "go-stargazing",
-  "displayName": "Go Stargazing",
+  "displayName": "go-stargazing",
   "latest": {
-    "version": "1.2.0",
-    "publishedAt": 1774883543844,
-    "commit": "https://github.com/openclaw/skills/commit/022b1fdcbb6252cd943089cc171c228a15cb4db1"
+    "version": "1.3.8",
+    "publishedAt": 1775124288131,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.2.0",
+      "publishedAt": 1774883543844,
+      "commit": "https://github.com/openclaw/skills/commit/022b1fdcbb6252cd943089cc171c228a15cb4db1"
+    },
     {
       "version": "1.1.2",
       "publishedAt": 1774829886274,

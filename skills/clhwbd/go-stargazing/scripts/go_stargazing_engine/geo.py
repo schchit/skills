@@ -3,10 +3,11 @@ from __future__ import annotations
 import gzip
 import json
 import math
+from collections import Counter
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 
-from .models import BoundingBox, MultiPolygon, NATIONAL_SCOPE_BOXES, SamplePoint
+from .models import BoundingBox, MultiPolygon, SamplePoint
 
 BoundaryGeometry = Union[MultiPolygon, Tuple[float, float, float, float]]
 
@@ -66,9 +67,9 @@ def _boundary_contains(lng: float, lat: float, geom: BoundaryGeometry) -> bool:
         return min_lng <= lng <= max_lng and min_lat <= lat <= max_lat
     return point_in_multipolygon(lng, lat, geom)
 
-DEFAULT_PROVINCE_BOUNDARIES = Path(__file__).resolve().parent.parent.parent / "data" / "polygon-text" / "provinces"
+DEFAULT_PROVINCE_BOUNDARIES = Path(__file__).resolve().parent.parent.parent / "data" / "china-provinces-lite.json"
 
-DEFAULT_PREFECTURE_BOUNDARIES = Path(__file__).resolve().parent.parent.parent / "data" / "polygon-text" / "prefectures"
+DEFAULT_PREFECTURE_BOUNDARIES = Path(__file__).resolve().parent.parent.parent / "data" / "china-prefectures-lite.json"
 
 def normalize_region_name(name: str) -> str:
     text = str(name).strip()
@@ -106,12 +107,60 @@ def parse_boxes(payload: str) -> List[BoundingBox]:
 
 
 
-def load_scope_preset(name: str) -> List[BoundingBox]:
+CHINA_PROVINCIAL_LEVEL_REGIONS = [
+    "北京", "天津", "上海", "重庆",
+    "河北", "山西", "辽宁", "吉林", "黑龙江",
+    "江苏", "浙江", "安徽", "福建", "江西", "山东",
+    "河南", "湖北", "湖南", "广东", "海南",
+    "四川", "贵州", "云南", "陕西", "甘肃", "青海", "台湾",
+    "内蒙古", "广西", "西藏", "宁夏", "新疆",
+    "香港", "澳门",
+]
+
+
+def _bbox_from_geometry(geom: BoundaryGeometry) -> Tuple[float, float, float, float]:
+    if isinstance(geom, tuple) and len(geom) == 4:
+        min_lng, min_lat, max_lng, max_lat = geom
+        return float(min_lat), float(max_lat), float(min_lng), float(max_lng)
+    lngs = []
+    lats = []
+    for polygon in geom:
+        for ring in polygon:
+            for lng, lat in ring:
+                lngs.append(float(lng))
+                lats.append(float(lat))
+    if not lngs or not lats:
+        raise ValueError("empty multipolygon")
+    return min(lats), max(lats), min(lngs), max(lngs)
+
+
+def build_national_scope_boxes_from_provinces(province_polygons: Dict[str, BoundaryGeometry], padding: float = 0.15) -> List[BoundingBox]:
+    boxes: List[BoundingBox] = []
+    missing = []
+    for province in CHINA_PROVINCIAL_LEVEL_REGIONS:
+        geom = province_polygons.get(province) or province_polygons.get(normalize_region_name(province))
+        if geom is None:
+            missing.append(province)
+            continue
+        min_lat, max_lat, min_lng, max_lng = _bbox_from_geometry(geom)
+        boxes.append(BoundingBox(
+            name=province,
+            province=province,
+            min_lat=min_lat - padding,
+            max_lat=max_lat + padding,
+            min_lng=min_lng - padding,
+            max_lng=max_lng + padding,
+        ))
+    if missing:
+        raise ValueError(f"Missing province polygons for national scope: {missing}")
+    return boxes
+
+
+def load_scope_preset(name: str, province_polygons: Optional[Dict[str, BoundaryGeometry]] = None) -> List[BoundingBox]:
     if name == "national":
-        return [
-            BoundingBox(name=row.get("name") or row["province"], province=row["province"], min_lat=float(row["min_lat"]), max_lat=float(row["max_lat"]), min_lng=float(row["min_lng"]), max_lng=float(row["max_lng"]))
-            for row in NATIONAL_SCOPE_BOXES
-        ]
+        if not province_polygons:
+            raise ValueError("national scope preset now requires province polygons")
+        return build_national_scope_boxes_from_provinces(province_polygons)
     raise ValueError(f"Unknown scope preset: {name}")
 
 
@@ -265,6 +314,308 @@ def load_county_polygons(province_adcodes: List[str]) -> Dict[str, MultiPolygon]
     """
     return {}
 
+
+
+def infer_point_province(lng: float, lat: float, province_polygons: Dict[str, BoundaryGeometry]) -> Optional[str]:
+    for province in CHINA_PROVINCIAL_LEVEL_REGIONS:
+        geom = province_polygons.get(province) or province_polygons.get(normalize_region_name(province))
+        if geom is not None and _boundary_contains(lng, lat, geom):
+            return province
+    return None
+
+
+def _sampling_merge_radius_km(point: SamplePoint) -> float:
+    if point.province in {"北京", "上海", "天津", "重庆", "香港", "澳门"}:
+        return 12.0
+    if point.province in {"台湾", "海南"}:
+        return 20.0
+    return 45.0
+
+
+
+def dedupe_sampling_points(points: List[SamplePoint]) -> List[SamplePoint]:
+    kept: List[SamplePoint] = []
+    ordered = sorted(
+        points,
+        key=lambda p: (
+            0 if "floor" in (p.id or "") else 1,
+            p.province,
+            p.id,
+        ),
+    )
+    for point in ordered:
+        duplicate = False
+        radius = _sampling_merge_radius_km(point)
+        for existing in kept:
+            if ({point.province, existing.province} & {"香港", "澳门"}) and point.province != existing.province:
+                continue
+            if haversine_km(point.lat, point.lng, existing.lat, existing.lng) <= min(radius, _sampling_merge_radius_km(existing)):
+                duplicate = True
+                break
+        if not duplicate:
+            kept.append(point)
+    return kept
+
+
+
+def _nearest_distance_km(point: SamplePoint, existing: List[SamplePoint]) -> float:
+    if not existing:
+        return float('inf')
+    return min(haversine_km(point.lat, point.lng, p.lat, p.lng) for p in existing)
+
+
+
+def add_representative_compensation(
+    points: List[SamplePoint],
+    boxes: List[BoundingBox],
+    province_polygons: Dict[str, BoundaryGeometry],
+    prefecture_polygons: Optional[Dict[str, BoundaryGeometry]] = None,
+) -> List[SamplePoint]:
+    by_province: Dict[str, List[SamplePoint]] = {}
+    for p in points:
+        by_province.setdefault(p.province, []).append(p)
+    existing_keys = {(p.province, p.lat, p.lng) for p in points}
+    box_by_province = {b.province: b for b in boxes}
+    add_idx = 1
+    target_provinces = {"海南", "台湾", "吉林", "广西", "福建", "浙江", "新疆", "内蒙古", "西藏"}
+    compensated = list(points)
+
+    for province in target_provinces:
+        current = by_province.get(province, [])
+        box = box_by_province.get(province)
+        if not current or not box:
+            continue
+        lat_span = max(box.max_lat - box.min_lat, 0.01)
+        lng_span = max(box.max_lng - box.min_lng, 0.01)
+        cur_lat_span = max(p.lat for p in current) - min(p.lat for p in current) if len(current) >= 2 else 0.0
+        cur_lng_span = max(p.lng for p in current) - min(p.lng for p in current) if len(current) >= 2 else 0.0
+        need_ns = (cur_lat_span / lat_span) < 0.45
+        need_ew = (cur_lng_span / lng_span) < 0.45
+        if not (need_ns or need_ew):
+            continue
+
+        candidates = generate_grid_points(box, 36)
+        candidates = filter_points_by_polygon(candidates, province_polygons, prefecture_polygons or {})
+        if not candidates:
+            continue
+        chosen: List[SamplePoint] = []
+        if need_ns:
+            north = max(candidates, key=lambda p: p.lat)
+            south = min(candidates, key=lambda p: p.lat)
+            chosen.extend([north, south])
+        if need_ew:
+            east = max(candidates, key=lambda p: p.lng)
+            west = min(candidates, key=lambda p: p.lng)
+            chosen.extend([east, west])
+        for cand in chosen:
+            key = (province, cand.lat, cand.lng)
+            if key in existing_keys:
+                continue
+            if any(haversine_km(cand.lat, cand.lng, p.lat, p.lng) <= _sampling_merge_radius_km(cand) * 0.6 for p in compensated if p.province == province):
+                continue
+            new_point = SamplePoint(
+                id=f"national-repr-{add_idx}",
+                province=province,
+                scope_name=province,
+                lat=cand.lat,
+                lng=cand.lng,
+            )
+            compensated.append(new_point)
+            by_province.setdefault(province, []).append(new_point)
+            existing_keys.add(key)
+            add_idx += 1
+    return dedupe_sampling_points(compensated)
+
+
+
+def fill_sampling_holes(
+    points: List[SamplePoint],
+    boxes: List[BoundingBox],
+    target_final_count: int,
+    province_polygons: Dict[str, BoundaryGeometry],
+    prefecture_polygons: Optional[Dict[str, BoundaryGeometry]] = None,
+) -> List[SamplePoint]:
+    if len(points) >= target_final_count:
+        return points
+    candidate_budget = max(target_final_count * 4, len(boxes) * 16)
+    dense_candidates = generate_national_uniform_points(
+        boxes,
+        candidate_budget,
+        province_polygons,
+        prefecture_polygons,
+        min_points_per_region=1,
+        target_final_count=None,
+    )
+    existing_keys = {(p.province, p.lat, p.lng) for p in points}
+    pool = [p for p in dense_candidates if (p.province, p.lat, p.lng) not in existing_keys]
+    kept = list(points)
+    add_idx = 1
+    while pool and len(kept) < target_final_count:
+        best = max(pool, key=lambda p: (_nearest_distance_km(p, kept), p.province, p.id))
+        kept.append(SamplePoint(
+            id=f"national-hole-{add_idx}",
+            province=best.province,
+            scope_name=best.scope_name,
+            lat=best.lat,
+            lng=best.lng,
+        ))
+        add_idx += 1
+        pool = [p for p in pool if haversine_km(p.lat, p.lng, best.lat, best.lng) > min(_sampling_merge_radius_km(p), _sampling_merge_radius_km(best))]
+    return dedupe_sampling_points(kept)
+
+
+
+def generate_national_uniform_points(
+    boxes: List[BoundingBox],
+    total_count: int,
+    province_polygons: Dict[str, BoundaryGeometry],
+    prefecture_polygons: Optional[Dict[str, BoundaryGeometry]] = None,
+    min_points_per_region: int = 2,
+    target_final_count: Optional[int] = None,
+) -> List[SamplePoint]:
+    if total_count <= 0:
+        return []
+    min_lat = min(b.min_lat for b in boxes)
+    max_lat = max(b.max_lat for b in boxes)
+    min_lng = min(b.min_lng for b in boxes)
+    max_lng = max(b.max_lng for b in boxes)
+    lat_span = max(max_lat - min_lat, 0.1)
+    lng_span = max(max_lng - min_lng, 0.1)
+
+    # Equal-area-ish national sampling:
+    # keep lat bands uniform, but reduce per-row longitude density at higher latitudes
+    # using cos(latitude) so grid cells are less distorted on the ground.
+    avg_lat = (min_lat + max_lat) / 2
+    avg_cos = max(math.cos(math.radians(avg_lat)), 0.2)
+    effective_ratio = max(0.2, min(5.0, (lng_span * avg_cos) / lat_span))
+    rows = max(1, round(math.sqrt(total_count / effective_ratio)))
+    lat_step = lat_span / rows
+
+    row_weights = []
+    for r in range(rows):
+        lat_center = min_lat + (r + 0.5) * lat_step
+        row_weights.append(max(math.cos(math.radians(lat_center)), 0.15))
+    weight_sum = sum(row_weights) or 1.0
+    row_cols = [max(1, round(total_count * w / weight_sum)) for w in row_weights]
+
+    # normalize row counts so total stays close to requested budget
+    diff = sum(row_cols) - total_count
+    while diff > 0:
+        idx = max(range(rows), key=lambda i: row_cols[i])
+        if row_cols[idx] > 1:
+            row_cols[idx] -= 1
+            diff -= 1
+        else:
+            break
+    while diff < 0:
+        idx = min(range(rows), key=lambda i: row_cols[i] / row_weights[i])
+        row_cols[idx] += 1
+        diff += 1
+
+    points: List[SamplePoint] = []
+    idx = 1
+    for r in range(rows):
+        lat = min_lat + (r + 0.5) * lat_step
+        cols = row_cols[r]
+        lng_step = lng_span / cols
+        for c in range(cols):
+            if len(points) >= total_count:
+                break
+            lng = min_lng + (c + 0.5) * lng_step
+            province = infer_point_province(lng, lat, province_polygons)
+            if not province:
+                continue
+            points.append(
+                SamplePoint(
+                    id=f"national-{idx}",
+                    province=province,
+                    scope_name=province,
+                    lat=round(lat, 5),
+                    lng=round(lng, 5),
+                )
+            )
+            idx += 1
+
+    counts = Counter(p.province for p in points)
+    box_by_province = {b.province: b for b in boxes}
+    existing_keys = {(p.province, p.lat, p.lng) for p in points}
+    floor_idx = 1
+    for province in CHINA_PROVINCIAL_LEVEL_REGIONS:
+        region_min_points = 1 if province in {"香港", "澳门"} else min_points_per_region
+        need = max(0, region_min_points - counts.get(province, 0))
+        if need <= 0:
+            continue
+        box = box_by_province.get(province)
+        if not box:
+            continue
+        candidate_points = generate_grid_points(box, max(16, region_min_points * 12))
+        candidate_points = filter_points_by_polygon(candidate_points, province_polygons, prefecture_polygons or {})
+        for p in candidate_points:
+            key = (province, p.lat, p.lng)
+            if key in existing_keys:
+                continue
+            points.append(SamplePoint(
+                id=f"national-floor-{floor_idx}",
+                province=province,
+                scope_name=province,
+                lat=p.lat,
+                lng=p.lng,
+            ))
+            existing_keys.add(key)
+            counts[province] += 1
+            floor_idx += 1
+            if counts[province] >= region_min_points:
+                break
+        if counts[province] < region_min_points:
+            lat_mid = (box.min_lat + box.max_lat) / 2
+            lng_mid = (box.min_lng + box.max_lng) / 2
+            lat_delta = max((box.max_lat - box.min_lat) * 0.12, 0.005)
+            lng_delta = max((box.max_lng - box.min_lng) * 0.12, 0.005)
+            fallback_coords = [
+                (lat_mid, lng_mid),
+                (lat_mid + lat_delta, lng_mid),
+                (lat_mid - lat_delta, lng_mid),
+                (lat_mid, lng_mid + lng_delta),
+                (lat_mid, lng_mid - lng_delta),
+            ]
+            for lat, lng in fallback_coords:
+                inferred = infer_point_province(lng, lat, province_polygons)
+                if inferred != province and not (province in {"香港", "澳门"} and inferred is None):
+                    continue
+                lat = round(lat, 5)
+                lng = round(lng, 5)
+                key = (province, lat, lng)
+                if key in existing_keys:
+                    continue
+                points.append(SamplePoint(
+                    id=f"national-floor-{floor_idx}",
+                    province=province,
+                    scope_name=province,
+                    lat=lat,
+                    lng=lng,
+                ))
+                existing_keys.add(key)
+                counts[province] += 1
+                floor_idx += 1
+                if counts[province] >= region_min_points:
+                    break
+    points = dedupe_sampling_points(points)
+    provinces_present = {p.province for p in points}
+    if "澳门" not in provinces_present:
+        for box in boxes:
+            if box.province == "澳门":
+                points.append(SamplePoint(
+                    id="national-floor-macau-center",
+                    province="澳门",
+                    scope_name="澳门",
+                    lat=round((box.min_lat + box.max_lat) / 2, 5),
+                    lng=round((box.min_lng + box.max_lng) / 2, 5),
+                ))
+                break
+    points = add_representative_compensation(points, boxes, province_polygons, prefecture_polygons)
+    if target_final_count:
+        points = fill_sampling_holes(points, boxes, target_final_count, province_polygons, prefecture_polygons)
+    return points
 
 
 def filter_points_by_polygon(

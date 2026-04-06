@@ -94,6 +94,61 @@ def score_wind(w: Optional[float]) -> float:
 
 
 
+def low_cloud_terrain_assessment(low_cloud: Optional[float], mid_cloud: Optional[float], high_cloud: Optional[float], elevation_m: Optional[float], visibility_m: Optional[float], precip_mm: Optional[float]) -> dict:
+    """Heuristic terrain-aware interpretation of low-cloud cover.
+
+    Important: low/mid/high are cloud-layer COVERAGE, not cloud-base height.
+    So we never claim the location is definitely above the cloud deck.
+    We only soften or strengthen low-cloud impact based on terrain context.
+    """
+    low = safe_float(low_cloud)
+    mid = safe_float(mid_cloud)
+    high = safe_float(high_cloud)
+    elevation = safe_float(elevation_m) or 0.0
+    visibility = safe_float(visibility_m) or 0.0
+    precip = safe_float(precip_mm) or 0.0
+
+    if low is None:
+        return {
+            "penalty": 0.0,
+            "multiplier": 1.0,
+            "state": "unknown",
+            "note": None,
+        }
+
+    base_penalty = max(0.0, (low - 25.0) * 0.22)
+    multiplier = 1.0
+    state = "neutral"
+    note = None
+
+    if low >= 45:
+        if elevation >= 3500 and (mid is None or mid <= 35) and (high is None or high <= 65) and visibility >= 12000 and precip < 1.0:
+            multiplier = 0.35
+            state = "sea_of_cloud_possible"
+            note = "低云偏多，但该区域海拔较高；若低云主要压在山下，遮挡影响可能小于平原地区，存在星空云海窗口的可能"
+        elif elevation >= 2500 and (mid is None or mid <= 45) and visibility >= 10000 and precip < 1.5:
+            multiplier = 0.60
+            state = "terrain_buffered"
+            note = "低云偏多，但该区域海拔较高，实际遮挡风险可能低于平原地区"
+        elif elevation <= 1500:
+            multiplier = 1.15
+            state = "low_cloud_risk"
+            note = "低云偏多，平原/低海拔区域更容易直接受遮挡"
+    elif low >= 30 and elevation >= 3000 and (mid is None or mid <= 35) and visibility >= 12000 and precip < 1.0:
+        multiplier = 0.75
+        state = "terrain_buffered"
+        note = "低云有一定存在，但高海拔地形可能帮你避开一部分低层遮挡"
+
+    penalty = round(base_penalty * multiplier, 2)
+    return {
+        "penalty": penalty,
+        "multiplier": multiplier,
+        "state": state,
+        "note": note,
+    }
+
+
+
 def is_usable_observation_hour(cloud: Optional[float], wind_kmh: Optional[float], moon_interference: Optional[float]) -> bool:
     """Heuristic for whether an hour is actually worth shooting.
     Designed for stargazing / milky-way style use.
@@ -245,6 +300,14 @@ def compute_final_score(point: SamplePoint, mode: str) -> None:
     humidity = score_humidity(humidity_for_scoring)
     visibility = score_visibility(vis_for_scoring)
     wind = score_wind(wind_for_scoring)
+    low_cloud_adjustment = low_cloud_terrain_assessment(
+        point.night_avg_cloud_low,
+        point.night_avg_cloud_mid,
+        point.night_avg_cloud_high,
+        point.elevation_m,
+        vis_for_scoring,
+        point.night_max_precip,
+    )
 
     # Moon: use moonlight interference score if computed, else fallback
     if point.moon_interference is not None:
@@ -265,6 +328,7 @@ def compute_final_score(point: SamplePoint, mode: str) -> None:
         weights = {"cloud": 40, "humidity": 20, "visibility": 20, "moon": 15, "wind": 5}
         moonlight_helps = 100 - moonlight_score  # less moonlight = better for stargazing
         total = cloud * 0.40 + humidity * 0.20 + visibility * 0.20 + moonlight_helps * 0.15 + wind * 0.05
+        total -= low_cloud_adjustment["penalty"]
 
     # Hard gates: avoid promoting places that only look good on averages.
     if point.night_worst_cloud is not None and point.night_worst_cloud > 80:
@@ -285,6 +349,12 @@ def compute_final_score(point: SamplePoint, mode: str) -> None:
         "night_avg_humidity": round(point.night_avg_humidity, 1) if point.night_avg_humidity is not None else None,
         "night_avg_visibility": round(point.night_avg_visibility, 0) if point.night_avg_visibility is not None else None,
         "night_avg_wind": round(point.night_avg_wind, 1) if point.night_avg_wind is not None else None,
+        "night_avg_cloud_low": point.night_avg_cloud_low,
+        "night_avg_cloud_mid": point.night_avg_cloud_mid,
+        "night_avg_cloud_high": point.night_avg_cloud_high,
+        "low_cloud_terrain_penalty": low_cloud_adjustment["penalty"],
+        "low_cloud_terrain_state": low_cloud_adjustment["state"],
+        "low_cloud_terrain_note": low_cloud_adjustment["note"],
         "moon_interference": round(point.moon_interference, 1) if point.moon_interference is not None else None,
         "usable_hours": point.usable_hours,
         "longest_usable_streak_hours": point.longest_usable_streak_hours,

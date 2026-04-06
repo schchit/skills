@@ -3,13 +3,15 @@ from __future__ import annotations
 import json
 import socket
 import ssl
+import sys
+import threading
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from .astronomy import dark_window_narrative, julian_day, moon_altitude, moon_interference_score, moon_phase, moonrise_moonset
 from .models import SamplePoint
@@ -19,6 +21,70 @@ OPEN_METEO_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 # Open-Meteo hourly forecast window (days from today)
 
 OPEN_METEO_HOURLY_WINDOW_DAYS = 16
+
+# National scans need a shorter per-request timeout so one slow upstream request
+# doesn't make the whole run look hung for many minutes.
+_OPEN_METEO_TIMEOUT_SECONDS = {
+    "national": 12,
+    "point_check": 20,
+    "default": 18,
+}
+
+_MODEL_RATE_LIMIT_LOCK = threading.Lock()
+_MODEL_NEXT_ALLOWED_AT: Dict[str, float] = {}
+
+
+def weather_progress_log(stage: str, **fields) -> None:
+    print(json.dumps({"weather_stage": stage, **fields}, ensure_ascii=False), file=sys.stderr, flush=True)
+
+
+def _model_rate_limit_interval_s(model: Optional[str], scope_mode: Optional[str]) -> float:
+    model_key = model or "default"
+    if scope_mode == "national":
+        # Temporarily disable national per-model pacing to verify whether
+        # artificial throttling is the main bottleneck.
+        return 0.0
+    if scope_mode == "point_check":
+        return 1.25
+    return 0.9
+
+
+
+def _apply_model_rate_limit(model: Optional[str], scope_mode: Optional[str]) -> None:
+    model_key = model or "default"
+    interval = _model_rate_limit_interval_s(model_key, scope_mode)
+    with _MODEL_RATE_LIMIT_LOCK:
+        now = time.monotonic()
+        next_allowed = _MODEL_NEXT_ALLOWED_AT.get(model_key, now)
+        wait_s = max(0.0, next_allowed - now)
+        _MODEL_NEXT_ALLOWED_AT[model_key] = max(next_allowed, now) + interval
+    if wait_s > 0:
+        time.sleep(wait_s)
+
+
+
+def _bump_model_cooldown(model: Optional[str], wait_s: float) -> None:
+    model_key = model or "default"
+    with _MODEL_RATE_LIMIT_LOCK:
+        now = time.monotonic()
+        current = _MODEL_NEXT_ALLOWED_AT.get(model_key, now)
+        _MODEL_NEXT_ALLOWED_AT[model_key] = max(current, now) + max(wait_s, 0.0)
+
+
+
+def _retry_after_seconds(exc: Exception) -> Optional[float]:
+    if not isinstance(exc, urllib.error.HTTPError):
+        return None
+    headers = getattr(exc, "headers", None)
+    if not headers:
+        return None
+    retry_after = headers.get("Retry-After")
+    if not retry_after:
+        return None
+    try:
+        return float(retry_after)
+    except Exception:
+        return None
 
 def _extract_first_json_object(text: str) -> dict:
     text = (text or "").strip()
@@ -52,8 +118,16 @@ def _extract_first_json_object(text: str) -> dict:
 
 
 
+def _is_daily_limit_exceeded_message(message: Optional[str]) -> bool:
+    msg = (message or "").lower()
+    return "daily api request limit exceeded" in msg or "please try again tomorrow" in msg
+
+
+
 def classify_fetch_error(exc: Exception) -> str:
     if isinstance(exc, urllib.error.HTTPError):
+        if exc.code == 429 and _is_daily_limit_exceeded_message(str(exc)):
+            return "daily_limit_exceeded"
         return f"http_{exc.code}"
     if isinstance(exc, urllib.error.URLError):
         reason = getattr(exc, "reason", None)
@@ -72,7 +146,11 @@ def classify_fetch_error(exc: Exception) -> str:
 
 
 
-def _fetch_json_via_urllib(url: str, insecure: bool = False) -> dict:
+def _request_timeout_seconds(scope_mode: Optional[str]) -> float:
+    return _OPEN_METEO_TIMEOUT_SECONDS.get(scope_mode or "", _OPEN_METEO_TIMEOUT_SECONDS["default"])
+
+
+def _fetch_json_via_urllib(url: str, insecure: bool = False, timeout_s: Optional[float] = None) -> dict:
     context = ssl._create_unverified_context() if insecure else None
     req = urllib.request.Request(
         url,
@@ -81,33 +159,59 @@ def _fetch_json_via_urllib(url: str, insecure: bool = False) -> dict:
             "Accept": "application/json",
         },
     )
-    with urllib.request.urlopen(req, timeout=30, context=context) as resp:
-        return _extract_first_json_object(resp.read().decode("utf-8"))
+    timeout_s = timeout_s or _OPEN_METEO_TIMEOUT_SECONDS["default"]
+    try:
+        with urllib.request.urlopen(req, timeout=timeout_s, context=context) as resp:
+            return _extract_first_json_object(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        body = ""
+        try:
+            body = exc.read().decode("utf-8", errors="replace")
+        except Exception:
+            body = ""
+        reason = body.strip()[:400]
+        raise urllib.error.HTTPError(
+            exc.url,
+            exc.code,
+            f"{exc.reason}: {reason}" if reason else str(exc.reason),
+            exc.headers,
+            None,
+        )
 
 
 
-def fetch_openmeteo_payload(point: SamplePoint, target_dt: datetime, timezone: str, model: Optional[str] = None, max_retries: int = 2, retry_delay_s: float = 0.8) -> dict:
+def fetch_openmeteo_payload(point: SamplePoint, target_dt: datetime, timezone: str, model: Optional[str] = None, max_retries: int = 3, retry_delay_s: float = 0.8, scope_mode: Optional[str] = None) -> dict:
     # Query target date + next date, so the night window can include next-morning hours.
     end_date = (target_dt.date() + timedelta(days=1)).isoformat()
     params = {
         "latitude": point.lat,
         "longitude": point.lng,
-        "hourly": "cloud_cover,relative_humidity_2m,visibility,wind_speed_10m,dew_point_2m,precipitation,cloud_base_height,weather_code",
+        # Open-Meteo forecast currently rejects `cloud_base_height` on this endpoint.
+        # Use low/mid/high cloud-cover layers instead; they are supported and are more
+        # honest than faking cloud-base height. Terrain handling happens downstream.
+        "hourly": "cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,relative_humidity_2m,visibility,wind_speed_10m,wind_gusts_10m,temperature_2m,dew_point_2m,precipitation,weather_code",
         "timezone": timezone,
         "start_date": target_dt.date().isoformat(),
         "end_date": end_date,
     }
-    if model and model != "best_match":
+    if model:
         params["models"] = model
     url = OPEN_METEO_FORECAST_URL + "?" + urllib.parse.urlencode(params)
 
     last_exc: Optional[Exception] = None
-    total_attempts = max(1, max_retries + 1)
+    effective_retries = max_retries
+    if scope_mode == "national":
+        # National scans are broad sweeps: fail fast instead of stalling the whole run.
+        effective_retries = min(max_retries, 1)
+    total_attempts = max(1, effective_retries + 1)
     for attempt in range(total_attempts):
         point.fetch_attempts = attempt + 1
         insecure = attempt > 0
+        _apply_model_rate_limit(model, scope_mode)
         try:
-            payload = _fetch_json_via_urllib(url, insecure=insecure)
+            payload = _fetch_json_via_urllib(url, insecure=insecure, timeout_s=_request_timeout_seconds(scope_mode))
+            if scope_mode == "national" and attempt > 0:
+                weather_progress_log("fetch_point:recovered", model=model, point_id=point.id, attempt=attempt + 1)
             point.fetch_recovered = attempt > 0
             point.fetch_error_type = None
             point.fetch_error_message = None
@@ -116,8 +220,19 @@ def fetch_openmeteo_payload(point: SamplePoint, target_dt: datetime, timezone: s
             last_exc = exc
             point.fetch_error_type = classify_fetch_error(exc)
             point.fetch_error_message = str(exc)[:240]
+            if scope_mode == "national":
+                weather_progress_log("fetch_point:error", model=model, point_id=point.id, attempt=attempt + 1, error_type=point.fetch_error_type, message=point.fetch_error_message)
+            if point.fetch_error_type == "daily_limit_exceeded":
+                _bump_model_cooldown(model, 12 * 3600)
+                raise last_exc
             if attempt < total_attempts - 1:
-                time.sleep(retry_delay_s * (attempt + 1))
+                if point.fetch_error_type == "http_429":
+                    retry_after_s = _retry_after_seconds(exc)
+                    wait_s = max(retry_delay_s * (2 ** attempt), retry_after_s or 0.0, 2.0)
+                    _bump_model_cooldown(model, wait_s)
+                    time.sleep(wait_s)
+                else:
+                    time.sleep(retry_delay_s * (attempt + 1))
     raise last_exc
 
 
@@ -126,12 +241,19 @@ def hourly_index(payload: dict, target_dt: datetime) -> int:
     times = payload.get("hourly", {}).get("time", [])
     if not times:
         raise RuntimeError("No hourly timeline")
-    target_key = target_dt.replace(minute=0, second=0, microsecond=0).isoformat(timespec="minutes")
+
+    # Open-Meteo returns local wall-clock times for the requested timezone.
+    # When caller passes an aware datetime (e.g. +08:00), normalize to the same
+    # wall-clock naive representation before matching/comparing.
+    target_hour = target_dt.replace(minute=0, second=0, microsecond=0)
+    if target_hour.tzinfo is not None:
+        target_hour = target_hour.replace(tzinfo=None)
+
+    target_key = target_hour.isoformat(timespec="minutes")
     try:
         return times.index(target_key)
     except ValueError:
         parsed = [datetime.fromisoformat(t) for t in times]
-        target_hour = target_dt.replace(minute=0, second=0, microsecond=0)
         return min(range(len(parsed)), key=lambda i: abs((parsed[i] - target_hour).total_seconds()))
 
 
@@ -146,6 +268,9 @@ def hydrate_mock_weather(points: List[SamplePoint], target_dt: datetime, mode: s
         night_hum_vals = [deterministic_value(f"{base}:humidity:h{h}", 20, 80) for h in range(night_hours)]
         night_vis_vals = [deterministic_value(f"{base}:vis:h{h}", 15000, 25000) for h in range(night_hours)]
         night_wind_vals = [deterministic_value(f"{base}:wind:h{h}", 0.5, 10) for h in range(night_hours)]
+        night_temp_vals = [deterministic_value(f"{base}:temp:h{h}", -8, 8) for h in range(night_hours)]
+        night_gust_vals = [w + deterministic_value(f"{base}:gust:h{h}", 0.5, 6.0) for h, w in enumerate(night_wind_vals)]
+        night_dew_vals = [t - deterministic_value(f"{base}:dewspread:h{h}", 1.0, 6.0) for h, t in enumerate(night_temp_vals)]
 
         # Single-hour: use hour matching target_dt (approx 23:00, i.e. 18:00 + 5h)
         snapshot_idx = min(5, night_hours - 1)
@@ -160,6 +285,9 @@ def hydrate_mock_weather(points: List[SamplePoint], target_dt: datetime, mode: s
         p.night_avg_humidity = round(sum(night_hum_vals) / len(night_hum_vals), 1)
         p.night_avg_visibility = round(sum(night_vis_vals) / len(night_vis_vals), 0)
         p.night_avg_wind = round(sum(night_wind_vals) / len(night_wind_vals), 1)
+        p.night_avg_temperature = round(sum(night_temp_vals) / len(night_temp_vals), 1)
+        p.night_max_gust = round(max(night_gust_vals), 1)
+        p.night_avg_dew_point = round(sum(night_dew_vals) / len(night_dew_vals), 1)
         p.elevation_m = deterministic_value(base + ":elevation", 1500, 4200)
 
         # Moon interference (mock: based on moon phase)
@@ -181,10 +309,10 @@ def hydrate_mock_weather(points: List[SamplePoint], target_dt: datetime, mode: s
 
 
 
-def fetch_point_weather(point: SamplePoint, target_dt: datetime, timezone: str, mode: str, model: Optional[str] = None) -> SamplePoint:
+def fetch_point_weather(point: SamplePoint, target_dt: datetime, timezone: str, mode: str, model: Optional[str] = None, scope_mode: Optional[str] = None) -> SamplePoint:
     """Fetch weather for a point, compute single-hour snapshot + nightly aggregation."""
-    payload = fetch_openmeteo_payload(point, target_dt, timezone, model=model)
-    point.weather_model = model or "best_match"
+    payload = fetch_openmeteo_payload(point, target_dt, timezone, model=model, scope_mode=scope_mode)
+    point.weather_model = model or "joint_dual_with_optional_icon"
     hourly = payload.get("hourly", {})
     times = hourly.get("time", [])
 
@@ -202,6 +330,8 @@ def fetch_point_weather(point: SamplePoint, target_dt: datetime, timezone: str, 
         start_h, end_h = window
         # Collect hourly indices within the night window
         night_cloud, night_hum, night_vis, night_wind = [], [], [], []
+        night_temp, night_gust = [], []
+        night_cloud_low, night_cloud_mid, night_cloud_high = [], [], []
         night_dew, night_precip = [], []
         night_cloud_base = []
         night_weather_codes = []
@@ -225,6 +355,11 @@ def fetch_point_weather(point: SamplePoint, target_dt: datetime, timezone: str, 
             rh = hourly.get("relative_humidity_2m", [None])[i] if hourly.get("relative_humidity_2m") else None
             vis = hourly.get("visibility", [None])[i] if hourly.get("visibility") else None
             ws = hourly.get("wind_speed_10m", [None])[i] if hourly.get("wind_speed_10m") else None
+            gust = hourly.get("wind_gusts_10m", [None])[i] if hourly.get("wind_gusts_10m") else None
+            temp = hourly.get("temperature_2m", [None])[i] if hourly.get("temperature_2m") else None
+            low = hourly.get("cloud_cover_low", [None])[i] if hourly.get("cloud_cover_low") else None
+            mid = hourly.get("cloud_cover_mid", [None])[i] if hourly.get("cloud_cover_mid") else None
+            high = hourly.get("cloud_cover_high", [None])[i] if hourly.get("cloud_cover_high") else None
             dew = hourly.get("dew_point_2m", [None])[i] if hourly.get("dew_point_2m") else None
             precip = hourly.get("precipitation", [None])[i] if hourly.get("precipitation") else None
             cb = hourly.get("cloud_base_height", [None])[i] if hourly.get("cloud_base_height") else None
@@ -239,6 +374,16 @@ def fetch_point_weather(point: SamplePoint, target_dt: datetime, timezone: str, 
                 night_vis.append(vis)
             if ws is not None:
                 night_wind.append(ws)
+            if gust is not None:
+                night_gust.append(gust)
+            if temp is not None:
+                night_temp.append(temp)
+            if low is not None:
+                night_cloud_low.append(low)
+            if mid is not None:
+                night_cloud_mid.append(mid)
+            if high is not None:
+                night_cloud_high.append(high)
             if dew is not None:
                 night_dew.append(dew)
             if precip is not None:
@@ -261,6 +406,11 @@ def fetch_point_weather(point: SamplePoint, target_dt: datetime, timezone: str, 
             point.night_avg_humidity = sum(night_hum) / len(night_hum) if night_hum else None
             point.night_avg_visibility = sum(night_vis) / len(night_vis) if night_vis else None
             point.night_avg_wind = sum(night_wind) / len(night_wind) if night_wind else None
+            point.night_avg_temperature = round(sum(night_temp) / len(night_temp), 1) if night_temp else None
+            point.night_max_gust = round(max(night_gust), 1) if night_gust else None
+            point.night_avg_cloud_low = round(sum(night_cloud_low) / len(night_cloud_low), 1) if night_cloud_low else None
+            point.night_avg_cloud_mid = round(sum(night_cloud_mid) / len(night_cloud_mid), 1) if night_cloud_mid else None
+            point.night_avg_cloud_high = round(sum(night_cloud_high) / len(night_cloud_high), 1) if night_cloud_high else None
             point.night_avg_dew_point = round(sum(night_dew) / len(night_dew), 1) if night_dew else None
             point.night_max_precip = max(night_precip) if night_precip else None
             point.night_min_cloud_base = min(night_cloud_base) if night_cloud_base else None
@@ -303,6 +453,11 @@ def fetch_point_weather(point: SamplePoint, target_dt: datetime, timezone: str, 
             point.night_avg_humidity = point.humidity
             point.night_avg_visibility = point.visibility_m
             point.night_avg_wind = point.wind_speed
+            point.night_avg_temperature = None
+            point.night_max_gust = None
+            point.night_avg_cloud_low = None
+            point.night_avg_cloud_mid = None
+            point.night_avg_cloud_high = None
             point.moon_interference = 50.0  # uncertain
             point.usable_hours = 0.0
             point.longest_usable_streak_hours = 0.0
@@ -320,7 +475,7 @@ def fetch_point_weather(point: SamplePoint, target_dt: datetime, timezone: str, 
 
 
 def _mark_fetch_failure(point: SamplePoint, model: Optional[str], exc: Exception) -> None:
-    point.weather_model = model or "best_match"
+    point.weather_model = model or "joint_dual_with_optional_icon"
     point.weather_source = "fetch_error"
     point.fetch_error_type = classify_fetch_error(exc)
     point.fetch_error_message = str(exc)[:240]
@@ -333,6 +488,8 @@ def _mark_fetch_failure(point: SamplePoint, model: Optional[str], exc: Exception
     point.night_avg_humidity = None
     point.night_avg_visibility = None
     point.night_avg_wind = None
+    point.night_avg_temperature = None
+    point.night_max_gust = None
     point.moon_interference = None
     point.usable_hours = 0.0
     point.longest_usable_streak_hours = 0.0
@@ -358,6 +515,8 @@ def _copy_fetch_result(original: SamplePoint, updated: SamplePoint) -> None:
     original.night_avg_humidity = updated.night_avg_humidity
     original.night_avg_visibility = updated.night_avg_visibility
     original.night_avg_wind = updated.night_avg_wind
+    original.night_avg_temperature = updated.night_avg_temperature
+    original.night_max_gust = updated.night_max_gust
     original.moon_interference = updated.moon_interference
     original.usable_hours = updated.usable_hours
     original.longest_usable_streak_hours = updated.longest_usable_streak_hours
@@ -377,43 +536,83 @@ def _copy_fetch_result(original: SamplePoint, updated: SamplePoint) -> None:
 
 
 
-def hydrate_real_weather(points: List[SamplePoint], target_dt: datetime, timezone: str, mode: str, max_workers: int, model: Optional[str] = None) -> None:
-    primary_workers = max(1, min(max_workers, 6))
-    retry_workers = 1 if len(points) <= 12 else min(2, primary_workers)
+def hydrate_real_weather(points: List[SamplePoint], target_dt: datetime, timezone: str, mode: str, max_workers: int, model: Optional[str] = None, scope_mode: Optional[str] = None) -> None:
+    if scope_mode == "national":
+        primary_workers = max(1, min(max_workers, 4))
+        retry_workers = 1 if len(points) <= 12 else min(2, primary_workers)
+    else:
+        # 单区复核 / 小范围查询：低频、串行，避免把限流打满
+        primary_workers = 1
+        retry_workers = 1
     failed_points: List[SamplePoint] = []
 
+    if scope_mode == "national":
+        weather_progress_log("hydrate:start", model=model, point_count=len(points), primary_workers=primary_workers, retry_workers=retry_workers)
+
+    completed = 0
+    total = len(points)
     with ThreadPoolExecutor(max_workers=primary_workers) as ex:
-        future_map = {ex.submit(fetch_point_weather, p, target_dt, timezone, mode, model): p for p in points}
+        future_map = {ex.submit(fetch_point_weather, p, target_dt, timezone, mode, model, scope_mode): p for p in points}
         for fut in as_completed(future_map):
             original = future_map[fut]
+            completed += 1
             try:
                 updated = fut.result()
             except Exception as exc:
                 failed_points.append(original)
                 _mark_fetch_failure(original, model, exc)
-                continue
-            _copy_fetch_result(original, updated)
+            else:
+                _copy_fetch_result(original, updated)
+
+            if scope_mode == "national" and (completed == total or completed % 25 == 0):
+                error_breakdown: Dict[str, int] = {}
+                for p in failed_points:
+                    key = p.fetch_error_type or "unknown"
+                    error_breakdown[key] = error_breakdown.get(key, 0) + 1
+                weather_progress_log("hydrate:progress", model=model, completed=completed, total=total, failed=len(failed_points), error_breakdown=error_breakdown)
 
     if not failed_points:
+        if scope_mode == "national":
+            weather_progress_log("hydrate:done", model=model, total=total, failed=0, retried=0)
         return
 
-    time.sleep(0.8)
+    retry_error_types = [p.fetch_error_type for p in failed_points]
+    retry_wait = 2.0 if any((p.fetch_error_type == 'http_429') for p in failed_points) else 0.8
+    if scope_mode == "national":
+        weather_progress_log("hydrate:retry_start", model=model, retry_count=len(failed_points), retry_wait_seconds=retry_wait, retry_error_types=retry_error_types)
+
+    time.sleep(retry_wait)
+    retry_failed_points: List[SamplePoint] = []
+    retry_completed = 0
+    retry_total = len(failed_points)
     with ThreadPoolExecutor(max_workers=retry_workers) as ex:
-        future_map = {ex.submit(fetch_point_weather, p, target_dt, timezone, mode, model): p for p in failed_points}
+        future_map = {ex.submit(fetch_point_weather, p, target_dt, timezone, mode, model, scope_mode): p for p in failed_points}
         for fut in as_completed(future_map):
             original = future_map[fut]
+            retry_completed += 1
             try:
                 updated = fut.result()
             except Exception as exc:
                 _mark_fetch_failure(original, model, exc)
-                continue
-            _copy_fetch_result(original, updated)
+                retry_failed_points.append(original)
+            else:
+                _copy_fetch_result(original, updated)
+
+            if scope_mode == "national" and (retry_completed == retry_total or retry_completed % 10 == 0):
+                error_breakdown: Dict[str, int] = {}
+                for p in retry_failed_points:
+                    key = p.fetch_error_type or "unknown"
+                    error_breakdown[key] = error_breakdown.get(key, 0) + 1
+                weather_progress_log("hydrate:retry_progress", model=model, completed=retry_completed, total=retry_total, still_failed=len(retry_failed_points), error_breakdown=error_breakdown)
+
+    if scope_mode == "national":
+        weather_progress_log("hydrate:done", model=model, total=total, failed=len(retry_failed_points), retried=retry_total)
 
 
 
-def hydrate_weather(points: List[SamplePoint], real_weather: bool, target_dt: datetime, timezone: str, mode: str, max_workers: int, model: Optional[str] = None) -> None:
+def hydrate_weather(points: List[SamplePoint], real_weather: bool, target_dt: datetime, timezone: str, mode: str, max_workers: int, model: Optional[str] = None, scope_mode: Optional[str] = None) -> None:
     if real_weather:
-        hydrate_real_weather(points, target_dt, timezone, mode, max_workers=max_workers, model=model)
+        hydrate_real_weather(points, target_dt, timezone, mode, max_workers=max_workers, model=model, scope_mode=scope_mode)
     else:
         hydrate_mock_weather(points, target_dt, mode)
 
