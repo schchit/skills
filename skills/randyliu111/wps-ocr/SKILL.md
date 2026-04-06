@@ -9,7 +9,7 @@ metadata:
       pip:
         - requests
     required_env_vars:
-      - WPS_OCR_CLIENT_SECRET
+      - WPS_OCR_ACCESS_KEY
     allowed_domains:
       - aiwrite.wps.cn
     security_notes: "Requires WPS OCR credentials via environment variables. No credential hardcoding. Enforces domain allowlist in code."
@@ -17,9 +17,11 @@ metadata:
 
 # 🧭 Must-Read Before Use (30 Seconds)
 
-> [!WARNING] ** ⚠️ Important Privacy & Data Flow Notice **
+> [!WARNING]
+> **⚠️ Important Privacy & Data Flow Notice**
 > - **Service Interaction Required**: This skill will send the file you provide to the official Kingsoft Office server (aiwrite.wps.cn) for recognition.
 > - **Data Visibility**: Kingsoft Office services will access and process the content of your file.
+> - **This skill supports local file uploads, and will only verify the file type without performing any verification on the path.**
 
 ✅ **Recommended Method: Environment Variables (Permission-Free, Instant Effect, Webchat-Friendly)**
 ```bash
