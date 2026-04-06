@@ -3,9 +3,15 @@
   "slug": "zzheng",
   "displayName": "zzheng",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1774865819219,
-    "commit": "https://github.com/openclaw/skills/commit/ea0f9228b9590512a18c84945a62f4ec6357c3ea"
+    "version": "1.0.3",
+    "publishedAt": 1775114885223,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1774865819219,
+      "commit": "https://github.com/openclaw/skills/commit/ea0f9228b9590512a18c84945a62f4ec6357c3ea"
+    }
+  ]
 }
