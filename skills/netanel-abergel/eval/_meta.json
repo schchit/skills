@@ -3,9 +3,15 @@
   "slug": "eval",
   "displayName": "Eval",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775042338809,
-    "commit": "https://github.com/openclaw/skills/commit/052539d31ecca374c0411d58ff9846e726f36f40"
+    "version": "1.1.1",
+    "publishedAt": 1775332276611,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775042338809,
+      "commit": "https://github.com/openclaw/skills/commit/052539d31ecca374c0411d58ff9846e726f36f40"
+    }
+  ]
 }

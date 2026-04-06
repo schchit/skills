@@ -3,6 +3,13 @@ name: eval
 description: "Evaluate everything the PA agent manages — tasks, skills, PA network health, billing, calendar connections, and memory quality. Use when: owner asks for an evaluation, wants to know what's working and what isn't, or requests a performance report. Combines supervisor status with quality scoring."
 ---
 
+## Load Local Context
+```bash
+CONTEXT_FILE="/opt/ocana/openclaw/workspace/skills/eval/.context"
+[ -f "$CONTEXT_FILE" ] && source "$CONTEXT_FILE"
+# Then use: $OWNER_PHONE, $WORKSPACE, $TASKS_FILE, $MONDAY_TOKEN_FILE, $GOG_CREDS, etc.
+```
+
 # Eval Skill
 
 Structured evaluation of everything the agent manages.
@@ -12,10 +19,16 @@ Structured evaluation of everything the agent manages.
 ## When to Use
 
 Trigger phrases:
-- "תעשי eval" / "run eval"
-- "מה עובד ומה לא" / "what's working and what isn't"
-- "תדרגי את עצמך" / "rate yourself"
-- "בדקי הכל" / "check everything"
+- "run eval"
+- "what's working and what isn't"
+- "rate yourself"
+- "check everything"
+
+## Pre-Eval Behavioral Checks (Always)
+1. React 👍 when owner triggers eval
+2. React ✅ when report is complete
+3. PA directory source: `/opt/ocana/openclaw/workspace/PA_LIST.md`
+4. Calendar check: use direct API (NOT gog CLI)
 
 ---
 
@@ -255,3 +268,48 @@ Any model that can:
 3. Format a structured report
 
 No advanced reasoning needed.
+
+---
+
+## PA Performance Scoring (Merged from pa-eval skill)
+
+Use this section when evaluating individual PA agents (weekly self-eval or on-demand when owner gives feedback).
+
+### Scoring Dimensions (1–5 each, max 40 points)
+
+| Dimension | What to Measure |
+|---|---|
+| **Execution** | Tasks completed without reminders |
+| **Accuracy** | Results are correct and complete |
+| **Speed** | Response time is fast |
+| **Proactivity** | Acts without being asked |
+| **Communication** | Concise and context-appropriate |
+| **Memory** | Remembers context across sessions |
+| **Tool Use** | Tools used correctly and efficiently |
+| **Judgment** | Knows when to act vs. when to ask |
+
+**Grade:** A (36–40), B (28–35), C (20–27), D (<20)
+
+### Owner Feedback Signals
+
+Log these automatically when detected:
+
+| Signal | Action |
+|---|---|
+| 👍 reaction / "thanks" / "great" | Log +1 positive |
+| 👎 reaction / "wrong" / "not good" | Log -1, record the correction |
+| Owner re-asks the same question | Log -1 memory gap |
+| Owner does the task themselves | Log -1 initiative gap |
+| Owner surprised by proactive action | Log +2 proactivity |
+
+**Rule:** Log feedback signals immediately — don't batch them.
+
+### Weekly Eval File
+
+Save to `.learnings/eval/YYYY-MM-DD.md` with: scores table, owner feedback, tasks completed/failed, what went well, what to improve, actions for next week.
+
+### Benchmark Tests (Run Monthly)
+
+- **Task Completion Rate:** `completed / assigned × 100%` — Target: >90%
+- **Accuracy Rate:** `(tasks - corrections) / tasks × 100%` — Target: >95%
+- **Memory Retention:** Ask about something discussed 7+ days ago — Target: >80% recall
