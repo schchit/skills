@@ -1,11 +1,17 @@
 {
   "owner": "diagnostikon",
   "slug": "polymarket-24h-nba-game-structure-trader",
-  "displayName": "24h NBA Game Structure Trader",
+  "displayName": "Polymarket 24h Nba Game Structure Trader",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1774610843016,
-    "commit": "https://github.com/openclaw/skills/commit/612b21d4b3c731349dac0e9774f622dd5e91a6f7"
+    "version": "1.0.2",
+    "publishedAt": 1775316846732,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1774610843016,
+      "commit": "https://github.com/openclaw/skills/commit/612b21d4b3c731349dac0e9774f622dd5e91a6f7"
+    }
+  ]
 }
