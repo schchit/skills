@@ -129,6 +129,13 @@ def main():
     )
 
     parser.add_argument(
+        "--gwas-source",
+        choices=["opengwas", "gwas_catalog", "fingen", "ukbiobank", "all"],
+        default="opengwas",
+        help="GWAS data source: opengwas (default), gwas_catalog (EMBL-EBI), fingen (FinnGen), ukbiobank (UK Biobank), all (all sources combined)"
+    )
+
+    parser.add_argument(
         "--output-dir",
         default="./output",
         help="Root directory for output files (default: ./output)"
@@ -201,6 +208,7 @@ def main():
                 base_url=keys["base_url"],
                 gwas_token=keys["opengwas_jwt"],
                 opengwas_mode=args.opengwas_mode,
+                gwas_source=args.gwas_source,
                 mr_quality_evaluation=args.strobe_mr,
                 mrlap=args.mrlap
             )
@@ -221,6 +229,7 @@ def main():
                 base_url=keys["base_url"],
                 gwas_token=keys["opengwas_jwt"],
                 opengwas_mode=args.opengwas_mode,
+                gwas_source=args.gwas_source,
                 mr_quality_evaluation=args.strobe_mr,
                 mrlap=args.mrlap
             )

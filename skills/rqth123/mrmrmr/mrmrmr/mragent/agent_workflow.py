@@ -4,7 +4,8 @@ from mragent.agent_tool import *
 
 from mragent.template_text import MRorNot_text, synonyms_text, gwas_id_text, pubmed_text, LLM_MR_template, \
     LLM_MR_MOE_template, \
-    LLM_conclusion_template, LLM_Introduction_template, pubmed_text_obo, LLM_template_MR_effect_evaluation
+    LLM_conclusion_template, LLM_Introduction_template, pubmed_text_obo, LLM_template_MR_effect_evaluation, \
+    gwas_catalog_id_text, fingen_id_text, ukbiobank_id_text
 import os
 
 from reportlab.lib.pagesizes import letter
@@ -24,8 +25,9 @@ class MRAgent:
     def __init__(self, mode='O', exposure=None, outcome=None, AI_key=None, model='MR', num=100, bidirectional=False,
                  synonyms=True, introduction=True, LLM_model='gpt-4o', model_type='openai', base_url=None,
                  gwas_token=None,
-                 opengwas_mode='online', mr_quality_evaluation=False, mr_quality_evaluation_key_item=None, mrlap=False):
+                 opengwas_mode='online', gwas_source='opengwas', mr_quality_evaluation=False, mr_quality_evaluation_key_item=None, mrlap=False):
         # 加多一个参数，控制是否从csv中读取gwas列表'csv'或'online'
+        # gwas_source: 'opengwas', 'gwas_catalog', 'fingen', 'ukbiobank', 'all'
 
         self.exposure = exposure
         self.outcome = outcome
@@ -40,6 +42,8 @@ class MRAgent:
         self.synonyms = synonyms
         # 是否进行引言
         self.introduction = introduction
+        # GWAS data source
+        self.gwas_source = gwas_source
         # 若模式为E，则将outcome赋值为exposure，下方步骤中outcome和exposure是等价的
         if self.mode == 'E':
             self.outcome = exposure
@@ -338,11 +342,34 @@ class MRAgent:
         df = pd.read_csv(step3_path)
         # print(df)
 
-        # 4.2 查看OE是否在opengwas中
-        if self.opengwas_mode == 'csv':
-            df['opengwas'] = df.apply(lambda x: self.check_keyword_in_opengwas_csv(x['OE']), axis=1)
-        elif self.opengwas_mode == 'online':
-            df['opengwas'] = df.apply(lambda x: check_keyword_in_opengwas(x['OE']), axis=1)
+        # 4.2 查看OE是否在选定的GWAS数据源中
+        if self.gwas_source == 'opengwas':
+            if self.opengwas_mode == 'csv':
+                df['gwas_available'] = df.apply(lambda x: self.check_keyword_in_opengwas_csv(x['OE']), axis=1)
+            elif self.opengwas_mode == 'online':
+                df['gwas_available'] = df.apply(lambda x: check_keyword_in_opengwas(x['OE']), axis=1)
+        elif self.gwas_source == 'gwas_catalog':
+            df['gwas_available'] = df.apply(lambda x: check_keyword_in_gwas_catalog(x['OE']), axis=1)
+        elif self.gwas_source == 'fingen':
+            df['gwas_available'] = df.apply(lambda x: check_keyword_in_fingen(x['OE']), axis=1)
+        elif self.gwas_source == 'ukbiobank':
+            df['gwas_available'] = df.apply(lambda x: check_keyword_in_ukbiobank(x['OE']), axis=1)
+        elif self.gwas_source == 'all':
+            # Check all sources and return True if any source has data
+            def check_all_sources(oe):
+                return (
+                    check_keyword_in_opengwas(oe) or
+                    check_keyword_in_gwas_catalog(oe) or
+                    check_keyword_in_fingen(oe) or
+                    check_keyword_in_ukbiobank(oe)
+                )
+            df['gwas_available'] = df.apply(lambda x: check_all_sources(x['OE']), axis=1)
+        else:
+            # Default to opengwas online mode
+            df['gwas_available'] = df.apply(lambda x: check_keyword_in_opengwas(x['OE']), axis=1)
+
+        # 保持向后兼容，同时设置opengwas列
+        df['opengwas'] = df['gwas_available']
         print(df)
 
         # 4.3 保存为csv
@@ -396,12 +423,50 @@ class MRAgent:
         return json_list
 
     def step5_get_gwas_id(self, keyword):
-        if self.opengwas_mode == 'online':
-            json_list = get_gwas_id(keyword)
-        elif self.opengwas_mode == 'csv':
-            json_list = self.get_gwas_id_csv(keyword)
-        # get_gwas_id改为csv模式
-        template = gwas_id_text
+        if self.gwas_source == 'opengwas':
+            if self.opengwas_mode == 'online':
+                json_list = get_gwas_id(keyword)
+            elif self.opengwas_mode == 'csv':
+                json_list = self.get_gwas_id_csv(keyword)
+            template = gwas_id_text
+        elif self.gwas_source == 'gwas_catalog':
+            json_list = get_gwas_id_gwas_catalog(keyword)
+            template = gwas_catalog_id_text
+        elif self.gwas_source == 'fingen':
+            json_list = get_gwas_id_fingen(keyword)
+            template = fingen_id_text
+        elif self.gwas_source == 'ukbiobank':
+            json_list = get_gwas_id_ukbiobank(keyword)
+            template = ukbiobank_id_text
+        elif self.gwas_source == 'all':
+            # Combine results from all sources
+            json_list = []
+            if self.opengwas_mode == 'online':
+                json_list.extend(get_gwas_id(keyword))
+            else:
+                json_list.extend(self.get_gwas_id_csv(keyword))
+            json_list.extend(get_gwas_id_gwas_catalog(keyword))
+            json_list.extend(get_gwas_id_fingen(keyword))
+            json_list.extend(get_gwas_id_ukbiobank(keyword))
+            # Remove duplicates, limit to 50
+            seen = set()
+            unique_list = []
+            for item in json_list:
+                if item not in seen:
+                    seen.add(item)
+                    unique_list.append(item)
+            if len(unique_list) > 50:
+                unique_list = unique_list[:50]
+            json_list = unique_list
+            template = gwas_id_text
+        else:
+            # Default to opengwas
+            if self.opengwas_mode == 'online':
+                json_list = get_gwas_id(keyword)
+            else:
+                json_list = self.get_gwas_id_csv(keyword)
+            template = gwas_id_text
+
         t = template.format(keyword=keyword, json_list=json_list)
         gpt_out = llm_chat(t, self.LLM_model, self.AI_key, self.base_url, self.model_type)
         print(gpt_out)

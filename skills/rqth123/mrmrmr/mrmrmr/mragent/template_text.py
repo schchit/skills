@@ -53,6 +53,51 @@ There is no need to output any other text, including steps, explanations, though
 json list:
 {json_list}"""
 
+gwas_catalog_id_text = """When conducting a Mendelian randomization study, it is often necessary to find the SNPs associated with the study in the GWAS Catalog database and record the study ID.
+Below is the result of searching in GWAS Catalog using the keyword {keyword}, output in json list format, saving the study ID, trait, PMID, author, publication date, sample size, and genotyping platform.
+I want to get the most suitable GWAS Catalog study IDs, please help me with the following tasks:
+1. You are asked to read the Trait and find out if there is a Trait that directly matches {keyword}, and if not, find the Trait that is most relevant to {keyword}.
+2. If there are several matching or related Trait at the same time, these can be output at the same time.
+3. Output the final corresponding study IDs (study_id). Output in python list format.
+
+Note that you only need to output study_id and the comma in python list format:
+['study_id1', 'study_id2', …, 'study_idn']
+
+There is no need to output any other text, including steps, explanations, thought processes, etc. There is no need to output any additional symbols. (including '' "" . :).
+
+json list:
+{json_list}"""
+
+fingen_id_text = """When conducting a Mendelian randomization study, it is often necessary to find the SNPs associated with the study in the FinnGen database and record the phenotype code.
+Below is the result of searching in FinnGen using the keyword {keyword}, output in json list format, saving the phenocode, name, description, category, number of cases, and population.
+I want to get the most suitable FinnGen phenotype IDs, please help me with the following tasks:
+1. You are asked to read the name and description and find out if there is a phenotype that directly matches {keyword}, and if not, find the phenotype that is most relevant to {keyword}.
+2. If there are several matching or related phenotypes at the same time, these can be output at the same time.
+3. Output the final corresponding phenocodes (phenocode). Output in python list format.
+
+Note that you only need to output phenocode and the comma in python list format:
+['phenocode1', 'phenocode2', …, 'phenocoden']
+
+There is no need to output any other text, including steps, explanations, thought processes, etc. There is no need to output any additional symbols. (including '' "" . :).
+
+json list:
+{json_list}"""
+
+ukbiobank_id_text = """When conducting a Mendelian randomization study, it is often necessary to find the SNPs associated with the study in the UK Biobank database via OpenGWAS and record the GWAS ID.
+Below is the result of searching in UK Biobank using the keyword {keyword}, output in json list format, saving the GWAS ID, trait, year, consortium, sample size, number of SNPs, and population.
+I want to get the most suitable UK Biobank GWAS IDs, please help me with the following tasks:
+1. You are asked to read the Trait and find out if there is a Trait that directly matches {keyword}, and if not, find the Trait that is most relevant to {keyword}.
+2. If there are several matching or related Trait at the same time, these can be output at the same time.
+3. Output the final corresponding GWAS ID. Output in python list format.
+
+Note that you only need to output gwas_id and the comma in python list format:
+['gwas_id1', 'gwas_id2', …, 'gwas_idn']
+
+There is no need to output any other text, including steps, explanations, thought processes, etc. There is no need to output any additional symbols. (including '' "" . :).
+
+json list:
+{json_list}"""
+
 LLM_MR_template = """Below is a csv file of the results of Mendelian randomization analysis with Exposure: {Exposure} (GWAS ID: {Exposure_id}) and Outcome: {Outcome} (GWAS ID: {Outcome_id}), please read and understand the results in the table and generate a paragraph describing the results in detail in academic language. Typically, significance can be judged by the Inverse variance weighted method of pval<0.05. or>1 there is a positive correlation and or<1 there is a negative correlation.
 
 #Mendelian randomization analysis results table

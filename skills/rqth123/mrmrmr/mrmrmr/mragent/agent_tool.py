@@ -707,3 +707,216 @@ def get_synonyms(term, api_key):
     print(synonyms)
 
     return synonyms
+
+
+# ========== GWAS Catalog API functions ==========
+
+def check_keyword_in_gwas_catalog(keyword):
+    """Check if a keyword exists in GWAS Catalog via API"""
+    url = "https://www.ebi.ac.uk/gwas/rest/api/studies/search"
+    params = {
+        "pubmedId": "",
+        "studyId": "",
+        "trait": keyword
+    }
+    try:
+        response = requests.get(url, params=params)
+        if response.status_code == 200:
+            data = response.json()
+            count = data.get("_embedded", {}).get("studies", []).__len__()
+            if count > 0:
+                print(f"'{keyword}' found in GWAS Catalog ({count} studies)")
+                return True
+            else:
+                print(f"No studies related to '{keyword}' found in GWAS Catalog")
+                return False
+        else:
+            print(f"GWAS Catalog API error: Status code {response.status_code}")
+            return None
+    except Exception as e:
+        print(f"Error querying GWAS Catalog: {e}")
+        return None
+
+
+def get_gwas_id_gwas_catalog(keyword, max_results=30):
+    """Get GWAS study information from GWAS Catalog via API"""
+    url = "https://www.ebi.ac.uk/gwas/rest/api/studies/search"
+    params = {
+        "trait": keyword,
+        "size": max_results
+    }
+    results = []
+    try:
+        response = requests.get(url, params=params)
+        if response.status_code == 200:
+            data = response.json()
+            studies = data.get("_embedded", {}).get("studies", [])
+            for study in studies:
+                study_info = {
+                    "study_id": study.get("studyId"),
+                    "trait": study.get("diseaseTrait", {}).get("trait"),
+                    "pmid": study.get("pubmedId"),
+                    "author": study.get("author"),
+                    "publication_date": study.get("publicationDate"),
+                    "sample_size": study.get("initialSampleSize"),
+                    "platform": study.get("genotypingPlatform")
+                }
+                results.append(json.dumps(study_info))
+            print(f"Found {len(results)} studies in GWAS Catalog for '{keyword}'")
+            return results
+        else:
+            print(f"GWAS Catalog API error: Status code {response.status_code}")
+            return []
+    except Exception as e:
+        print(f"Error fetching from GWAS Catalog: {e}")
+        return []
+
+
+def get_associations_gwas_catalog(study_id):
+    """Get SNP associations for a specific study from GWAS Catalog"""
+    url = f"https://www.ebi.ac.uk/gwas/rest/api/studies/{study_id}/associations"
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"GWAS Catalog associations API error: {response.status_code}")
+            return None
+    except Exception as e:
+        print(f"Error fetching associations: {e}")
+        return None
+
+
+# ========== FinnGen API functions ==========
+
+def check_keyword_in_fingen(keyword):
+    """Check if a keyword exists in FinnGen via API"""
+    url = "https://api.finngen.fi/api/phenos"
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            phenos = response.json()
+            matches = [p for p in phenos if keyword.lower() in p.get("name", "").lower()]
+            if len(matches) > 0:
+                print(f"'{keyword}' found in FinnGen ({len(matches)} phenotypes)")
+                return True
+            else:
+                print(f"No phenotypes related to '{keyword}' found in FinnGen")
+                return False
+        else:
+            print(f"FinnGen API error: Status code {response.status_code}")
+            return None
+    except Exception as e:
+        print(f"Error querying FinnGen: {e}")
+        return None
+
+
+def get_gwas_id_fingen(keyword, max_results=30):
+    """Get phenotype information from FinnGen via API"""
+    url = "https://api.finngen.fi/api/phenos"
+    results = []
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            phenos = response.json()
+            matches = [p for p in phenos if keyword.lower() in p.get("name", "").lower()]
+            if len(matches) > max_results:
+                matches = matches[:max_results]
+            for p in matches:
+                pheno_info = {
+                    "phenocode": p.get("phenocode"),
+                    "name": p.get("name"),
+                    "description": p.get("description"),
+                    "category": p.get("category"),
+                    "num_cases": p.get("num_cases"),
+                    "population": "Finnish"
+                }
+                results.append(json.dumps(pheno_info))
+            print(f"Found {len(results)} phenotypes in FinnGen for '{keyword}'")
+            return results
+        else:
+            print(f"FinnGen API error: Status code {response.status_code}")
+            return []
+    except Exception as e:
+        print(f"Error fetching from FinnGen: {e}")
+        return []
+
+
+def get_finnen_pheno_info(phenocode):
+    """Get detailed information for a specific FinnGen phenotype"""
+    url = f"https://api.finngen.fi/api/phenos/{phenocode}"
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"FinnGen phenotype API error: {response.status_code}")
+            return None
+    except Exception as e:
+        print(f"Error fetching FinnGen phenotype info: {e}")
+        return None
+
+
+# ========== UK Biobank API functions (via OpenGWAS) ==========
+
+def check_keyword_in_ukbiobank(keyword):
+    """Check if a keyword exists in UK Biobank GWAS data via OpenGWAS API"""
+    url = "https://gwas-api.mrcieu.ac.uk/search"
+    params = {
+        "q": keyword,
+        "pop": "European"
+    }
+    try:
+        response = requests.get(url, params=params)
+        if response.status_code == 200:
+            data = response.json()
+            # Filter for UK Biobank datasets (usually start with ukb-)
+            ukb_results = [d for d in data if d.get("id", "").startswith("ukb-") or "UK Biobank" in d.get("consortium", "")]
+            if len(ukb_results) > 0:
+                print(f"'{keyword}' found in UK Biobank ({len(ukb_results)} datasets)")
+                return True
+            else:
+                print(f"No UK Biobank datasets found for '{keyword}'")
+                return False
+        else:
+            print(f"UK Biobank (OpenGWAS) API error: Status code {response.status_code}")
+            return None
+    except Exception as e:
+        print(f"Error querying UK Biobank: {e}")
+        return None
+
+
+def get_gwas_id_ukbiobank(keyword, max_results=30):
+    """Get UK Biobank GWAS datasets via OpenGWAS API"""
+    url = "https://gwas-api.mrcieu.ac.uk/search"
+    params = {
+        "q": keyword
+    }
+    results = []
+    try:
+        response = requests.get(url, params=params)
+        if response.status_code == 200:
+            data = response.json()
+            # Filter for UK Biobank datasets
+            ukb_results = [d for d in data if d.get("id", "").startswith("ukb-") or "UK Biobank" in d.get("consortium", "")]
+            if len(ukb_results) > max_results:
+                ukb_results = ukb_results[:max_results]
+            for d in ukb_results:
+                dataset_info = {
+                    "gwas_id": d.get("id"),
+                    "trait": d.get("trait"),
+                    "year": d.get("year"),
+                    "consortium": d.get("consortium"),
+                    "sample_size": d.get("sample_size"),
+                    "nsnp": d.get("n snp"),
+                    "population": d.get("population")
+                }
+                results.append(json.dumps(dataset_info))
+            print(f"Found {len(results)} UK Biobank datasets for '{keyword}'")
+            return results
+        else:
+            print(f"UK Biobank API error: Status code {response.status_code}")
+            return []
+    except Exception as e:
+        print(f"Error fetching UK Biobank datasets: {e}")
+        return []
