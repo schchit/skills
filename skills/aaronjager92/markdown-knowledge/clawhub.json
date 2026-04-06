@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/openclaw/clawhub/main/schemas/skill.json",
   "name": "markdown-knowledge",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "display_name": {
     "zh_CN": "Markdown 知识库",
     "en_US": "Markdown Knowledge Base"
