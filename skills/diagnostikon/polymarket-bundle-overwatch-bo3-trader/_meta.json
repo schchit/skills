@@ -1,11 +1,17 @@
 {
   "owner": "diagnostikon",
   "slug": "polymarket-bundle-overwatch-bo3-trader",
-  "displayName": "Bundle Overwatch BO3 Structural Arb Trader",
+  "displayName": "Polymarket Bundle Overwatch Bo3 Trader",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774736223012,
-    "commit": "https://github.com/openclaw/skills/commit/f714b9b911cffeec74de1ff57cbcdf2e451fda8c"
+    "version": "1.0.1",
+    "publishedAt": 1775317010691,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774736223012,
+      "commit": "https://github.com/openclaw/skills/commit/f714b9b911cffeec74de1ff57cbcdf2e451fda8c"
+    }
+  ]
 }
