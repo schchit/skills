@@ -1,73 +1,80 @@
 #!/usr/bin/env python3
 """
-MigraQ Gateway MigraQChatCompletions SSE 流式调用脚本
+MigraQ ChatCompletions SSE 流式调用脚本
 
-通过腾讯云 AK/SK 鉴权调用 MigraQ Gateway 的 MigraQChatCompletions 接口。
-鉴权方式：SecretId 通过 X-TC-SecretId header 传递，SecretKey 通过 Authorization: Bearer header 传递。
-如果未配置 AK/SK，则走 Mock 模式（无鉴权头，仅用于测试）。
+通过腾讯云 TC3-HMAC-SHA256 签名调用 CMG ChatCompletions 接口。
 
 接口固定参数：
-    host:    https://msp.cloud.tencent.com（内置默认，可通过 CMG_GATEWAY_URL 环境变量覆盖）
-    path:    /proxy/chat
-    action:  MigraQChatCompletions
+    host:    cmg.ai.tencentcloudapi.com
+    action:  ChatCompletions
+    version: 2024-10-15
+    region:  ap-shanghai（可通过 CMG_REGION 环境变量覆盖）
 
     请求格式：
-    {"model": "openclaw", "input": "...", "stream": true, "SessionID": "<uuid>"}
+    {"Input": "...", "Stream": true}
 
-响应格式（SSE，标准 OpenAI Responses API 格式）：
-    event: response.output_text.delta
-    data: {"type":"response.output_text.delta","delta":"...", ...}
-
-    event: response.completed
-    data: {"type":"response.completed","response":{"id":"resp_...","output":[...],"usage":{...}}}
-
-    data: [DONE]
-
-Session 管理：
-    Gateway 按 API Key 服务端自动维护会话上下文，支持多轮对话。
-    session_id 由调用方生成（UUID v4），用于调用方追踪同一对话。
-    用户要开启新对话时调用 clear_session() 清除服务端上下文。
+响应格式（SSE，text/event-stream）：
+    data: {"Response": {"Choices": [{"Delta": {"Content": "..."}, "FinishReason": ""}], ...}}
+    ...
+    data: {"Response": {"Choices": [{"Delta": {"Content": ""}, "FinishReason": "stop"}], ...}}
 
 纯 Python 标准库实现，无外部依赖，支持 Windows / Linux / macOS。
 
 用法 (命令行):
     python3 migrateq_sse_api.py <question> [session_id]
     python3 migrateq_sse_api.py --clear-session
+    python3 migrateq_sse_api.py --dry-run <question> [session_id]
 
 示例:
     python3 migrateq_sse_api.py '阿里云50台ECS如何迁移到腾讯云？'
     python3 migrateq_sse_api.py '详细说说 go2tencentcloud 步骤' '550e8400-e29b-41d4-a716-446655440000'
+    python3 migrateq_sse_api.py --dry-run '测试鉴权是否正确'
 
 作为模块导入:
     from migrateq_sse_api import call_sse_api, generate_session_id
     session_id = generate_session_id()
     result = call_sse_api(question="如何评估迁移成本？", session_id=session_id)
 
-环境变量（可选）:
-    CMG_GATEWAY_URL            - 覆盖内置 Gateway 地址（可选，默认 https://msp.cloud.tencent.com）
-    TENCENTCLOUD_SECRET_ID     - 腾讯云 SecretId（可选，不填则走 Mock 模式）
-    TENCENTCLOUD_SECRET_KEY    - 腾讯云 SecretKey，通过 Authorization: Bearer header 鉴权（可选，不填则走 Mock 模式）
+环境变量:
+    TENCENTCLOUD_SECRET_ID     - 腾讯云 SecretId（必填）
+    TENCENTCLOUD_SECRET_KEY    - 腾讯云 SecretKey（必填）
+    CMG_REGION                 - 地域（可选，默认 ap-shanghai）
 
 输出格式（统一 JSON）:
-    成功: {"success": true, "action": "MigraQChatCompletions", "data": {"content": "...", "is_final": true, "session_id": "..."}, "requestId": "..."}
-    失败: {"success": false, "action": "MigraQChatCompletions", "error": {"code": "...", "message": "..."}, "requestId": ""}
+    成功: {"success": true, "action": "ChatCompletions", "data": {"content": "...", "is_final": true, "session_id": "..."}, "requestId": "..."}
+    失败: {"success": false, "action": "ChatCompletions", "error": {"code": "...", "message": "..."}, "requestId": ""}
 """
 
+import datetime
 import hashlib
+import hmac
 import json
 import os
 import ssl
 import sys
+import threading
 import time
 import uuid
+from http.client import HTTPSConnection
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
-from urllib.error import URLError, HTTPError
 
 # ---------------------------------------------------------------------------
 # 固定参数
 # ---------------------------------------------------------------------------
-ACTION = "MigraQChatCompletions"
-_PATH = "/proxy/chat"
+ACTION = "ChatCompletions"
+_HOST = "cmg.ai.tencentcloudapi.com"
+_VERSION = "2024-10-15"
+_SERVICE = "cmg"
+_DEFAULT_REGION = "ap-shanghai"
+_AUTH_FAIL_CODES = {
+    "AuthFailure.SecretIdNotFound",
+    "AuthFailure.SignatureFailure",
+    "AuthFailure.SignatureExpire",
+    "AuthFailure.InvalidSecretId",
+    "AuthFailure.TokenFailure",
+    "AuthFailure.InvalidAuthorization",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -122,20 +129,95 @@ def _make_success(data: dict, request_id: str = "") -> dict:
 
 
 def _resolve_credentials(secret_id: str = None, secret_key: str = None):
-    """
-    读取 AK/SK 凭证（优先参数，其次环境变量）。
-
-    鉴权设计：
-      - TENCENTCLOUD_SECRET_KEY 作为 Bearer Token 传给 Gateway
-      - 与 CloudQ 使用同一套 AK/SK 环境变量，用户只需配置一次
-      - 未配置时走 Mock 模式（无 Authorization 头）
-
-    Returns:
-        (secret_id, secret_key): 均可为空字符串（Mock 模式）
-    """
+    """读取 AK/SK 凭证（优先参数，其次环境变量）"""
     secret_id = secret_id or os.environ.get("TENCENTCLOUD_SECRET_ID", "")
     secret_key = secret_key or os.environ.get("TENCENTCLOUD_SECRET_KEY", "")
     return secret_id, secret_key
+
+
+def _check_credentials(secret_id: str, secret_key: str):
+    """
+    检查 AK/SK 是否已配置，未配置则返回错误结果。
+
+    Returns:
+        None 表示凭证完整；dict 表示缺失，包含引导信息。
+    """
+    missing = []
+    if not secret_id:
+        missing.append("TENCENTCLOUD_SECRET_ID")
+    if not secret_key:
+        missing.append("TENCENTCLOUD_SECRET_KEY")
+    if not missing:
+        return None
+
+    guide = (
+        "请先配置腾讯云 API 密钥后再使用 MigraQ。\n"
+        f"  缺少环境变量: {', '.join(missing)}\n"
+        "\n"
+        "  Linux / macOS（写入 ~/.zshrc 或 ~/.bashrc）:\n"
+        '    echo \'export TENCENTCLOUD_SECRET_ID="your-secret-id"\' >> ~/.zshrc\n'
+        '    echo \'export TENCENTCLOUD_SECRET_KEY="your-secret-key"\' >> ~/.zshrc\n'
+        "    source ~/.zshrc\n"
+        "\n"
+        "  Windows PowerShell（写入用户级环境变量）:\n"
+        '    [Environment]::SetEnvironmentVariable("TENCENTCLOUD_SECRET_ID", "your-secret-id", "User")\n'
+        '    [Environment]::SetEnvironmentVariable("TENCENTCLOUD_SECRET_KEY", "your-secret-key", "User")\n'
+        "\n"
+        "  密钥获取地址: https://console.cloud.tencent.com/cam/capi"
+    )
+    return _make_error("MissingCredentials", guide)
+
+
+def _tc3_sign(secret_key: str, secret_id: str, host: str, payload_str: str,
+              action: str, version: str, region: str, timestamp: int) -> dict:
+    """
+    生成腾讯云 TC3-HMAC-SHA256 签名，返回请求头字典。
+
+    参考: https://cloud.tencent.com/document/api/213/30654
+    """
+    date = datetime.datetime.fromtimestamp(timestamp, tz=datetime.timezone.utc).strftime("%Y-%m-%d")
+
+    # Step 1: 构造规范请求（SignedHeaders 包含 x-tc-action，提升签名安全性）
+    ct = "application/json"
+    canonical_headers = f"content-type:{ct}\nhost:{host}\nx-tc-action:{action.lower()}\n"
+    signed_headers = "content-type;host;x-tc-action"
+    hashed_payload = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
+    canonical_request = "\n".join([
+        "POST", "/", "",
+        canonical_headers, signed_headers, hashed_payload,
+    ])
+
+    # Step 2: 构造待签字符串
+    algorithm = "TC3-HMAC-SHA256"
+    credential_scope = f"{date}/{_SERVICE}/tc3_request"
+    hashed_cr = hashlib.sha256(canonical_request.encode("utf-8")).hexdigest()
+    string_to_sign = f"{algorithm}\n{timestamp}\n{credential_scope}\n{hashed_cr}"
+
+    # Step 3: 计算签名
+    def _hmac_sha256(key: bytes, msg: str) -> bytes:
+        return hmac.new(key, msg.encode("utf-8"), hashlib.sha256).digest()
+
+    secret_date = _hmac_sha256(("TC3" + secret_key).encode("utf-8"), date)
+    secret_service = _hmac_sha256(secret_date, _SERVICE)
+    secret_signing = _hmac_sha256(secret_service, "tc3_request")
+    signature = hmac.new(secret_signing, string_to_sign.encode("utf-8"), hashlib.sha256).hexdigest()
+
+    # Step 4: 构造 Authorization
+    authorization = (
+        f"{algorithm} Credential={secret_id}/{credential_scope}, "
+        f"SignedHeaders={signed_headers}, Signature={signature}"
+    )
+
+    return {
+        "Host": host,
+        "Content-Type": ct,
+        "X-TC-Action": action,
+        "X-TC-Version": version,
+        "X-TC-Timestamp": str(timestamp),
+        "X-TC-Region": region,
+        "X-TC-Language": "zh-CN",
+        "Authorization": authorization,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -178,173 +260,222 @@ def parse_sse_line(line: str):
 # ---------------------------------------------------------------------------
 
 def call_sse_api(question: str, session_id: str,
-                 gateway_url: str = None,
+                 region: str = None,
                  secret_id: str = None, secret_key: str = None,
                  on_delta=None, timeout: int = 600) -> dict:
     """
-    调用 MigraQChatCompletions SSE 流式 API。
+    调用 ChatCompletions SSE 流式 API。
 
     Args:
         question:    用户问题（必填）
-        session_id:  会话 ID（同一对话必须保持不变）
-        gateway_url: Gateway 地址，不传则使用内置默认地址（可通过 CMG_GATEWAY_URL 环境变量覆盖）
+        session_id:  会话 ID（同一对话必须保持不变，透传至结果）
+        region:      地域，不传则从 CMG_REGION 环境变量读取，默认 ap-shanghai
         secret_id:   腾讯云 SecretId，不传则从环境变量读取
-        secret_key:  腾讯云 SecretKey（作为 Bearer Token），不传则从环境变量读取
+        secret_key:  腾讯云 SecretKey，不传则从环境变量读取
         on_delta:    回调函数，每收到一段流式文本时调用，参数为 str
-        timeout:     请求超时秒数，默认 120
+        timeout:     请求超时秒数，默认 600
 
     Returns:
         dict: 统一格式的结果字典
     """
-    gateway_url = (gateway_url or os.environ.get("CMG_GATEWAY_URL", "https://msp.cloud.tencent.com")).rstrip("/")
+    region = region or os.environ.get("CMG_REGION", _DEFAULT_REGION)
     secret_id, secret_key = _resolve_credentials(secret_id, secret_key)
 
-    payload = {
-        "model": "openclaw",
-        "input": question,
-        "stream": True,
-        "SessionID": session_id,
-    }
+    cred_err = _check_credentials(secret_id, secret_key)
+    if cred_err:
+        return cred_err
+
+    payload = {"Input": question, "Stream": True}
     payload_str = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
 
-    headers = {
-        "Content-Type": "application/json",
-        "Accept": "text/event-stream",
-        "X-TC-Action": ACTION,
-    }
-    # 凭证统一通过 Authorization header 传递
-    if secret_id:
-        headers["X-TC-SecretId"] = secret_id
-    if secret_key:
-        headers["Authorization"] = f"Bearer {secret_key}"
+    now = datetime.datetime.now(datetime.timezone.utc)
+    timestamp = int(now.timestamp())
 
-    req = Request(
-        f"{gateway_url}{_PATH}",
-        data=payload_str.encode("utf-8"),
-        headers=headers,
-        method="POST",
-    )
+    headers = _tc3_sign(secret_key, secret_id, _HOST, payload_str,
+                        ACTION, _VERSION, region, timestamp)
+    headers["Accept"] = "text/event-stream"
 
+    # 使用 HTTPSConnection 实现无缓冲实时 SSE 读取
     try:
         ctx = _get_ssl_context()
-        resp = urlopen(req, context=ctx, timeout=timeout)
-    except HTTPError as e:
-        try:
-            body = e.read().decode("utf-8")
-            data = json.loads(body)
-            msg = data.get("message") or data.get("error") or f"HTTP {e.code}"
-        except Exception:
-            msg = f"HTTP {e.code}: {e.reason}"
-        return _make_error("HTTPError", f"MigraQ Gateway 返回错误: {msg}")
-    except URLError as e:
-        return _make_error(
-            "NetworkError",
-            f"无法连接 MigraQ Gateway ({gateway_url}): {e.reason}"
-        )
+        conn = HTTPSConnection(_HOST, context=ctx, timeout=timeout)
+        conn.request("POST", "/", body=payload_str.encode("utf-8"), headers=headers)
+        resp = conn.getresponse()
     except Exception as e:
-        return _make_error("NetworkError", f"请求异常: {e}")
+        return _make_error("NetworkError", f"无法连接 CMG API ({_HOST}): {e}")
 
-    return _parse_sse_stream(resp, session_id, on_delta)
+    if resp.status != 200:
+        try:
+            body = resp.read().decode("utf-8")
+            data = json.loads(body)
+            err = data.get("Response", {}).get("Error", {})
+            code = err.get("Code", "")
+            msg = err.get("Message") or f"HTTP {resp.status}"
+        except Exception:
+            code = ""
+            msg = f"HTTP {resp.status}"
+        conn.close()
+        # 鉴权失败（401/403 或 AuthFailure 错误码）单独返回，方便上层区分处理
+        if resp.status in (401, 403) or code in _AUTH_FAIL_CODES:
+            return _make_error("AuthError", f"鉴权失败，请检查 AK/SK 是否正确: {msg}")
+        return _make_error("HTTPError", f"CMG API 返回错误: {msg}")
+
+    # HTTP 200：检查 Content-Type
+    # 鉴权失败时后端返回 text/plain + JSON 错误体，不是 SSE 流
+    content_type = resp.getheader("Content-Type", "")
+    if "text/plain" in content_type or "application/json" in content_type:
+        try:
+            body = resp.read().decode("utf-8")
+            data = json.loads(body)
+            err = data.get("Response", {}).get("Error", {})
+            code = err.get("Code", "")
+            msg = err.get("Message", body)
+            request_id = data.get("Response", {}).get("RequestId", "")
+            if code in _AUTH_FAIL_CODES or code.startswith("AuthFailure"):
+                return _make_error("AuthError", f"鉴权失败，请检查 AK/SK 是否正确: {msg}", request_id)
+            if code:
+                return _make_error("HTTPError", f"CMG API 返回错误 [{code}]: {msg}", request_id)
+            return _make_error("StreamError", "CMG API 返回非流式响应且无法解析")
+        except Exception as e:
+            return _make_error("StreamError", f"CMG API 返回非流式响应: {e}")
+        finally:
+            conn.close()
+
+    try:
+        return _parse_sse_stream(resp, session_id, on_delta)
+    finally:
+        conn.close()
 
 
-def clear_session(gateway_url: str = None,
+def clear_session(region: str = None,
                   secret_id: str = None, secret_key: str = None) -> dict:
     """
-    清除当前会话上下文（DELETE /proxy/session）。
+    清除当前会话上下文（本接口无状态，调用方重新生成 session_id 即可）。
 
-    Args:
-        gateway_url: Gateway 地址，不传则使用内置默认地址（可通过 CMG_GATEWAY_URL 环境变量覆盖）
-        secret_id:   腾讯云 SecretId（当前未使用，保留接口一致性）
-        secret_key:  腾讯云 SecretKey（作为 Bearer Token）
+    为保持接口兼容性而保留，实际执行为空操作并返回成功。
 
     Returns:
         dict: 统一格式的结果字典
     """
-    gateway_url = (gateway_url or os.environ.get("CMG_GATEWAY_URL", "https://msp.cloud.tencent.com")).rstrip("/")
-    secret_id, secret_key = _resolve_credentials(secret_id, secret_key)
-
-    headers = {}
-    if secret_key:
-        headers["Authorization"] = f"Bearer {secret_key}"
-
-    req = Request(
-        f"{gateway_url}/proxy/session",
-        headers=headers,
-        method="DELETE",
-    )
-
-    try:
-        ctx = _get_ssl_context()
-        with urlopen(req, context=ctx, timeout=600) as resp:
-            body = resp.read().decode("utf-8")
-            data = json.loads(body) if body.strip() else {}
-            return _make_success(data)
-    except HTTPError as e:
-        return _make_error("HTTPError", f"清除会话失败: HTTP {e.code} {e.reason}")
-    except URLError as e:
-        return _make_error("NetworkError", f"无法连接 Gateway: {e.reason}")
-    except Exception as e:
-        return _make_error("NetworkError", f"请求异常: {e}")
+    return _make_success({"message": "session cleared"})
 
 
 def _parse_sse_stream(resp, session_id: str, on_delta) -> dict:
     """
-    解析 MigraQChatCompletions SSE 流并构建结果。
+    解析 ChatCompletions SSE 流并构建结果。
 
-    Gateway 使用标准 OpenAI Responses API SSE 格式：
+    实际响应格式（OpenAI Responses API 格式）：
         event: response.output_text.delta
-        data: {"type":"response.output_text.delta","delta":"...", ...}
+        data: {"type":"response.output_text.delta","delta":"..."}
 
         event: response.completed
-        data: {"type":"response.completed","response":{"id":"resp_...","output":[...],"usage":{...}}}
+        data: {"type":"response.completed","response":{"id":"resp_...","usage":{"input_tokens":N,"output_tokens":N,"total_tokens":N}}}
 
         data: [DONE]
-
-    注：session 由 Gateway 按 API Key 服务端维护，响应中不返回 session_id。
     """
     content_parts = []
     request_id = ""
     usage = {}
+    first_delta_received = False
+    stream_error = None  # 记录 SSE 流内的业务错误
 
-    for raw_line in resp:
-        line = raw_line.decode("utf-8").rstrip("\r\n")
+    # 心跳线程：在收到第一个文本增量前，每 10 秒向 stderr 输出一次等待提示
+    stop_heartbeat = threading.Event()
 
-        # 结束标记
-        if line == "data: [DONE]":
-            break
+    def _heartbeat():
+        elapsed = 0
+        while not stop_heartbeat.wait(10):
+            if first_delta_received:
+                break
+            elapsed += 10
+            print(f"[MigraQ] 远端专家处理中，已等待 {elapsed} 秒，请勿中断……", file=sys.stderr, flush=True)
 
-        parsed = parse_sse_line(line)
-        if parsed is None:
-            continue
-        if parsed.get("event") != "data":
-            continue
+    heartbeat_thread = threading.Thread(target=_heartbeat, daemon=True)
+    heartbeat_thread.start()
 
-        data = parsed.get("data")
-        if not isinstance(data, dict):
-            continue
+    try:
+        # 使用 readline() 逐行读取，无缓冲，保证 SSE 实时性
+        while True:
+            raw = resp.readline()
+            if not raw:
+                break
 
-        event_type = data.get("type", "")
+            line = raw.decode("utf-8").rstrip("\r\n")
 
-        # 流式文本增量
-        if event_type == "response.output_text.delta":
-            delta = data.get("delta", "")
-            if delta:
-                content_parts.append(delta)
-                if on_delta:
-                    on_delta(delta)
+            if line == "" or line.startswith(":"):
+                continue
 
-        # 完成事件：提取 request_id 和 usage
-        elif event_type == "response.completed":
-            response = data.get("response", {})
-            request_id = response.get("id", "")
-            usage = response.get("usage", {})
-            break
+            if line.startswith("event:"):
+                continue  # event 类型已通过 data.type 区分，无需单独处理
+
+            if not line.startswith("data:"):
+                continue
+
+            data_str = line[5:].lstrip()
+
+            if data_str == "[DONE]":
+                break
+
+            try:
+                data = json.loads(data_str)
+            except (json.JSONDecodeError, ValueError):
+                continue
+
+            event_type = data.get("type", "")
+
+            # 流式文本增量
+            if event_type == "response.output_text.delta":
+                delta = data.get("delta", "")
+                if delta:
+                    if not first_delta_received:
+                        first_delta_received = True
+                        stop_heartbeat.set()
+                    content_parts.append(delta)
+                    if on_delta:
+                        on_delta(delta)
+
+            # 完成事件：提取 request_id 和 usage
+            elif event_type == "response.completed":
+                response_obj = data.get("response", {})
+                request_id = response_obj.get("id", "")
+                usage = response_obj.get("usage", {})
+                break
+
+            # 失败事件：后端通过 SSE 流返回的业务错误
+            elif event_type in ("response.failed", "error"):
+                err_obj = data.get("response", data)
+                err_detail = err_obj.get("error", {})
+                err_code = err_detail.get("code") or err_obj.get("code", "StreamError")
+                err_msg = err_detail.get("message") or err_obj.get("message", str(data))
+                stream_error = _make_error("StreamError", f"远端服务返回错误 [{err_code}]: {err_msg}", request_id)
+                break
+
+            # 兼容：data 中直接含 Response.Error 字段（部分腾讯云接口格式）
+            elif "Response" in data:
+                resp_err = data["Response"].get("Error")
+                if resp_err:
+                    err_code = resp_err.get("Code", "StreamError")
+                    err_msg = resp_err.get("Message", str(resp_err))
+                    request_id = data["Response"].get("RequestId", "")
+                    stream_error = _make_error("StreamError", f"远端服务返回错误 [{err_code}]: {err_msg}", request_id)
+                    break
+
+    finally:
+        stop_heartbeat.set()
+
+    # 优先返回流内业务错误
+    if stream_error:
+        return stream_error
+
+    # SSE 流结束但无任何内容且无错误事件，视为异常
+    if not content_parts:
+        return _make_error("StreamError", "远端服务未返回任何内容，请稍后重试或检查网络连接", request_id)
 
     return _make_success(
         {
             "content": "".join(content_parts),
             "is_final": True,
-            "session_id": session_id,  # 透传调用方传入的 session_id
+            "session_id": session_id,
             "usage": usage,
         },
         request_id,
@@ -369,16 +500,51 @@ def main():
         print(_output_json(result))
         sys.exit(0 if result.get("success") else 1)
 
+    # --dry-run 模式：仅打印签名请求头和 payload，不发送请求
+    dry_run = False
+    if args and args[0] == "--dry-run":
+        dry_run = True
+        args = args[1:]
+
     if len(args) < 1:
         print(_output_json(_make_error(
             "MissingParameter",
             "用法: python3 migrateq_sse_api.py <question> [session_id]\n"
+            "     python3 migrateq_sse_api.py --dry-run <question> [session_id]\n"
             "     python3 migrateq_sse_api.py --clear-session"
         )))
         sys.exit(1)
 
     question = args[0]
     session_id = args[1] if len(args) > 1 else generate_session_id()
+
+    if dry_run:
+        region, secret_id, secret_key = (
+            os.environ.get("CMG_REGION", _DEFAULT_REGION),
+            *_resolve_credentials(),
+        )
+        cred_err = _check_credentials(secret_id, secret_key)
+        if cred_err:
+            print(_output_json(cred_err))
+            sys.exit(1)
+        payload = {"Input": question, "Stream": True}
+        payload_str = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+        timestamp = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+        headers = _tc3_sign(secret_key, secret_id, _HOST, payload_str,
+                            ACTION, _VERSION, region, timestamp)
+        headers["Accept"] = "text/event-stream"
+        dry_run_info = {
+            "success": True,
+            "action": "DryRun",
+            "data": {
+                "endpoint": f"https://{_HOST}",
+                "session_id": session_id,
+                "payload": payload,
+                "headers": headers,
+            },
+        }
+        print(_output_json(dry_run_info))
+        sys.exit(0)
 
     def on_delta(delta: str):
         print(delta, end="", flush=True)

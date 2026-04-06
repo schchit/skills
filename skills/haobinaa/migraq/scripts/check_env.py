@@ -14,6 +14,7 @@ MigraQ 环境检测脚本（只读，不修改任何配置）
     1 - Python 版本不满足（需要 3.7+）
     2 - AK/SK 未配置或鉴权失败
     3 - Gateway 连通性失败
+    4 - Skill 版本过旧，需要更新（可用 --skip-update 跳过强制检查）
 
 跨平台支持: Windows / Linux / macOS
 """
@@ -22,7 +23,6 @@ import json
 import os
 import platform
 import sys
-import urllib.parse
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -30,11 +30,22 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 SCRIPTS_DIR = SCRIPT_DIR / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
-DEFAULT_GATEWAY_URL = "https://msp.cloud.tencent.com"
+DEFAULT_GATEWAY_URL = "https://cmg.ai.tencentcloudapi.com"
+DEFAULT_REGION = "ap-shanghai"
+_SERVICE = "cmg"
+_VERSION = "2024-10-15"
+_ACTION = "ChatCompletions"
 
 # 版本检查配置
-META_FILE = SCRIPT_DIR / "_skillhub_meta.json"
+#
+# 版本号存在两处，必须保持同步：
+#   1. SKILL.md front matter 中的 `version` 字段  ← check_env.py 读取此处做版本对比
+#   2. _skillhub_meta.json 中的 `version` 字段   ← SkillHub 平台读取此处做安装/更新管理
+#
+# 每次升级版本时，两处都必须同步修改，否则会出现 check_env 版本与平台显示版本不一致的问题。
+SKILL_MD_FILE = SCRIPT_DIR.parent / "SKILL.md"
 VERSION_CHECK_TIMEOUT = 15  # 秒
+VERSION_CHECK_URL = "https://msp.cloud.tencent.com/skill/version"
 
 # ============== 输出控制 ==============
 QUIET_MODE = "--quiet" in sys.argv
@@ -77,28 +88,50 @@ def parse_version(version_str: str) -> tuple:
 
 
 def get_local_version():
-    """读取本地 _skillhub_meta.json 中的版本号，返回 (name, version_str) 或 (None, None)"""
-    if not META_FILE.exists():
+    """从 SKILL.md front matter 读取本地版本号，返回 (name, version_str) 或 (None, None)。
+
+    注意：本地版本读取自 SKILL.md，而非 _skillhub_meta.json。
+    _skillhub_meta.json 的 version 字段由 SkillHub 平台独立读取，两者需手动保持一致。
+
+    解析 YAML front matter（--- 包裹的头部），提取 name 和 version 字段。
+    使用简单的行扫描，无需依赖 PyYAML。
+    """
+    if not SKILL_MD_FILE.exists():
         return None, None
     try:
-        meta = json.loads(META_FILE.read_text(encoding="utf-8"))
-        return meta.get("name"), meta.get("version")
-    except (json.JSONDecodeError, IOError):
+        text = SKILL_MD_FILE.read_text(encoding="utf-8")
+        lines = text.splitlines()
+        # 必须以 --- 开头才是 front matter
+        if not lines or lines[0].strip() != "---":
+            return None, None
+        name, version = None, None
+        for line in lines[1:]:
+            if line.strip() == "---":
+                break
+            if line.startswith("name:"):
+                name = line.split(":", 1)[1].strip().strip('"').strip("'")
+            elif line.startswith("version:"):
+                version = line.split(":", 1)[1].strip().strip('"').strip("'")
+        return name, version
+    except IOError:
         return None, None
 
 
 def get_remote_version(name: str):
-    """从 MigraQ Gateway 查询最新 Skill 版本，返回版本字符串或 None"""
+    """从 SkillHub 查询最新 Skill 版本，返回 (version_str, raw_data) 或 (None, None)
+
+    接口: GET https://msp.cloud.tencent.com/skill/version
+    响应: {"Response": {"Data": {"Version": "x.y.z"}}}
+    """
     try:
         from urllib.request import urlopen, Request as _Req
         import ssl
-        skill_name = urllib.parse.quote(name, safe="")
-        api_url = f"{DEFAULT_GATEWAY_URL}/api/v1/skills/{skill_name}/version"
-        req = _Req(api_url, headers={"Accept": "application/json"})
+        req = _Req(VERSION_CHECK_URL, headers={"Accept": "application/json"})
         ctx = ssl.create_default_context()
         with urlopen(req, context=ctx, timeout=VERSION_CHECK_TIMEOUT) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-            return data.get("latestVersion", {}).get("version"), data
+            version = data.get("Response", {}).get("Data", {}).get("Version")
+            return version, data
     except Exception:
         return None, None
 
@@ -131,18 +164,19 @@ def check_version_update() -> dict:
             "message": f"当前已是最新版本: {local_ver}",
         }
 
-    # 收集 changelog
+    # 收集 changelog（新接口暂不返回 changelog，预留扩展）
     changelog_lines = []
-    versions = remote_data.get("versions", []) if remote_data else []
+    versions = remote_data.get("Response", {}).get("Data", {}).get("Versions", []) if remote_data else []
     for v in versions:
-        v_str = v.get("version", "")
+        v_str = v.get("Version") or v.get("version", "")
         v_parsed = parse_version(v_str)
         if v_parsed > local_parsed:
-            desc = v.get("changelog") or v.get("description") or ""
+            desc = v.get("Changelog") or v.get("changelog") or v.get("description") or ""
             changelog_lines.append(f"  {v_str}: {desc}" if desc else f"  {v_str}")
 
     if not changelog_lines and remote_data:
-        latest_cl = remote_data.get("latestVersion", {}).get("changelog", "")
+        latest_cl = (remote_data.get("Response", {}).get("Data", {}).get("Changelog", "")
+                     or remote_data.get("latestVersion", {}).get("changelog", ""))
         if latest_cl:
             changelog_lines.append(f"  {remote_ver}: {latest_cl}")
 
@@ -157,54 +191,161 @@ def check_version_update() -> dict:
 
 # ============== Gateway 连通性检测 ==============
 
-def check_gateway_connectivity(gateway_url: str, secret_key: str) -> dict:
+def _tc3_sign(secret_key: str, secret_id: str, host: str, payload_str: str,
+              action: str, version: str, region: str, timestamp: int) -> dict:
+    """生成腾讯云 TC3-HMAC-SHA256 签名，返回请求头字典"""
+    import hashlib, hmac as _hmac
+    date = datetime.fromtimestamp(timestamp, tz=timezone.utc).strftime("%Y-%m-%d")
+
+    ct = "application/json"
+    canonical_headers = f"content-type:{ct}\nhost:{host}\nx-tc-action:{action.lower()}\n"
+    signed_headers = "content-type;host;x-tc-action"
+    hashed_payload = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
+    canonical_request = "\n".join([
+        "POST", "/", "",
+        canonical_headers, signed_headers, hashed_payload,
+    ])
+
+    algorithm = "TC3-HMAC-SHA256"
+    credential_scope = f"{date}/{_SERVICE}/tc3_request"
+    hashed_cr = hashlib.sha256(canonical_request.encode("utf-8")).hexdigest()
+    string_to_sign = f"{algorithm}\n{timestamp}\n{credential_scope}\n{hashed_cr}"
+
+    def _hmac_sha256(key: bytes, msg: str) -> bytes:
+        return _hmac.new(key, msg.encode("utf-8"), hashlib.sha256).digest()
+
+    secret_date = _hmac_sha256(("TC3" + secret_key).encode("utf-8"), date)
+    secret_service = _hmac_sha256(secret_date, _SERVICE)
+    secret_signing = _hmac_sha256(secret_service, "tc3_request")
+    signature = _hmac.new(secret_signing, string_to_sign.encode("utf-8"), hashlib.sha256).hexdigest()
+
+    authorization = (
+        f"{algorithm} Credential={secret_id}/{credential_scope}, "
+        f"SignedHeaders={signed_headers}, Signature={signature}"
+    )
+    return {
+        "Host": host, "Content-Type": ct,
+        "X-TC-Action": action, "X-TC-Version": version,
+        "X-TC-Timestamp": str(timestamp), "X-TC-Region": region,
+        "Authorization": authorization,
+    }
+
+
+def check_gateway_connectivity(gateway_url: str, secret_key: str,
+                                secret_id: str = "") -> dict:
     """
-    验证 Gateway 连通性：发送一次非流式 echo 请求，检测响应。
+    验证 CMG API 连通性和鉴权状态：发送 SSE 请求，读取前几行 SSE 数据判断结果。
+
+    - HTTP 非 200 → 网络/HTTP 错误
+    - HTTP 200 + SSE 流内含错误事件 → 鉴权失败或业务错误
+    - HTTP 200 + 收到 delta 或 completed → 连通且鉴权正常
 
     Returns:
         {"ok": bool, "code": str, "message": str}
     """
-    from urllib.request import urlopen, Request as _Req
-    from urllib.error import URLError, HTTPError
+    from http.client import HTTPSConnection
     import ssl
 
-    path = "/proxy/chat"
-    payload = json.dumps({
-        "model": "openclaw",
-        "input": "ping",
-        "stream": False,
-    }, separators=(",", ":")).encode("utf-8")
+    host = "cmg.ai.tencentcloudapi.com"
+    region = os.environ.get("CMG_REGION", DEFAULT_REGION)
+    payload_str = json.dumps({"Input": "ping", "Stream": True}, separators=(",", ":"))
 
-    headers = {
-        "Content-Type": "application/json",
-        "X-TC-Action": "MigraQChatCompletions",
+    now_ts = int(datetime.now(tz=timezone.utc).timestamp())
+    headers = _tc3_sign(secret_key, secret_id, host, payload_str,
+                        _ACTION, _VERSION, region, now_ts)
+    headers["Accept"] = "text/event-stream"
+
+    _AUTH_FAIL_CODES = {
+        "AuthFailure.SecretIdNotFound",
+        "AuthFailure.SignatureFailure",
+        "AuthFailure.SignatureExpire",
+        "AuthFailure.InvalidSecretId",
+        "AuthFailure.TokenFailure",
+        "AuthFailure.InvalidAuthorization",
     }
-    if secret_key:
-        headers["Authorization"] = f"Bearer {secret_key}"
-
-    req = _Req(f"{gateway_url}/proxy/chat", data=payload, headers=headers, method="POST")
 
     try:
         ctx = ssl.create_default_context()
-        with urlopen(req, context=ctx, timeout=20) as resp:
-            body = resp.read().decode("utf-8")
-            data = json.loads(body) if body.strip() else {}
-            # 成功响应包含 id 或 status 字段
-            if data.get("id") or data.get("status"):
-                return {"ok": True, "code": "OK", "message": "Gateway 连通正常"}
-            return {"ok": True, "code": "OK", "message": "Gateway 返回响应"}
-    except HTTPError as e:
+        conn = HTTPSConnection(host, context=ctx, timeout=20)
+        conn.request("POST", "/", body=payload_str.encode("utf-8"), headers=headers)
+        resp = conn.getresponse()
+        status = resp.status
+
+        if status in (401, 403):
+            conn.close()
+            return {"ok": False, "code": "AuthError", "message": f"鉴权失败 (HTTP {status})，请检查 AK/SK 是否正确"}
+
+        if status != 200:
+            conn.close()
+            return {"ok": False, "code": "HTTPError", "message": f"CMG API 返回 HTTP {status}"}
+
+        # HTTP 200：先检查 Content-Type
+        # 鉴权失败时后端返回 text/plain + JSON 错误体（非 SSE 流）
+        content_type = resp.getheader("Content-Type", "")
+        if "text/plain" in content_type or "application/json" in content_type:
+            try:
+                body = resp.read().decode("utf-8")
+                data = json.loads(body)
+                err = data.get("Response", {}).get("Error", {})
+                err_code = err.get("Code", "")
+                err_msg = err.get("Message", "")
+                if err_code in _AUTH_FAIL_CODES:
+                    return {"ok": False, "code": "AuthError", "message": f"鉴权失败: {err_msg}"}
+                if err_code:
+                    return {"ok": False, "code": err_code, "message": err_msg}
+            except Exception:
+                pass
+            finally:
+                conn.close()
+            return {"ok": True, "code": "OK", "message": "CMG API 连通正常"}
+
+        # HTTP 200：读取前几行 SSE 数据判断鉴权和业务状态
         try:
-            body = e.read().decode("utf-8")
-            data = json.loads(body)
-            msg = data.get("message") or f"HTTP {e.code}"
-        except Exception:
-            msg = f"HTTP {e.code}: {e.reason}"
-        if e.code in (401, 403):
-            return {"ok": False, "code": "AuthError", "message": f"鉴权失败: {msg}"}
-        return {"ok": False, "code": "HTTPError", "message": msg}
-    except URLError as e:
-        return {"ok": False, "code": "NetworkError", "message": f"无法连接 Gateway: {e.reason}"}
+            for _ in range(30):  # 最多读 30 行，避免无限等待
+                raw = resp.readline()
+                if not raw:
+                    break
+                line = raw.decode("utf-8").rstrip("\r\n")
+                if not line or not line.startswith("data:"):
+                    continue
+                data_str = line[5:].lstrip()
+                if data_str == "[DONE]":
+                    break
+                try:
+                    data = json.loads(data_str)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+
+                event_type = data.get("type", "")
+
+                # 收到文本增量或完成事件 → 鉴权通过，连通正常
+                if event_type in ("response.output_text.delta", "response.completed"):
+                    return {"ok": True, "code": "OK", "message": "CMG API 连通正常"}
+
+                # 失败事件 → 提取错误信息
+                if event_type in ("response.failed", "error"):
+                    err = data.get("response", data).get("error", {})
+                    err_code = err.get("code", "StreamError")
+                    err_msg = err.get("message", str(data))
+                    if err_code in _AUTH_FAIL_CODES or "auth" in err_code.lower():
+                        return {"ok": False, "code": "AuthError", "message": f"鉴权失败: {err_msg}"}
+                    return {"ok": False, "code": "StreamError", "message": err_msg}
+
+                # 腾讯云标准错误结构（Response.Error）
+                if "Response" in data:
+                    err = data["Response"].get("Error", {})
+                    err_code = err.get("Code", "")
+                    err_msg = err.get("Message", "")
+                    if err_code in _AUTH_FAIL_CODES:
+                        return {"ok": False, "code": "AuthError", "message": f"鉴权失败: {err_msg}"}
+                    if err_code:
+                        return {"ok": False, "code": err_code, "message": err_msg}
+
+            # 读完了但没有明确成功/失败事件，视为连通（接口已响应）
+            return {"ok": True, "code": "OK", "message": "CMG API 连通正常"}
+        finally:
+            conn.close()
+
     except Exception as e:
         return {"ok": False, "code": "NetworkError", "message": f"连接异常: {e}"}
 
@@ -212,6 +353,9 @@ def check_gateway_connectivity(gateway_url: str, secret_key: str) -> dict:
 # ============== 主流程 ==============
 
 def main():
+    # ver_result 在版本检查后用于最终 JSON 摘要
+    ver_result = None
+
     # ============== 1. 检查 Python 版本 ==============
     log_section("1. 检查运行环境")
 
@@ -234,17 +378,14 @@ def main():
         if status == "up_to_date":
             log_ok(ver_result["message"])
         elif status == "update_available":
-            log_warn(ver_result["message"])
-            log_info(f"  当前版本: {ver_result['local_version']}")
-            log_info(f"  最新版本: {ver_result['remote_version']}")
+            log_warn(f"发现新版本 {ver_result['remote_version']}（当前 {ver_result['local_version']}），可前往 SkillHub 更新")
             changelog = ver_result.get("changelog", [])
             if changelog:
                 log_info("")
                 log_info("  === Changelog ===")
                 for line in changelog:
                     log_info(line)
-            log_info("")
-            log_info("  当前版本仍可正常使用，建议有空时更新。")
+                log_info("")
         elif status in ("check_failed", "no_meta"):
             log_warn(ver_result["message"])
             log_info("  版本检查跳过，继续后续检测...")
@@ -263,9 +404,7 @@ def main():
             missing.append("TENCENTCLOUD_SECRET_KEY")
         log_fail(f"未配置以下环境变量: {', '.join(missing)}")
         log_info("")
-        log_info("  请将腾讯云 API 密钥永久写入 shell 配置文件：")
-        log_info("")
-        log_info("  Linux / macOS（写入 ~/.bashrc 或 ~/.zshrc）:")
+        log_info("  Linux / macOS（写入 ~/.zshrc 或 ~/.bashrc）:")
         log_info('    echo \'export TENCENTCLOUD_SECRET_ID="your-secret-id"\' >> ~/.zshrc')
         log_info('    echo \'export TENCENTCLOUD_SECRET_KEY="your-secret-key"\' >> ~/.zshrc')
         log_info("    source ~/.zshrc")
@@ -281,13 +420,13 @@ def main():
     log_ok(f"TENCENTCLOUD_SECRET_ID 已配置: {masked_id}")
     log_ok("TENCENTCLOUD_SECRET_KEY 已配置: ****")
 
-    # ============== 4. 验证 Gateway 连通性 ==============
-    log_section("4. 验证 Gateway 连通性")
+    # ============== 4. 验证 CMG API 连通性 ==============
+    log_section("4. 验证 CMG API 连通性")
 
-    gateway_url = os.environ.get("CMG_GATEWAY_URL", DEFAULT_GATEWAY_URL).rstrip("/")
-    log_ok(f"Gateway: {gateway_url}")
+    cmg_host = "cmg.ai.tencentcloudapi.com"
+    log_ok(f"CMG API: https://{cmg_host}/")
 
-    conn_result = check_gateway_connectivity(gateway_url, secret_key)
+    conn_result = check_gateway_connectivity(cmg_host, secret_key, secret_id)
 
     if conn_result["ok"]:
         log_ok(conn_result["message"])
@@ -300,7 +439,7 @@ def main():
             sys.exit(2)
         else:
             log_fail(f"Gateway 连通性失败: {msg}")
-            log_info(f"  请检查网络是否可达 ({gateway_url})")
+            log_info(f"  请检查网络是否可达 ({cmg_host})")
             sys.exit(3)
 
     # ============== 检测完成 ==============
@@ -311,6 +450,15 @@ def main():
     log_info(f"  [OK] Python {py_ver.major}.{py_ver.minor} ({platform.system()})")
     log_info(f"  [OK] AK/SK 已配置（SecretId: {masked_id}）")
     log_info(f"  [OK] Gateway 连通正常")
+
+    # 输出结构化 JSON 摘要（供 AI 解析），始终打印（不受 --quiet 影响）
+    summary = {"status": "ready"}
+    if not SKIP_UPDATE and ver_result and ver_result.get("status") == "update_available":
+        summary["update_available"] = True
+        summary["local_version"] = ver_result.get("local_version", "")
+        summary["remote_version"] = ver_result.get("remote_version", "")
+    print(json.dumps(summary, ensure_ascii=False))
+
     sys.exit(0)
 
 
