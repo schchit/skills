@@ -3,9 +3,15 @@
   "slug": "metriql-docs",
   "displayName": "Metriql Docs",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774526600135,
-    "commit": "https://github.com/openclaw/skills/commit/0fe5f5769a546d33a4ec626752a7f90620885948"
+    "version": "1.0.2",
+    "publishedAt": 1775167906560,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774526600135,
+      "commit": "https://github.com/openclaw/skills/commit/0fe5f5769a546d33a4ec626752a7f90620885948"
+    }
+  ]
 }
