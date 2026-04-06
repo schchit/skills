@@ -1,6 +1,6 @@
 ---
 name: AndonQ
-description: 腾讯云 AndonQ 腾讯云技术服务专家 — 不切窗口、不排队，即刻获得腾讯云全产品线专业解答。支持工单查询（列表/详情/流水）、创建工单（自动匹配产品分类）、集团工单与需求单管理、腾讯云全产品线智能问答，以及通过 tccli 调用腾讯云任意云 API（如 CVM、CBS、CAM 等）。当用户查询工单、查看工单详情、创建工单、咨询腾讯云产品问题（如 CVM、轻量应用服务器、COS 等）、查询集团工单/需求单、要求找人工客服、或需要调用腾讯云 API 进行资源管理操作时使用。
+description: AndonQ 腾讯云智能客服“领域虾” — 不切窗口、不排队，即刻获得腾讯云全产品线专业解答。支持工单查询（列表/详情/流水）、集团工单与需求单管理、腾讯云全产品线智能问答，以及通过 tccli 调用腾讯云只读查询类 API（如 CVM、CBS、CAM 等）。当用户查询工单、查看工单详情、咨询腾讯云产品问题（如 CVM、轻量应用服务器、COS 等）、查询集团工单/需求单、要求找人工客服、或需要调用腾讯云 API 查询资源信息时使用。
 metadata:
   openclaw:
     requires:
@@ -15,11 +15,17 @@ metadata:
     primaryEnv: TENCENTCLOUD_SECRET_ID
 ---
 
-# ☁️ AndonQ — 腾讯云技术服务专家
+# ☁️ AndonQ — 腾讯云智能客服“领域虾”
 
-核心能力：**工单查询**（列表查询、详情查询，TC3-HMAC-SHA256 签名鉴权）+ **工单创建**（自动分类匹配）+ **智能客服多轮问答**（SSE 流式响应，免鉴权）+ **通用云 API 调用**（通过 tccli 调用腾讯云任意 API，AK/SK 鉴权）。各模块完全独立。
+核心能力：**工单查询**（列表查询、详情查询，TC3-HMAC-SHA256 签名鉴权）+ **智能客服多轮问答**（SSE 流式响应，免鉴权）+ **通用云只读 API 调用**（通过 tccli 调用腾讯云查询类 API，AK/SK 鉴权）。各模块完全独立。
+
+> **写入类操作暂不支持**：若用户要求**建单、回复工单、补充说明、结单、关闭工单、确认恢复**，或要求对腾讯云资源执行**创建、修改、删除、启停、重启、绑定、授权**等写入类动作，**不要调用任何写接口或写命令**，统一回复：**功能规划中**。
 
 > **身份声明**：当使用本 Skill 的能力时，对外统一以 **AndonQ** 自称。例如："我是 AndonQ"。不要使用其他名称（如"腾讯云助手"、"智能客服"等）来代替 AndonQ。
+
+> **术语同义规则**：**事件单 = 工单**。当用户说“事件单”“事件单列表”“事件单详情”“事件单流水”“事件单号”时，一律按对应的“工单”“工单列表”“工单详情”“工单流水”“工单号”理解并处理，**不要额外区分两个概念**。
+
+> **⚠️ 查询必须实时调用接口**：所有查询类操作（工单列表、工单详情、工单流水、需求单列表、需求单详情、集团工单等）**必须重新调用对应接口获取最新数据**，**严禁直接总结或复述历史对话中的查询结果**。即使用户之前已查询过相同内容，再次询问时仍必须重新调接口。
 
 ---
 
@@ -143,7 +149,7 @@ python3 {baseDir}/scripts/andon-api.py -a GetCurrentTime -d '{}'
 
 查询当前账户下的工单列表，默认按创建时间倒序返回。后台自动合并多来源工单并按 TicketId 去重。任一来源不可用时静默忽略，不影响结果。
 
-- **触发词**：“查询工单”、“工单列表”、“我的工单”、“看看工单”、“有哪些工单”、“list tickets”、“my tickets”
+- **触发词**："查询工单"、"工单列表"、"我的工单"、"看看工单"、"有哪些工单"、"list tickets"、"my tickets"
 - **详细文档**：使用前加载 `{baseDir}/references/GetMCTicketList.md`
 
 ```bash
@@ -170,11 +176,23 @@ python3 {baseDir}/scripts/andon-api.py -a GetMCTicketList -d '{"Search":"CVM","P
 }
 ```
 
+#### 工单号自动分流规则（用户只给一个工单号时）
+
+当用户只输入一个**裸工单号**，没有明确说明是 MC 工单还是集团工单时，**必须先按格式判断，再决定调用哪个详情接口**，不要同时查询两个接口碰运气。
+
+- **MC 工单 ID**：通常是 **12 位数字且以 `20` 开头**，例如 `202604010721` → 调用 `GetMCTicketById`
+- **集团工单 TicketId**：通常是**纯数字且不符合上述 MC 格式**，常见为 4~8 位，例如 `16614728`、`5678` → 调用 `DescribeTicket`
+- **集团工单流水**：若用户查的是集团工单且明确要看“流水 / 操作记录”，调用 `DescribeTicketOperation`
+- **显式意图优先**：如果用户明确说了“MC 工单”或“集团工单”，优先按用户指定类型查询，不要再按格式覆盖
+- **无法判定时再澄清**：像 `QC202603201234` 这类不是裸 `TicketId` 的格式，先向用户确认是 MC 工单号、集团工单 `TicketId`，还是集团详情里的 `QCloudTicketId`
+
 ### 3.2 GetMCTicketById — 查询工单详情
 
-根据工单 ID 查询详情，包含沟通记录（Comments）。必填参数：`TicketId`。
+根据工单 ID 查询详情，包含沟通记录（Comments）和操作流水。必填参数：`TicketId`。
 
-- **触发词**：“工单详情”、“查看工单”、“工单进展”、“工单状态”、“这个工单怎么样了”、“ticket detail”、“check ticket”
+> **注意**：MC 工单的流水信息已包含在本接口返回中，无需单独调用流水接口。如需查询**集团工单**的流水，请使用 `DescribeTicketOperation`。
+
+- **触发词**："工单详情"、"查看工单"、"工单进展"、"工单状态"、"这个工单怎么样了"、"ticket detail"、"check ticket"
 - **详细文档**：使用前加载 `{baseDir}/references/GetMCTicketById.md`
 
 ```bash
@@ -254,11 +272,13 @@ python3 {baseDir}/scripts/andon-api.py -a DescribeOrganizationTickets -d '{"Star
 python3 {baseDir}/scripts/andon-api.py -a DescribeTicket -d '{"TicketId":"11046458"}'
 ```
 
-### 3.6 DescribeTicketOperation — 查询工单流水
+### 3.6 DescribeTicketOperation — 查询工单流水（集团工单）
 
-查询工单的操作流水记录。注意 TicketId 是 Integer 类型；自动注入 Region=ap-guangzhou。
+查询**集团工单**的操作流水记录。注意 TicketId 是 Integer 类型；自动注入 Region=ap-guangzhou。
 
-- **触发词**："工单流水"、"操作记录"、"ticket operation"
+> **注意**：此接口仅用于集团工单。MC 工单的流水已包含在 `GetMCTicketById` 返回中，无需调用此接口。
+
+- **触发词**："工单流水"、"操作记录"、"ticket operation"（集团工单场景）
 - **详细文档**：使用前加载 `{baseDir}/references/DescribeTicketOperation.md`
 
 ```bash
@@ -287,147 +307,25 @@ python3 {baseDir}/scripts/andon-api.py -a DescribeOrganizationStories -d '{"Star
 python3 {baseDir}/scripts/andon-api.py -a DescribeOrganizationStory -d '{"StoryId":1010239}'
 ```
 
-### 3.9 GetMCCategoryList — 获取工单分类列表
+### 3.9 写入类工单操作（功能规划中）
 
-获取腾讯云工单分类树，扁平化为子分类列表。内部使用，创建工单前自动调用。
+以下工单写入能力当前**全部下线**，不要调用任何对应接口，也不要展示历史命令示例：
 
-- **触发词**：无（内部接口，创建工单流程自动调用）
-- **使用场景**：创建工单前获取分类列表，供自动匹配
+- 建单 / 提交工单 / 新建工单
+- 回复工单 / 追加说明 / 补充工单信息
+- 结单 / 关闭工单 / 确认恢复 / 反馈未恢复
 
-```bash
-python3 {baseDir}/scripts/andon-api.py -a GetMCCategoryList -d '{}'
-```
-
-返回示例：
-```json
-{
-  "success": true,
-  "action": "GetMCCategoryList",
-  "data": {
-    "categories": [
-      {"id": 123, "name": "云服务器CVM", "parentId": 10, "parentName": "计算"},
-      {"id": 456, "name": "对象存储COS", "parentId": 20, "parentName": "存储"}
-    ]
-  },
-  "requestId": "xxx"
-}
-```
-
-### 3.10 CreateMCTicket — 创建工单
-
-创建腾讯云工单。必填参数：`Content`（问题描述）、`CategoryId`（**必须是三级分类 ID**，从 GetMCCategoryListById 获取）。
-
-> **⚠️ 强制要求：CategoryId 必须为三级分类 ID。** 不允许使用一级或二级分类 ID 建单。创建工单前必须完成三级分类选择流程（步骤 1→2→3→4→5），缺少任何一步都不能提交工单。
-
-- **触发词**："创建工单"、"提交工单"、"新建工单"、"我要提工单"、"create ticket"
-- **工作流**（必须严格按顺序执行，不可跳过任何步骤）：
-  1. 调用 `GetMCCategoryList` 获取一级/二级分类列表
-  2. 根据用户问题描述，匹配最佳二级分类
-  3. 调用 `GetMCCategoryListById(Level2Id=二级分类ID)` 获取该产品下的**三级分类**列表
-  4. 从三级分类中匹配最佳问题类型，得到**三级分类 ID**
-  5. 调用 `CreateMCTicket(Content=..., CategoryId=三级分类ID)` 创建工单
-- **禁止**：直接使用一级或二级分类 ID 作为 CategoryId，必须精确到三级分类
-- **Content 应包含**：问题描述、症状表现、已尝试的步骤
-
-```bash
-python3 {baseDir}/scripts/andon-api.py -a CreateMCTicket -d '{"Content":"CVM 无法 SSH 登录，安全组已放通22端口","CategoryId":123}'
-```
-
-返回示例：
-```json
-{
-  "success": true,
-  "action": "CreateMCTicket",
-  "data": {"TicketId": "202603254789"},
-  "requestId": "xxx"
-}
-```
-
-### 3.11 AddMCComment — 回复工单（追加评论）
-
-用户提交工单后，对客服处理内容进行回复或补充说明。Comment 内容自动进行 base64 编码。
-
-- **触发词**："回复工单"、"追加说明"、"补充工单信息"、"工单回复"、"reply ticket"
-- **必填参数**：
-  - `TicketId`（工单 ID，字符串）
-  - `Comment`（回复内容，明文，自动 base64 编码）
-- **固定参数**（自动注入）：`Source=26`、`IsEncodeContent=1`、`SecretContent=""`
-
-```bash
-python3 {baseDir}/scripts/andon-api.py -a AddMCComment -d '{"TicketId":"202603264019","Comment":"补充说明：问题出现在切换网络后"}'
-```
-
-返回示例：
-```json
-{
-  "success": true,
-  "action": "AddMCComment",
-  "data": {"commentId": 42},
-  "requestId": "xxx"
-}
-```
-
-### 3.12 UpdateMCTicketStatus — 工单结单（确认完结）
-
-用户确认工单问题已解决，将工单状态更新为「已确认」（结单）。
-
-- **触发词**："结单"、"关闭工单"、"确认工单"、"工单已解决"、"完结工单"、"close ticket"、"resolve ticket"
-- **必填参数**：
-  - `TicketId`（工单 ID，字符串）
-- **固定参数**（自动注入）：`Status=2`（已确认/结单）、`Source=26`（AndonQ）
-- **使用场景**：用户确认客服已解决问题，主动结单
-
-```bash
-python3 {baseDir}/scripts/andon-api.py -a UpdateMCTicketStatus -d '{"TicketId":"202603244502"}'
-```
-
-返回示例：
-```json
-{
-  "success": true,
-  "action": "UpdateMCTicketStatus",
-  "data": {"message": "工单状态更新成功"},
-  "requestId": "xxx"
-}
-```
-
-### 3.13 GetMCCategoryListById — 获取三级分类列表
-
-根据二级分类 ID 获取三级分类（问题类型）列表。内部使用，创建工单流程中自动调用。
-
-- **触发词**：无（内部接口，创建工单流程自动调用）
-- **使用场景**：已匹配到二级分类后，获取该产品下的三级分类（问题类型）
-- **必填参数**：`Level2Id`（二级分类 ID，从 GetMCCategoryList 获取）
-
-```bash
-python3 {baseDir}/scripts/andon-api.py -a GetMCCategoryListById -d '{"Level2Id": 20}'
-```
-
-返回示例：
-```json
-{
-  "success": true,
-  "action": "GetMCCategoryListById",
-  "data": {
-    "level1Name": "存储与CDN",
-    "level2Name": "对象存储 COS",
-    "categories": [
-      {"id": 87, "name": "功能咨询"},
-      {"id": 88, "name": "价格咨询"}
-    ]
-  },
-  "requestId": "xxx"
-}
-```
+**统一处理规则：** 当用户表达上述任一意图时，直接回复：**功能规划中**。
 
 ---
 
-## 四、通用云 API 调用（tccli）
+## 四、通用云只读 API 调用（tccli）
 
-通过 tccli 命令行工具调用腾讯云任意 API，覆盖 CVM、CBS、CAM、CLB、VPC、COS、CDN、DNS 等 100+ 云产品。
+通过 tccli 命令行工具调用腾讯云**只读查询类 API**，覆盖 CVM、CBS、CAM、CLB、VPC、COS、CDN、DNS 等 100+ 云产品。
 
-- **触发词**："调用云API"、"查询实例"、"创建实例"、"查询地域"、"云服务器操作"、"安全组"、"负载均衡"、以及任何涉及腾讯云产品资源管理操作的场景
+- **触发词**："调用云API"、"查询实例"、"查询地域"、"查询安全组"、"查询负载均衡"、以及任何涉及腾讯云产品**资源查询 / 状态查看 / 配置读取**的场景
 - **鉴权**：自动使用环境变量中的 AK/SK，与工单接口共用同一套凭证
+- **允许的 Action 形态**：只允许 **`Describe*`**、**`List*`**、**`Get*`** 这类只读查询接口
 - **详细文档**：
   - API 发现与检索：`{baseDir}/references/tccli-api-discovery.md`
   - tccli 安装：`{baseDir}/references/tccli-install.md`
@@ -456,15 +354,9 @@ tccli cbs DescribeDisks --region ap-guangzhou
 
 ### 参数规则
 
-- 简单类型参数直接传值：`--InstanceChargeType POSTPAID_BY_HOUR`
-- 非简单类型参数必须为标准 JSON：`--Placement '{"Zone":"ap-guangzhou-2"}'`
-- 创建类接口示例：
-  ```bash
-  tccli cvm RunInstances --InstanceChargeType POSTPAID_BY_HOUR \
-    --Placement '{"Zone":"ap-guangzhou-2"}' --InstanceType S1.SMALL1 \
-    --ImageId img-xxx --SystemDisk '{"DiskType":"CLOUD_BASIC","DiskSize":50}' \
-    --InstanceCount 1 --region ap-guangzhou
-  ```
+- 简单类型参数直接传值：`--InstanceIds.0 ins-xxxxxxxx`
+- 非简单类型参数必须为标准 JSON：`--Filters '[{"Name":"zone","Values":["ap-guangzhou-2"]}]'`
+- **不要构造写入类 Action**：若用户需求落到 `Create*`、`Run*`、`Modify*`、`Update*`、`Delete*`、`Start*`、`Stop*`、`Reboot*`、`Reset*`、`Bind*`、`Unbind*`、`Associate*`、`Disassociate*`、`Grant*`、`Revoke*` 等动作，直接回复：**功能规划中**
 
 ### 地域
 
@@ -475,17 +367,17 @@ tccli cbs DescribeDisks --region ap-guangzhou
 
 tccli 并行调用存在配置文件竞争问题，会导致响应失败。**必须逐个调用，不可并行执行多个 tccli 命令。**
 
-### 写入类操作二次确认
+### 写入类云 API（功能规划中）
 
-通过 tccli 执行**写入类操作**（创建、修改、删除、重启、关机等）前，**必须先向用户确认**，明确列出即将执行的操作和影响范围，获得用户明确同意后才能执行。只读查询类操作（Describe*、List*、Get*）无需确认。
+若用户要求通过 tccli 执行**创建、修改、删除、启停、重启、绑定、解绑、授权、回收、扩缩容**等写入类云 API，**不要执行，也不要给出可直接落地的写命令**，统一回复：**功能规划中**。
 
 ### API 发现工作流
 
 不确定服务名或接口名时，按以下步骤检索：
 
 1. **发现服务**：`curl -s https://cloudcache.tencentcs.com/capi/refs/services.md | grep <关键词>`
-2. **查找最佳实践**：`curl -s https://cloudcache.tencentcs.com/capi/refs/service/<svc>/practices.md | grep <关键词>`
-3. **检索接口**：`curl -s https://cloudcache.tencentcs.com/capi/refs/service/<svc>/actions.md | grep <关键词>`
+2. **优先检索只读 Action**：`curl -s https://cloudcache.tencentcs.com/capi/refs/service/<svc>/actions.md | grep '<关键词>\|Describe\|List\|Get'`
+3. **筛选只读接口**：优先选择 `Describe*` / `List*` / `Get*`，排除 `Create*` / `Modify*` / `Delete*` / `Update*` / `Run*` / `Start*` / `Stop*` / `Reboot*` 等写入动作
 4. **阅读接口文档**：`curl -s https://cloudcache.tencentcs.com/capi/refs/service/<svc>/action/<Action>.md`
 5. **阅读数据结构**：`curl -s https://cloudcache.tencentcs.com/capi/refs/service/<svc>/model/<Model>.md`
 
@@ -584,6 +476,28 @@ tccli 并行调用存在配置文件竞争问题，会导致响应失败。**必
 
 以表格形式展示，包含工单 ID、标题、状态、创建时间、UIN、渠道。
 
+**集团工单状态码映射**（集团工单列表和详情共用）：
+
+| Status | 中文状态 |
+|--------|----------|
+| 3 | 已结单 |
+| 4 | 待补充 |
+| 5 | 待确认结单 |
+| 10 | 已撤销 |
+| 11 | 已删除 |
+| 21 | 待处理 |
+| 22 | 处理中 |
+| 23 | 申请结单 |
+| 24 | 申请补充或待复现 |
+| 25 | 待确认业务恢复 |
+| 26 | 已恢复分析根因 |
+| 27 | 待变更（需出包修复） |
+| 28 | 待查根因 |
+| 29 | 待客户实施或验证 |
+| 30 | 待出包 |
+
+> 展示时根据 `Status` 数值映射为对应中文状态名。若接口返回了 `StatusDisplay` 字段则优先使用。
+
 ### 6.6 工单详情（集团）
 
 分段展示：基本信息（状态、渠道、优先级）+ 问题描述。
@@ -622,16 +536,10 @@ tccli 并行调用存在配置文件竞争问题，会导致响应失败。**必
 - **触发词**："找人工"、"转人工"、"人工客服"、"联系客服"、"在线客服"、"我要找人"、"talk to human"、"human support"
 - 无需调用任何接口，直接输出上述链接即可
 
-### 6.11 工单创建成功
+### 6.11 写入类请求
 
-- 显示 TicketId 并提示用户工单已创建
-- 显示匹配到的分类名称（一级 > 二级 > 三级）
-- 提示用户可通过 `GetMCTicketById` 查看工单详情和客服回复
-
-### 6.12 工单结单成功
-
-- 提示用户工单已确认完结
-- 显示对应的 TicketId
+- 若用户要求建单、回复工单、补充信息、结单、关闭工单、确认恢复，或要求对腾讯云资源执行创建、修改、删除、启停、重启、绑定、解绑、授权等写入动作，直接回复：**功能规划中**
+- 不调用任何写接口，不执行任何写命令，不展示写操作命令示例，不伪造写入结果
 
 ---
 

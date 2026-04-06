@@ -6,9 +6,9 @@ Python cannot import hyphenated filenames directly, so this thin wrapper
 delegates to the importable `andon_api` module in the same directory.
 
 Usage:
-    python3 scripts/andon-api.py -a CreateMCTicket -d '{"Content":"..."}'
-    python3 scripts/andon-api.py -a CreateMCTicket -d '{"Content":"..."}' -n   # dry-run
-    python3 scripts/andon-api.py -a CreateMCTicket -d '{"Content":"..."}' -v   # verbose
+    python3 scripts/andon-api.py -a GetMCTicketList -d '{}'
+    python3 scripts/andon-api.py -a GetMCTicketById -d '{"TicketId":"202604010721"}' -n
+    python3 scripts/andon-api.py -a DescribeTicket -d '{"TicketId":"16614728"}' -v
 """
 
 import os

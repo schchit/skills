@@ -89,8 +89,8 @@ python3 {baseDir}/scripts/andon-api.py -a DescribeTicket -d '{"TicketId":"5678",
 | `LastStaff` | String | 最后处理客服 |
 | `LastStaffDisplay` | String | 最后处理客服显示名 |
 | `LastOperateTime` | String | 最后操作时间 |
-| `Status` | Integer | 状态码 |
-| `StatusDisplay` | String | 状态显示名 |
+| `Status` | Integer | 状态码，见下方状态码映射表 |
+| `StatusDisplay` | String | 状态显示名（优先使用此字段） |
 | `ExternStatus` | Integer | 外部状态码 |
 | `ExternStatusDisplay` | String | 外部状态显示名 |
 | `CompanyId` | String | 公司 ID |
@@ -108,6 +108,28 @@ python3 {baseDir}/scripts/andon-api.py -a DescribeTicket -d '{"TicketId":"5678",
 | `QuestionEndTime` | String | 问题结束时间 |
 | `CloseTime` | String | 关闭时间 |
 | `ServiceSceneNameList` | String[] | 服务场景名称列表 |
+
+## 集团工单状态码映射
+
+| Status | 中文状态 |
+|--------|----------|
+| 3 | 已结单 |
+| 4 | 待补充 |
+| 5 | 待确认结单 |
+| 10 | 已撤销 |
+| 11 | 已删除 |
+| 21 | 待处理 |
+| 22 | 处理中 |
+| 23 | 申请结单 |
+| 24 | 申请补充或待复现 |
+| 25 | 待确认业务恢复 |
+| 26 | 已恢复分析根因 |
+| 27 | 待变更（需出包修复） |
+| 28 | 待查根因 |
+| 29 | 待客户实施或验证 |
+| 30 | 待出包 |
+
+> 展示时优先使用 `StatusDisplay` 字段；若无此字段则根据 `Status` 数值映射。
 
 ## 展示规则
 

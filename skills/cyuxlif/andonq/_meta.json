@@ -3,11 +3,16 @@
   "slug": "andonq",
   "displayName": "AndonQ",
   "latest": {
-    "version": "1.1.6",
-    "publishedAt": 1774937741523,
-    "commit": "https://github.com/openclaw/skills/commit/ddd60558a23b8ef2e7cf4d02fca61c7a711299ac"
+    "version": "1.1.9",
+    "publishedAt": 1775050781209,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.1.6",
+      "publishedAt": 1774937741523,
+      "commit": "https://github.com/openclaw/skills/commit/ddd60558a23b8ef2e7cf4d02fca61c7a711299ac"
+    },
     {
       "version": "1.1.3",
       "publishedAt": 1774535035647,

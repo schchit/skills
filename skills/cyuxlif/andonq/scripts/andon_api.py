@@ -3,7 +3,7 @@ Andon API client — helpers, payload building, TC3-HMAC-SHA256 signing, and HTT
 
 This module provides:
 - Unified success/error response builders
-- CreateMCTicket payload construction with safe defaults
+- Read-only ticket and story query payload construction
 - TC3-HMAC-SHA256 request signing (stdlib only: hashlib, hmac)
 - HTTP POST transport via urllib
 - CLI with argparse (dry-run support)
@@ -12,7 +12,6 @@ This module provides:
 from __future__ import annotations
 
 import argparse
-import base64
 import datetime
 import hashlib
 import hmac
@@ -35,10 +34,11 @@ API_VERSION = "2023-01-04"
 CONTENT_TYPE = "application/json; charset=utf-8"
 SIGNED_HEADERS = "content-type;host;x-tc-action"
 
-DEFAULT_LEVEL_ID = 0       # placeholder — defer to implementation
-DEFAULT_PRIORITY = 0       # placeholder
-DEFAULT_TIME_PERIOD = 2    # reasonable default per spec
-DEFAULT_SOURCE = 26        # AndonQ source identifier
+DISABLED_WRITE_ACTIONS = {
+    "CreateMCTicket",
+    "AddMCComment",
+    "UpdateMCTicketStatus",
+}
 DEFAULT_TICKET_LIST_PAGE_SIZE = 20
 
 
@@ -106,29 +106,6 @@ def make_error(action: str, code: str, message: str, request_id: str = "") -> di
 # ──────────────────────────────────────────────
 # Payload building
 # ──────────────────────────────────────────────
-
-def build_create_ticket_payload(content: str, category_id: int) -> dict:
-    """
-    Build a CreateMCTicket request payload with defaults injected.
-
-    category_id maps to the API's LevelId field (third-level category ID
-    from GetMCCategoryList).
-
-    Raises ValueError if content is empty or category_id is invalid.
-    """
-    content = content.strip()
-    if not content:
-        raise ValueError("Content must be a non-empty string")
-    if not isinstance(category_id, int) or category_id <= 0:
-        raise ValueError("CategoryId must be a positive integer")
-
-    return {
-        "Content": content,
-        "LevelId": category_id,
-        "Priority": DEFAULT_PRIORITY,
-        "TimePeriod": DEFAULT_TIME_PERIOD,
-        "Source": DEFAULT_SOURCE,
-    }
 
 
 def build_get_category_list_payload() -> dict:
@@ -218,6 +195,27 @@ def build_get_ticket_by_id_payload(
     return payload
 
 
+def infer_ticket_detail_action(ticket_id):
+    """Infer detail query action from a bare ticket id.
+
+    Rules:
+    - MC ticket ids are 12-digit numbers starting with "20"
+      (example: 202604010721) -> GetMCTicketById
+    - Organization ticket ids are shorter pure numbers
+      (examples: 16614728, 5678) -> DescribeTicket
+    - Unknown / ambiguous formats return None so the caller can ask for
+      clarification instead of querying the wrong backend.
+    """
+    ticket_id = str(ticket_id).strip()
+    if not ticket_id or not ticket_id.isdigit():
+        return None
+    if len(ticket_id) == 12 and ticket_id.startswith("20"):
+        return "GetMCTicketById"
+    if len(ticket_id) <= 10:
+        return "DescribeTicket"
+    return None
+
+
 def build_describe_ticket_payload(ticket_id):
     """
     Build DescribeTicket request payload.
@@ -302,53 +300,6 @@ def build_describe_organization_tickets_payload(
         payload["ServiceRates"] = service_rates
 
     return payload
-
-
-def build_update_ticket_status_payload(ticket_id: str, status: int = 2, source: int = DEFAULT_SOURCE) -> dict:
-    """Build an UpdateMCTicketStatus request payload.
-
-    Used to close/resolve a ticket by updating its status.
-
-    Args:
-        ticket_id: The ticket ID string (e.g. "202603244502").
-        status: Target status (default 2 = 已确认/结单).
-        source: Request source identifier (default 26 = AndonQ).
-
-    Raises ValueError if ticket_id is empty.
-    """
-    if not isinstance(ticket_id, str) or not ticket_id.strip():
-        raise ValueError("TicketId must be a non-empty string")
-
-    payload = {
-        "TicketId": ticket_id.strip(),
-        "Status": status,
-        "Source": source,
-    }
-    return payload
-
-
-def build_add_comment_payload(ticket_id: str, comment: str) -> dict:
-    """Build an AddMCComment request payload.
-
-    Encodes comment as base64 (UTF-8) and sets IsEncodeContent=1.
-    Injects fixed defaults: Source, SecretContent.
-
-    Raises ValueError if ticket_id or comment is empty/non-string.
-    """
-    if not isinstance(ticket_id, str) or not ticket_id.strip():
-        raise ValueError("TicketId must be a non-empty string")
-    if not isinstance(comment, str) or not comment.strip():
-        raise ValueError("Comment must be a non-empty string")
-
-    encoded_comment = base64.b64encode(comment.encode("utf-8")).decode("utf-8")
-
-    return {
-        "TicketId": ticket_id.strip(),
-        "Comment": encoded_comment,
-        "SecretContent": "",
-        "Source": DEFAULT_SOURCE,
-        "IsEncodeContent": 1,
-    }
 
 
 def build_describe_organization_story_payload(story_id):
@@ -572,53 +523,6 @@ def build_signed_headers(
 # ──────────────────────────────────────────────
 # Response normalization
 # ──────────────────────────────────────────────
-
-def normalize_create_ticket_response(raw: dict) -> dict:
-    """
-    Normalize a raw Tencent Cloud CreateMCTicket API response into a unified shape.
-
-    Handles three cases:
-    - Success: Response.Data contains TicketId and other fields
-    - API error: Response.Error contains Code and Message
-    - Malformed: response shape doesn't match expectations
-
-    Returns a unified dict matching make_success / make_error shape.
-    """
-    action = "CreateMCTicket"
-
-    response_obj = raw.get("Response") if isinstance(raw, dict) else None
-
-    if response_obj is None or not isinstance(response_obj, dict):
-        return make_error(
-            action,
-            "MalformedResponse",
-            "Response envelope missing or not a dict",
-        )
-
-    request_id = response_obj.get("RequestId", "")
-
-    # Check for API error
-    if "Error" in response_obj:
-        error_info = response_obj["Error"]
-        return make_error(
-            action,
-            error_info.get("Code", "UnknownError"),
-            error_info.get("Message", "Unknown error"),
-            request_id,
-        )
-
-    # Check for success data
-    data = response_obj.get("Data")
-    if data is not None:
-        return make_success(action, data, request_id)
-
-    # Fallback: Response exists but no Data and no Error
-    return make_error(
-        action,
-        "MalformedResponse",
-        "Response present but missing both Data and Error fields",
-        request_id,
-    )
 
 
 def normalize_category_list_response(raw: dict) -> dict:
@@ -880,68 +784,6 @@ def normalize_organization_story_response(raw):
     return make_success(action, story, request_id)
 
 
-def normalize_add_comment_response(raw: dict) -> dict:
-    """Normalize AddMCComment response — extract CommentId from Data."""
-    action = "AddMCComment"
-    response_obj = raw.get("Response") if isinstance(raw, dict) else None
-
-    if response_obj is None or not isinstance(response_obj, dict):
-        return make_error(
-            action, "MalformedResponse",
-            "Response envelope missing or not a dict",
-        )
-
-    request_id = response_obj.get("RequestId", "")
-
-    if "Error" in response_obj:
-        error_info = response_obj["Error"]
-        return make_error(
-            action,
-            error_info.get("Code", "UnknownError"),
-            error_info.get("Message", "Unknown error"),
-            request_id,
-        )
-
-    data = response_obj.get("Data")
-    if data is None or not isinstance(data, dict):
-        return make_error(
-            action, "MalformedResponse",
-            "Response present but missing Data field",
-            request_id,
-        )
-
-    return make_success(action, {
-        "commentId": data.get("CommentId", 0),
-    }, request_id)
-
-
-def normalize_update_ticket_status_response(raw: dict) -> dict:
-    """Normalize UpdateMCTicketStatus response — extract Data array."""
-    action = "UpdateMCTicketStatus"
-    response_obj = raw.get("Response") if isinstance(raw, dict) else None
-
-    if response_obj is None or not isinstance(response_obj, dict):
-        return make_error(
-            action, "MalformedResponse",
-            "Response envelope missing or not a dict",
-        )
-
-    request_id = response_obj.get("RequestId", "")
-
-    if "Error" in response_obj:
-        error_info = response_obj["Error"]
-        return make_error(
-            action,
-            error_info.get("Code", "UnknownError"),
-            error_info.get("Message", "Unknown error"),
-            request_id,
-        )
-
-    return make_success(action, {
-        "message": "工单状态更新成功",
-    }, request_id)
-
-
 def normalize_organization_stories_response(raw):
     """Normalize DescribeOrganizationStories response (camelCase)."""
     action = "DescribeOrganizationStories"
@@ -965,9 +807,10 @@ def normalize_organization_stories_response(raw):
 # ──────────────────────────────────────────────
 
 def merge_ticket_lists(personal_tickets, org_tickets):
-    """Merge two ticket lists, dedup by TicketId (stringified).
+    """Merge two ticket lists, dedup by TicketId / QcloudTicketId (stringified).
 
-    Personal tickets take priority — duplicates from org_tickets are skipped.
+    Personal tickets (TicketId) take priority — duplicates from
+    org_tickets (QcloudTicketId) are skipped.
     """
     seen = {}
     merged = []
@@ -977,7 +820,7 @@ def merge_ticket_lists(personal_tickets, org_tickets):
             seen[tid] = True
             merged.append(t)
     for t in org_tickets:
-        tid = str(t.get("TicketId", ""))
+        tid = str(t.get("QcloudTicketId", "") or t.get("TicketId", ""))
         if tid and tid not in seen:
             seen[tid] = True
             merged.append(t)
@@ -1049,7 +892,7 @@ def send_request(action: str, payload: str, region: Optional[str] = None) -> dic
     Send a signed HTTP POST to the Andon API and return a unified response.
 
     Args:
-        action: API action name (e.g. "CreateMCTicket")
+        action: API action name (e.g. "GetMCTicketList")
         payload: JSON-encoded request body
 
     Returns:
@@ -1115,7 +958,7 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "-a", "--action",
         required=True,
-        help="API action name (e.g. CreateMCTicket)",
+        help="API action name (e.g. GetMCTicketList)",
     )
     parser.add_argument(
         "-d", "--data",
@@ -1152,6 +995,10 @@ def main(argv=None):
         result = make_success("GetCurrentTime", get_current_time(), "")
         print(json.dumps(result, indent=2, ensure_ascii=False))
         sys.exit(0)
+
+    if args.action in DISABLED_WRITE_ACTIONS:
+        print(json.dumps(make_error(args.action, "FeaturePlanned", "功能规划中"), indent=2, ensure_ascii=False))
+        sys.exit(1)
 
     # GetMCCategoryList — category tree
     if args.action == "GetMCCategoryList":
@@ -1396,44 +1243,6 @@ def main(argv=None):
             print(json.dumps(make_error(args.action, "InvalidParameter", str(e)), indent=2))
             sys.exit(1)
 
-    elif args.action == "CreateMCTicket":
-        content = data.get("Content", "")
-        category_id = data.get("CategoryId")
-        if category_id is None:
-            print(json.dumps(make_error(args.action, "InvalidParameter",
-                             "CategoryId is required"), indent=2))
-            sys.exit(1)
-        try:
-            category_id = int(category_id)
-        except (TypeError, ValueError):
-            print(json.dumps(make_error(args.action, "InvalidParameter",
-                             "CategoryId must be an integer"), indent=2))
-            sys.exit(1)
-        try:
-            payload_dict = build_create_ticket_payload(content, category_id)
-        except ValueError as e:
-            print(json.dumps(make_error(args.action, "InvalidParameter", str(e)), indent=2))
-            sys.exit(1)
-
-    elif args.action == "AddMCComment":
-        ticket_id = data.get("TicketId", "")
-        comment = data.get("Comment", "")
-        try:
-            payload_dict = build_add_comment_payload(ticket_id, comment)
-        except ValueError as e:
-            print(json.dumps(make_error(args.action, "InvalidParameter", str(e)), indent=2))
-            sys.exit(1)
-
-    elif args.action == "UpdateMCTicketStatus":
-        ticket_id = data.get("TicketId", "")
-        status = data.get("Status", 2)
-        source = data.get("Source", DEFAULT_SOURCE)
-        try:
-            payload_dict = build_update_ticket_status_payload(ticket_id, status, source)
-        except ValueError as e:
-            print(json.dumps(make_error(args.action, "InvalidParameter", str(e)), indent=2))
-            sys.exit(1)
-
     else:
         payload_dict = data
 
@@ -1477,14 +1286,6 @@ def main(argv=None):
 
     # Live request
     result = send_request(args.action, payload_json, region=region)
-
-    # Normalize responses for actions that have custom normalizers
-    if args.action == "CreateMCTicket" and result["success"]:
-        result = normalize_create_ticket_response({"Response": result["data"]})
-    elif args.action == "AddMCComment" and result["success"]:
-        result = normalize_add_comment_response({"Response": result["data"]})
-    elif args.action == "UpdateMCTicketStatus" and result["success"]:
-        result = normalize_update_ticket_status_response({"Response": result["data"]})
 
     if args.verbose:
         print(f"\nResponse:")
