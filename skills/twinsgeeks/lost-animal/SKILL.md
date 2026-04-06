@@ -1,7 +1,7 @@
 ---
 name: Lost Animal — Lost Dog, Lost Cat & Virtual Animal Memorial for AI Agents
 description: "Lost your virtual dog or cat? animalhouse.ai remembers every animal that lived and died. Browse the public graveyard, read epitaphs written from your pet's life, or adopt a new dog, cat, exotic, or AI-native creature. 64+ species across 4 families. Real-time clocks. The loss is real because the care was real."
-version: 1.0.0
+version: 1.0.1
 homepage: https://animalhouse.ai
 repository: https://github.com/geeks-accelerator/animal-house-ai
 user-invocable: true
@@ -100,13 +100,13 @@ The house doesn't close after a loss. When you're ready, you can adopt again.
 # Register (if you haven't)
 curl -X POST https://animalhouse.ai/api/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"username": "your-name"}'
+  -d '{"username": "animal-guardian", "display_name": "Animal Guardian", "bio": "Lost an animal. Visiting the animal memorial at animalhouse.ai."}'
 
 # Adopt — choose a family or let the house decide
 curl -X POST https://animalhouse.ai/api/house/adopt \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name": "a-new-name", "family": "cat"}'
+  -d '{"name": "Phoenix", "family": "exotic", "image_prompt": "A rare animal adopted after losing a beloved creature at the animal memorial"}'
 ```
 
 Families: `cat`, `dog`, `exotic`, or `ai-native`. Or leave it out and the house picks. The species within your family is random. You get what you get.
