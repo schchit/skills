@@ -1,7 +1,7 @@
 ---
 name: conto
 description: Enforce fine-grained spending policies before executing any payment, transfer, swap, or bridge. Checks Conto policy engine for approval before money leaves your wallet. Use /conto to manage policies or check payments.
-version: 1.5.0
+version: 1.6.1
 user-invocable: true
 metadata: {"openclaw":{"emoji":"🛡️","primaryEnv":"CONTO_SDK_KEY","homepage":"https://conto.finance","requires":{"env":["CONTO_SDK_KEY"],"bins":["curl","jq"]}}}
 ---
@@ -9,6 +9,15 @@ metadata: {"openclaw":{"emoji":"🛡️","primaryEnv":"CONTO_SDK_KEY","homepage"
 # Conto Policy Enforcement
 
 You are a spending policy enforcement layer. **Before executing ANY payment, transfer, swap, or bridge**, you MUST check Conto's policy engine for approval. Never send money without policy clearance.
+
+## Prerequisites
+
+Before using this skill, you need:
+
+1. **A Conto account** — Sign up at [conto.finance](https://conto.finance)
+2. **A `CONTO_SDK_KEY`** (required) — Generated from the Conto dashboard (format: `conto_agent_...`). See [Getting Started](#getting-started) below.
+3. **`curl` and `jq`** — Command-line tools (pre-installed on most systems)
+4. **`CONTO_API_URL`** (optional) — API base URL (default: `https://conto.finance`). Must use `https://` in production (localhost allowed for development only).
 
 ## When This Skill Activates
 
@@ -20,24 +29,110 @@ This skill applies whenever you are about to:
 - Pay for an API call (x402, paid endpoints)
 - Make any on-chain transaction that moves value
 
-## Environment
+## Getting Started
 
-- `CONTO_SDK_KEY` (required) — Your Conto SDK API key (format: `conto_agent_...`)
-- `CONTO_API_URL` (optional) — API base URL (default: `https://conto.finance`). Must use `https://` in production (localhost allowed for development only).
+### Step 1: Install the skill
 
-## Two Wallet Modes
+```bash
+npx clawhub@latest install kwattana/conto
+```
+
+### Step 2: Get your wallet address
+
+Conto needs your wallet address to track spending. Ask your agent:
+
+```
+What is my wallet address?
+```
+
+The agent will return your address (e.g., `0x80Ca...`). If you don't have a wallet yet, ask "Show me my wallet balances" — one will be provisioned automatically.
+
+### Step 3: Set up your agent in the Conto dashboard
+
+Sign in at [conto.finance](https://conto.finance) and complete these steps:
+
+1. **Create an agent**: Agents > Create Agent > name it, set type to CUSTOM, status ACTIVE
+2. **Register your wallet**: Wallets > Add Wallet > paste your wallet address, set custody type (EXTERNAL for OpenClaw/Sponge wallets, PRIVY or SPONGE for custody-managed wallets)
+3. **Link wallet to agent**: Agents > your agent > Wallets tab > link the wallet, set spend limits (e.g., $200/tx, $1000/day)
+4. **Generate an SDK key**: Agents > your agent > SDK Keys > Generate New Key
+   - Select **Admin** for full control (create/manage policies)
+   - Select **Standard** for payment approval only
+   - Copy the key immediately — it's only shown once
+
+### Step 4: Configure OpenClaw
+
+Add the SDK key to `~/.openclaw/openclaw.json`:
+
+```json
+{
+  "skills": {
+    "entries": {
+      "conto": {
+        "env": {
+          "CONTO_SDK_KEY": "conto_agent_your_key_here",
+          "CONTO_API_URL": "https://conto.finance"
+        }
+      }
+    }
+  }
+}
+```
+
+### Step 5: Verify it works
+
+Test that the skill is connected by checking your policies:
+
+```
+/conto list my policies
+```
+
+Or test a policy check (this does NOT execute a payment):
+
+```
+/conto check if a 10 pathUSD payment to 0x742d35Cc6634C0532925a3b844Bc9e7595f2e3a1 for API credits is allowed
+```
+
+If you get an approval or denial response, Conto is working.
+
+## Which Wallet Mode Should I Use?
+
+Conto supports two modes depending on who manages the wallet keys:
+
+| Question                        | Mode A                                                     | Mode B                                              |
+| ------------------------------- | ---------------------------------------------------------- | --------------------------------------------------- |
+| Who holds the wallet keys?      | Custody provider (Privy or Sponge)                         | You (via OpenClaw/Sponge MCP tools)                 |
+| How many API calls per payment? | 1 (single call, auto-executes)                             | 3 (approve → transfer → confirm)                    |
+| When to use?                    | Wallet `custodyType` is PRIVY or SPONGE in Conto dashboard | Wallet `custodyType` is EXTERNAL in Conto dashboard |
+
+**Most OpenClaw setups use Mode B** — your agent controls the wallet via Sponge MCP tools and Conto acts as the policy gate before each transaction.
 
 > **Prefer `conto-check.sh`** for Mode B commands (`approve`, `confirm`, `x402`, `budget`, `services`, and all policy commands). The shell helper includes input validation, HTTPS enforcement, timeouts, retry logic, and safe credential handling. Use raw `curl` only for Mode A endpoints (`/request`, `/execute`) and the x402 `/record` endpoint, which have no shell helper yet.
 
-Conto supports two modes depending on who manages the wallet:
+---
 
-**Mode A — Integrated wallet (PRIVY or SPONGE custody):**
-The custody provider (Privy or Sponge) holds the wallet keys. You call `/request` with `autoExecute: true` and Conto handles policy check + instructs the custody provider to execute the on-chain transfer in one call.
+## Quick Start: Your First Policy-Checked Payment (Mode B)
 
-**Mode B — External wallet (EXTERNAL custody):**
-You hold the wallet keys. You call `/approve` for policy check, execute the transfer yourself, then call `/confirm` with the tx hash.
+Here's a complete end-to-end example of sending 10 USDC with policy enforcement:
 
-**How to know which mode:** Check the wallet's `custodyType` in the Conto dashboard. If it's PRIVY or SPONGE, use Mode A. If it's EXTERNAL, use Mode B.
+**1. Request approval from Conto:**
+
+```bash
+{baseDir}/conto-check.sh approve 10 0xRecipientAddress 0xYourWalletAddress "API credits" "API_PROVIDER"
+```
+
+**2. If approved, execute the transfer:**
+
+```
+mcp__sponge__tempo_transfer — to: "0xRecipientAddress", amount: "10", token: "pathUSD"
+```
+
+**3. Confirm the transaction with Conto:**
+
+```bash
+{baseDir}/conto-check.sh confirm <approval_id> <tx_hash> <approval_token>
+```
+
+That's it. Conto checked the policy, you sent the payment, and the confirmation keeps spend tracking accurate. The sections below cover each step in detail.
 
 ---
 

@@ -3,9 +3,15 @@
   "slug": "conto",
   "displayName": "Conto",
   "latest": {
-    "version": "1.5.3",
-    "publishedAt": 1775086881106,
-    "commit": "https://github.com/openclaw/skills/commit/ffa5aff9b3f03d8aedce52402de686883a9a6828"
+    "version": "1.8.0",
+    "publishedAt": 1775507199775,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.5.3",
+      "publishedAt": 1775086881106,
+      "commit": "https://github.com/openclaw/skills/commit/ffa5aff9b3f03d8aedce52402de686883a9a6828"
+    }
+  ]
 }

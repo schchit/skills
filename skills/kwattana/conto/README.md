@@ -15,7 +15,7 @@ Create an account at [conto.finance](https://conto.finance) (or use `http://loca
 Then install the skill:
 
 ```bash
-openclaw skill install conto
+npx clawhub@latest install kwattana/conto
 ```
 
 ### 2. Find your OpenClaw wallet address
