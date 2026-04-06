@@ -1,11 +1,17 @@
 {
   "owner": "gate-exchange",
   "slug": "gate-exchange-launchpool",
-  "displayName": "Gate Exchange Launchpool",
+  "displayName": "Gate Exchange LaunchPool Skill",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774685863351,
-    "commit": "https://github.com/openclaw/skills/commit/107346dfbdf53a70f93aeca09f0e774214902597"
+    "version": "1.0.1",
+    "publishedAt": 1775115256964,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774685863351,
+      "commit": "https://github.com/openclaw/skills/commit/107346dfbdf53a70f93aeca09f0e774214902597"
+    }
+  ]
 }
