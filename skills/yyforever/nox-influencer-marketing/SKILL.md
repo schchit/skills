@@ -1,12 +1,12 @@
 ---
 name: noxinfluencer
-description: Discovers creators, performs due-diligence analysis, retrieves contacts, manages account/quota, and tracks video campaigns across YouTube, TikTok, and Instagram via the NoxInfluencer CLI. Use when the user needs to find, evaluate, contact, or monitor creators for influencer marketing.
-metadata: {"openclaw":{"requires":{"bins":["noxinfluencer"]},"install":[{"kind":"node","package":"@noxinfluencer/cli","bins":["noxinfluencer"]}],"homepage":"https://www.noxinfluencer.com"}}
+description: Discovers creators for influencer marketing, creator marketing, and social media marketing campaigns; performs creator due-diligence analysis, retrieves outreach-ready contacts, and tracks campaign videos across YouTube, TikTok, and Instagram via the NoxInfluencer CLI. Use when the user needs creator discovery, creator evaluation, contact retrieval, or campaign monitoring.
+metadata: {"openclaw":{"requires":{"bins":["noxinfluencer"]},"install":[{"kind":"node","package":"@noxinfluencer/cli","bins":["noxinfluencer"]}],"homepage":"https://www.noxinfluencer.com/"}}
 ---
 
 # NoxInfluencer
 
-Full-workflow influencer marketing skill: account setup → creator discovery → due-diligence analysis → contact retrieval → video performance monitoring.
+Full-workflow creator marketing skill for influencer discovery, creator due diligence, outreach-ready contact retrieval, and campaign video monitoring across YouTube, TikTok, and Instagram.
 
 The user interacts through natural language. Execute CLI commands yourself and report results in plain language. Never expose raw commands to the user.
 
@@ -69,8 +69,13 @@ Add `--detail` for expanded creator analysis when the user needs deeper evidence
 
 Run `noxinfluencer doctor` first to check the current state. Guide through only what's missing:
 
-1. **No CLI installed** → Tell user: "Run `npm install -g @noxinfluencer/cli` in your terminal." (the one step they must do themselves)
-2. **No API key** → Use `doctor` output and CLI hints to tell them they need an API key and point them to the dashboard or signup flow. Once they have a key, configure it yourself. Prefer `noxinfluencer auth --key-stdin` so the key does not appear in argv, logs, or echoed output.
+1. **No CLI installed** → Tell user to run `npm install -g @noxinfluencer/cli` in their terminal. In the same reply, directly provide the browser steps they must do themselves:
+   - English register: `https://www.noxinfluencer.com/signup?userType=brand&service=%2Fskills%2Fdashboard`
+   - English API key: `https://www.noxinfluencer.com/skills/dashboard`
+   - Chinese register: `https://cn.noxinfluencer.com/signup?userType=brand&service=%2Fskills%2Fdashboard`
+   - Chinese API key: `https://cn.noxinfluencer.com/skills/dashboard`
+   Then ask them to send the API key back so you can configure it with `noxinfluencer auth --key-stdin`.
+2. **CLI installed, no API key** → Run `doctor` and prefer CLI-provided hints / URLs. Only fall back to the static register + API key links above if the CLI output is incomplete.
 3. **Everything configured** → Run `quota`, tell them the current Skill quota snapshot and any obvious blocking issues.
 
 ### Quota and Billing
@@ -110,6 +115,7 @@ Use `noxinfluencer schema creator.search` to discover available filter parameter
 - Multi-platform requests require separate searches per platform
 - Add `--has_email true` when the user's intent is commercial outreach
 - Start with one search, refine if results are too noisy
+- For "show more", "next page", "继续", or similar follow-ups, rerun the same search with the next `page_num` and the prior response's `data.search_after`; if there is no cursor or the last page was already reached, say there are no more results
 
 See `{baseDir}/references/search-filters.md` for filter selection semantics by user intent.
 
