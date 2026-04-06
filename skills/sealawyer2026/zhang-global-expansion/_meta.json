@@ -1,11 +1,17 @@
 {
   "owner": "sealawyer2026",
   "slug": "zhang-global-expansion",
-  "displayName": "九章 企业出海全球化法律服务 V1.2.0",
+  "displayName": "九章-全球化扩张法律专家",
   "latest": {
-    "version": "1.2.0",
-    "publishedAt": 1774397988240,
-    "commit": "https://github.com/openclaw/skills/commit/7788ed55fd1541fca23289b6cf85273d5e96ce2a"
+    "version": "1.5.0",
+    "publishedAt": 1775098922072,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.2.0",
+      "publishedAt": 1774397988240,
+      "commit": "https://github.com/openclaw/skills/commit/7788ed55fd1541fca23289b6cf85273d5e96ce2a"
+    }
+  ]
 }
