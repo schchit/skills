@@ -90,10 +90,17 @@ Body (all fields except `title` are optional):
       "relative_to": "",
       "relative_period": 0
     }
-  ]
+  ],
+  "related_tasks": {
+      "precedes": [{"id": 42}],
+      "blocked_by": [{"id": 7}]
+  }
 }
 ```
 Priority scale: `0` = none, `1` = low, `2` = medium, `3` = high, `4` = urgent, `5` = DO NOW.
+
+`related_tasks` is optional. Keys are relation kinds; values are arrays of `{"id": taskID}`. 
+Relations are created inline in a single request - no separate call needed.
 
 Response: created task object with `id` and `index`.
 
@@ -213,6 +220,33 @@ DELETE /tasks/{taskID}/assignees/{userID}
 ```
 
 ---
+
+## Task Relations
+
+### Create a relation
+PUT /tasks/{taskID}/relations
+
+Body:
+{
+  "other_task_id": 456,
+  "relation_kind": "precedes"
+}
+
+relation_kind values:
+- "precedes" — esta tarea va antes que la otra
+- "follows" — esta tarea va después que la otra  
+- "related" — relación genérica sin orden
+- "duplicates" / "duplicated_by"
+- "blocked_by" / "blocking"
+- "caused_by"
+- "copied_from" / "copied_to"
+- "parent_task" / "subtask"
+
+Response: objeto con task_id, other_task_id, relation_kind, created_by, created.
+
+### Delete a relation
+DELETE /tasks/{taskID}/relations/{otherTaskID}/{relationKind}
+
 
 ## Error responses
 

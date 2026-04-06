@@ -89,6 +89,12 @@ See `references/endpoints.md` for the full endpoint reference.
 - Remove a reminder from a task
 - Reminders are part of the task object — use the task update flow
 
+### Task Relations
+- Create a relation between two tasks (precedes, follows, blocked_by, subtask, etc.)
+- Delete a relation
+- When creating a new task with a known relation, use `related_tasks` inline in the body — no separate call needed
+- When adding relations to already-existing tasks, use `PUT /tasks/{id}/relations`
+
 ## Workflow guidelines
 
 1. **Resolve names to IDs first.** If the user says "add a task to my Work
