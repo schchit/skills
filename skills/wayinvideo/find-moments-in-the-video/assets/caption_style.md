@@ -1,5 +1,10 @@
 | Style ID | Type | Visual Effect Description |
 | :--- | :--- | :--- |
+| `smart-bg-focus` | Dynamic | Minimal smart-background style. Text is dark gray on a soft white rounded background, with upcoming words faded and spoken words shown in full opacity for a clean progressive-reading effect. Displays one line at a time. |
+| `box-highlight` | Dynamic | Bold editorial box style. Text is white in a heavy sans-serif font on a dark rounded rectangular background, creating a strong high-contrast title-card look. Displays one line at a time, with no more than 2 words per line.
+ |
+| `word-focus` | Dynamic | Punchy focus-tag style. Base text is white in a bold condensed font, with the current spoken word highlighted by a vivid purple rounded background block. |
+| `underline-focus` | Dynamic | Modern emphasis style. Base text is white in an uppercase bold font, with the current spoken word slightly enlarged and marked by an orange underline for a clean attention-guiding effect. Displays one line at a time. |
 | `temp-0` | Dynamic | Playful comic/graffiti bold style. Base text is white, with the current spoken word highlighted in green. |
 | `temp-1` | Dynamic | Casual handwriting/marker style. Base text is white, with the current spoken word highlighted in light blue. |
 | `temp-2` | Dynamic | Clean and clear sans-serif bold font. Base text is white, with the current spoken word highlighted in light blue. |

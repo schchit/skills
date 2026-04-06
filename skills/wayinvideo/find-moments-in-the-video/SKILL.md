@@ -46,14 +46,17 @@ This script will output the Project ID and the path to an initial result JSON fi
 - `--name <string>`: (Optional) A custom name for this task.
 - `--top-k <int>`: (Optional) The best K moments to return. Defaults to `10`. Pass `-1` to return all matching moments.
 - `--export`: (Optional) Enable rendering of clips (returns export links).
+- `--ai-hook`: (Optional) Enable automatically generated text hooks. (Used with `--export`)
+- `--ai-hook-style <style>`: (Optional) Style of the generated hook text. Values: `serious` (default), `casual`, `informative`, `conversational`, `humorous`, `parody`, `inspirational`, `dramatic`, `empathetic`, `persuasive`, `neutral`, `excited`, `calm`. (Used with `--export` and `--ai-hook`)
+- `--ai-hook-pos <pos>`: (Optional) Position of the generated hook text. Values: `beginning` (default), `end`. (Used with `--export` and `--ai-hook`)
 - `--ratio <ratio>`: (Optional) Aspect ratio: `RATIO_16_9`, `RATIO_1_1`, `RATIO_4_5`, `RATIO_9_16`. Defaults to `RATIO_9_16`. AI reframing is automatically enabled. If the user specifies a platform, you MUST read `assets/platform_ratio.md` first to determine the correct aspect ratio. (Used with `--export`)
-- `--resolution <res>`: (Optional) Output resolution: `SD_480`, `HD_720`, `FHD_1080`. Defaults to `FHD_1080`. (Used with `--export`)
+- `--resolution <res>`: (Optional) Output resolution: `SD_480`, `HD_720`, `FHD_1080` (default), `QHD_2K`, `UHD_4K`. (Used with `--export`)
 - `--caption-display <mode>`: (Optional) Caption mode: `none`, `both`, `original`, `translation`. Defaults to `original` (or `translation` if `--target` is provided). Pass `none` to explicitly disable captions. (Used with `--export`)
-- `--cc-style-tpl <id>`: (Optional) Caption style template ID. Defaults to `temp-static-2` if `--caption-display` is `both`, otherwise `temp-0`. See `assets/caption_style.md` for details. (Used with `--export` and `--caption-display`)
+- `--cc-style-tpl <id>`: (Optional) Caption style template ID. Defaults to `temp-static-2` if `--caption-display` is `both`, otherwise `word-focus`. See `assets/caption_style.md` for details. (Used with `--export` and `--caption-display`)
 - `--save-dir <path>`: (Optional) The directory where the initial result JSON file will be saved. Defaults to `api_results` in your workspace.
 
 > [!TIP]
-> - **Use the `--export` flag by default.** This ensures you receive downloadable links for the matched moments immediately. While rendering adds extra processing time, it avoids the need to re-run the task later to get the video files. **Skip this flag only if the user specifically requests the raw analysis results as quickly as possible without video rendering.**
+> - **Use the `--export` and `--ai-hook` flags by default.** This ensures you receive downloadable links for the matched moments immediately, and the moments include attention-grabbing AI-generated text hooks. While rendering adds extra processing time, it avoids the need to re-run the task later to get the video files. **Skip these flags only if the user specifically requests the raw analysis results as quickly as possible without video rendering or hooks.**
 > - To include subtitles in the dedicated language in the output video, use: `--export --caption-display translation --target <lang>`.
 > - If `--caption-display` is set to `both`, you MUST use a template ID starting with `temp-static-`.
 > - If the API only partially satisfies the request, use other tools to complete the remaining tasks and request user approval before proceeding. If this is not feasible, suggest the user visit `https://wayin.ai/wayinvideo/home`, which provides an online video editor and other AI-powered tools.

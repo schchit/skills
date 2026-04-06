@@ -95,9 +95,12 @@ def main():
     parser.add_argument("--name", default=None)
     parser.add_argument("--export", action="store_true", default=False)
     parser.add_argument("--ratio", choices=["RATIO_16_9", "RATIO_1_1", "RATIO_4_5", "RATIO_9_16"], default=None)
-    parser.add_argument("--resolution", choices=["SD_480", "HD_720", "FHD_1080"], default="FHD_1080")
+    parser.add_argument("--resolution", choices=["SD_480", "HD_720", "FHD_1080", "QHD_2K", "UHD_4K"], default="FHD_1080")
     parser.add_argument("--caption-display", choices=["none", "both", "original", "translation"], default=None)
     parser.add_argument("--cc-style-tpl", default=None)
+    parser.add_argument("--ai-hook", action="store_true", default=False)
+    parser.add_argument("--ai-hook-style", choices=["serious", "casual", "informative", "conversational", "humorous", "parody", "inspirational", "dramatic", "empathetic", "persuasive", "neutral", "excited", "calm"], default="serious")
+    parser.add_argument("--ai-hook-pos", choices=["beginning", "end"], default="beginning")
     parser.add_argument("--top-k", type=int, default=10, help="The best K moments to return. Defaults to 10. Pass -1 to return all matching moments.")
     parser.add_argument("--save-dir", default=None, help="Directory to save the initial state JSON file.")
     args = parser.parse_args()
@@ -121,7 +124,7 @@ def main():
         if caption_display == "both":
             cc_style_tpl = "temp-static-2"
         else:
-            cc_style_tpl = "temp-0"
+            cc_style_tpl = "word-focus"
 
     if caption_display == "both" and not (cc_style_tpl and cc_style_tpl.startswith("temp-static-")):
         print(f"ERROR: `--cc-style-tpl` can only be `temp-static-...` when `--caption-display both`", file=sys.stderr)
@@ -134,7 +137,10 @@ def main():
         "enable_export": args.export,
         "enable_caption": enable_caption,
         "enable_ai_reframe": True if args.ratio else False,
+        "enable_ai_hook": args.ai_hook
     }
+    if args.ai_hook_style: submit_payload["ai_hook_script_style"] = args.ai_hook_style
+    if args.ai_hook_pos: submit_payload["ai_hook_position"] = args.ai_hook_pos
     if args.source: submit_payload["source_lang"] = args.source.lower().replace("_", "-")
     if args.target: submit_payload["target_lang"] = args.target.lower().replace("_", "-")
     if args.name: submit_payload["project_name"] = args.name
