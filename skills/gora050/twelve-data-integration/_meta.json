@@ -3,9 +3,15 @@
   "slug": "twelve-data-integration",
   "displayName": "Twelve Data",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774789510115,
-    "commit": "https://github.com/openclaw/skills/commit/82639980f2066f4a0eed58b1011a64e2b5438955"
+    "version": "1.0.2",
+    "publishedAt": 1775169279698,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774789510115,
+      "commit": "https://github.com/openclaw/skills/commit/82639980f2066f4a0eed58b1011a64e2b5438955"
+    }
+  ]
 }
