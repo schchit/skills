@@ -4,6 +4,7 @@
 // Usage: ./sticky-notify-app /tmp/cc-sticky-notify-myproject.txt
 
 import Cocoa
+import ApplicationServices
 
 class StickyWindow: NSWindow {
     override var canBecomeKey: Bool { true }
@@ -16,10 +17,48 @@ class PassthroughLabel: NSTextField {
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
+// NSTextView subclass for meta area: supports mixed-color attributed strings,
+// passes all mouse events through to the parent card view.
+class PassthroughTextView: NSTextView {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    override var acceptsFirstResponder: Bool { false }
+}
+
+// Clickable accent bar: amber = following all Spaces, slate-blue = pinned to current Space.
+class AccentBarView: NSView {
+    var isFollowing: Bool = false { didSet { refresh() } }
+    var onToggle: ((Bool) -> Void)?
+    let followColor = NSColor(calibratedRed: 0.95, green: 0.62, blue: 0.12, alpha: 1.0)
+    let pinnedColor = NSColor(calibratedRed: 0.45, green: 0.55, blue: 0.70, alpha: 1.0)
+    var currentColor: NSColor { isFollowing ? followColor : pinnedColor }
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+        refresh()
+    }
+    required init?(coder: NSCoder) { fatalError() }
+
+    private func refresh() {
+        layer?.backgroundColor = (isFollowing ? followColor : pinnedColor).cgColor
+        toolTip = isFollowing
+            ? "Following all Spaces — click to pin to current Space"
+            : "Pinned to this Space — click to follow to all Spaces"
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        isFollowing.toggle()
+        onToggle?(isFollowing)
+    }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    override func resetCursorRects() { addCursorRect(bounds, cursor: .pointingHand) }
+}
+
 // Custom card view: tracks mouseDown/mouseUp to detect a tap (not drag)
 // without interfering with subview buttons or the window's move-by-background.
 class StickyCardView: NSView {
     var closeBtnFrame: NSRect = .zero
+    var contentFrame: NSRect = .zero   // only taps inside this area trigger focus
     var onTap: (() -> Void)?
     private var mouseDownPt: NSPoint = .zero
 
@@ -31,7 +70,7 @@ class StickyCardView: NSView {
     override func mouseUp(with event: NSEvent) {
         let pt = convert(event.locationInWindow, from: nil)
         let dist = hypot(pt.x - mouseDownPt.x, pt.y - mouseDownPt.y)
-        if dist < 5 && !closeBtnFrame.contains(pt) {
+        if dist < 5 && !closeBtnFrame.contains(pt) && contentFrame.contains(pt) {
             onTap?()
         }
         super.mouseUp(with: event)
@@ -48,10 +87,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let pidFilePath: String
     var fileWatchSource: DispatchSourceFileSystemObject?
     var headerLabel: PassthroughLabel!
-    var metaLabel: PassthroughLabel!
+    var metaLabel: PassthroughTextView!
     var focusFilePath: String
+    var windowFilePath: String
     var closeBtn: NSButton!
+    var collapseBtn: NSButton!
+    var accentBar: AccentBarView!
     var slotFilePath: String
+    var cardView: StickyCardView!
+    // Overlay label shown in the center of the circle when collapsed
+    var iconLabel: PassthroughLabel?
+    var isCollapsed = false
+    let noteW: CGFloat = 300
+    let noteH: CGFloat = 102
 
     init(contentFilePath: String) {
         self.contentFilePath = contentFilePath
@@ -60,6 +108,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             : contentFilePath
         self.pidFilePath   = base + ".pid"
         self.focusFilePath = base + ".focus"
+        self.windowFilePath = base + ".window"
         self.slotFilePath  = base + ".slot"
     }
 
@@ -68,10 +117,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let pid = ProcessInfo.processInfo.processIdentifier
         try? String(pid).write(toFile: pidFilePath, atomically: true, encoding: .utf8)
 
-        guard let screen = NSScreen.main else { NSApp.terminate(nil); return }
+        // NSScreen.screens[0] 始终是主屏幕（菜单栏所在屏幕），
+        // 而 NSScreen.main 会随键盘焦点动态变化，不可靠
+        guard let screen = NSScreen.screens.first else { NSApp.terminate(nil); return }
 
-        let noteW: CGFloat = 300
-        let noteH: CGFloat = 90
         let margin: CGFloat = 20
         let vis = screen.visibleFrame
 
@@ -83,10 +132,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         var slot = 0
 
         var occupiedSlots = Set<Int>()
-        let tmpDir = URL(fileURLWithPath: "/tmp")
+        let tmpDir = URL(fileURLWithPath: "/tmp/cc-sticky-notify")
+        try? FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
         if let files = try? FileManager.default.contentsOfDirectory(at: tmpDir, includingPropertiesForKeys: nil) {
             for file in files
-                where file.lastPathComponent.hasPrefix("cc-sticky-notify-") && file.pathExtension == "slot" {
+                where file.pathExtension == "slot" {
                 let pidFile = file.deletingPathExtension().appendingPathExtension("pid")
                 if let pidStr = try? String(contentsOf: pidFile, encoding: .utf8),
                    let pid = Int32(pidStr.trimmingCharacters(in: .whitespacesAndNewlines)),
@@ -100,7 +150,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         if occupiedSlots.count >= maxNoCoverSlots {
             // All non-overlap slots taken — cycle via shared counter
-            let cycleFile = "/tmp/cc-sticky-notify-slot"
+            let cycleFile = "/tmp/cc-sticky-notify/slot"
             if let data = try? Data(contentsOf: URL(fileURLWithPath: cycleFile)),
                let str = String(data: data, encoding: .utf8),
                let n = Int(str.trimmingCharacters(in: .whitespacesAndNewlines)) {
@@ -119,11 +169,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let x = vis.maxX - noteW - margin
         let y = vis.maxY - noteH - margin - CGFloat(slot) * slotStep
 
+        // 必须传入 screen 参数，否则 macOS 会忽略 contentRect 的坐标，
+        // 将窗口放到鼠标当前所在屏幕
         window = StickyWindow(
             contentRect: NSRect(x: x, y: y, width: noteW, height: noteH),
             styleMask: [.borderless],
             backing: .buffered,
-            defer: false
+            defer: false,
+            screen: screen
         )
         window.level = .floating
         window.isReleasedWhenClosed = false
@@ -131,30 +184,43 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.backgroundColor = .clear
         window.hasShadow = true
         window.isMovableByWindowBackground = true
+        window.collectionBehavior = []  // default: pinned to current Space
 
         // Card view: rounded corners + warm cream-yellow background
-        let cardView = StickyCardView(frame: NSRect(x: 0, y: 0, width: noteW, height: noteH))
+        cardView = StickyCardView(frame: NSRect(x: 0, y: 0, width: noteW, height: noteH))
         cardView.wantsLayer = true
         cardView.layer?.backgroundColor = NSColor(calibratedRed: 0.98, green: 0.96, blue: 0.72, alpha: 1.0).cgColor
         cardView.layer?.cornerRadius = 12
         cardView.layer?.masksToBounds = true
         window.contentView = cardView
 
-        // Left amber accent bar
-        let accentBar = NSView(frame: NSRect(x: 0, y: 0, width: 5, height: noteH))
-        accentBar.wantsLayer = true
-        accentBar.layer?.backgroundColor = NSColor(calibratedRed: 0.95, green: 0.62, blue: 0.12, alpha: 1.0).cgColor
+        // Left accent bar: amber when following all Spaces, slate-blue when pinned
+        accentBar = AccentBarView(frame: NSRect(x: 0, y: 0, width: 5, height: noteH))
+        accentBar.onToggle = { [weak self] isFollowing in
+            self?.window.collectionBehavior = isFollowing ? .canJoinAllSpaces : []
+        }
         cardView.addSubview(accentBar)
 
         let rowY: CGFloat = noteH - 28
 
-        // Header label: 13pt semibold, dark brown (same row as close button)
+        // Header label: 13pt semibold, dark brown (same row as close/collapse buttons)
         headerLabel = PassthroughLabel(labelWithString: "")
-        headerLabel.frame = NSRect(x: 16, y: rowY, width: noteW - 44, height: 20)
+        headerLabel.frame = NSRect(x: 16, y: rowY, width: noteW - 64, height: 20)
         headerLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
         headerLabel.textColor = NSColor(calibratedRed: 0.15, green: 0.10, blue: 0.0, alpha: 1.0)
         headerLabel.lineBreakMode = .byTruncatingTail
         cardView.addSubview(headerLabel)
+
+        // Collapse button (▾, second from right in header row)
+        collapseBtn = NSButton(frame: NSRect(x: noteW - 48, y: rowY + 1, width: 18, height: 18))
+        collapseBtn.attributedTitle = NSAttributedString(string: "▾", attributes: [
+            .foregroundColor: NSColor(calibratedRed: 0.45, green: 0.35, blue: 0.15, alpha: 0.7),
+            .font: NSFont.systemFont(ofSize: 11, weight: .medium)
+        ])
+        collapseBtn.isBordered = false
+        collapseBtn.target = self
+        collapseBtn.action = #selector(collapseWindowAction)
+        cardView.addSubview(collapseBtn)
 
         // Close button (top-right ✕, same row as header)
         closeBtn = NSButton(frame: NSRect(x: noteW - 26, y: rowY, width: 20, height: 20))
@@ -173,9 +239,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         divider.layer?.backgroundColor = NSColor(calibratedRed: 0.85, green: 0.72, blue: 0.35, alpha: 0.7).cgColor
         cardView.addSubview(divider)
 
-        // Meta label: 12pt medium, colon-aligned via tab stop at 58pt
-        metaLabel = PassthroughLabel(wrappingLabelWithString: "")
-        metaLabel.frame = NSRect(x: 16, y: 10, width: noteW - 24, height: rowY - 18)
+        // Meta area: NSTextView for reliable mixed-color attributed string rendering
+        metaLabel = PassthroughTextView(frame: NSRect(x: 16, y: 8, width: noteW - 24, height: rowY - 16))
+        metaLabel.isEditable = false
+        metaLabel.isSelectable = false
+        metaLabel.drawsBackground = false
+        metaLabel.textContainer?.lineFragmentPadding = 0
+        metaLabel.textContainerInset = .zero
         cardView.addSubview(metaLabel)
 
         // Load initial content from file
@@ -193,12 +263,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             fileWatchSource = source
         }
 
-        // Tap anywhere (outside close button) to focus the originating terminal/IDE
+        // Tap behaviour: expand when collapsed, focus terminal when expanded
         cardView.closeBtnFrame = closeBtn.frame
-        cardView.onTap = { [weak self] in self?.focusTerminal() }
+        cardView.contentFrame = metaLabel.frame
+        cardView.onTap = { [weak self] in
+            guard let self = self else { return }
+            if self.isCollapsed { self.expandWindow() } else { self.focusTerminal() }
+        }
 
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: false)
+        // orderFrontRegardless 不激活 App，避免系统因焦点变化重新定位窗口
+        window.orderFrontRegardless()
 
         // Auto-close: default 1 hour; override with CC_STICKY_NOTIFY_CLOSE_TIMEOUT env var (seconds)
         let timeout: Double
@@ -213,34 +287,163 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    // Collapse: hide card content, show circle icon, shrink window.
+    // Keeps cardView as contentView — avoids borderless-window contentView-swap bugs.
+    @objc func collapseWindowAction() {
+        guard !isCollapsed else { return }
+        isCollapsed = true
+
+        let circleSize: CGFloat = 44
+
+        // Create a centred icon label and add it on top of cardView.
+        // sizeToFit() gives the natural text size; we then place it at the circle centre.
+        let icon = PassthroughLabel(labelWithString: extractIcon(from: headerLabel.stringValue))
+        icon.font = NSFont.systemFont(ofSize: 22)
+        icon.drawsBackground = false
+        icon.isBordered = false
+        icon.sizeToFit()
+        let lw = max(icon.frame.width, 28), lh = max(icon.frame.height, 28)
+        icon.frame = NSRect(x: (circleSize - lw) / 2, y: (circleSize - lh) / 2,
+                            width: lw, height: lh)
+        iconLabel = icon
+        cardView.addSubview(icon)
+
+        // Hide every other subview
+        for sub in cardView.subviews where sub !== icon {
+            sub.isHidden = true
+        }
+
+        // Reshape cardView layer into a circle with a coloured ring
+        cardView.layer?.cornerRadius = circleSize / 2
+        cardView.layer?.borderWidth = 2.5
+        cardView.layer?.borderColor = accentBar.currentColor.cgColor
+
+        // Expand tap zone to the whole circle; no close button to exclude
+        cardView.closeBtnFrame = .zero
+        cardView.contentFrame  = NSRect(x: 0, y: 0, width: circleSize, height: circleSize)
+
+        // Shrink window, anchoring at the top-right corner of the original card
+        let cur = window.frame
+        window.setFrame(
+            NSRect(x: cur.maxX - circleSize, y: cur.maxY - circleSize,
+                   width: circleSize, height: circleSize),
+            display: true, animate: false)
+    }
+
+    // Expand: restore card subviews and resize window back to full card.
+    func expandWindow() {
+        guard isCollapsed else { return }
+        isCollapsed = false
+
+        // Remove icon overlay and un-hide original subviews
+        iconLabel?.removeFromSuperview()
+        iconLabel = nil
+        for sub in cardView.subviews {
+            sub.isHidden = false
+        }
+
+        // Restore cardView layer to rounded-rect card
+        cardView.layer?.cornerRadius = 12
+        cardView.layer?.borderWidth = 0
+
+        // Restore tap detection
+        cardView.closeBtnFrame = closeBtn.frame
+        cardView.contentFrame  = metaLabel.frame
+
+        // Expand window, anchoring at the top-right corner of the collapsed circle
+        let cur = window.frame
+        window.setFrame(
+            NSRect(x: cur.maxX - noteW, y: cur.maxY - noteH,
+                   width: noteW, height: noteH),
+            display: true, animate: false)
+    }
+
+    // Return the first grapheme cluster (emoji or character) from the header.
+    func extractIcon(from text: String) -> String {
+        guard let first = text.first else { return "📌" }
+        return String(first)
+    }
+
     func focusTerminal() {
         guard let raw = try? String(contentsOfFile: focusFilePath, encoding: .utf8) else { return }
         let appName = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !appName.isEmpty else { return }
-        // Match by executable name (e.g. "idea") or display name (e.g. "IntelliJ IDEA")
-        // NSWorkspace is more reliable than `tell application X to activate` for non-standard names
-        if let app = NSWorkspace.shared.runningApplications.first(where: {
+
+        guard let app = NSWorkspace.shared.runningApplications.first(where: {
             $0.executableURL?.lastPathComponent == appName || $0.localizedName == appName
-        }) {
-            app.activate(options: [])
+        }) else { return }
+
+        // 尝试用 Accessibility API 精准定位并激活通知触发时的那个窗口
+        let windowTitle = (try? String(contentsOfFile: windowFilePath, encoding: .utf8))?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        if !windowTitle.isEmpty {
+            let axApp = AXUIElementCreateApplication(app.processIdentifier)
+            var windowsRef: CFTypeRef?
+            if AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &windowsRef) == .success,
+               let windows = windowsRef as? [AXUIElement] {
+                for window in windows {
+                    var titleRef: CFTypeRef?
+                    if AXUIElementCopyAttributeValue(window, kAXTitleAttribute as CFString, &titleRef) == .success,
+                       let title = titleRef as? String, title == windowTitle {
+                        AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+                        app.activate(options: [])
+                        return
+                    }
+                }
+            }
         }
+
+        // Fallback：无法精准匹配时直接激活 app
+        app.activate(options: [])
     }
 
     func reloadContent() {
         guard let text = try? String(contentsOfFile: contentFilePath, encoding: .utf8) else { return }
         updateLabels(from: text)
+        if isCollapsed, let icon = iconLabel {
+            // Update circle icon but do NOT auto-expand
+            icon.stringValue = extractIcon(from: headerLabel.stringValue)
+            icon.sizeToFit()
+            let cs: CGFloat = 44
+            let lw = max(icon.frame.width, 28), lh = max(icon.frame.height, 28)
+            icon.frame = NSRect(x: (cs - lw) / 2, y: (cs - lh) / 2, width: lw, height: lh)
+        }
         animatePulse()
     }
 
-    // Brief scale-bounce so the user notices the content has changed
+    // Scale-bounce so the user notices the content has changed.
     func animatePulse() {
         guard let layer = window?.contentView?.layer else { return }
+
+        if isCollapsed {
+            // Shrink-first pulse so the circle stays within its 44pt bounds
+            let pulse = CAKeyframeAnimation(keyPath: "transform.scale")
+            pulse.values      = [1.0, 0.82, 1.0, 0.92, 1.0]
+            pulse.keyTimes    = [0,   0.25, 0.5, 0.75, 1.0]
+            pulse.duration    = 0.40
+            pulse.repeatCount = 2
+            pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            layer.add(pulse, forKey: "updatePulse")
+            return
+        }
+
+        // Expanded: scale bounce + border flash
         let pulse = CAKeyframeAnimation(keyPath: "transform.scale")
-        pulse.values   = [1.0, 1.05, 0.97, 1.0]
-        pulse.keyTimes = [0,   0.3,  0.7,  1.0]
-        pulse.duration = 0.32
-        pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        pulse.values      = [1.0, 1.25, 0.90, 1.10, 0.96, 1.0]
+        pulse.keyTimes    = [0,   0.25, 0.5,  0.7,  0.85, 1.0]
+        pulse.duration    = 0.55
+        pulse.repeatCount = 3
+        pulse.timingFunction = CAMediaTimingFunction(name: .easeOut)
         layer.add(pulse, forKey: "updatePulse")
+
+        let totalDuration = pulse.duration * Double(pulse.repeatCount)
+        let border = CAKeyframeAnimation(keyPath: "borderWidth")
+        border.values   = [0, 3.0, 3.0, 0]
+        border.keyTimes = [0, 0.05, 0.9, 1.0]
+        border.duration = totalDuration
+        layer.borderColor = NSColor(calibratedRed: 0.95, green: 0.55, blue: 0.05, alpha: 1.0).cgColor
+        layer.add(border, forKey: "updateBorder")
     }
 
     func updateLabels(from text: String) {
@@ -254,25 +457,39 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
             return line
         }
-        let metaText = metaLines.joined(separator: "\n")
-
         headerLabel.stringValue = headerText
 
         let metaPS = NSMutableParagraphStyle()
         metaPS.tabStops = [NSTextTab(textAlignment: .left, location: 58)]
         metaPS.lineSpacing = 3
-        let metaAttrs: [NSAttributedString.Key: Any] = [
+        let normalAttrs: [NSAttributedString.Key: Any] = [
             .font: NSFont.systemFont(ofSize: 12, weight: .medium),
             .foregroundColor: NSColor(calibratedRed: 0.30, green: 0.20, blue: 0.05, alpha: 1.0),
             .paragraphStyle: metaPS
         ]
-        metaLabel.attributedStringValue = NSAttributedString(string: metaText, attributes: metaAttrs)
+        let projectValAttrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 12, weight: .bold),
+            .foregroundColor: NSColor(calibratedRed: 0.82, green: 0.08, blue: 0.08, alpha: 1.0),
+            .paragraphStyle: metaPS
+        ]
+        let result = NSMutableAttributedString()
+        for (i, line) in metaLines.enumerated() {
+            if i > 0 { result.append(NSAttributedString(string: "\n", attributes: normalAttrs)) }
+            if line.hasPrefix("Project:"), let tabIdx = line.firstIndex(of: "\t") {
+                result.append(NSAttributedString(string: String(line[...tabIdx]), attributes: normalAttrs))
+                result.append(NSAttributedString(string: String(line[line.index(after: tabIdx)...]), attributes: projectValAttrs))
+            } else {
+                result.append(NSAttributedString(string: line, attributes: normalAttrs))
+            }
+        }
+        metaLabel.textStorage?.setAttributedString(result)
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         fileWatchSource?.cancel()
         try? FileManager.default.removeItem(atPath: pidFilePath)
         try? FileManager.default.removeItem(atPath: focusFilePath)
+        try? FileManager.default.removeItem(atPath: windowFilePath)
         try? FileManager.default.removeItem(atPath: slotFilePath)
     }
 
