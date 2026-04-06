@@ -1,11 +1,17 @@
 {
   "owner": "dglijin-oss",
   "slug": "liuyao-najia-skill",
-  "displayName": "六爻纳甲 - Liuyao Najia Divination",
+  "displayName": "六爻纳甲技能",
   "latest": {
-    "version": "3.0.0",
-    "publishedAt": 1774861754275,
-    "commit": "https://github.com/openclaw/skills/commit/6f09387a1d3a61ffcf8a6fcdbcf011228ffddfe6"
+    "version": "3.0.1",
+    "publishedAt": 1775229144367,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "3.0.0",
+      "publishedAt": 1774861754275,
+      "commit": "https://github.com/openclaw/skills/commit/6f09387a1d3a61ffcf8a6fcdbcf011228ffddfe6"
+    }
+  ]
 }
