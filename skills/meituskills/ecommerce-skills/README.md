@@ -1,105 +1,82 @@
 # Designkit Skills
 
-🎨 Professional design assets for ecommerce teams: remove backgrounds, restore blurry images, and generate listing-ready product visuals in one workflow.  
-Designkit 官方技能包：一键抠图、画质修复、商品主图与详情图生成。
+Designkit is an ecommerce image skill pack for background removal, image restoration, and listing image generation. Use it when you need clean cutouts, sharper product photos, or marketplace-ready hero and detail images from a single product image.
 
-## ClawHub Display Name
+## What It Does
 
-`Designkit: AI Product Image Studio`
+- Removes backgrounds and returns transparent or white-background product images
+- Restores blurry or low-quality product photos
+- Generates listing-ready product image sets for ecommerce marketplaces
 
-## What This Skill Solves
+## Who It Is For
 
-用户搜索 design，通常是在找“马上能用”的结果。这个 Skill 专注 3 个高频场景：
-
-1. `Cutout-Express`：智能抠图，输出透明底/白底图。
-2. `Clarity-Boost`：模糊图画质修复，提升商品图清晰度。
-3. `Listing-Kit`：电商商品套图多步生成（主图 + 详情图）。
-
-## Included Skills
-
-- `designkit-ecommerce-skills`：根路由与意图分发
-- `designkit-edit-tools`：原子图片编辑（抠图、变清晰）
-- `designkit-ecommerce-product-kit`：电商套图多步工作流
+- Ecommerce sellers and marketplace operators
+- Creative ops and merchandising teams
+- Agencies producing product image variations at scale
 
 ## Quick Start
 
-1. 获取额度：[https://www.designkit.com/openClaw](https://www.designkit.com/openClaw)
-2. 设置环境变量：
+1. Get credits and an API key from [Designkit OpenClaw](https://www.designkit.com/openClaw).
+2. Set your API key:
 
 ```bash
 export DESIGNKIT_OPENCLAW_AK="AK"
 ```
 
-3. 安装 Skill：
+3. Install the skill:
 
 ```bash
 clawhub install designkit-ecommerce-skills
 ```
 
-或：
+Or install from GitHub:
 
 ```bash
 npx -y skills add https://github.com/designkit/designkit-ecommerce-skills
 ```
 
-## 30-Second Demo Script
+## Example Prompts
 
-可用于录屏/GIF，提升列表页转化：
+- `Remove the background from this product image and return a transparent result.`
+- `Restore this blurry product photo and make it sharper.`
+- `Create a full Amazon listing image set from this product photo.`
 
-1. 输入：`帮我把这张商品图抠成透明底`
-2. 输出：透明底结果图（Markdown 图片）
-3. 输入：`再把这张模糊图变清晰`
-4. 输出：修复后高清图
-5. 输入：`基于这张商品图做一套亚马逊主图详情图`
-6. 输出：套图生成进度 + 成品图展示 + 本地下载路径
+## Capabilities
 
-## Security & Trust
+### Cutout-Express
 
-权限只保留运行能力所必需项：
+Use this when you need a product image with the background removed. It is suitable for transparent-background outputs and clean marketplace-ready product cutouts.
 
-- `network`：调用 Designkit/OpenClaw API
-- `shell`：执行仓库内脚本入口（`bash`/`python3`）
-- `filesystem`：读取本地输入图、自动下载输出图
+### Clarity-Boost
 
-不申请系统配置修改类权限，不写入非任务相关目录。
+Use this when the source image is blurry, soft, or low-quality and you want a sharper product photo for ecommerce use.
 
-## SEO Keyword Matrix (Bilingual)
+### Listing-Kit
 
-**English keywords**  
-`AI image editing`, `background removal`, `matting`, `restore blurry image`, `ecommerce listing images`, `product hero image`, `product detail image`
+Use this when you want a multi-image ecommerce set from one product photo. The skill guides the conversation in steps, then returns generation progress and final result image URLs.
 
-**中文关键词**  
-`抠图`, `去背景`, `透明底`, `白底图`, `画质修复`, `图片增强`, `电商套图`, `商品主图`, `商品详情图`
+## What To Expect
 
-**Commonly searched for**
+- For background removal and image restoration, the skill returns result image URLs and may render previews in clients that support image display.
+- For listing image generation, the skill asks for selling points, style direction, and marketplace settings before generating results.
+- When you provide a local image path, the file is uploaded to Designkit/OpenClaw for processing.
 
-- `How to remove product image background with AI`
-- `How to restore blurry ecommerce photos`
-- `Best tool to generate Amazon listing images`
-- `如何一键生成电商商品主图和详情图`
-- `如何批量优化商品图清晰度`
+## Privacy And Security
 
-## Repository Structure
+- Request logging is off by default: `OPENCLAW_REQUEST_LOG=0`
+- If request logging is enabled manually, the skill emits redacted request and response summaries instead of full request bodies or credentials
+- Local image inputs are validated as real `JPG`, `JPEG`, `PNG`, `WEBP`, or `GIF` files before upload
+- The skill uses only the permissions required to perform the requested task:
+  - `network` to call Designkit/OpenClaw APIs
+  - `shell` to run the bundled skill entrypoints
+  - `filesystem` to read local image inputs when you provide a local path
 
-- `SKILL.md`：根 Skill 入口
-- `claw.json`：包元信息、触发词、权限配置
-- `api/commands.json`：原子能力定义
-- `skills/designkit-edit-tools/SKILL.md`：图片编辑子 Skill
-- `skills/designkit-ecommerce-product-kit/SKILL.md`：电商套图子 Skill
-- `scripts/run_command.sh`：通用图片编辑执行脚本
-- `scripts/run_ecommerce_kit.sh`：电商套图执行入口
-- `scripts/ecommerce_product_kit.py`：电商套图核心逻辑
+## Troubleshooting
 
-## ClawHub 提交前 Checklist
-
-1. 确认 `SKILL.md` 与子 skill frontmatter 均包含 `name`、`description`、`version` 与 `metadata.openclaw`。
-2. 确认环境变量至少配置：
-   - `DESIGNKIT_OPENCLAW_AK`
-3. 本地 smoke test：
-   - `bash scripts/run_command.sh sod --input-json '{"image":"https://example.com/photo.jpg"}'`
-4. 发布：
-   - `clawhub login`
-   - `clawhub publish . --slug designkit-ecommerce-skills --version 1.1.1 --tags latest`
+- If you see an authentication error, confirm that `DESIGNKIT_OPENCLAW_AK` is set correctly and that your credits are active.
+- If you see an insufficient credits error, visit [Designkit](https://www.designkit.com/openClaw) to check your balance.
+- If a local file is rejected, make sure it is a valid `JPG`, `JPEG`, `PNG`, `WEBP`, or `GIF` image.
+- If generation is temporarily unavailable or polling times out, retry later.
 
 ## License
 

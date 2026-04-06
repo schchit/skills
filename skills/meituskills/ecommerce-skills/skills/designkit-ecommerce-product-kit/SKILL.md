@@ -1,23 +1,15 @@
 ---
 name: designkit-ecommerce-product-kit
 description: >-
-  Use when users need ecommerce listing images from a product photo, including
-  hero/detail images with guided multi-step input. Trigger on requests like
-  listing image packs, product image sets, and amazon listing images.
-version: "1.8.1"
+  Use when users need ecommerce listing image sets from a product photo, such
+  as hero and detail images for marketplaces like Amazon, TikTok Shop, Temu, or
+  AliExpress.
+version: "1.8.2"
 metadata:
   openclaw:
     requires:
       env:
         - DESIGNKIT_OPENCLAW_AK
-        - DESIGNKIT_OPENCLAW_AK_URL
-        - DESIGNKIT_WEBAPI_BASE
-        - OPENCLAW_REQUEST_LOG
-        - OPENCLAW_REQUEST_LOG_BODY_MAX
-        - DESIGNKIT_OPENCLAW_CLIENT_ID
-        - DESIGNKIT_CLIENT_LANGUAGE
-        - DESIGNKIT_COUNTRY_CODE
-        - DESIGNKIT_CLIENT_TIMEZONE
       bins:
         - bash
         - python3
@@ -28,6 +20,14 @@ metadata:
 # Designkit Ecommerce Product Kit
 
 Conversation-first workflow: guide users through required inputs and deliver a full listing image set.
+
+## Public Safety Rules
+
+- Only use a product image URL or local file path that the user explicitly provided.
+- Never browse unrelated local files or infer a local file path on the user's behalf.
+- If the user provides a local image path, treat it as task data that will be uploaded for remote processing.
+- Do not expose raw request or response payloads, credential values, or internal runner names in normal user-facing replies.
+- Do not claim local auto-download behavior unless the client layer actually adds its own download handling.
 
 ## Step-by-Step Output (Mandatory, No Merging)
 
@@ -70,23 +70,23 @@ Conversation-first workflow: guide users through required inputs and deliver a f
 4. **Style selection (Optional, skip by default and let server auto-select)**:
    - default: skip style selection and proceed to rendering without `brand_style`
    - only run style-selection flow when user explicitly asks to choose style:
-     1. `bash __SKILL_DIR__/scripts/run_ecommerce_kit.sh style_create --input-json '<with image, product_info, platform, market...>'`
+     1. `bash __SKILL_DIR__/../../scripts/run_ecommerce_kit.sh style_create --input-json '<with image, product_info, platform, market...>'`
      2. poll by returned `task_id`:
-        `bash __SKILL_DIR__/scripts/run_ecommerce_kit.sh style_poll --input-json '{"task_id":"..."}'`
+        `bash __SKILL_DIR__/../../scripts/run_ecommerce_kit.sh style_poll --input-json '{"task_id":"..."}'`
         (optionally with `max_wait_sec` / `interval_sec`)
+   - these are internal execution instructions for the agent; do not show runner names or command lines to end users unless they explicitly ask for technical details
    - if style API is used, do not invent styles. Show only API-returned options.
      Ask user to choose one, then pass the full returned structure (for example `brand_style`) without manual rewrite.
-5. **Render + auto download**:
+5. **Render result delivery**:
    - run `render_submit` / `render_poll` to generate final images
    - during polling, report progress based on stderr `[PROGRESS]` lines (for example "3/7 completed")
-   - auto-download all final images to working directory with naming:
-     `{product_name}_{index}_{label}.jpg` (`label` from `items[].label`)
-   - show results in Markdown image format and report save location
+   - return final image URLs from `media_urls` and item metadata from `items`
+   - show results in Markdown image format; if the caller wants local downloads, let the caller save the returned URLs
    - rerun with new style:
      if user wants another style after preview, run `style_create`, let user choose, then rerun from `render_submit`
 
 **Strict sequence constraint**:
 Product image -> **selling points + style preference (round 1)** -> **user reply** ->
 **listing configuration (round 2, or fast-path skip)** -> **user reply** ->
-**render + auto download**.
+**render and return result URLs**.
 Style selection is optional and inserted only when user explicitly asks.

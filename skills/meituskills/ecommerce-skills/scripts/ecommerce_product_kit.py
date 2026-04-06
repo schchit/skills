@@ -14,13 +14,14 @@ import argparse
 import json
 import os
 import re
-import shlex
 import sys
 import time
 import uuid
 import urllib.error
 import urllib.request
 from typing import Any, Dict, List, Optional, Tuple
+
+from openclaw_safety import detect_local_image, summarize_http_request, summarize_json_text
 
 # Can be overridden by DESIGNKIT_WEBAPI_BASE.
 # Base domain only; version prefix is not auto-appended.
@@ -38,7 +39,7 @@ def _openclaw_ak_url() -> str:
 
 
 def _request_log_enabled() -> bool:
-    return os.environ.get("OPENCLAW_REQUEST_LOG", "1") != "0"
+    return os.environ.get("OPENCLAW_REQUEST_LOG", "0") != "0"
 
 
 def _request_log(message: str) -> None:
@@ -46,56 +47,27 @@ def _request_log(message: str) -> None:
         print(f"[REQUEST] {message}", file=sys.stderr)
 
 
-def _request_log_as_curl(
+def _request_log_http_summary(
     method: str,
     url: str,
     headers: Dict[str, str],
     data: Optional[bytes] = None,
+    *,
+    multipart_hint: Optional[str] = None,
+    timeout: int = 120,
 ) -> None:
     if not _request_log_enabled():
         return
-    parts: List[str] = ["curl", "-s", "--max-time", "120"]
-    m = method.upper()
-    if m not in ("GET", "HEAD"):
-        parts.extend(["-X", m])
-    for k, v in headers.items():
-        parts.extend(["-H", f"{k}: {v}"])
-    if data:
-        parts.extend(["-d", data.decode("utf-8", errors="replace")])
-    parts.append(url)
-    print("[REQUEST] " + shlex.join(parts), file=sys.stderr)
-
-
-def _request_log_as_curl_multipart(
-    upload_url: str,
-    fname: str,
-    file_path: str,
-    mime: str,
-) -> None:
-    if not _request_log_enabled():
-        return
-    parts: List[str] = [
-        "curl",
-        "-s",
-        "--max-time",
-        "120",
-        "-X",
-        "POST",
-        "-H",
-        "Origin: https://www.designkit.cn",
-        "-H",
-        "Referer: https://www.designkit.cn/editor/",
-        "-F",
-        "token=<redacted>",
-        "-F",
-        "key=<redacted>",
-        "-F",
-        f"fname={fname}",
-        "-F",
-        f"file=@{file_path};type={mime}",
-        upload_url,
-    ]
-    print("[REQUEST] " + shlex.join(parts), file=sys.stderr)
+    summary = summarize_http_request(
+        method,
+        url,
+        headers,
+        data=data,
+        multipart_hint=multipart_hint,
+        timeout=timeout,
+    )
+    print("[REQUEST] request (summary):", file=sys.stderr)
+    print(json.dumps(summary, ensure_ascii=False, indent=2), file=sys.stderr)
 
 
 def _request_log_response_json(
@@ -109,21 +81,14 @@ def _request_log_response_json(
         max_len = int(os.environ.get("OPENCLAW_REQUEST_LOG_BODY_MAX", "20000"))
     except ValueError:
         max_len = 20000
-    if len(text) > max_len:
-        text = text[:max_len] + "...(truncated)"
-    try:
-        body_obj: Any = json.loads(text)
-        if http_code is not None:
-            envelope: Any = {"http_code": http_code, "body": body_obj}
-        else:
-            envelope = body_obj
-    except json.JSONDecodeError:
-        if http_code is not None:
-            envelope = {"http_code": http_code, "_raw": text}
-        else:
-            envelope = {"_raw": text}
+    envelope = summarize_json_text(
+        text,
+        ak=os.environ.get("DESIGNKIT_OPENCLAW_AK", "").strip(),
+        http_code=http_code,
+        max_len=max_len,
+    )
     pretty = json.dumps(envelope, ensure_ascii=False, indent=2)
-    print(f"[REQUEST] {label} (JSON):", file=sys.stderr)
+    print(f"[REQUEST] {label} (summary):", file=sys.stderr)
     print(pretty, file=sys.stderr)
 
 # Style generation prompt template.
@@ -264,7 +229,7 @@ def _http_request(
     headers = _headers_json() if json_mode and body else _headers_get()
     if body and "Content-Type" not in headers:
         headers["Content-Type"] = "application/json"
-    _request_log_as_curl(method, url, headers, body)
+    _request_log_http_summary(method, url, headers, body, timeout=120)
     req = urllib.request.Request(url, data=body, headers=headers, method=method)
     try:
         with urllib.request.urlopen(req, timeout=120) as resp:
@@ -285,21 +250,17 @@ def _http_request(
 
 
 def _suffix_mime(path: str) -> Tuple[str, str]:
-    ext = path.rsplit(".", 1)[-1].lower() if "." in path else ""
-    if ext in ("jpg", "jpeg"):
-        return "jpeg", "image/jpeg"
-    if ext == "png":
-        return "png", "image/png"
-    if ext == "webp":
-        return "webp", "image/webp"
-    return "jpeg", "image/jpeg"
+    return detect_local_image(path)
 
 
 def upload_local_image(file_path: str) -> str:
     if not os.path.isfile(file_path):
         _json_error(False, "PARAM_ERROR", f"File not found: {file_path}", "Please check the image path")
 
-    _, mime = _suffix_mime(file_path)
+    try:
+        _, mime = _suffix_mime(file_path)
+    except ValueError as exc:
+        _json_error(False, "PARAM_ERROR", str(exc), "Please provide a valid local JPG, PNG, WEBP, or GIF image")
     fname = os.path.basename(file_path)
 
     getsign_url = f"{WEBAPI_BASE}/maat/getsign?type=openclaw"
@@ -315,7 +276,7 @@ def upload_local_image(file_path: str) -> str:
         _request_log(f"maat getsign missing upload_url: {json.dumps(getsign_resp, ensure_ascii=False)}")
         _json_error(False, "UPLOAD_ERROR", "Failed to get upload signature", "Please check your network or API key and retry")
 
-    _request_log_as_curl(
+    _request_log_http_summary(
         "GET",
         policy_url_full,
         {
@@ -323,6 +284,7 @@ def upload_local_image(file_path: str) -> str:
             "Referer": "https://www.designkit.cn/editor/",
         },
         None,
+        timeout=30,
     )
     policy_req = urllib.request.Request(policy_url_full)
     policy_req.add_header("Origin", "https://www.designkit.cn")
@@ -375,7 +337,18 @@ def upload_local_image(file_path: str) -> str:
     )
 
     upload_target = f"{up_url}/"
-    _request_log_as_curl_multipart(upload_target, fname, file_path, mime)
+    _request_log_http_summary(
+        "POST",
+        upload_target,
+        {
+            "Content-Type": f"multipart/form-data; boundary={boundary.decode()}",
+            "Origin": "https://www.designkit.cn",
+            "Referer": "https://www.designkit.cn/editor/",
+        },
+        None,
+        multipart_hint=f"file=@<local-file>;type={mime}",
+        timeout=120,
+    )
     up_req = urllib.request.Request(upload_target, data=post_body, method="POST")
     up_req.add_header("Content-Type", f"multipart/form-data; boundary={boundary.decode()}")
     up_req.add_header("Origin", "https://www.designkit.cn")
