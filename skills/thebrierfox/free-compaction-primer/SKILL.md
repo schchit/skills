@@ -1,7 +1,7 @@
 ---
 name: Context Death Spiral Prevention — OpenClaw Compaction Primer
 slug: context-death-spiral-prevention-compaction-primer
-version: 1.0.0
+version: 1.0.1
 author: IntuiTek
 tags: [production, engineering, compaction, context-management, hardening]
 description: Learn to recognize and prevent context death spirals in OpenClaw agents. Covers symptoms, root causes, configuration categories, and why most default setups have no protection. Free primer for the Production Agent Ops bundle.
@@ -102,7 +102,7 @@ Most operators discover this the hard way.
 ---
 
 *Full production architecture with all 7 SKILL.md files — including exact
-production-validated constants sourced from Anthropic's Claude Code — available
+production-validated constants validated in production Claude Code deployments — available
 in the **Production Agent Ops bundle** on Claw Mart:*
 
-*https://www.shopclawmart.com/listings/production-agent-ops-anthropic-sourced-architecture-pack-0d1bb129*
+*https://www.shopclawmart.com/listings/production-agent-ops-battle-tested-architecture-pack-0d1bb129*
