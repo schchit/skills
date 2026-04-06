@@ -1,0 +1,11 @@
+{
+  "owner": "zimsoft",
+  "slug": "webprinter",
+  "displayName": "智睦云打印",
+  "latest": {
+    "version": "1.0.10",
+    "publishedAt": 1775482129881,
+    "commit": null
+  },
+  "history": []
+}
