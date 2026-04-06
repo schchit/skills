@@ -1,11 +1,17 @@
 {
   "owner": "alan5168",
   "slug": "fapiao-clipper",
-  "displayName": "发票夹子",
+  "displayName": "Fapiao Clipper",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775042206863,
-    "commit": "https://github.com/openclaw/skills/commit/bc64e31ac3666b9886032a69c4bc9f765c4c60a9"
+    "version": "1.3.1",
+    "publishedAt": 1775226228679,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775042206863,
+      "commit": "https://github.com/openclaw/skills/commit/bc64e31ac3666b9886032a69c4bc9f765c4c60a9"
+    }
+  ]
 }
