@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     # Sherpa-ONNX Configuration (SenseVoice)
     SHERPA_MODEL_DIR: str = "/tmp/sherpa-model"
-    SHERPA_MODEL_NAME: str = "sherpa-onnx-sense-voice-zh-en-ja-ko-small-with-hotwords"
+    SHERPA_MODEL_NAME: str = "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17"
     SHERPA_NUM_THREADS: int = 4
 
     # Vosk Configuration (fallback)

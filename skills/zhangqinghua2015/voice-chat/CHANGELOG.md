@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.5] - 2026-04-01
+
+### Fixed
+- 修复 Sherpa-ONNX 样本归一化问题：使用 numpy 将音频数据正确缩放到 [-1, 1] 范围
+- 修复前：模型听到"静音"，输出 ". ."
+- 修复后：正确识别语音内容（如"看一下 gi 上面的热门项目"）
+- 关闭 use_itn 避免富文本标记干扰
+- **重要**：将正确的代码同步到项目源代码目录
+
+## [2.3.3] - 2026-04-01
+
+### Fixed
+- 修复 Sherpa-ONNX API 调用方式：使用 `from_sense_voice` 类方法
+- 修复音频处理流程：先转换为 16kHz WAV，再使用 `accept_waveform` 方法
+- 修正 Sherpa-ONNX 模型名称和下载方式
+
+## [2.3.2] - 2026-04-01
+
+### Fixed
+- 修正 Sherpa-ONNX 模型名称：sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17
+- 修正模型文件：model.onnx（而非 model.int8.onnx）
+- 修正下载方式：使用 GitHub releases 而非 huggingface
+- 更新配置文件和文档
+
+## [2.3.1] - 2026-04-01
+
+### Fixed
+- 修复依赖爆炸问题：改用 Sherpa-ONNX 替代 funasr-onnx
+- 移除 CUDA/NVIDIA 依赖，适合 termux 环境
+- 优化内存占用（int8 量化模型，600-800MB）
+
 ## [2.3.0] - 2026-04-01
 
 ### Added

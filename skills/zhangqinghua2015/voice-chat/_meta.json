@@ -3,9 +3,15 @@
   "slug": "voice-chat",
   "displayName": "Voice Chat Bridge",
   "latest": {
-    "version": "2.3.1",
-    "publishedAt": 1775037392982,
-    "commit": "https://github.com/openclaw/skills/commit/af5c75233b770f6afddda16ae454060108210369"
+    "version": "2.3.5",
+    "publishedAt": 1775056110370,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "2.3.1",
+      "publishedAt": 1775037392982,
+      "commit": "https://github.com/openclaw/skills/commit/af5c75233b770f6afddda16ae454060108210369"
+    }
+  ]
 }

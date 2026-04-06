@@ -105,15 +105,19 @@ Sherpa-ONNX 模型需要手动下载。
 # 创建模型目录
 mkdir -p /tmp/sherpa-model
 
-# 下载 Sherpa-ONNX SenseVoice 模型（int8 量化版，约 200MB）
-git clone https://huggingface.co/k2-fsa/sherpa-onnx-sense-voice-zh-en-ja-ko-small-with-hotwords /tmp/sherpa-model/sherpa-onnx-sense-voice-zh-en-ja-ko-small-with-hotwords
+# 下载 Sherpa-ONNX SenseVoice 模型（约 999MB）
+cd /tmp/sherpa-model
+wget https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.tar.bz2
+
+# 解压模型
+tar -xjf sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.tar.bz2
 
 # 验证
-ls /tmp/sherpa-model/sherpa-onnx-sense-voice-zh-en-ja-ko-small-with-hotwords/
-# 应显示：model.int8.onnx, tokens.txt 等
+ls /tmp/sherpa-model/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/
+# 应显示：model.onnx, tokens.txt 等
 ```
 
-**注意**：如果 huggingface 连不上，可以去 modelscope 找 sherpa-onnx-sense-voice 的镜像。
+**注意**：如果网络连接不稳定，可以使用 aria2c 或其他下载工具。
 
 #### 3.2 下载 Vosk 模型（备份）
 Vosk 引擎需要中文模型文件。首次运行前必须下载。
@@ -148,7 +152,7 @@ STT_ENGINE=auto
 
 # Sherpa-ONNX 模型路径（默认：/tmp/sherpa-model）
 SHERPA_MODEL_DIR=/tmp/sherpa-model
-SHERPA_MODEL_NAME=sherpa-onnx-sense-voice-zh-en-ja-ko-small-with-hotwords
+SHERPA_MODEL_NAME=sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17
 SHERPA_NUM_THREADS=4
 
 # Vosk 模型路径（默认：/tmp/vosk-model/vosk-model-small-cn-0.22）
@@ -251,7 +255,7 @@ openclaw gateway restart
 | **Python** | `pydantic` | ✅ 必需 | 配置管理 |
 | **Python** | `python-dotenv` | ✅ 必需 | 环境变量加载 |
 | **Python** | `numpy` | ✅ 必需 | 数值计算（Sherpa-ONNX 依赖） |
-| **模型** | `sherpa-onnx-sense-voice-zh-en-ja-ko-small-with-hotwords` | ✅ 必需 | Sherpa-ONNX 模型（手动下载） |
+| **模型** | `sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17` | ✅ 必需 | Sherpa-ONNX 模型（手动下载） |
 | **模型** | `vosk-model-small-cn-0.22` | ✅ 必需 | Vosk 中文模型（手动下载） |
 
 ---
@@ -316,7 +320,7 @@ file /tmp/voice-chat/voice_chat_xxx.ogg
 |--------|--------|------|
 | `STT_ENGINE` | `auto` | STT 引擎策略（sherpa/vosk/auto） |
 | `SHERPA_MODEL_DIR` | `/tmp/sherpa-model` | Sherpa-ONNX 模型目录 |
-| `SHERPA_MODEL_NAME` | `sherpa-onnx-sense-voice-zh-en-ja-ko-small-with-hotwords` | Sherpa-ONNX 模型名称 |
+| `SHERPA_MODEL_NAME` | `sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17` | Sherpa-ONNX 模型名称 |
 | `SHERPA_NUM_THREADS` | `4` | Sherpa-ONNX 线程数 |
 | `VOSK_MODEL_DIR` | `/tmp/vosk-model/vosk-model-small-cn-0.22` | Vosk 模型路径 |
 | `DEFAULT_VOICE` | `zh-CN-YunxiNeural` | TTS 默认音色 |
@@ -426,17 +430,30 @@ voice-chat/
 MIT
 
 ## 📅 更新日志
-- **v2.3.0 (2026-04-01)**:
+- **v2.3.5 (2026-04-01)**:
+  - **修复**：修正 Sherpa-ONNX 样本归一化问题（使用 numpy 缩放到 [-1, 1]）
+  - **修复**：关闭 use_itn 避免富文本标记干扰
+  - **修复**：将正确的代码同步到项目源代码目录
+  - **修复前**：模型听到"静音"，输出 ". ."
+  - **修复后**：正确识别语音内容
+
+- **v2.3.4 (2026-04-01)**:
+  - **修复**：修正 Sherpa-ONNX API 调用方式
+  - **修复**：修正音频处理流程（使用 `accept_waveform`）
+  - **修复**：修正 Sherpa-ONNX 模型名称和下载方式
+
+- **v2.3.2 (2026-04-01)**:
   - **重大更新**：集成 Sherpa-ONNX 引擎（首选 STT）
   - **新增**：自动 fallback 机制（Sherpa-ONNX 失败时切换 Vosk）
   - **新增**：引擎策略配置（sherpa/vosk/auto）
   - **优化**：中英文混合识别准确率
-  - **优化**：内存占用（使用 int8 量化模型，600-800MB）
+  - **优化**：内存占用（使用 onnxruntime，约 1GB）
   - **优化**：移除 CUDA/NVIDIA 依赖，适合 termux 环境
   - **兼容**：保持 Vosk 作为备份方案
   - **更新**：依赖列表（新增 `sherpa-onnx`，移除 `funasr-onnx`, `librosa`, `scipy`）
   - **更新**：配置文件（新增 Sherpa-ONNX 相关配置）
   - **更新**：文档（DESIGN.md, README.md, CHANGELOG.md）
+  - **修复**：修正 Sherpa-ONNX 模型名称和下载方式
 - **v2.2.1 (2026-03-31)**:
   - 新增 `SOUL.md` 配置最佳实践（动态频道识别）。
 - **v2.1.5**: 新增 Edge TTS 失败自动降级到 `pyttsx3`。

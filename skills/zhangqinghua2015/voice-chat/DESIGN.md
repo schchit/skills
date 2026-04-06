@@ -32,13 +32,26 @@
 - 配置集中化（pydantic + dotenv）
 - 提取通用校验与依赖检查（utils）
 
-### v2.3.0 - 双引擎升级（Sherpa-ONNX）
+### v2.3.5 - Sherpa-ONNX 归一化修复（代码同步）
+- **修复**：修正 Sherpa-ONNX 样本归一化问题（使用 numpy 缩放到 [-1, 1]）
+- **修复**：关闭 use_itn 避免富文本标记干扰
+- **修复**：将正确的代码同步到项目源代码目录
+- **修复前**：模型听到"静音"，输出 ". ."
+- **修复后**：正确识别语音内容
+
+### v2.3.4 - Sherpa-ONNX 归一化修复
+- **修复**：修正 Sherpa-ONNX API 调用方式（使用 `from_sense_voice` 类方法）
+- **修复**：修正音频处理流程（先转换为 16kHz WAV，再使用 `accept_waveform`）
+- **修复**：修正 Sherpa-ONNX 模型名称和下载方式
+
+### v2.3.2 - 双引擎升级（Sherpa-ONNX）
 - **新增**：Sherpa-ONNX 引擎（首选，中英文混合识别）
 - **新增**：自动 fallback 机制（Sherpa-ONNX 失败时切换 Vosk）
 - **新增**：引擎策略配置（sherpa/vosk/auto）
 - **优化**：中英文混合识别准确率
-- **优化**：内存占用（使用 int8 量化模型，600-800MB）
+- **优化**：内存占用（使用 onnxruntime，约 1GB）
 - **兼容**：保持 Vosk 作为备份方案
+- **修复**：修正 Sherpa-ONNX 模型名称和下载方式
 
 ## 渠道支持现状
 | 渠道 | 状态 | 说明 |
@@ -99,7 +112,7 @@ transcribe(audio, engine="auto")  # Sherpa-ONNX 失败时自动切换 Vosk
 |--------|--------|------|
 | `STT_ENGINE` | `sherpa` | STT 引擎策略（sherpa/vosk/auto） |
 | `SHERPA_MODEL_DIR` | `/tmp/sherpa-model` | Sherpa-ONNX 模型目录 |
-| `SHERPA_MODEL_NAME` | `sherpa-onnx-sense-voice-zh-en-ja-ko-small-with-hotwords` | Sherpa-ONNX 模型名称 |
+| `SHERPA_MODEL_NAME` | `sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17` | Sherpa-ONNX 模型名称 |
 | `SHERPA_NUM_THREADS` | `4` | Sherpa-ONNX 线程数 |
 | `VOSK_PYTHON` | `sys.executable` | Vosk 使用的 Python 解释器 |
 | `VOSK_MODEL_DIR` | `/tmp/vosk-model/vosk-model-small-cn-0.22` | Vosk 模型目录 |

@@ -69,7 +69,7 @@ def transcribe_with_sherpa(src_audio: str) -> str:
 
         # 模型路径
         model_dir = os.path.join(SHERPA_MODEL_DIR, SHERPA_MODEL_NAME)
-        model_path = os.path.join(model_dir, "model.int8.onnx")
+        model_path = os.path.join(model_dir, "model.onnx")
         tokens_path = os.path.join(model_dir, "tokens.txt")
 
         # 检查模型文件
@@ -77,33 +77,76 @@ def transcribe_with_sherpa(src_audio: str) -> str:
             raise TranscriptionError(
                 f"模型文件不存在：{model_path}\n"
                 f"请下载模型：\n"
-                f"git clone https://huggingface.co/k2-fsa/sherpa-onnx-sense-voice-zh-en-ja-ko-small-with-hotwords {SHERPA_MODEL_DIR}"
+                f"wget https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.tar.bz2\n"
+                f"tar -xjf sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.tar.bz2 -C {SHERPA_MODEL_DIR}"
             )
         if not os.path.exists(tokens_path):
             raise TranscriptionError(f"Token 文件不存在：{tokens_path}")
 
-        # 配置识别器
-        config = sherpa_onnx.OfflineRecognizerConfig(
-            model=sherpa_onnx.OfflineModelConfig(
-                sense_voice=sherpa_onnx.OfflineSenseVoiceModelConfig(
-                    model=model_path,
-                    tokens=tokens_path,
-                    num_threads=SHERPA_NUM_THREADS,
-                ),
-            )
+        # 初始化识别器
+        recognizer = sherpa_onnx.OfflineRecognizer.from_sense_voice(
+            model=model_path,
+            tokens=tokens_path,
+            num_threads=SHERPA_NUM_THREADS,
+            language="auto",  # 自动检测语言
+            use_itn=False,  # 先关闭 ITN 测试
         )
 
-        # 初始化识别器
-        recognizer = sherpa_onnx.OfflineRecognizer(config)
+        # 先使用 ffmpeg 转换为 16kHz 单声道 WAV
+        with tempfile.NamedTemporaryFile(
+            suffix=TEMP_WAV_SUFFIX,
+            prefix=TEMP_WAV_PREFIX,
+            dir=TEMP_DIR,
+            delete=False
+        ) as tmp_wav:
+            wav_path = tmp_wav.name
 
-        # 读取音频并识别
-        stream = recognizer.create_stream()
-        stream.accept_wave_file(src_audio)
-        recognizer.decode_stream(stream)
+        try:
+            # 转换音频格式
+            ffmpeg_cmd = [
+                'ffmpeg', '-y',
+                '-i', str(src_audio),
+                '-ar', '16000',
+                '-ac', '1',
+                '-f', 'wav',
+                wav_path
+            ]
+            subprocess.run(
+                ffmpeg_cmd,
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                timeout=60
+            )
 
-        result_text = stream.result.text
-        logger.info(f"Sherpa-ONNX 转写完成：{result_text}")
-        return result_text
+            # 使用 numpy 正确读取并归一化音频数据
+            import numpy as np
+            with open(wav_path, 'rb') as f:
+                # 跳过 WAV 头，读取 PCM 数据
+                import wave
+                wf = wave.open(f, 'rb')
+                sample_rate = wf.getframerate()
+                raw_bytes = wf.readframes(wf.getnframes())
+                wf.close()
+
+                # 关键：转为 float32 且缩放到 [-1, 1] 之间
+                samples = np.frombuffer(raw_bytes, dtype=np.int16).astype(np.float32) / 32768.0
+
+            # 创建流并识别
+            stream = recognizer.create_stream()
+            stream.accept_waveform(sample_rate, samples)
+            recognizer.decode_stream(stream)
+
+            result_text = stream.result.text
+            logger.info(f"Sherpa-ONNX 转写完成：{result_text}")
+            return result_text
+        finally:
+            # 清理临时 WAV 文件
+            if os.path.exists(wav_path):
+                try:
+                    os.remove(wav_path)
+                except OSError:
+                    pass
 
     except ImportError as e:
         logger.error(f"Sherpa-ONNX 依赖未安装：{e}")
