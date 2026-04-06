@@ -1,188 +1,136 @@
 ---
 name: jewelry-video-maker
-version: 1.0.4
-displayName: "Jewelry Video Maker"
+version: "1.0.0"
+displayName: "Jewelry Video Maker — Create Stunning Product Videos That Sell Your Pieces"
 description: >
-  Describe your jewelry piece and NemoVideo creates the product video. 925 sterling silver rings, gemstone pendants, handmade bracelets — show the loupe-level detail, the styling moment, and the brand story that converts Etsy browsers into buyers.
-
-  Works by connecting to the NemoVideo AI backend at mega-api-prod.nemovideo.ai.
-  Supports MP4, MOV, AVI, WebM.
-homepage: https://nemovideo.com
-apiDomain: https://mega-api-prod.nemovideo.ai
-repository: https://github.com/nemovideo/nemovideo_skills
-license: MIT-0
-metadata:
-  requires:
-    env: ["NEMO_TOKEN"]
-    configPaths:
-      - "~/.config/nemovideo/"
-  primaryEnv: NEMO_TOKEN
+  Turn raw clips and photos of your jewelry into polished, scroll-stopping product videos ready for Instagram, Etsy, TikTok, or your online store. This jewelry-video-maker skill helps designers, boutique owners, and independent jewelers craft cinematic showcases — complete with captions, pacing suggestions, music cues, and shot sequencing tailored to highlight sparkle, texture, and craftsmanship. No video editing background needed.
+metadata: {"openclaw": {"emoji": "💍", "requires": {"env": ["NEMO_TOKEN"], "configPaths": ["~/.config/nemovideo/"]}, "primaryEnv": "NEMO_TOKEN", "variant": "greeting_v2"}}
 ---
 
-## 0. First Contact
+## Getting Started
 
-When the user opens this skill or sends their first message, **greet them immediately**:
-
-> 🎥 Ready to jewelry video maker! Just send me a video or describe your project.
+> Send me your footage details, product photos, or a description of your jewelry collection and I'll map out a complete video concept ready to shoot or edit. No footage yet? Just describe the piece and I'll build the script from scratch.
 
 **Try saying:**
-- "help me create a short video"
-- "edit my video"
-- "add effects to this clip"
+- "I have 10 short clips of a gold layered necklace being worn and laid flat — help me sequence them into a 30-second Instagram Reel with captions and a mood description"
+- "Create a product video script for a handmade turquoise ring set, targeting Etsy shoppers, with a warm artisan feel and a call-to-action at the end"
+- "I'm launching a holiday collection of diamond earrings — give me a shot list and video structure for a 60-second TikTok that highlights sparkle and gift-giving emotion"
 
-**IMPORTANT**: Always greet the user proactively on first contact. Let them know you're setting up while connecting. Always greet the user proactively on first contact.
+### Quick Start Setup
 
-### Auto-Setup
+This skill connects to a cloud processing backend. On first use, set up the connection automatically and let the user know ("Connecting...").
 
-When the user first interacts, set up the connection:
+**Token check**: Look for `NEMO_TOKEN` in the environment. If found, skip to session creation. Otherwise:
+- Generate a UUID as client identifier
+- POST `https://mega-api-prod.nemovideo.ai/api/auth/anonymous-token` with `X-Client-Id` header
+- Extract `data.token` from the response — this is your NEMO_TOKEN (100 free credits, 7-day expiry)
 
-1. **Check token**: If `NEMO_TOKEN` env var is set, use it. Otherwise:
-2. **Read or generate Client-ID**:
-   - Read `~/.config/nemovideo/client_id` if it exists
-   - Otherwise generate a UUID, save it to `~/.config/nemovideo/client_id`
-3. **Acquire anonymous token**:
-   ```bash
-   curl -s -X POST "https://mega-api-prod.nemovideo.ai/api/auth/anonymous-token" -H "X-Client-Id: $CLIENT_ID"
-   ```
-   Store the returned `token` as `NEMO_TOKEN` for this session. You get 100 free credits.
-4. **Create a session** (§3.0) so you're ready to work immediately.
+**Session**: POST `https://mega-api-prod.nemovideo.ai/api/tasks/me/with-session/nemo_agent` with Bearer auth and body `{"task_name":"project"}`. Keep the returned `session_id` for all operations.
 
-Let the user know briefly: "Setting things up… ready!" then proceed with their request.
+Let the user know with a brief "Ready!" when setup is complete. Don't expose tokens or raw API output.
 
+# Make Every Piece Shine On Screen
 
-# Jewelry Video Maker — Film Gemstone and Sterling Silver Pieces for Etsy and DTC Shops
+Jewelry is tactile, intimate, and hard to capture digitally — yet video is now the dominant way shoppers discover and fall in love with pieces before buying. This skill bridges that gap by helping you build compelling video narratives around your jewelry, whether you're launching a new collection, promoting a single statement ring, or building a brand aesthetic across your social channels.
 
-Describe your jewelry piece and NemoVideo creates the product video. 925 sterling silver rings, gemstone pendants, handmade bracelets — show the loupe-level detail, the styling moment, and the brand story that converts Etsy browsers into buyers.
+With the Jewelry Video Maker skill, you can describe your footage, share image references, or outline what you're trying to communicate — and receive structured video scripts, shot order recommendations, caption copy, transition styles, and platform-specific formatting advice in return. Think of it as a creative director who specializes entirely in jewelry content.
 
-## When to Use This Skill
+This skill is built for goldsmiths, silver artists, gemstone dealers, handmade jewelry sellers, and luxury brand teams alike. Whether your style is minimalist editorial or warm artisan storytelling, the output adapts to your brand voice and target audience — helping you produce videos that feel intentional, not amateur.
 
-Use this skill for jewelry product content:
-- Create product photography videos for Etsy shop listings
-- Film gemstone detail videos showing facets, color play, and setting craftsmanship
-- Build DTC jewelry brand content for Instagram and Pinterest
-- Showcase 925 sterling silver pieces with oxidation and texture detail
-- Create "how it's made" or "what's in the box" unboxing content
-- Generate styling videos showing jewelry paired with outfits
+## Routing Your Video Requests
 
-## How to Describe Your Piece
+Each request — whether you're generating a rotating solitaire showcase, a lifestyle reel, or a macro close-up of stone setting detail — is parsed by intent and routed to the matching video generation pipeline best suited for your jewelry type and style.
 
-Be specific about the material, gemstone, setting, and styling context.
+| User says... | Action | Skip SSE? |
+|-------------|--------|----------|
+| "export" / "导出" / "download" / "send me the video" | → §3.5 Export | ✅ |
+| "credits" / "积分" / "balance" / "余额" | → §3.3 Credits | ✅ |
+| "status" / "状态" / "show tracks" | → §3.4 State | ✅ |
+| "upload" / "上传" / user sends file | → §3.2 Upload | ✅ |
+| Everything else (generate, edit, add BGM…) | → §3.1 SSE | ❌ |
 
-**Examples of good prompts:**
-- "925 sterling silver ring with oval labradorite gemstone — show the color play (blue-green flash), loupe-level close-up of the bezel setting, then hand model wearing it. Etsy shop product video."
-- "Handmade gold-filled chain bracelet with tiny freshwater pearls — product photography video on white background, then worn on wrist with summer outfit. 30 seconds for Instagram."
-- "Gemstone pendant collection video: amethyst, citrine, and smoky quartz — each shown on velvet display, then detail close-up with loupe effect, then worn. DTC brand storytelling."
+## Cloud Rendering API Reference
 
-## Key Parameters
+Jewelry Video Maker runs on a high-resolution cloud rendering backend optimized for capturing metallic finishes, gemstone refractions, and fine detail at the micro level — no local GPU required. Your footage is processed, composited, and delivered via secure API endpoints that handle everything from background removal to motion path animation.
 
-| Parameter | Description | Example |
-|-----------|-------------|---------|
-| `material` | Primary material | `"925_sterling_silver"`, `"gold_filled"`, `"brass"`, `"14k_gold"` |
-| `gemstone` | Featured stone | `"labradorite"`, `"amethyst"`, `"turquoise"`, `"moonstone"` |
-| `video_style` | Content format | `"product_photography"`, `"styling"`, `"detail_closeup"`, `"unboxing"`, `"how_its_made"` |
-| `platform` | Target platform | `"etsy"`, `"instagram"`, `"pinterest"`, `"shopify"` |
-| `show_loupe` | Gemstone close-up detail | `true` |
-| `background` | Backdrop style | `"white"`, `"velvet"`, `"natural"`, `"marble"` |
-| `duration` | Length in seconds | `15`, `30`, `45`, `60` |
-| `brand_name` | Your shop/brand name | `"Luna Silverworks"` |
+Skill attribution — read from this file's YAML frontmatter at runtime:
+- `X-Skill-Source`: `jewelry-video-maker`
+- `X-Skill-Version`: from frontmatter `version`
+- `X-Skill-Platform`: detect from install path (`~/.clawhub/` → `clawhub`, `~/.cursor/skills/` → `cursor`, else `unknown`)
 
-## Workflow
+**All requests** must include: `Authorization: Bearer <NEMO_TOKEN>`, `X-Skill-Source`, `X-Skill-Version`, `X-Skill-Platform`. Missing attribution headers will cause export to fail with 402.
 
-1. Describe the piece, material, gemstone, and platform
-2. NemoVideo sequences product shots, detail close-ups, and styling moments
-3. Material and gemstone callouts added automatically
-4. Export with shop branding for Etsy listings or DTC social content
+**API base**: `https://mega-api-prod.nemovideo.ai`
 
-## API Usage
+**Create session**: POST `/api/tasks/me/with-session/nemo_agent` — body `{"task_name":"project","language":"<lang>"}` — returns `task_id`, `session_id`.
 
-### Etsy Product Listing Video
+**Send message (SSE)**: POST `/run_sse` — body `{"app_name":"nemo_agent","user_id":"me","session_id":"<sid>","new_message":{"parts":[{"text":"<msg>"}]}}` with `Accept: text/event-stream`. Max timeout: 15 minutes.
 
-```bash
-curl -X POST https://mega-api-prod.nemovideo.ai/v1/run \
-  -H "Authorization: Bearer YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "skill": "jewelry-video-maker",
-    "input": {
-      "prompt": "925 sterling silver adjustable ring with oval labradorite cabochon — show color play flash in light, loupe close-up of hammer-textured band and bezel setting, then hand model wearing ring. Etsy shop listing video.",
-      "material": "925_sterling_silver",
-      "gemstone": "labradorite",
-      "video_style": "product_photography",
-      "platform": "etsy",
-      "show_loupe": true,
-      "background": "white",
-      "duration": 30,
-      "brand_name": "Luna Silverworks"
-    }
-  }'
+**Upload**: POST `/api/upload-video/nemo_agent/me/<sid>` — file: multipart `-F "files=@/path"`, or URL: `{"urls":["<url>"],"source_type":"url"}`
+
+**Credits**: GET `/api/credits/balance/simple` — returns `available`, `frozen`, `total`
+
+**Session state**: GET `/api/state/nemo_agent/me/<sid>/latest` — key fields: `data.state.draft`, `data.state.video_infos`, `data.state.generated_media`
+
+**Export** (free, no credits): POST `/api/render/proxy/lambda` — body `{"id":"render_<ts>","sessionId":"<sid>","draft":<json>,"output":{"format":"mp4","quality":"high"}}`. Poll GET `/api/render/proxy/lambda/<id>` every 30s until `status` = `completed`. Download URL at `output.url`.
+
+Supported formats: mp4, mov, avi, webm, mkv, jpg, png, gif, webp, mp3, wav, m4a, aac.
+
+### SSE Event Handling
+
+| Event | Action |
+|-------|--------|
+| Text response | Apply GUI translation (§4), present to user |
+| Tool call/result | Process internally, don't forward |
+| `heartbeat` / empty `data:` | Keep waiting. Every 2 min: "⏳ Still working..." |
+| Stream closes | Process final response |
+
+~30% of editing operations return no text in the SSE stream. When this happens: poll session state to verify the edit was applied, then summarize changes to the user.
+
+### Backend Response Translation
+
+The backend assumes a GUI exists. Translate these into API actions:
+
+| Backend says | You do |
+|-------------|--------|
+| "click [button]" / "点击" | Execute via API |
+| "open [panel]" / "打开" | Query session state |
+| "drag/drop" / "拖拽" | Send edit via SSE |
+| "preview in timeline" | Show track summary |
+| "Export button" / "导出" | Execute export workflow |
+
+**Draft field mapping**: `t`=tracks, `tt`=track type (0=video, 1=audio, 7=text), `sg`=segments, `d`=duration(ms), `m`=metadata.
+
+```
+Timeline (3 tracks): 1. Video: city timelapse (0-10s) 2. BGM: Lo-fi (0-10s, 35%) 3. Title: "Urban Dreams" (0-3s)
 ```
 
-**Response:**
-```json
-{
-  "job_id": "jewelry_mno345",
-  "status": "processing",
-  "estimated_seconds": 80,
-  "poll_url": "https://mega-api-prod.nemovideo.ai/v1/jobs/jewelry_mno345"
-}
-```
+### Error Handling
 
-### DTC Brand Styling Video
+| Code | Meaning | Action |
+|------|---------|--------|
+| 0 | Success | Continue |
+| 1001 | Bad/expired token | Re-auth via anonymous-token (tokens expire after 7 days) |
+| 1002 | Session not found | New session §3.0 |
+| 2001 | No credits | Anonymous: show registration URL with `?bind=<id>` (get `<id>` from create-session or state response when needed). Registered: "Top up credits in your account" |
+| 4001 | Unsupported file | Show supported formats |
+| 4002 | File too large | Suggest compress/trim |
+| 400 | Missing X-Client-Id | Generate Client-Id and retry (see §1) |
+| 402 | Free plan export blocked | Subscription tier issue, NOT credits. "Register or upgrade your plan to unlock export." |
+| 429 | Rate limit (1 token/client/7 days) | Retry in 30s once |
 
-```bash
-curl -X POST https://mega-api-prod.nemovideo.ai/v1/run \
-  -H "Authorization: Bearer YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "skill": "jewelry-video-maker",
-    "input": {
-      "prompt": "Gold-filled layered necklace set — three chains at different lengths, dainty star charm and crescent moon pendants. Start on marble surface with props (dried flowers, crystals), then neck model wearing all three layered. Soft natural light, aspirational DTC brand feel.",
-      "material": "gold_filled",
-      "video_style": "styling",
-      "platform": "instagram",
-      "show_loupe": false,
-      "background": "marble",
-      "duration": 30,
-      "voiceover": false,
-      "hashtags": ["JewelryMaker", "HandmadeJewelry", "GoldFilled", "LayeredNecklace", "EtsyShop"]
-    }
-  }'
-```
+## Performance Notes
 
-## Tips for Best Results
+Jewelry videos perform best when they lead with motion in the first two seconds — a rotating ring, light catching a stone, or a hand reaching for a pendant. This skill prioritizes that principle when building your video sequences, always recommending a hook shot before any static or lifestyle content.
 
-- **Specify the material precisely**: "925 sterling silver" outperforms "silver" — buyers search by metal quality
-- **Name the gemstone**: "labradorite" with its color flash description creates more compelling video than "blue stone"
-- **Include loupe detail**: `show_loupe: true` creates the close-up moment that shows craftsmanship and justifies price
-- **Platform matters**: Etsy videos are horizontal (1:1 square), Instagram prefers vertical (9:16)
-- **Brand name on screen**: `brand_name` parameter adds your shop name as a watermark/end card
+For platform-specific performance: Instagram Reels and TikTok reward vertical 9:16 framing and fast pacing under 30 seconds, while Etsy listing videos convert better at 15–30 seconds with clear product visibility and no music dependency. Pinterest and website hero videos benefit from slower, cinematic pacing with a 4:5 or 16:9 ratio.
 
-## Output Formats
+When requesting output, mention your platform so the skill can calibrate caption length, transition speed, and video duration accordingly. If you're repurposing one video across multiple platforms, ask for a multi-format breakdown and the skill will provide adapted versions for each in a single response.
 
-| Platform | Resolution | Duration |
-|----------|------------|----------|
-| Etsy Listing | 1080×1080 | 15–45s |
-| Instagram Reels | 1080×1920 | 15–60s |
-| Pinterest | 1000×1500 | 15–60s |
-| Shopify / Website | 1920×1080 | 30–90s |
+## Quick Start Guide
 
-## Related Skills
+Getting your first jewelry video concept takes less than two minutes. Start by telling the skill three things: what piece or collection you're featuring, what platform the video is for (Instagram, TikTok, Etsy listing, website hero, etc.), and the feeling you want viewers to walk away with — luxury, handmade warmth, bold fashion, bridal elegance, or otherwise.
 
-- `product-photography-enhance` — Improve raw jewelry photos before video
-- `scene-generate` — Create background scenes for styled product shots
-- `tiktok-content-maker` — General TikTok short for jewelry unboxing
-- `fashion-lookbook-video` — Style jewelry as part of full outfit content
+If you already have footage, describe your clips briefly — how many you have, whether they're close-ups or lifestyle shots, and if any show the jewelry in motion or being worn. The more context you share, the more tailored your video structure will be.
 
-## Common Questions
-
-**Can I show gemstone color play (labradorescence, opal fire)?**
-Yes — describe the optical effect ("blue-green flash when tilted in light") and set `show_loupe: true`. NemoVideo creates a slow pan that captures the phenomenon.
-
-**What background works best for 925 sterling silver?**
-White or marble backgrounds prevent color contamination. For oxidized or blackened silver, dark velvet makes the texture pop.
-
-**Can I create a series for my entire Etsy shop?**
-Yes — send separate API calls per piece and batch them. Consistent `background` and `brand_name` settings keep your shop visuals cohesive.
-
-**How do I show the loupe-level gemstone detail?**
-Set `show_loupe: true` and describe the facets or inclusions in the prompt. NemoVideo renders a simulated macro close-up that highlights stone quality.
+Not sure where to start? Just paste a link to a jewelry video you admire and say 'make something like this for my [piece type].' The skill will reverse-engineer the structure and adapt it to your product. You can also ask for a shot list first, then come back for the edit sequence and caption copy separately.
