@@ -1,6 +1,6 @@
 ---
 name: local-tts-workflow
-description: OpenClaw text-to-speech workflow for an OpenAI-compatible TTS server, including remote/self-hosted deployments such as vLLM Omni. Use when configuring, testing, debugging, or validating `/v1/audio/speech`, single-reply `[[tts:...]]` overrides, custom voice behavior, streaming vs non-streaming behavior, mode selection (base speaker, base clone, custom voice, voice design), and OpenClaw TTS integration. Also use when preparing text for speech output so numbers are normalized into spoken words instead of raw Arabic digits.
+description: OpenClaw text-to-speech workflow for an OpenAI-compatible TTS server, including remote/self-hosted deployments such as vLLM Omni. Use when configuring, testing, debugging, or validating `/v1/audio/speech`, single-reply `[[tts:...]]` overrides, custom voice behavior, streaming vs non-streaming behavior, mode selection (base speaker, base clone, custom voice, voice design), local model-path fallback, and OpenClaw TTS integration. Also use when preparing text for speech output so numbers are normalized into spoken words instead of raw Arabic digits.
 ---
 
 # Local TTS Workflow
@@ -9,7 +9,15 @@ Use this skill to debug the **actual speech pipeline** and to prepare text so th
 
 Do **not** hardcode `127.0.0.1` blindly. Read the active OpenClaw config first and use the current `messages.tts.openai.baseUrl` as the source of truth.
 
-Current known deployment in this workspace: `http://100.66.193.127:8000/v1`.
+Current known deployment in this workspace: `http://127.0.0.1:8000/v1`.
+
+Current local model-path fallback worth remembering: if the server did not pull a model by registry name, it may be loading directly from a local path such as `./models/qwen3-tts-0.6b-mlx`.
+
+When exact route shape matters, the local OpenAPI document is available at:
+
+- `http://localhost:8000/openapi.json`
+
+Use this OpenAPI doc as a schema/reference source to compare this local `mlx-audio` server against OpenAI’s API. Do not treat it as a health check.
 
 ## Core rule: normalize numbers before synthesis
 
@@ -48,11 +56,13 @@ Read `~/.openclaw/openclaw.json` first and extract:
 Check the basics against the **actual configured host**:
 
 ```bash
-curl http://100.66.193.127:8000/health
-curl http://100.66.193.127:8000/v1/models
+curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8000/v1/models
 ```
 
 Confirm that the intended TTS model exists.
+
+If the model does not appear by pulled registry name, do not assume TTS is broken — this server may be loading a local-path model such as `./models/qwen3-tts-0.6b-mlx`.
 
 If the server is task-gated, ensure TTS is enabled:
 
@@ -67,14 +77,14 @@ Always isolate the server from the client stack.
 Minimal non-streaming test:
 
 ```bash
-curl http://100.66.193.127:8000/v1/audio/speech \
+curl http://127.0.0.1:8000/v1/audio/speech \
  -X POST \
  -H 'Content-Type: application/json' \
  -d '{
  "model": "/models/lj-qwen3-tts/",
  "voice": "lj",
  "input": "你好，这是一次性返回完整音频的测试。",
- "format": "wav",
+ "response_format": "wav",
  "stream": false
  }' \
  --output sample.wav
@@ -83,16 +93,16 @@ curl http://100.66.193.127:8000/v1/audio/speech \
 Basic streaming test:
 
 ```bash
-curl http://100.66.193.127:8000/v1/audio/speech \
+curl http://127.0.0.1:8000/v1/audio/speech \
  -H 'Content-Type: application/json' \
  -X POST \
  -d '{
  "model": "/models/lj-qwen3-tts/",
  "voice": "lj",
  "input": "你好，这是实时流式语音合成测试。",
- "format": "wav",
+ "response_format": "wav",
  "stream": true,
- "stream_format": "audio"
+ "streaming_interval": 2.0
  }' \
  | ffplay -i -
 ```
@@ -159,12 +169,13 @@ This server supports real incremental generation, not fake post-hoc slicing.
 
 Important behavior:
 
-- If `stream` is omitted, the server defaults to **streaming** behavior
-- `stream=false` forces full non-streaming response
-- `stream_format="audio"` returns playable audio bytes
-- `stream_format="event"` returns SSE events with base64 chunks
+- Current OpenAPI says `stream` defaults to `false`
+- `response_format` defaults to `mp3`
+- `streaming_interval` defaults to `2.0`
+- Required fields are only `model` and `input`
+- Extra optional fields exposed by this local server include `instruct`, `voice`, `speed`, `gender`, `pitch`, `lang_code`, `ref_audio`, `ref_text`, `temperature`, `top_p`, `top_k`, `repetition_penalty`, `response_format`, `stream`, `streaming_interval`, `max_tokens`, and `verbose`
 
-If a client expects one mode and the server is returning the other, you will get confusing results fast.
+Do not assume OpenAI parity on names or defaults — check the local OpenAPI schema first.
 
 ## 6. Use consent uploads properly
 
@@ -182,7 +193,7 @@ If later synthesis depends on stored consent voices, verify that the saved ident
 When OpenClaw TTS appears broken:
 
 1. Confirm `messages.tts` points at the actual configured endpoint in `openclaw.json`
-2. Confirm the intended model exists in `/v1/models` or is otherwise accepted by the server
+2. Confirm the intended model exists in `/v1/models` or is otherwise accepted by the server; if not, check whether it is a local-path-backed deployment such as `./models/qwen3-tts-0.6b-mlx`
 3. Confirm the selected provider is really the OpenAI-compatible path and not Microsoft fallback
 4. Test direct `curl` with the same effective model/voice/mode assumptions
 5. Inspect whether OpenClaw is falling back to another provider
