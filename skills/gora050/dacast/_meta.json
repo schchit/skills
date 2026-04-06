@@ -3,9 +3,15 @@
   "slug": "dacast",
   "displayName": "Dacast",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774346623261,
-    "commit": "https://github.com/openclaw/skills/commit/f90d8f15c1f6241c706002e46731e59f05b5d2fb"
+    "version": "1.0.2",
+    "publishedAt": 1775167038037,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774346623261,
+      "commit": "https://github.com/openclaw/skills/commit/f90d8f15c1f6241c706002e46731e59f05b5d2fb"
+    }
+  ]
 }
