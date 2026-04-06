@@ -3,9 +3,15 @@
   "slug": "clientary",
   "displayName": "Clientary",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774695822086,
-    "commit": "https://github.com/openclaw/skills/commit/bd21188ae69363bce0af53a6f0f0246d90275193"
+    "version": "1.0.2",
+    "publishedAt": 1775168785399,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774695822086,
+      "commit": "https://github.com/openclaw/skills/commit/bd21188ae69363bce0af53a6f0f0246d90275193"
+    }
+  ]
 }
