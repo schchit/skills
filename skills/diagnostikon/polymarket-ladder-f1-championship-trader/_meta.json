@@ -1,11 +1,17 @@
 {
   "owner": "diagnostikon",
   "slug": "polymarket-ladder-f1-championship-trader",
-  "displayName": "Ladder F1 Championship Distribution Trader",
+  "displayName": "Polymarket Ladder F1 Championship Trader",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774712989812,
-    "commit": "https://github.com/openclaw/skills/commit/fc3e553d0420bbc6046917606af18b9daf711cbc"
+    "version": "1.0.1",
+    "publishedAt": 1775317201918,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774712989812,
+      "commit": "https://github.com/openclaw/skills/commit/fc3e553d0420bbc6046917606af18b9daf711cbc"
+    }
+  ]
 }
