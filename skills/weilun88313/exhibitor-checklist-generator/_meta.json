@@ -3,9 +3,15 @@
   "slug": "exhibitor-checklist-generator",
   "displayName": "Exhibitor Checklist Generator",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1774425892046,
-    "commit": "https://github.com/openclaw/skills/commit/bd7699de0569d352e97ae6dfcc46a15bbee54cea"
+    "version": "1.2.0",
+    "publishedAt": 1775030055974,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1774425892046,
+      "commit": "https://github.com/openclaw/skills/commit/bd7699de0569d352e97ae6dfcc46a15bbee54cea"
+    }
+  ]
 }
