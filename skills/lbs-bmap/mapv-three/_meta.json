@@ -1,11 +1,17 @@
 {
   "owner": "lbs-bmap",
   "slug": "mapv-three",
-  "displayName": "MapV Three",
+  "displayName": "MapV Three（百度地图官方3D地图SKills）",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774924600094,
-    "commit": "https://github.com/openclaw/skills/commit/e450f8fafe9cb95173da2590ecc86e2b93a1f8b4"
+    "version": "1.0.1",
+    "publishedAt": 1775210589525,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774924600094,
+      "commit": "https://github.com/openclaw/skills/commit/e450f8fafe9cb95173da2590ecc86e2b93a1f8b4"
+    }
+  ]
 }
