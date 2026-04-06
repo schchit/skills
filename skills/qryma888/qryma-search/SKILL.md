@@ -68,8 +68,11 @@ python scripts/qryma_search.py --query "Python编程学习" --lang "zh-CN" --for
 # Safe search enabled
 python scripts/qryma_search.py --query "adult content" --safe --format md
 
-# Detailed results
-python scripts/qryma_search.py --query "AI research" --detail --format raw
+# Fulltext search mode
+python scripts/qryma_search.py --query "AI research" --mode fulltext --format raw
+
+# Snippet search mode
+python scripts/qryma_search.py --query "AI research" --mode snippet --format raw
 
 # Brave-compatible JSON
 python scripts/qryma_search.py --query "latest AI news" --format brave
@@ -87,13 +90,12 @@ python scripts/qryma_search.py --query "top tech trends" --format raw
 
 - **`--max-results`** (number, default: 5): Results to return (1-10)
 
-- **`--lang`** (string, default: "en"): Language code - [See available languages](https://developers.google.com/custom-search/docs/xml_results_appendices#interfaceLanguages)
+- **`--lang`** (string): Language code - [See available languages](https://developers.google.com/custom-search/docs/xml_results_appendices#interfaceLanguages) (auto-detect if not specified)
 
-- **`--start`** (number, default: 0): Start offset for pagination
 
 - **`--safe`** (flag, default: false): Enable safe search
 
-- **`--detail`** (flag, default: false): Enable detailed results
+- **`--mode`** (string, default: fulltext): Search mode - fulltext for detailed results, snippet for basic results
 
 - **`--format`** (raw/brave/md, default: md): Output format
 
