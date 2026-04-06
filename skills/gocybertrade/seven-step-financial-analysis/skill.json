@@ -1,14 +1,15 @@
 {
-  "name": "Prana七步财务分析",
-  "description": "通过调用Prana平台上的远程 agent 执行七步财务分析方法，分析指定股票的财务数据并生成分析结果，并将结果返回给调用方",
+  "name": "A股财务分析",
+  "description": "通过调用Prana平台上的远程 agent 完成以下处理： 使用7步分析法对中国A股进行全方位财务分析，自动生成包含ROE分解、盈利模式识别、行业对比和投资洞察的HTML报告。支持上海和深圳交易所所有股票。",
   "required_env": [
     "PRANA_SKILL_API_FLAG"
   ],
+  "required_env_note": "调用随附 scripts/prana_skill_client.py 或 prana_skill_client.js 时，进程环境中必须已设置 PRANA_SKILL_API_FLAG。随附脚本不会请求 GET /api/v2/api-keys；取钥须由集成方/操作者（curl 等）完成后再写入该环境变量。",
   "network_requests": [
     {
       "method": "GET",
       "url": "https://claw-uat.ebonex.io/api/v2/api-keys",
-      "description": "获取 api_key 认证标识"
+      "description": "供集成方自行取 data.api_key 并配置为 PRANA_SKILL_API_FLAG；随附薄客户端脚本不实现此请求"
     },
     {
       "method": "POST",
@@ -18,7 +19,7 @@
           "name": "x-api-key",
           "required": true,
           "source": "env:PRANA_SKILL_API_FLAG",
-          "description": "从环境变量 PRANA_SKILL_API_FLAG 读取认证标识"
+          "description": "从环境变量 PRANA_SKILL_API_FLAG 读取；须预先设置，脚本不会自动获取 api_key"
         }
       ]
     },
@@ -51,5 +52,5 @@
     "env_var": "PRANA_SKILL_API_FLAG",
     "required": true
   },
-  "usage_example": "帮我对600519.SH（贵州茅台）进行财务报告分析、帮我看看000858.SZ（五粮液）财务数据有没有问题"
+  "usage_example": "请用7步分析法分析贵州茅台的财务状况、生成宁德时代最新的A股财务分析HTML报告"
 }
