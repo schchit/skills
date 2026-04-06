@@ -3,9 +3,15 @@
   "slug": "herobot-chatbot-marketing",
   "displayName": "Herobot Chatbot Marketing",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774425805014,
-    "commit": "https://github.com/openclaw/skills/commit/1a099d123a7856ddd4c5371f631330880f5e78f8"
+    "version": "1.0.2",
+    "publishedAt": 1775167375867,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774425805014,
+      "commit": "https://github.com/openclaw/skills/commit/1a099d123a7856ddd4c5371f631330880f5e78f8"
+    }
+  ]
 }
