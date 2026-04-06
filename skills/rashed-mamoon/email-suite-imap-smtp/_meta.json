@@ -1,0 +1,11 @@
+{
+  "owner": "rashed-mamoon",
+  "slug": "email-suite-imap-smtp",
+  "displayName": "email-suite (imap+smtp)",
+  "latest": {
+    "version": "1.2.6",
+    "publishedAt": 1775457654056,
+    "commit": null
+  },
+  "history": []
+}
