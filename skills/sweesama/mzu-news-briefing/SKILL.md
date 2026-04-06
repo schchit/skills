@@ -1,7 +1,7 @@
 ---
 name: mzu-news-briefing
 description: "Multi-source AI/Tech news aggregator with intelligent daily briefings. Covers AI, technology, finance, and world events — with hot/cold ranking and source attribution. Supports Twitter/X (bird CLI) or Grok API."
-version: 1.1.2
+version: 1.1.3
 tags:
   - news
   - ai
@@ -280,11 +280,21 @@ web_search("Nasdaq OR S&P 500 AI stocks", date_after="YYYY-MM-DD")
 - → 搜索该事件找官方或权威媒体确认
 - → 确认不了 → 降低热度等级或丢弃
 
+#### 规则 D：模型发布/版本升级类新闻 — 必须确认实际发布日期（新增，v1.1.2）
+- 若某模型版本号（如 GPT-5.4）出现在媒体报道中，**必须追溯到官方发布渠道确认实际发布时间**
+- **媒体报道日期 ≠ 模型发布日期**（典型错误：今天媒体报道"GPT-5.4 发布"，但模型已发布约两周）
+- 验证方式：访问 `releasebot.io/updates/openai` 或 `llm-stats.com/llm-updates` 确认实际版本发布日期
+- 结论判断：
+  - 媒体报道日期 == 官方发布时间 → 当天新闻，可信
+  - 媒体报道日期 > 官方发布时间（模型已发布多日）→ **降级为"跟进讨论"或"行业动态"，不列入当天高热度新闻**
+  - 确认不了 → 降级或丢弃
+
 #### 验证失败的标准（满足任一即丢弃）
 - `web_fetch` 返回正文低于 500 字
 - 页面内容与搜索摘要描述明显不符
 - 来源域名无实质内容团队（可通过域名判断：纯聚合/SEO 农场特征）
 - 属于已知的假新闻/谣言模式（如：凭空出现的"神秘模型发布"）
+- 模型发布类新闻无法追溯官方发布日期 → 丢弃
 
 ---
 
