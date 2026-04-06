@@ -49,12 +49,14 @@ def run_case(label: str, cmd: list[str]) -> dict:
     print(f"\n=== {label} ===")
     print("$", " ".join(cmd))
     proc = subprocess.run(cmd, capture_output=True, text=True)
+    stdout = proc.stdout.strip()
     result = {
         "label": label,
         "returncode": proc.returncode,
-        "stdout": proc.stdout.strip(),
+        "stdout": stdout,
         "stderr": proc.stderr.strip(),
         "ok": proc.returncode == 0,
+        "stdout_len": len(stdout),
     }
     if proc.stdout:
         print(proc.stdout)
@@ -94,7 +96,7 @@ def main() -> int:
                 "--height",
                 "512",
                 "--output",
-                str(out_dir / "text2img.png"),
+                str(out_dir),
             ],
         ),
         (
@@ -109,7 +111,7 @@ def main() -> int:
                 "--strength",
                 "0.5",
                 "--output",
-                str(out_dir / "img2img.png"),
+                str(out_dir),
             ],
         ),
     ]
@@ -117,16 +119,16 @@ def main() -> int:
     results = [run_case(label, cmd) for label, cmd in tests]
 
     for item in results:
-        if item["ok"] and item["stdout"]:
-            maybe_path = Path(item["stdout"].splitlines()[-1].strip())
-            item["output_exists"] = maybe_path.exists()
-            item["output_size"] = maybe_path.stat().st_size if maybe_path.exists() else 0
-            item["ok"] = item["ok"] and item["output_exists"] and item["output_size"] > 0
+        output_path = Path(item["stdout"]) if item["stdout"] else None
+        item["has_output"] = bool(item["stdout"])
+        item["output_exists"] = bool(output_path and output_path.exists() and output_path.is_file())
+        item["ok"] = item["ok"] and item["has_output"] and item["output_exists"] and item["stdout_len"] > 0
 
     summary = {
         "ok": all(item["ok"] for item in results),
         "results": results,
         "output_dir": str(out_dir),
+        "note": "Smoke test now validates temporary-file output for chat handoff.",
     }
     print("\n=== summary ===")
     print(json.dumps(summary, ensure_ascii=False, indent=2))

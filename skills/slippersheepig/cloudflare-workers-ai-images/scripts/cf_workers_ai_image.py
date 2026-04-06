@@ -37,11 +37,9 @@ def timestamp_name(prefix: str, suffix: str) -> str:
     return f"{prefix}-{time.strftime('%Y%m%d-%H%M%S')}{suffix}"
 
 
-def choose_output_path(output: str | None, prefix: str) -> Path:
+def choose_output_path(output: str | None, prefix: str) -> Path | None:
     if not output:
-        out_dir = Path("./output")
-        out_dir.mkdir(parents=True, exist_ok=True)
-        return out_dir / timestamp_name(prefix, ".png")
+        return None
 
     path = Path(output)
     if path.exists() and path.is_dir():
@@ -158,7 +156,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("mode", choices=["text2img", "img2img"])
     parser.add_argument("prompt", help="Prompt text")
     parser.add_argument("--image", help="Source image path for img2img or inpainting")
-    parser.add_argument("--output", help="Output file path or directory (default: ./output)")
+    parser.add_argument("--output", required=True, help="Temporary or final output file path or directory. The script prints the saved file path to stdout.")
     parser.add_argument("--model", help="Override Workers AI model name")
     parser.add_argument("--negative-prompt", help="Negative prompt")
     parser.add_argument("--num-steps", type=int, help="Sampling steps")
@@ -176,6 +174,7 @@ def main() -> int:
     model, payload = build_payload(args)
     output_path = choose_output_path(args.output, f"cf-workers-ai-{args.mode}")
     image_bytes = call_api(model, payload, args.timeout)
+
     ensure_parent(output_path)
     output_path.write_bytes(image_bytes)
     print(str(output_path.resolve()))
