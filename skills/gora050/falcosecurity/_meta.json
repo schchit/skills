@@ -1,0 +1,11 @@
+{
+  "owner": "gora050",
+  "slug": "falcosecurity",
+  "displayName": "Falcosecurity",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775225201129,
+    "commit": null
+  },
+  "history": []
+}
