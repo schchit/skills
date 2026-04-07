@@ -25,14 +25,12 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-APP_CODE_ENV = "DUHUI_DOC_TO_PDF_APPCODE"
+APP_CODE_ENV = "DUHUI_ALI_APPCODE"
 ALIYUN_MARKET_URL = "https://market.aliyun.com/detail/cmapi00044564"
 
 OSS_BUCKET_HOST = "fmtmp.oss-cn-shanghai.aliyuncs.com"
 OSS_BUCKET_NAME = "fmtmp"
 OSS_OBJECT_PREFIX = "up/"
-OSS_ACCESS_KEY_ID_ENV = "DH_TMP_OSS_ACCESS_KEY_ID"
-OSS_ACCESS_KEY_SECRET_ENV = "DH_TMP_OSS_ACCESS_KEY_SECRET"
 OSS_CREDENTIALS_URL = "https://file.duhuitech.com/k/tmp_up.json"
 
 CONVERT_ASYNC_URL = "https://doc2pdf.market.alicloudapi.com/v2/convert_async"
@@ -42,7 +40,7 @@ POLL_INTERVAL_SECONDS = 2
 POLL_TIMEOUT_SECONDS = 60 * 60
 HTTP_TIMEOUT_SECONDS = 60
 DOWNLOAD_TIMEOUT_SECONDS = 300
-INSECURE_SSL_CONTEXT = ssl._create_unverified_context()
+VERIFIED_SSL_CONTEXT = ssl.create_default_context()
 
 RESERVED_EXTRA_PARAMS = {"callbackurl", "input", "type"}
 
@@ -61,6 +59,9 @@ class SkillError(Exception):
 class OssCredentials:
     access_key_id: str
     access_key_secret: str
+
+
+_CACHED_OSS_CREDENTIALS: OssCredentials | None = None
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
@@ -98,11 +99,12 @@ def fail(stage: str, reason: str, token: str | None = None) -> int:
 
 
 def build_missing_appcode_reason() -> str:
-    persist_script = Path(__file__).with_name("persist_duhui_appcode.py")
     return (
         f"Environment variable {APP_CODE_ENV} is required. "
         f"Get AppCode from Alibaba Cloud Marketplace: {ALIYUN_MARKET_URL}. "
-        f"Persist it for future sessions with: python3 {persist_script} '<appcode>'"
+        f"Ensure your agent or execution environment injects {APP_CODE_ENV} before "
+        "running this script. This skill does not prescribe how the secret is stored, "
+        "retrieved, or persisted."
     )
 
 
@@ -190,24 +192,9 @@ def build_object_url(object_key: str) -> str:
     return f"https://{OSS_BUCKET_HOST}/{encoded_key}"
 
 
-def read_oss_credentials_from_env() -> OssCredentials | None:
-    access_key_id = os.environ.get(OSS_ACCESS_KEY_ID_ENV, "").strip()
-    access_key_secret = os.environ.get(OSS_ACCESS_KEY_SECRET_ENV, "").strip()
-
-    if access_key_id and access_key_secret:
-        return OssCredentials(
-            access_key_id=access_key_id,
-            access_key_secret=access_key_secret,
-        )
-
-    if access_key_id or access_key_secret:
-        log("[oss-auth] incomplete OSS credentials in environment; refreshing from remote")
-    return None
-
-
-def cache_oss_credentials_in_env(credentials: OssCredentials) -> OssCredentials:
-    os.environ[OSS_ACCESS_KEY_ID_ENV] = credentials.access_key_id
-    os.environ[OSS_ACCESS_KEY_SECRET_ENV] = credentials.access_key_secret
+def cache_oss_credentials(credentials: OssCredentials) -> OssCredentials:
+    global _CACHED_OSS_CREDENTIALS
+    _CACHED_OSS_CREDENTIALS = credentials
     return credentials
 
 
@@ -233,16 +220,14 @@ def parse_oss_credentials(payload: dict[str, Any]) -> OssCredentials:
 
 
 def fetch_oss_credentials_from_remote() -> OssCredentials:
-    log("[oss-auth] fetching OSS credentials from remote JSON endpoint")
+    log(f"[oss-auth] fetching temporary OSS upload credentials from {OSS_CREDENTIALS_URL}")
     payload = request_json(OSS_CREDENTIALS_URL, "credentials")
-    return cache_oss_credentials_in_env(parse_oss_credentials(payload))
+    return cache_oss_credentials(parse_oss_credentials(payload))
 
 
 def resolve_oss_credentials(*, force_refresh: bool = False) -> OssCredentials:
-    if not force_refresh:
-        credentials = read_oss_credentials_from_env()
-        if credentials is not None:
-            return credentials
+    if not force_refresh and _CACHED_OSS_CREDENTIALS is not None:
+        return _CACHED_OSS_CREDENTIALS
     return fetch_oss_credentials_from_remote()
 
 
@@ -302,7 +287,7 @@ def request_json(
         with urllib.request.urlopen(
             request,
             timeout=timeout,
-            context=INSECURE_SSL_CONTEXT,
+            context=VERIFIED_SSL_CONTEXT,
         ) as response:
             body = response.read()
             charset = response.headers.get_content_charset() or "utf-8"
@@ -354,7 +339,7 @@ def send_oss_request_once(
     connection = http.client.HTTPSConnection(
         OSS_BUCKET_HOST,
         timeout=HTTP_TIMEOUT_SECONDS,
-        context=INSECURE_SSL_CONTEXT,
+        context=VERIFIED_SSL_CONTEXT,
     )
 
     try:
@@ -549,7 +534,7 @@ def download_pdf(pdf_url: str, output_path: Path, token: str) -> Path:
                 with urllib.request.urlopen(
                     pdf_url,
                     timeout=DOWNLOAD_TIMEOUT_SECONDS,
-                    context=INSECURE_SSL_CONTEXT,
+                    context=VERIFIED_SSL_CONTEXT,
                 ) as response:
                     shutil.copyfileobj(response, temp_file)
             except urllib.error.HTTPError as exc:
@@ -580,13 +565,17 @@ def cleanup_object(object_key: str) -> None:
     try:
         status, body = send_oss_request("DELETE", object_key, stage="cleanup")
     except SkillError as exc:
-        log(f"[cleanup] warning: failed to delete OSS object {object_key}: {exc.reason}")
+        log(
+            "[cleanup] warning: failed to delete OSS object "
+            f"{object_key}: {exc.reason}; remote source file may remain temporarily"
+        )
         return
 
     if status >= 400:
         log(
             "[cleanup] warning: failed to delete OSS object "
-            f"{object_key}, status={status}, host={OSS_BUCKET_HOST}, body={body!r}"
+            f"{object_key}, status={status}, host={OSS_BUCKET_HOST}, "
+            f"body={body!r}; remote source file may remain temporarily"
         )
 
 
@@ -610,6 +599,10 @@ def main(argv: list[str]) -> int:
 
         object_key = build_object_key(input_path)
 
+        log(
+            "[privacy] source file will be uploaded to temporary OSS storage in cn-shanghai; "
+            "cleanup is best-effort"
+        )
         log(f"[upload] uploading {input_path} to OSS as {object_key}")
         source_url = upload_source_and_get_url(input_path, object_key)
 
