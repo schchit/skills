@@ -3,9 +3,15 @@
   "slug": "flyai-transit-tour",
   "displayName": "中转不浪费",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775115690098,
-    "commit": "https://github.com/openclaw/skills/commit/1ec85252a3a9f296c8df072d6d663dd05edb1018"
+    "version": "1.0.1",
+    "publishedAt": 1775237047569,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775115690098,
+      "commit": "https://github.com/openclaw/skills/commit/1ec85252a3a9f296c8df072d6d663dd05edb1018"
+    }
+  ]
 }
