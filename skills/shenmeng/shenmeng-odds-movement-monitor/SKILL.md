@@ -1,17 +1,12 @@
 ---
 name: odds-movement-monitor
-description: 盘口变化监控助手 - 实时监控足球、篮球等体育赛事的亚盘、欧赔、大小球盘口变化。检测异常波动、大额注单信号、机构态度转变。支持多平台对比、历史趋势分析、自动预警通知。当用户需要监控盘口变化、追踪赔率走势、发现投注机会时使用。
-metadata:
-  openclaw:
-    emoji: 📊
+description: |
+  追踪体育赛事亚盘、欧赔、大小球的实时变动。
+  发现赔率异动、识别机构态度转变、捕捉投注时机。
+  已接入 SkillPay，每次调用 0.01 USDT。
 ---
 
-# Odds Movement Monitor 盘口变化监控
-
-> 💰 **本 Skill 已接入 SkillPay 付费系统**
-> - 每次调用费用：**0.01 USDT**
-> - 支付方式：BNB Chain USDT
-> - 请先确保账户有足够余额
+# 📊 Odds Movement Monitor
 
 实时监控体育博彩盘口变化，捕捉机构态度转变和异常信号。
 
@@ -119,7 +114,6 @@ odds-movement-monitor/
 ├── SKILL.md                 # 本文件
 ├── config.json             # 配置信息
 ├── monitor.py              # 主监控脚本
-├── odds_fetcher.py         # 数据获取模块
 ├── change_detector.py      # 变化检测算法
 ├── alert_manager.py        # 预警管理
 └── data_storage.py         # 数据存储
