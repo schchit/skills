@@ -1,0 +1,11 @@
+{
+  "owner": "maxsorto",
+  "slug": "claude-cli-proxy",
+  "displayName": "Claude CLI Proxy",
+  "latest": {
+    "version": "2.1.0",
+    "publishedAt": 1775414353974,
+    "commit": null
+  },
+  "history": []
+}
