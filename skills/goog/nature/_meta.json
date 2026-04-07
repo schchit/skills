@@ -1,0 +1,11 @@
+{
+  "owner": "goog",
+  "slug": "nature",
+  "displayName": "Nature and science AI news",
+  "latest": {
+    "version": "1.9.0",
+    "publishedAt": 1775314325517,
+    "commit": null
+  },
+  "history": []
+}
