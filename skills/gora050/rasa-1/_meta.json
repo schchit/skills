@@ -1,0 +1,11 @@
+{
+  "owner": "gora050",
+  "slug": "rasa-1",
+  "displayName": "Rasa 1",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1775200015734,
+    "commit": null
+  },
+  "history": []
+}
