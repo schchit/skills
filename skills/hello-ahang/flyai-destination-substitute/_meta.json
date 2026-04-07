@@ -3,9 +3,15 @@
   "slug": "flyai-destination-substitute",
   "displayName": "平替旅行家",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775115083198,
-    "commit": "https://github.com/openclaw/skills/commit/f49cc035232a575c8706f08153f5cf67057edcb1"
+    "version": "1.0.1",
+    "publishedAt": 1775237152345,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775115083198,
+      "commit": "https://github.com/openclaw/skills/commit/f49cc035232a575c8706f08153f5cf67057edcb1"
+    }
+  ]
 }
