@@ -1,0 +1,11 @@
+{
+  "owner": "gora050",
+  "slug": "microsoft-graph-api",
+  "displayName": "Microsoft Graph Api",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775390898561,
+    "commit": null
+  },
+  "history": []
+}
