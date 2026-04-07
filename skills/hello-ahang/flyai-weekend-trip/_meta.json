@@ -3,9 +3,15 @@
   "slug": "flyai-weekend-trip",
   "displayName": "周末去哪儿",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775103264128,
-    "commit": "https://github.com/openclaw/skills/commit/73ff7fd91aa95615bb70e049c0fb03beda65c764"
+    "version": "1.0.1",
+    "publishedAt": 1775237336338,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775103264128,
+      "commit": "https://github.com/openclaw/skills/commit/73ff7fd91aa95615bb70e049c0fb03beda65c764"
+    }
+  ]
 }
