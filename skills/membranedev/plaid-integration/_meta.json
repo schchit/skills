@@ -1,0 +1,11 @@
+{
+  "owner": "membranedev",
+  "slug": "plaid-integration",
+  "displayName": "Plaid",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775318678744,
+    "commit": null
+  },
+  "history": []
+}
