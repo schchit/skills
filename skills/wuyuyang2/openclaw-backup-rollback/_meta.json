@@ -1,0 +1,11 @@
+{
+  "owner": "wuyuyang2",
+  "slug": "openclaw-backup-rollback",
+  "displayName": "OpenClaw备份回滚系统",
+  "latest": {
+    "version": "1.1.0",
+    "publishedAt": 1775223061294,
+    "commit": null
+  },
+  "history": []
+}
