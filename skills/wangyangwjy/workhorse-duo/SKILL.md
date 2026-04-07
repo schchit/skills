@@ -25,6 +25,8 @@ Important:
 - the local environment has been validated to run both `xiaoma` and `xiaoniu`
 - the current best dispatch path is **CLI agent routing**, not `sessions_send`
 - the default operating model is **asynchronous dispatch**: send work out, return to the user immediately, and report back when workers finish
+- `Xiaoma` and `Xiaoniu` are the default personality-forward names, but they also map cleanly to the generic roles **execution worker** and **QA worker**
+- operators may keep the default names for personality/continuity, or rename the pair locally while preserving the same execution-vs-review structure
 
 ## Core operating principle
 
@@ -49,6 +51,19 @@ It does **not** optimize for:
 - synchronous waiting in the main session
 - UI-visible dedicated worker chat cards as a requirement
 
+## Why Workhorse Duo is valuable
+
+Workhorse Duo is useful because it gives OpenClaw a practical execute -> review structure instead of forcing everything through one overloaded main session.
+
+Key advantages:
+- **real dual-agent workflow** instead of role-only prompting
+- **clear separation of execution and QA**
+- **async boss-mode operation** so the main chat stays usable while work runs
+- **first-use bootstrap and readiness checks** for operators who need a reproducible setup path
+- **proactive completion reporting** as part of the workflow expectation, not an afterthought
+- **personality-forward but still generic** role design: Xiaoma/Xiaoniu remain memorable while mapping cleanly to execution-worker / QA-worker roles
+- **practical local validation**: this is not just a conceptual workflow; the main route has been exercised end-to-end
+
 ## Roles
 
 ### 小马
@@ -57,6 +72,11 @@ Role: execution worker.
 角色简介：
 小马是牛马搭档里的执行担当。
 擅长快速理解需求、梳理任务重点，并把想法转化为可落地的执行结果。面对任务时，小马会优先推进进度，关注效率、产出和完成度，帮助用户尽快把事情做出来、做下去。
+
+Generic role mapping:
+- default name: **Xiaoma**
+- generic role: **execution worker**
+- renameable if an operator prefers a different local worker identity
 
 Responsible for:
 - implementing changes
@@ -87,6 +107,11 @@ Role: QA / acceptance worker.
 角色简介：
 小牛是牛马搭档里的验收担当。
 擅长从结果视角出发，对内容进行检查、校对和把关，关注逻辑是否清晰、信息是否完整、结果是否符合预期。小牛的作用不是拖慢进度，而是帮助用户减少遗漏、降低返工，让最终交付更稳妥。
+
+Generic role mapping:
+- default name: **Xiaoniu**
+- generic role: **QA / acceptance worker**
+- renameable if an operator prefers a different local worker identity
 
 Responsible for:
 - verifying 小马’s output against the task goal
@@ -150,8 +175,8 @@ If these assumptions stop being true, revalidate before claiming the workflow is
 If the local machine does **not** already have `xiaoma` and `xiaoniu`, do not assume the workflow is ready.
 Bootstrap it first:
 - read `references/local-bootstrap.md`
-- if deterministic local setup is preferred, use `scripts/bootstrap-workhorse-duo.ps1` to create missing agents and run a ready/not-ready ping check
-- if the machine is missing the required cross-agent config, use `scripts/bootstrap-workhorse-duo.ps1 -AutoFixConfig` to patch bootstrap-safe defaults, restart the gateway, and continue verification
+- if deterministic local setup is preferred, use the published helper in `references/published-bootstrap-helper.md` (or copy its script block locally as `bootstrap-workhorse-duo.ps1`) to create missing agents and run a ready/not-ready ping check
+- if the machine is missing the required cross-agent config, use the `-AutoFixConfig` flow documented in `references/published-bootstrap-helper.md` to patch bootstrap-safe defaults, restart the gateway, and continue verification
 - then run the ping smoke test and one real execute -> review smoke test
 
 Do not call Workhorse Duo installed/ready until bootstrap + smoke test both pass.
@@ -261,10 +286,28 @@ For QA routing, use this rule of thumb:
 - **may skip 小牛**: tiny read-only analysis, harmless clarification, or trivial low-risk edits where dispatch overhead would exceed value
 - **main session decides** when the task sits in the middle
 
+## Best fit / Not a fit
+
+### Best fit
+Use Workhorse Duo when:
+- you want the main session to stay in boss / scheduler mode
+- tasks are medium or large enough that execute -> review is worth the extra structure
+- you want a practical local workflow with a real execution worker and a real QA worker
+- you care about keeping the main user chat responsive while work runs in the background
+- you want a workflow that includes bootstrap, readiness checks, and recovery guidance
+
+### Not a fit
+Workhorse Duo is probably not the right choice when:
+- the task is so small that dispatch overhead is larger than the work itself
+- the environment does not allow local config mutation or gateway restarts during bootstrap
+- the operator wants a zero-setup skill with no environment assumptions
+- the operator does not want any multi-agent workflow at all and prefers to keep everything in one session
+
 ## References
 
 Read these only when needed:
 - `references/local-bootstrap.md` — first-use local setup, required config, and smoke-test checklist when the machine does not already have `xiaoma` / `xiaoniu`
+- `references/published-bootstrap-helper.md` — published, inspectable bootstrap helper content (including the exact PowerShell block operators can copy locally)
 - `references/risk-and-rollback.md` — bootstrap risk, auto-fix behavior, rollback, and release-bar guidance
 - `references/session-setup-and-operations.md` — local dispatch flow, smoke test, and failure handling
 - `references/persistent-session-examples.md` — published V1 examples using real-agent CLI routing

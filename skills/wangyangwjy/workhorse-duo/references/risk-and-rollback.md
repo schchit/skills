@@ -18,7 +18,7 @@ After validation, tighten policy if the deployment requires stronger isolation.
 
 ## 2. Auto-fix risk
 
-`scripts/bootstrap-workhorse-duo.ps1 -AutoFixConfig` will:
+The published helper flow in `references/published-bootstrap-helper.md` will:
 - modify `~/.openclaw/openclaw.json`
 - create a backup beside that file
 - set bootstrap-safe cross-agent config values

@@ -65,7 +65,7 @@ Required runtime state:
 Notes:
 - `allow: ["*"]` is acceptable for bootstrap/validation, but should be tightened later if the deployment needs stricter policy.
 - after patching config, restart/reload the gateway and re-check runtime config.
-- `scripts/bootstrap-workhorse-duo.ps1 -AutoFixConfig` can patch this bootstrap-safe config automatically, restart the gateway, and then continue readiness checks.
+- the exact published auto-fix helper flow is documented in `references/published-bootstrap-helper.md`.
 
 ## 4. Minimum smoke test
 
