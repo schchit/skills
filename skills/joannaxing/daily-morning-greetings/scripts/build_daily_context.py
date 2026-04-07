@@ -73,6 +73,11 @@ def parse_args():
     )
     parser.add_argument("--compact", action="store_true", help="Emit compact JSON.")
     parser.add_argument(
+        "--print-message",
+        action="store_true",
+        help="Emit formatted.message only, preserving blank lines.",
+    )
+    parser.add_argument(
         "--variant",
         type=int,
         default=0,
@@ -146,6 +151,11 @@ def env_int(name, default):
 def env_is_set(name):
     value = os.environ.get(name)
     return value is not None and value.strip() != ""
+
+
+def normalize_location_label(value):
+    text = str(value or "").strip()
+    return text or None
 
 
 def normalize_variant(value):
@@ -268,7 +278,14 @@ def resolve_location(args):
     latitude_explicit = bool(args.latitude is not None or env_is_set("MORNING_WEATHER_LATITUDE"))
     longitude_explicit = bool(args.longitude is not None or env_is_set("MORNING_WEATHER_LONGITUDE"))
     city = (args.city or env_or_default("MORNING_WEATHER_CITY", DEFAULT_CITY)).strip()
-    city_zh = (args.city_zh or env_or_default("MORNING_WEATHER_CITY_ZH", DEFAULT_CITY_ZH)).strip()
+    if city_zh_explicit:
+        city_zh = (
+            args.city_zh or env_or_default("MORNING_WEATHER_CITY_ZH", DEFAULT_CITY_ZH)
+        ).strip()
+    elif city_explicit:
+        city_zh = city
+    else:
+        city_zh = env_or_default("MORNING_WEATHER_CITY_ZH", DEFAULT_CITY_ZH).strip()
     timezone = (args.timezone or env_or_default("MORNING_WEATHER_TIMEZONE", DEFAULT_TIMEZONE)).strip()
     latitude = args.latitude if args.latitude is not None else env_float("MORNING_WEATHER_LATITUDE", DEFAULT_LATITUDE)
     longitude = args.longitude if args.longitude is not None else env_float("MORNING_WEATHER_LONGITUDE", DEFAULT_LONGITUDE)
@@ -640,6 +657,10 @@ def resolve_open_meteo_target(location):
         if preferred is None:
             preferred = results[0]
 
+        if not location["city_zh_explicit"]:
+            preferred_name = normalize_location_label(preferred.get("name"))
+            if preferred_name:
+                location["city_zh"] = preferred_name
         timezone = location["timezone"]
         if not location["timezone_explicit"]:
             timezone = preferred.get("timezone") or timezone or DEFAULT_TIMEZONE
@@ -853,7 +874,9 @@ def main():
             "message": build_message(greeting_line, weather_line, wisdom_line),
         },
     }
-    if args.compact:
+    if args.print_message:
+        print(payload["formatted"]["message"])
+    elif args.compact:
         print(json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
     else:
         print(json.dumps(payload, ensure_ascii=False, indent=2))

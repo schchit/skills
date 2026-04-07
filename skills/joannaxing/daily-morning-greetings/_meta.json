@@ -3,9 +3,15 @@
   "slug": "daily-morning-greetings",
   "displayName": "Daily Morning Greetings",
   "latest": {
-    "version": "1.0.7",
-    "publishedAt": 1775105183589,
-    "commit": "https://github.com/openclaw/skills/commit/c8485bf86eb7f4c6bd10221435f4d8c0276b7205"
+    "version": "1.0.12",
+    "publishedAt": 1775279400142,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.7",
+      "publishedAt": 1775105183589,
+      "commit": "https://github.com/openclaw/skills/commit/c8485bf86eb7f4c6bd10221435f4d8c0276b7205"
+    }
+  ]
 }

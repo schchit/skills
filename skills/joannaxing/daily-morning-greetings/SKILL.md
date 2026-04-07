@@ -1,7 +1,7 @@
 ---
 name: daily-morning-greetings
-description: This skill triggers when the user asks for a 早安问候, asks to configure a daily early-morning 早安问候, asks to manually补发一条今天的早安问候, or asks for a backup version such as “换一条” or “再来个备选版”. It generates a fixed-format daily morning message using a deterministic local context script for live weather, rotating icons, and rotating wisdom-and-blessing pairs. It supports explicit city parameters, defaults to Shanghai when no city is provided, and can configure external OpenClaw cron schedules.
-version: 1.0.7
+description: This skill triggers when the user asks for a 早安问候, asks to configure a daily early-morning 早安问候, asks to manually补发一条今天的早安问候, or asks for a backup version such as “换一条” or “再来个备选版”. It generates a fixed-format daily morning message using a deterministic local context script for live weather, rotating icons, and rotating wisdom-and-blessing pairs. It supports explicit city parameters, defaults to Shanghai when no city is provided, and can configure external OpenClaw cron schedules across the current chat channel, including plugin-backed chat channels.
+version: 1.0.12
 compatibility: Requires python3 and network access for live weather fetch.
 metadata:
   openclaw:
@@ -73,6 +73,21 @@ python3 "$SKILL_DIR/scripts/build_daily_context.py" \
 python3 "$SKILL_DIR/scripts/build_daily_context.py" --variant 0 --compact
 ```
 
+如果是 cron 定时标准版，或需要在保留主聊天投递的同时自动补发微信 bot，优先使用包装脚本：
+
+```bash
+python3 "$SKILL_DIR/scripts/dispatch_morning_greeting.py" \
+  --variant 0 \
+  --deliver-weixin auto \
+  --print-message
+```
+
+推荐的 cron 内联 payload 文案是：
+
+```text
+Run this command first: python3 "$SKILL_DIR/scripts/dispatch_morning_greeting.py" --variant 0 --deliver-weixin auto --print-message . Then return the stdout exactly as the final answer. Preserve blank lines. Do not read any skill or prompt file unless strictly necessary. Do not add any extra text.
+```
+
 如果是手动触发，希望当天同一窗口尽量不重复，使用：
 
 ```bash
@@ -93,6 +108,16 @@ python3 "$SKILL_DIR/scripts/build_daily_context.py" --variant 1
 python3 "$SKILL_DIR/scripts/build_daily_context.py" \
   --selection-mode alternate \
   --scope-key "chat:example"
+```
+
+如果是“手动补发一次今天的早安问候”，并希望在当前聊天正常回显的同时，自动补发到已配置的微信 bot，优先使用：
+
+```bash
+python3 "$SKILL_DIR/scripts/dispatch_morning_greeting.py" \
+  --selection-mode manual \
+  --scope-key "chat:example" \
+  --deliver-weixin auto \
+  --print-message
 ```
 
 ## Default Location
@@ -193,21 +218,31 @@ export MORNING_WEATHER_LONGITUDE="121.4737"
 3. 默认时区按 `Asia/Shanghai`，除非用户明确指定别的时区。
 4. 优先更新已有的早安问候 cron 任务；如果不存在，再新建。
 5. 任务名可以跟随时间调整，但都应保持 `daily-morning-greetings` 这个前缀，避免和别的任务混淆。
-6. cron 里调用脚本时固定使用 `--variant 0`，也就是当天标准版。
-7. delivery 优先发回当前聊天或最近路由，不要额外改成别的目标。
-   - Feishu 如果当前上下文里能拿到 `chatId`，优先写成 `chat:<chatId>`
-   - 只有当前拿不到 `chatId` 时，才回退成 `user:<open_id>`
-8. 配置定时任务时，默认同时开启 `failureAlert`：
+6. cron 不要在触发时重新读完整 `SKILL.md`；必须改用内联轻量 payload。
+   - 直接把命令写进 `payload.message`
+   - 固定运行 `python3 "$SKILL_DIR/scripts/dispatch_morning_greeting.py" --variant 0 --deliver-weixin auto --print-message`
+   - 追加约束：`Return the stdout exactly as the final answer. Preserve blank lines. Do not read any skill or prompt file unless strictly necessary. Do not add any extra text.`
+7. 定时任务参数优先使用：
+   - `sessionTarget = isolated`
+   - `lightContext = true`
+   - `thinking = off` 或 `minimal`
+   - `timeoutSeconds = 240`
+8. 主 delivery 优先绑定当前聊天所在渠道和当前会话路由，不要一上来假定是飞书，也不要误判成“只有 webhook 才能发到微信”。
+   - 如果当前上下文本身就是外部聊天渠道，例如 `feishu`、`openclaw-weixin` 或其他已安装聊天插件，应优先把 cron 主 delivery 绑定到当前渠道
+   - 如果能拿到明确的当前会话目标，例如 `chat:<chatId>`、插件渠道的当前 peer / chat target，就直接写入 `delivery.to`
+   - 如果当前渠道存在但拿不到明确 target，可优先复用当前主聊天的最近路由；只有确认当前渠道没有可复用路由时，才退回用户级路由
+   - `dispatch_morning_greeting.py --deliver-weixin auto` 只是“如已配置企业微信 webhook 则额外补发一次”的增强项，不是微信主渠道定时投递的前置条件
+9. 配置定时任务时，默认同时开启 `failureAlert`：
    - `after = 1`
    - `mode = announce`
    - `cooldown = 6h`
    - `channel` / `to` 默认跟随这条早安问候本身的主投递目标；如果用户没明确指定，就沿用当前聊天或最近路由
-   - Feishu 的 `failureAlert.to` 也应优先跟随 `chat:<chatId>`，不要默认写成 `user:<open_id>`
-9. 如果系统里已有对应的早安问候任务，但没开 `failureAlert`，应一并补上，不要漏掉。
-10. 配置完成后，要给用户一个简短确认，并明确回显这次实际绑定到的投递路由：
-   - 如果用了 Feishu `chat:<chatId>`，要明确说明“已绑定到当前会话”
-   - 如果因为当前拿不到 `chatId` 而回退到 `user:<open_id>`，也要明确说明当前是用户路由，稳定性可能略低，建议在目标会话里重新配置一次
-11. 不要在配置确认里额外生成早安问候正文。
+   - `failureAlert` 也应优先跟随当前聊天所在渠道与当前会话目标，不要默认退回飞书用户路由
+10. 如果系统里已有对应的早安问候任务，但仍在读 `SKILL.md` / skill 内 prompt、没开 `failureAlert`，或没设置轻量参数，应一并更新，不要漏掉。
+11. 配置完成后，要给用户一个简短确认，并明确回显这次实际绑定到的投递路由：
+   - 如果绑定到了当前聊天会话，要明确说明“已绑定到当前会话”
+   - 如果因为当前拿不到稳定会话 target 而回退到用户级路由，也要明确说明当前是用户路由，稳定性可能略低，建议在目标会话里重新配置一次
+12. 不要在配置确认里额外生成早安问候正文。
 
 如果当前环境没有可用的 cron 工具或 CLI，再退回给用户一条可以直接复制执行的命令。
 
@@ -218,16 +253,43 @@ export MORNING_WEATHER_LONGITUDE="121.4737"
 - `来一条今天的早安问候`
 - `手动补发一次今天的早安问候`
 
-都按“立即重新获取并发送一次标准版”处理：
+都按“立即重新获取并发送一次标准版”处理，但“手动补发”要额外兼容外部渠道补发：
 
 1. 必须重新运行脚本，不要复用上一次 JSON。
 2. 不要再固定使用 `--variant 0`；应改用 `--selection-mode manual`。
 3. 如果当前上下文里拿得到稳定路由，要传入 `--scope-key`：
-   - Feishu 优先 `chat:<chatId>`
-   - 如果拿不到 `chatId`，再用当前用户路由或当前会话 key
+   - 优先使用“当前聊天渠道 + 当前会话标识”，例如 `chat:<chatId>` 或插件渠道对应的当前会话 target
+   - 如果拿不到明确聊天标识，再用当前用户路由或当前会话 key
 4. 如果用户指定了城市，就带上对应城市参数；否则默认上海。
 5. 手动触发允许和 06:00 定时版不同；目标是同一天同一窗口尽量不重复，不同窗口尽量别撞句。
-6. 最终直接输出 3 段正文，不要加解释。
+6. 如果用户说的是“手动补发一次今天的早安问候”，优先改用 `dispatch_morning_greeting.py --deliver-weixin auto`，这样在当前聊天正常回显的同时，也会尝试补发到已配置的微信 bot。
+7. 最终直接输出 3 段正文，不要加解释。
+
+### D. 从非微信渠道主动推送到微信聊天窗口
+
+如果用户当前是在飞书或其他非微信渠道里，要求：
+
+- `请主动推送一条早安问候到微信聊天窗口`
+- `把这条早安问候发到微信`
+
+先做前置校验，再决定是否发送：
+
+1. 必须先确认当前 gateway 已具备可用微信渠道，而不是只靠猜测：
+   - WeChat 个人聊天渠道依赖 `@tencent-weixin/openclaw-weixin`
+   - 需要已安装、已加载、已登录
+2. 必须先确认目标可解析：
+   - 优先使用当前微信会话本身的已知路由
+   - 或通过目录 / peer 查询拿到真实 target
+3. 在没有验证成功之前：
+   - 不要臆造 `*@im.wechat` 之类目标 ID
+   - 不要先回复“可以发送 / 已配置好 / 已经在发”再去碰运气调用发送
+4. 如果当前实例没有可用微信渠道，或拿不到可用 target：
+   - 要明确说明当前不能从这个实例直接推送到微信
+   - 可以建议用户：
+     - 在微信当前对话里直接触发早安问候
+     - 或先安装并登录 `openclaw-weixin`
+     - 或如果目标是企业微信机器人，再改走 webhook 双发链路
+5. 只有在微信渠道与 target 都验证通过后，才允许执行跨渠道主动发送。
 
 ### C. 换一条 / 再来个备选版
 
@@ -253,7 +315,52 @@ export MORNING_WEATHER_LONGITUDE="121.4737"
 - skill 负责“写什么”
 - cron 负责“几点运行”
 - channel delivery 负责“发到哪里”
+- `dispatch_morning_greeting.py` 负责“如有微信 bot 配置则额外补发一次”
 - 默认失败提醒也应跟随这条定时任务一起配置
+
+如果用户是在微信 bot 当前对话里配置早安问候，优先把 cron 的主 delivery 直接绑定到这个当前微信会话。
+企业微信 webhook 只用于“同一条消息额外双发到另一个 bot 入口”，不是当前微信会话定时投递的必要条件。
+
+老版本如果把整份 `SKILL.md`，或者 skill 目录里的 prompt 文件，直接塞给 cron，在较慢的远端环境里容易因为自动补读 skill 上下文而延迟，甚至超时。
+因此定时任务必须改走内联轻量 payload，而不是在触发时再读完整 skill：
+
+- 直接在 `payload.message` 里写命令和输出约束
+- 只跑 `dispatch_morning_greeting.py --variant 0 --deliver-weixin auto --print-message`
+- 明确要求 `Do not read any skill or prompt file unless strictly necessary`
+- 定时任务应开启 `lightContext`
+- 定时任务应优先使用 `thinking off` 或 `thinking minimal`
+- 定时任务建议将 `timeoutSeconds` 设为 `240`
+
+## Weixin Bot Fanout
+
+`dispatch_morning_greeting.py` 会按下面顺序自动探测微信 bot 配置：
+
+1. 环境变量：
+   - `WEIXIN_BOT_WEBHOOK_URL`
+   - `WECHAT_BOT_WEBHOOK_URL`
+   - `WEIXIN_WEBHOOK_URL`
+   - `WECHAT_WEBHOOK_URL`
+   - `WEIXIN_BOT_KEY`
+   - `WECHAT_BOT_KEY`
+   - `WX_BOT_KEY`
+   - `WEIXINBOTWEBHOOKURL`
+   - `WECHATBOTWEBHOOKURL`
+   - `WEIXINBOTKEY`
+   - `WECHATBOTKEY`
+   - `WXBOTKEY`
+2. OpenClaw 配置文件：
+   - 默认读 `~/.openclaw/openclaw.json`
+   - 也支持 `OPENCLAW_CONFIG_PATH`
+   - 会优先扫描名字含 `openclaw-weixin` / `weixin` / `wechat` / `wxbot` 的 plugin 或 channel 配置块
+   - 只接受明确的 webhook 字段，例如 `webhook_url` / `webhook_key`；不会把 `openclaw-weixin` 这类个人微信渠道里的登录 `token` / `access_token` 误当成企业微信机器人 key
+
+探测命中后：
+
+- 会直接向企业微信机器人 webhook 发一条同内容文本消息
+- stdout 仍只保留早安问候正文，方便 Feishu 或当前主聊天正常回推
+- 如果没有命中配置，`--deliver-weixin auto` 会安静跳过，不影响主渠道
+- 如果未来需要强制要求微信也必须成功，可以改用 `--deliver-weixin required`
+- 这里的 webhook 双发针对的是企业微信机器人，不等于“微信个人聊天窗口主动推送”；后者需要 `openclaw-weixin` 这类真实聊天渠道和可解析 target
 
 ## Critical Rules
 
@@ -261,8 +368,13 @@ export MORNING_WEATHER_LONGITUDE="121.4737"
 2. 优先直接原样输出 `formatted.message`；如果没有这个字段，再按 `formatted.greeting`、`formatted.weather`、`formatted.wisdom` 的顺序输出。
 3. 若用户明确指定城市，先按用户城市运行脚本；否则默认上海。
 4. 手动补发和备选版都必须重新跑脚本，不能复用之前的结果。
-5. 配置定时任务时，标准版固定使用 `--variant 0` 或默认 `standard` 选择模式。
-6. 手动触发优先使用 `--selection-mode manual`，有稳定路由时再带上 `--scope-key`。
-7. “换一条”优先使用 `--selection-mode alternate`，并沿用同一个 `--scope-key`。
-8. 不要输出时令饮食、居家健康、工作建议、情绪建议。
-9. 不要改成多段哲理分析，保持早安问候感。
+5. 配置定时任务时，标准版必须走轻量链路，不要在触发时重新读完整 `SKILL.md`。
+6. 定时任务优先使用内联 payload，而不是 skill 内 prompt 文件。
+7. 定时任务应优先开启 `lightContext`，并使用 `thinking off` 或 `thinking minimal`。
+8. 定时任务建议将 `timeoutSeconds` 设为 `240`，避免远端冷启动或排队时误超时。
+9. 手动触发优先使用 `--selection-mode manual`，有稳定路由时再带上 `--scope-key`。
+10. “换一条”优先使用 `--selection-mode alternate`，并沿用同一个 `--scope-key`。
+11. 需要兼容微信 bot 补发时，优先调用 `dispatch_morning_greeting.py`，不要让模型自己手拼 webhook 或自己猜配置路径。
+12. 不要把 `--deliver-weixin auto` 误解释成“没有 webhook 就一定不能给当前微信会话定时发送”；当前会话主投递和 webhook 双发是两条不同链路。
+12. 不要输出时令饮食、居家健康、工作建议、情绪建议。
+13. 不要改成多段哲理分析，保持早安问候感。
