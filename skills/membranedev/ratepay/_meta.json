@@ -3,9 +3,15 @@
   "slug": "ratepay",
   "displayName": "Ratepay",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775120582164,
-    "commit": "https://github.com/openclaw/skills/commit/ecb2fc35e4c8446af240e01034fa968ff9f18e9f"
+    "version": "1.0.2",
+    "publishedAt": 1775170932770,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775120582164,
+      "commit": "https://github.com/openclaw/skills/commit/ecb2fc35e4c8446af240e01034fa968ff9f18e9f"
+    }
+  ]
 }
