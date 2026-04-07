@@ -1,11 +1,17 @@
 {
   "owner": "sunny0826",
   "slug": "cli-help-writer",
-  "displayName": "cli help writer",
+  "displayName": "CLI Help Writer",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1775120614791,
-    "commit": "https://github.com/openclaw/skills/commit/a66693e708929fd31699224af0b1adff13ef73e3"
+    "version": "1.0.2",
+    "publishedAt": 1775180139682,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1775120614791,
+      "commit": "https://github.com/openclaw/skills/commit/a66693e708929fd31699224af0b1adff13ef73e3"
+    }
+  ]
 }
