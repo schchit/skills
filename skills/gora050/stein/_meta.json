@@ -3,9 +3,15 @@
   "slug": "stein",
   "displayName": "Stein",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775135147465,
-    "commit": "https://github.com/openclaw/skills/commit/cb9a30df67d45f82a9a8cf6d2135c95ba5d14d3a"
+    "version": "1.0.2",
+    "publishedAt": 1775171054387,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775135147465,
+      "commit": "https://github.com/openclaw/skills/commit/cb9a30df67d45f82a9a8cf6d2135c95ba5d14d3a"
+    }
+  ]
 }
