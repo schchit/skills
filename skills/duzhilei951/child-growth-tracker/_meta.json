@@ -1,11 +1,17 @@
 {
   "owner": "duzhilei951",
   "slug": "child-growth-tracker",
-  "displayName": "child-growth",
+  "displayName": "儿童成长跟踪与评估",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775060092414,
-    "commit": "https://github.com/openclaw/skills/commit/f2384cb5de72d35df360c4f8e876bbdcd7fc307b"
+    "version": "2.1.0",
+    "publishedAt": 1775191042653,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775060092414,
+      "commit": "https://github.com/openclaw/skills/commit/f2384cb5de72d35df360c4f8e876bbdcd7fc307b"
+    }
+  ]
 }
