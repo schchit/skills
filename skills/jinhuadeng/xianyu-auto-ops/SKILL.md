@@ -1,6 +1,6 @@
 ---
 name: xianyu-auto-ops
-description: Bilingual Xianyu (闲鱼) listing and lightweight operations workflow for second-hand goods, side-hustle products, and marketplace distribution. Use when the user wants to create, optimize, or batch-produce Xianyu listing assets such as titles, selling points, product descriptions, image prompts, reply scripts, pricing angles, posting checklists, or simple operating SOPs in Chinese and English. Also use when the user asks to turn product info into publish-ready marketplace materials, wants category-specific Xianyu templates, needs buyer chat replies, or wants a reusable batch-oriented Xianyu sales process.
+description: Bilingual Xianyu (闲鱼) listing and lightweight operations workflow for second-hand goods, side-hustle products, and marketplace distribution. Use when the user wants to create, optimize, or batch-produce Xianyu listing assets such as titles, selling points, product descriptions, image prompts, reply scripts, pricing angles, posting checklists, or simple operating SOPs in Chinese and English. Also use when the user asks to turn product info or CSV-like SKU data into publish-ready marketplace materials, wants category-specific Xianyu templates, needs buyer chat replies, or wants a reusable batch-oriented Xianyu sales process for physical goods, digital products, or AI services.
 ---
 
 # Xianyu Auto Ops
@@ -31,7 +31,7 @@ Follow this sequence unless the user asks for only one part.
    - **Home / 家居**: size, cleanliness, usage marks, pickup logistics, scene fit.
    - **Fashion / 服饰**: size, fabric, season, flaws, try-on expectation.
    - **Virtual / 虚拟产品或服务**: delivery scope, usage rights, support boundaries, trust language.
-   - **Training / Side-hustle products**: results, delivery format, onboarding, target audience.
+   - **Training / Side-hustle / AI services**: results, delivery format, onboarding, trust signals, support boundaries. Read `references/ai-services-template.md` when the product is training, installation, deployment, consulting, or AI service resale.
 
 4. **Produce the listing package**
    Return, in this order when relevant:
@@ -64,8 +64,12 @@ For each SKU, include:
 - One key reply note
 - One image direction
 
-If the user provides spreadsheet-like rows, normalize them mentally into:
-`name | category | condition | price target | flaws | accessories | city | delivery`
+If the user provides a CSV or spreadsheet, use `scripts/batch_csv_to_brief.py <file>` to normalize the rows first, then use the JSON output as batch input.
+
+Expected columns can include:
+`sku, name, category, brand, condition, price_target, flaws, accessories, city, delivery, notes`
+
+Chinese headers like `商品名 / 类目 / 成色 / 价格 / 瑕疵 / 配件 / 城市 / 发货 / 备注` are also supported.
 
 Do not ask the user to perfect the data before starting. Fill gaps with assumptions and mark them.
 

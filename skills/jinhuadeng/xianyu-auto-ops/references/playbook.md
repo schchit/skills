@@ -1,4 +1,4 @@
-# Xianyu Auto Ops Playbook v2
+# Xianyu Auto Ops Playbook v3
 
 ## 1. Best trigger examples
 
@@ -12,6 +12,8 @@ Use this skill for requests like:
 - 按数码/家居/服饰分别给我模板
 - 帮我写闲鱼私聊自动回复话术
 - 给这个商品配一张广告海报提示词
+- 帮我把 CSV 里的商品批量转成闲鱼文案
+- 帮我卖 AI 安装/培训/自动化服务
 - Write a Xianyu listing package for this product
 - Turn these product specs into an Idle Fish sales post
 
@@ -73,8 +75,34 @@ Focus on:
 - delivery format
 - onboarding speed
 - difference from generic competitors
+- trust and support boundary
 
-## 4. Title patterns
+For this category, also read `ai-services-template.md`.
+
+## 4. CSV / spreadsheet batch flow
+
+If the user provides a CSV file, normalize it first with:
+
+```bash
+python3 scripts/batch_csv_to_brief.py ./products.csv
+```
+
+Then use the JSON output as compact batch input.
+
+Supported columns:
+- sku / 编号
+- name / 商品名 / 名称
+- category / 类目 / 分类
+- brand / 品牌
+- condition / 成色 / 状态
+- price_target / 价格 / 目标价
+- flaws / 瑕疵
+- accessories / 配件
+- city / 城市
+- delivery / 发货 / 交付
+- notes / 备注
+
+## 5. Title patterns
 
 ### Chinese title patterns
 1. `品牌名 + 商品名 + 成色说明 + 适合谁`
@@ -87,7 +115,7 @@ Focus on:
 2. `Affordable + item + key benefit`
 3. `Well-kept + item + bundle included`
 
-## 5. Description formula
+## 6. Description formula
 
 ### Chinese
 Use this order:
@@ -104,7 +132,7 @@ Compress into:
 3. delivery / bundle
 4. action line
 
-## 6. Reply template bank
+## 7. Reply template bank
 
 ### 还在吗
 在的，商品还在，方便的话我可以把细节图/使用情况再发你看。  
@@ -130,7 +158,7 @@ Using the platform flow is safer for both sides and keeps shipping/details clear
 如果你这边确定要，我可以今天帮你保留/安排发出。  
 If you want it, I can reserve it for you and arrange shipping today.
 
-## 7. Poster / image prompt formulas
+## 8. Poster / image prompt formulas
 
 ### Platform-safe cover prompt
 `clean marketplace product cover, realistic product-centered composition, neutral or lightly branded background, clear lighting, no clutter, trustworthy second-hand sale style, high click-through visual hierarchy`
@@ -142,7 +170,7 @@ If you want it, I can reserve it for you and arrange shipping today.
 Append:
 `16:9 horizontal composition, strong headline-safe empty space, cover-image friendly, no watermark, no messy text`
 
-## 8. Batch mode
+## 9. Batch mode
 
 When the user gives multiple products:
 - keep each item compact
@@ -160,12 +188,10 @@ Recommended compact structure:
 - Reply note:
 - Image direction:
 
-## 9. Suggested v2 extensions
+## 10. v3 additions
 
-A more executable future version of this skill can add:
-- CSV / spreadsheet import scripts
-- batch listing generation scripts
-- image prompt presets by category
-- category-specific reply packs
-- publishing payload adapters for marketplace tools
-- conversation-state handling for inquiry follow-up
+This version adds:
+- CSV / spreadsheet normalization script
+- stronger batch workflow
+- dedicated AI service / training / installation template
+- clearer virtual goods and service boundary guidance

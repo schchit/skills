@@ -3,9 +3,15 @@
   "slug": "xianyu-auto-ops",
   "displayName": "Xianyu Auto Ops",
   "latest": {
-    "version": "0.2.0",
-    "publishedAt": 1775145556928,
-    "commit": "https://github.com/openclaw/skills/commit/f472bd4e68919490675f285fb48581a9b950390d"
+    "version": "0.3.0",
+    "publishedAt": 1775146899223,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.2.0",
+      "publishedAt": 1775145556928,
+      "commit": "https://github.com/openclaw/skills/commit/f472bd4e68919490675f285fb48581a9b950390d"
+    }
+  ]
 }
