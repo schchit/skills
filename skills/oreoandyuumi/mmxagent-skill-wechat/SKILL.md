@@ -15,7 +15,7 @@ description: 连接个人微信（不是企业微信）。用户说"连接个人
 **以下关键词不属于本 skill，禁止触发：**
 - "企业微信" / "企微" / "wecom" / "WeCom" → 使用 wecom-connect skill
 
-**一旦读取本 skill，必须严格按下方流程从第 1 步执行到底，不得跳步、不得自由发挥、不得读取其他文档。**
+**一旦读取本 skill，必须严格按下方流程从第 0 步执行到底，不得跳步、不得自由发挥、不得读取其他文档。**
 
 ## 核心原则
 
@@ -28,16 +28,59 @@ description: 连接个人微信（不是企业微信）。用户说"连接个人
 
 ## 执行流程
 
-### 第 1 步：安装 legacy 版本插件（1 次 exec）
-
-直接安装兼容的 legacy 版本，不需要做版本检查：
+### 第 0 步：检测 openclaw 版本，决定安装路径
 
 ```bash
-cd /tmp && npm pack @tencent-weixin/openclaw-weixin@legacy 2>&1 | tail -1 && rm -rf ~/.openclaw/extensions/openclaw-weixin && mkdir -p ~/.openclaw/extensions/openclaw-weixin && tar -xzf /tmp/tencent-weixin-openclaw-weixin-*.tgz -C ~/.openclaw/extensions/openclaw-weixin --strip-components=1 && cd ~/.openclaw/extensions/openclaw-weixin && npm install --production 2>&1 | tail -3 && (ln -sf "$(npm root -g)/openclaw" node_modules/openclaw 2>/dev/null || ln -sf "$(dirname "$(which openclaw)")/../lib/node_modules/openclaw" node_modules/openclaw) && ls node_modules/openclaw/package.json >/dev/null 2>&1 && echo "READY" || echo "FAILED"
+openclaw --version 2>&1 | head -1
 ```
 
-- `READY` → 继续第 2 步
-- `FAILED` → 告诉用户安装失败，需要人工排查
+从输出中提取版本号（格式：`OpenClaw 2026.X.Y`），按以下规则分支：
+
+| 条件 | 路径 |
+|---|---|
+| 版本 ≤ 2026.3.x（含 3.13） | **路径 A**：先升级插件，再升级 openclaw |
+| 版本 > 2026.3.13（如 2026.3.23 及以上） | **路径 B**：先升级插件，再更新 openclaw 版本 |
+| 未安装 / 命令不存在 | 告诉用户先安装 openclaw：`npm install -g openclaw@latest --registry=https://registry.npmmirror.com`，然后重新从第 0 步开始 |
+
+---
+
+### 第 1 步：安装插件（根据路径分支）
+
+#### 路径 A：旧版本（≤ 2026.3.13）→ 先升级插件，再升级 openclaw
+
+**1a. 先安装/升级微信插件（1 次 exec）：**
+
+```bash
+npx -y @tencent-weixin/openclaw-weixin-cli@latest install 2>&1
+```
+
+**1b. 再升级 openclaw 到最新版（1 次 exec）：**
+
+```bash
+npm install -g openclaw@latest --registry=https://registry.npmmirror.com 2>&1 | tail -3
+```
+
+升级完成后告知用户："插件已安装，openclaw 已更新到最新版。"
+
+#### 路径 B：较新版本（> 2026.3.13）→ 先升级插件，再更新 openclaw
+
+**1a. 先安装/升级微信插件（1 次 exec）：**
+
+```bash
+npx -y @tencent-weixin/openclaw-weixin-cli@latest install 2>&1
+```
+
+**1b. 再升级 openclaw 到最新版（1 次 exec）：**
+
+```bash
+npm install -g openclaw@latest --registry=https://registry.npmmirror.com 2>&1 | tail -3
+```
+
+升级完成后告知用户："插件已安装，openclaw 已更新到最新版。"
+
+---
+
+两条路径安装完成后，输出包含 `success` 或 `installed` 关键词则继续；否则告知用户安装失败，需人工排查。
 
 ### 第 2 步：获取二维码（1 次 exec）
 
@@ -204,12 +247,12 @@ openclaw gateway restart
 
 ## 二维码过期处理
 
-用户说"过期了" → 只需从第 2 步重新获取二维码，**不需要重新执行第 1 步**。
+用户说"过期了" → 只需从第 2 步重新获取二维码，**不需要重新执行第 0、1 步**。
 
 ## 绝对禁止
 
 - ❌ **禁止用 `curl -o` / `curl --output` / `wget` 下载 `qrcode_img_content` URL** — 这个 URL 指向的是 HTML 网页不是 PNG 图片，下载得到的是一堆 HTML 代码。必须用 `qrcode` npm 库的 `toFile()` 将 URL 字符串编码为 PNG
-- ❌ **禁止用 canvas、browser、Generate Images、Image Understanding、MEDIA: 语法 等方式展示二维码** — 只能用 `upload_to_cdn` 返回的 CDN URL，或引导用户打开 workspace 文件
+- ❌ **禁止用 canvas、browser、Generate Images、Image Understanding、MEDIA: 语法、终端字符渲染等方式展示二维码** — 只能用 `upload_to_cdn` 返回的 CDN URL，或引导用户打开 workspace 文件
 - ❌ 禁止把能合并的命令拆成多次 exec（二维码有效期只有 1 分钟，拆太碎会过期）
 - ❌ 禁止自动开轮询（等用户说"扫完了 / ok"）
 - ❌ 禁止手动改写 `openclaw.json`
@@ -218,7 +261,8 @@ openclaw gateway restart
 - ❌ 禁止使用替代上传方案（0x0.st、catbox、imgbb、base64 等）
 - ❌ 禁止在 token 前拼接 `ilink_bot_id:`（bot_token 已包含前缀）
 - ❌ 禁止在 PNG 生成成功后再用 curl 下载覆盖文件
+- ❌ 禁止跳过第 0 步版本检测直接进第 1 步
 
 ## 一句话总结
 
-安装 legacy 插件（1 次 exec）→ curl 拿二维码（1 次 exec）→ npm install qrcode + 生成 PNG → upload_to_cdn + workspace 备份 → 展示二维码等用户扫 → 轮询确认 → 写凭证+执行（1 次 exec）→ 重启 gateway → 完成。
+检测版本（第 0 步）→ 先升级插件再更新 openclaw（第 1 步）→ curl 拿二维码（第 2 步）→ npm install qrcode + 生成 PNG → upload_to_cdn + workspace 备份（第 3 步）→ 展示二维码等用户扫（第 4 步）→ 轮询确认 → 写凭证+执行 → 重启 gateway（第 5 步）→ 完成。
