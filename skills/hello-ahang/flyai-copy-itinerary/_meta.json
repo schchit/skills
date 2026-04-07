@@ -3,9 +3,15 @@
   "slug": "flyai-copy-itinerary",
   "displayName": "一键抄作业",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1775126066903,
-    "commit": "https://github.com/openclaw/skills/commit/7878617179446bca191c767c29b6167b642c87e9"
+    "version": "1.0.2",
+    "publishedAt": 1775237407882,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1775126066903,
+      "commit": "https://github.com/openclaw/skills/commit/7878617179446bca191c767c29b6167b642c87e9"
+    }
+  ]
 }
