@@ -1,0 +1,11 @@
+{
+  "owner": "nkhoit",
+  "slug": "llm-wiki",
+  "displayName": "Wiki",
+  "latest": {
+    "version": "1.2.0",
+    "publishedAt": 1775326176884,
+    "commit": null
+  },
+  "history": []
+}
