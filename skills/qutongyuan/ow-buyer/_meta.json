@@ -3,11 +3,16 @@
   "slug": "ow-buyer",
   "displayName": "Ow",
   "latest": {
-    "version": "2.3.1",
-    "publishedAt": 1775536193395,
-    "commit": "https://github.com/openclaw/skills/commit/b94df76f2320aae28cc24a6c74b13abba68577b1"
+    "version": "2.3.2",
+    "publishedAt": 1775536310125,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.3.1",
+      "publishedAt": 1775536193395,
+      "commit": "https://github.com/openclaw/skills/commit/b94df76f2320aae28cc24a6c74b13abba68577b1"
+    },
     {
       "version": "2.2.2",
       "publishedAt": 1775400409118,
