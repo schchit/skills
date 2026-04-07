@@ -1,7 +1,7 @@
 ---
 name: apollo-debugging
 description: >
-  声称修好了？必须重新跑一遍验证，不能凭感觉。
+  出问题了不慌，帮你一步步找到真正的原因再修。
 version: 1.0.2
 read_when:
   - Bug report or test failure
