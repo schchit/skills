@@ -1,0 +1,11 @@
+{
+  "owner": "tenequm",
+  "slug": "claude-skill-finder",
+  "displayName": "skill-finder",
+  "latest": {
+    "version": "1.1.0",
+    "publishedAt": 1775237611539,
+    "commit": null
+  },
+  "history": []
+}
