@@ -1,0 +1,11 @@
+{
+  "owner": "xiaohei2022",
+  "slug": "agent-cli",
+  "displayName": "Agent CLI (Cursor + Qoder)",
+  "latest": {
+    "version": "3.0.0",
+    "publishedAt": 1775374282237,
+    "commit": null
+  },
+  "history": []
+}
