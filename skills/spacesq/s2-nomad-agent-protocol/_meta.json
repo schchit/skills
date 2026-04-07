@@ -1,0 +1,11 @@
+{
+  "owner": "spacesq",
+  "slug": "s2-nomad-agent-protocol",
+  "displayName": "S2-Nomad-Agent-Protocol",
+  "latest": {
+    "version": "1.1.0",
+    "publishedAt": 1775394560471,
+    "commit": null
+  },
+  "history": []
+}
