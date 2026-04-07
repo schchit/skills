@@ -1,44 +1,36 @@
 # One Person Company OS
 
-One Person Company OS is a Chinese-first control tower for AI-native solo companies.
+One Person Company OS turns a solo founder's vague AI product idea into a working business loop:
 
-Start with one product idea. It first gives you a company setup draft, then after founder confirmation it creates the workspace, core role briefs, and the first execution round.
+- define the promise
+- move the MVP toward demoable, launchable, and sellable
+- track opportunities and delivery
+- recover cash and build reusable assets
 
-The product loop is simple:
-
-- create the company
-- start a round
-- advance the round
-- calibrate only when triggered
-- transition stages when the bottleneck changes
-
-## What It Helps You Do
-
-- turn an idea into an executable solo-company setup
-- keep one clear current stage, current round, current blocker, and shortest next move
-- move with a minimal role system instead of management overhead
-- calibrate only when blocked, drifting, finishing key outputs, or preparing a stage transition
-
-## First-Run Promise
-
-The first serious run should produce:
-
-- a company setup draft
-- 3 to 5 company name options
-- a suggested stage
-- a minimal org structure and first active roles
-- a Chinese workspace plan
-- the first executable round
-- explicit founder approval items
-
-## Local Workflow
+Install:
 
 ```bash
-python3 scripts/init_company.py "北辰实验室" --path ./workspace --product-name "北辰助手" --stage 构建期
-python3 scripts/start_round.py ./workspace/北辰实验室 --round-name "完成首页首屏" --goal "完成首页首屏结构与注册入口"
-python3 scripts/validate_release.py
+clawhub install one-person-company-os
 ```
 
-## Core Positioning
+Best start prompt:
 
-Turn one founder into a fast-moving AI-native solo company.
+```text
+I am building a one-person company around an AI product. Use one-person-company-os. Do not give me a business-plan template. First help me define the sellable promise, the first buyer, and the shortest path to a demoable and sellable MVP. Then create the operating workspace, tell me the current bottleneck, and update the real files directly.
+```
+
+The generated workspace now opens with:
+
+- `00-经营总盘.md`
+- `02-价值承诺与报价.md`
+- `03-机会与成交管道.md`
+- `04-产品与上线状态.md`
+- `05-客户交付与回款.md`
+
+This release line supports:
+
+- business-loop state v3
+- direct product build and launch coordination
+- pipeline, delivery, cash, and asset updates
+- legacy stage/round compatibility
+- numbered final-named DOCX deliverables

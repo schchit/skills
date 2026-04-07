@@ -6,59 +6,86 @@ One Person Company OS
 
 ## Short Description
 
-先产出公司创建草案，再按回合推进一人公司
+Turn an AI product idea into a real one-person company loop across product, sales, delivery, cash, and assets
 
 ## Tagline Options
 
-- 把一个创始人升级成一间高效推进的一人公司。
-- Create the company, run the round, calibrate only when needed.
-- 先创建公司骨架，再推进当前回合，不用被周节奏拖着走。
+- From vague AI idea to sellable MVP, delivery loop, and cash recovery.
+- Build the product, move the pipeline, collect the cash, and keep the state on disk.
+- 不只是聊创业，而是把一人公司的经营闭环真正跑起来。
+- 帮你把产品做出来、卖出去、交付掉、收回款，并持续沉淀资产。
 
 ## Primary Pitch
 
-One Person Company OS is a Chinese-first control tower for AI-native solo companies.
+One Person Company OS is a business-loop operating system for AI-native solo founders.
 
-It starts by turning one product idea into a company setup draft with a suggested stage, minimal role structure, workspace plan, and the first executable round.
+It does not treat the company as a pile of templates.
+It treats the company as a loop:
 
-After founder confirmation, it keeps the company moving with:
+- promise
+- buyer
+- product capability
+- delivery
+- cash
+- learning
+- asset
 
-- Chinese workspace creation
-- minimal role activation
-- current round control
-- trigger-based calibration
-- stage transition when the bottleneck changes
+The system now generates and maintains a real operating workspace centered on:
+
+- operating dashboard
+- offer and pricing
+- pipeline
+- product and launch state
+- delivery and receivables
+- cash health
+- assets and automation
+- risks and decisions
+
+It also keeps runtime transparency, file persistence, Python recovery, and final-named DOCX deliverables when formal delivery evidence is needed.
 
 ## First-Run Promise
 
 The first serious run should produce:
 
-- a company setup draft
-- 3 to 5 company name options
-- the suggested current stage
-- a minimal org structure and first active roles
-- a Chinese workspace structure
-- the first executable round
-- explicit founder approval items
+- a clear sellable promise
+- the first buyer definition
+- the primary bottleneck
+- the primary arena to push next
+- the operating workspace
+- the shortest action for today
+- the single result for this week
+- a real state file on disk
 
 ## Quick Start Prompts
 
-- `我想围绕一个 AI 产品创建一间一人公司，请帮我调用 one-person-company-os。先给我公司创建草案；我确认后，再创建中文工作区、角色智能体和首个推进回合。`
-- `帮我启动当前阶段的第一个推进回合。`
-- `继续推进当前回合，告诉我现在最短路径怎么走。`
-- `我卡住了，帮我进入校准回合。`
+- `clawhub install one-person-company-os`
+- `I am building a one-person company around an AI product. Use one-person-company-os. Do not give me a business-plan template. First help me define the sellable promise, the first buyer, and the shortest path to a demoable and sellable MVP. Then create the operating workspace, tell me the current bottleneck, and update the real files directly.`
+- `Update the focus, then push the product to a demoable MVP.`
+- `Advance the revenue pipeline and tell me the next real revenue action.`
+- `Advance delivery, receivables, and cash health.`
+- `Record this SOP as a reusable asset.`
+- `我正在围绕一个 AI 产品创建一人公司，请调用 one-person-company-os。不要先给我商业计划书模板。先帮我定义可卖承诺、第一批买家、以及把 MVP 推到可演示和可售卖的最短路径，然后直接创建工作区、告诉我当前主瓶颈，并把真实文件改出来。`
+- `先更新主焦点，再继续推进产品与上线。`
+- `继续推进成交管道，并告诉我下一条真实成交动作。`
+- `继续推进交付、回款和现金状态。`
+- `把这次流程沉淀成资产。`
 
 ## What Users Get
 
-- Chinese-first operating outputs
-- round-based execution instead of week-based management
-- explicit role ownership with a minimal starter set
-- one clear current stage, current round, blocker, and shortest next move
-- local scripts for workspace creation, round updates, calibration, and stage transitions
+- business-loop state v3
+- operating dashboard plus direct work surfaces
+- product, sales, delivery, cash, and asset update scripts
+- final-named DOCX deliverables
+- runtime transparency and Python recovery
+- compatibility with the older stage and round path when needed
 
 ## Trust Boundary
 
-This skill drafts first and still requires explicit founder approval before launch, pricing changes, budget spend, legal claims, or customer-facing high-risk actions.
+The founder is still the decision-maker.
+The system can draft, update, persist, and tighten the loop, but pricing changes, budget spend, launch claims, legal statements, and high-risk customer actions still require explicit founder approval.
 
 ## Default Prompt
 
-我想围绕一个 AI 产品创建一间一人公司，请帮我调用 one-person-company-os。先给我公司创建草案，包括建议阶段、最小角色、中文工作区和首个推进回合；我确认后再正式创建。
+I am building a one-person company around an AI product. Use one-person-company-os. Do not give me a business-plan template. First help me define the sellable promise, the first buyer, and the shortest path to a demoable and sellable MVP. Then create the operating workspace, tell me the current bottleneck, and update the real files directly.
+
+我正在围绕一个 AI 产品创建一人公司，请调用 one-person-company-os。不要先给我商业计划书模板。先帮我定义可卖承诺、第一批买家、以及把 MVP 推到可演示和可售卖的最短路径，然后直接创建工作区、告诉我当前主瓶颈，并把真实文件改出来。

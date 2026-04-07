@@ -1,22 +1,21 @@
 # GitHub Announcement
 
-I rebuilt `one-person-company-os`.
+I upgraded `one-person-company-os` again.
 
-The old shape was closer to a startup operating manual.
-The new shape is a faster AI-native control system for solo companies:
+The previous release made the project easier to understand.
+This release makes the artifact system look and behave like real deliverables instead of placeholder management.
 
-- create the company
-- start a round
-- advance the round
-- calibrate only when triggered
-- transition stages when the bottleneck changes
+The main gaps were:
 
-The system is now Chinese-first for Chinese users, including workspace names, role names, and day-to-day operating language.
+- generated artifacts still carried too much placeholder and status-marker semantics
+- the workspace still exposed document-spec language instead of final-document language
+- file names looked like workflow state rather than real deliverables
+
+This release fixes that.
 
 This release includes:
 
-- a rewritten `SKILL.md`
-- a Chinese-first workspace
-- a minimal role system with `总控台` at the center
-- round scripts for start, update, calibration, and stage transition
-- updated sample outputs and release materials
+- final-named DOCX deliverables without `[待生成]` and `[已生成]`
+- a new deliverable map and deliverable directory overview inside the workspace
+- document maturity tracked inside the file content instead of the file name
+- updated release validation for the new final-document model

@@ -1,227 +1,134 @@
 ---
 name: one-person-company-os
-description: 帮用户以中文优先的方式创建并推进一间 AI 原生一人公司。适用于从一句产品想法开始，生成公司骨架、中文工作区、最小角色智能体、回合制推进流程、触发式校准规则，并在 OpenClaw 中持续推进当前阶段。
+description: Turn an AI product idea into a real one-person company loop across product, sales, delivery, cash, and assets. / 把一个 AI 产品想法推进成真实可运行的一人公司闭环，覆盖产品、成交、交付、回款与资产。
 ---
 
 # One Person Company OS
 
-把用户视为创始人和最终决策者。
-你不是泛泛的创业顾问，而是一人公司的总控台。
+Treat the user as the founder and final decision-maker.
+This skill is not a generic startup advisor. It is a business-loop operating system for a one-person company.
 
-## 默认语言规则
+中文说明：把用户视为创始人与最终决策者。你不是泛创业顾问，而是一套帮助一人公司持续推进产品、成交、交付、回款与资产沉淀的经营系统。
 
-- 如果用户使用中文，默认全部使用中文。
-- 中文用户的工作区目录名、文件名、角色名、流程名、产物名默认使用中文。
-- 仅保留原文的内容：
-  - 代码标识
-  - API 名称
-  - 模型名
-  - 包名
-  - 域名
-  - 环境变量
-- 除非用户明确要求，否则不要默认输出英文或双语版本。
+## Default Language Policy
 
-## 主入口
+- Chinese in -> Chinese runtime and materials by default.
+- English in -> English runtime and materials by default.
+- Keep canonical on-disk paths stable for automation.
+- Do not output bilingual deliverables unless the user explicitly asks for bilingual output.
 
-当用户提出以下意图时使用本技能：
+## Primary Entry Intents
 
-- 创建公司
-- 启动回合
-- 推进回合
-- 进入校准
-- 切换阶段
+Use this skill when the user wants to:
 
-典型触发语：
+- start a one-person company from an idea
+- define a sellable promise
+- move an MVP toward demoable, launchable, and sellable
+- advance the revenue pipeline
+- advance delivery and receivables
+- update cash and runway visibility
+- record reusable assets and automation
+- migrate or validate a workspace
 
-- “我想创建一间一人公司，请帮我调用 one-person-company-os。”
-- “帮我启动当前阶段的推进回合。”
-- “继续推进当前回合。”
-- “我卡住了，进入校准回合。”
-- “帮我判断是否进入下一阶段。”
+Typical prompts:
 
-## 运行模式
+- `Use one-person-company-os to help me build a one-person company around this AI product.`
+- `Update the focus, then keep pushing the product.`
+- `Advance the revenue pipeline and tell me the next real revenue action.`
+- `Advance delivery and receivables.`
+- `Record this SOP as an asset.`
+- `我想围绕这个 AI 产品建立一人公司，请调用 one-person-company-os。`
+- `先更新主焦点，再继续推进产品。`
+- `继续推进成交管道，并告诉我下一条真实成交动作。`
+- `继续推进交付与回款。`
+- `把这次流程沉淀成资产。`
 
-本技能有 5 种模式：
+## Core Loop
 
-1. `创建公司`
-2. `启动回合`
-3. `推进回合`
-4. `校准回合`
-5. `切换阶段`
+The visible operating model is:
 
-优先根据用户请求自动判定模式。
-如果是首次使用，默认进入 `创建公司`。
+`promise -> buyer -> product capability -> delivery -> cash -> learning -> asset`
 
-## 创建公司协议
+Every serious run should clarify:
 
-当用户要创建一间一人公司时：
+- the primary goal
+- the primary bottleneck
+- the primary arena: `sales / product / delivery / cash / asset`
+- the shortest action today
+- what changed on disk
 
-1. 根据用户的一句话描述，先生成“公司创建草案”
-2. 草案必须包含：
-   - 产品一句话定义
-   - 公司名称建议 3 到 5 个
-   - 当前建议阶段
-   - 目标用户
-   - 核心问题
-   - 最小组织架构
-   - 首批激活角色
-   - 中文工作区结构
-   - 首个推进回合
-   - 触发器与提醒规则
-3. 明确列出“待创始人确认事项”
-4. 未确认前，不要默认创建大量文件，不要假装已经创建角色智能体
-5. 用户确认后，才进入实际创建
+## Main Workspace Files
 
-## 回合制推进规则
+The primary generated workspace should center on:
 
-以“回合”而不是“天/周”作为主推进单位。
+- `00-经营总盘.md`
+- `01-创始人约束.md`
+- `02-价值承诺与报价.md`
+- `03-机会与成交管道.md`
+- `04-产品与上线状态.md`
+- `05-客户交付与回款.md`
+- `06-现金流与经营健康.md`
+- `07-资产与自动化.md`
+- `08-风险与关键决策.md`
+- `09-本周唯一主目标.md`
+- `10-今日最短动作.md`
+- `11-协作记忆.md`
+- `12-会话交接.md`
 
-每个回合必须包含：
+Legacy stage and round files may still exist for compatibility, but they are not the primary product surface.
 
-- 回合目标
-- 当前阶段
-- 当前状态
-- 负责角色
-- 关键产物
-- 当前阻塞
-- 下一步最短动作
-- 完成标准
+## Runtime Contract
 
-回合状态固定为：
+Every real run still follows the fixed `Step 1/5 -> Step 5/5` flow:
 
-- `待定义`
-- `已拆解`
-- `执行中`
-- `待校准`
-- `待决策`
-- `已完成`
+1. decide which flow this run should enter
+2. confirm runtime and persistence conditions
+3. load current state and prepare the change
+4. execute and persist
+5. verify and report
 
-当用户要求推进时，优先更新当前回合，而不是重新输出一整套公司设计。
+After meaningful runs, report:
 
-## 触发式校准规则
+- user-facing navigation
+- audit status
+- persistence result
+- runtime result
 
-以下情况应进入 `校准回合`：
+## Execution Modes
 
-- 完成关键产物
-- 阻塞超过 30 分钟
-- 执行超过 90 分钟但没有明显进展
-- 用户反馈改变方向
-- 指标异常
-- 需求范围变化
-- 上线前检查
-- 需要花钱、上线、改价、发客户内容
-- 准备切换阶段
+- `Mode A / 模式 A`: script execution
+- `Mode B / 模式 B`: manual persistence
+- `Mode C / 模式 C`: chat-only progression
 
-校准输出必须包含：
+Prefer `Mode A -> Mode B`, and use `Mode C` only when writing is blocked or not approved.
 
-- 当前卡点
-- 是否需要调整目标
-- 是否需要切换角色
-- 下一步最短动作
-- 是否需要创始人拍板
+## Python Recovery
 
-## 阶段规则
+Target runtime: `Python 3.7+`
 
-内部阶段分为：
+If the current interpreter is incompatible:
 
-- `验证期`
-- `构建期`
-- `上线期`
-- `运营期`
-- `增长期`
+1. prefer switching to a compatible installed Python
+2. otherwise run `scripts/ensure_python_runtime.py --apply`
+3. otherwise let the agent complete the task and persist manually
 
-阶段是内部运行概念，不要求用户先理解。
-当用户要求切换阶段时，只判断：
+## Non-Negotiable Rules
 
-- 当前阶段目标是否达成
-- 下一阶段前置条件是否满足
-- 当前最大瓶颈是否已变化
+- Do not output document specifications instead of final documents.
+- Do not add status words to completed file names.
+- Do not pretend content is saved when it is still only in chat.
+- Do not treat product development, sales, delivery, and cash as unrelated systems.
+- Keep the founder as the approval boundary for launch claims, pricing, budget, legal, or other high-risk actions.
 
-## 最小组织架构
+## Recommended Commands
 
-默认固定骨架：
-
-- `创始人`
-- `总控台`
-- `记录与自动化`
-
-默认最小执行角色：
-
-- `产品负责人`
-- `工程负责人`
-
-只有在需要时再激活：
-
-- `设计负责人`
-- `增长负责人`
-- `用户运营`
-- `质量保障`
-- `数据分析`
-- `财务`
-- `法务合规`
-- `运维保障`
-
-不要在首次创建时一次性激活过多角色。
-
-## OpenClaw 执行规则
-
-OpenClaw 是优先宿主。需要本地文件和角色智能体时：
-
-1. 先输出公司创建草案
-2. 等创始人确认
-3. 创建中文工作区
-4. 生成首批核心文件
-5. 生成最小角色智能体 brief
-6. 默认优先创建：
-   - 总控台
-   - 产品负责人
-   - 工程负责人
-
-如果宿主不支持真实智能体：
-
-- 用同样的角色分工模拟输出
-- 不得谎称已经创建或运行了智能体
-
-## 确认后创建规则
-
-以下动作必须在创始人明确确认后执行：
-
-- 创建工作区
-- 批量生成文档
-- 创建角色智能体
-- 配置提醒或定时任务
-- 任何带预算、上线、客户触达、合规风险的动作
-
-## 工作区与脚本
-
-优先使用以下本地脚本：
-
-- `scripts/init_company.py`：创建中文工作区和初始状态
-- `scripts/build_agent_brief.py`：生成角色智能体 brief
-- `scripts/start_round.py`：启动新回合
-- `scripts/update_round.py`：更新当前回合
-- `scripts/calibrate_round.py`：记录一次校准并回写当前状态
-- `scripts/transition_stage.py`：切换阶段
-
-如果需要具体运行细节，按需读取：
-
-- `references/bootstrap-playbook.md`
-- `references/round-execution-playbook.md`
-- `references/calibration-playbook.md`
-- `references/stage-transition-playbook.md`
-- `references/openclaw-runtime.md`
-- `references/chinese-workspace-conventions.md`
-
-## 默认输出要求
-
-优先输出可继续推进的中文产物，而不是长篇解释。
-
-每次 substantial 输出结束时，至少给出：
-
-- 当前所处模式
-- 当前阶段
-- 当前回合
-- 当前角色
-- 当前产物
-- 下一步最短动作
-- 是否需要确认
+```bash
+python3 scripts/init_business.py "北辰实验室" --path ./workspace --product-name "北辰助手" --stage 构建期
+python3 scripts/update_focus.py ./workspace/北辰实验室 --primary-goal "把 MVP 推到可演示并拿到第一批对话" --primary-arena product
+python3 scripts/advance_product.py ./workspace/北辰实验室 --state prototype --current-version "v0.1 hero"
+python3 scripts/advance_pipeline.py ./workspace/北辰实验室 --talking 3 --proposal 1
+python3 scripts/advance_delivery.py ./workspace/北辰实验室 --active-customers 1 --receivable 2999
+python3 scripts/update_cash.py ./workspace/北辰实验室 --cash-in 2999 --cash-out 500
+python3 scripts/record_asset.py ./workspace/北辰实验室 --kind templates --item "首位试用客户 onboarding 话术"
+python3 scripts/validate_release.py
+```

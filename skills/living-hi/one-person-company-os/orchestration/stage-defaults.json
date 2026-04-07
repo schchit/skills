@@ -27,7 +27,9 @@
       "engineer-tech-lead",
       "designer",
       "growth-sales",
-      "qa-reliability"
+      "qa-reliability",
+      "devops-sre",
+      "customer-success"
     ],
     "operate": [
       "founder-ceo",
@@ -60,7 +62,6 @@
       "legal-compliance"
     ],
     "launch": [
-      "customer-success",
       "data-analyst",
       "legal-compliance"
     ],

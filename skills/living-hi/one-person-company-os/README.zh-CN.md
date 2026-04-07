@@ -2,104 +2,118 @@
 
 [English](./README.md) | [简体中文](./README.zh-CN.md)
 
-One Person Company OS 是一套面向中文用户优先的一人公司总控台。
+**One Person Company OS 是一套面向 AI 一人创始人的经营闭环操作系统。**
 
-从一句产品想法开始，它会先帮你产出公司创建草案；你确认后，再创建中文工作区、最小角色智能体和首个推进回合。
+它不是商业计划书生成器，不是只会推进回合的项目管理器，也不是一堆创业模板。
+它真正要解决的是这条闭环：
 
-它的主循环是：
+`价值承诺 -> 买家 -> 产品能力 -> 交付 -> 回款 -> 学习 -> 资产`
 
-- 创建公司
-- 启动回合
-- 推进回合
-- 触发时才校准
-- 瓶颈变化时切换阶段
+## 它到底做什么
 
-## 它帮你做到什么
+一次像样的运行，系统会帮助用户：
 
-- 把一个模糊想法整理成可执行的一人公司骨架
-- 明确当前阶段、当前回合、当前阻塞和下一步最短动作
-- 用最小角色体系持续推进，而不是把时间耗在管理上
-- 只在卡住、偏航、完成关键产物或准备切阶段时才校准
+- 定义可卖的价值承诺
+- 收窄第一批愿意付费的人
+- 把 MVP 推到可演示、可测试、可上线、可售卖
+- 维护线索、成交、交付、回款和现金状态
+- 把经营状态真实落盘到工作区
+- 在需要正式交付时，留下编号化 DOCX 与可审计证据
 
-## 首次使用你会得到什么
+## 新的工作区模型
 
-- 产品一句话定义
-- 3 到 5 个公司名称建议
-- 当前建议阶段
-- 最小组织架构和首批激活角色
-- 中文工作区结构
-- 第一个可立即推进的回合
-- 待创始人确认事项
+现在的主工作面不再以“阶段/回合说明”为中心，而直接以经营对象为中心：
 
-## 直接这样调用
+- `00-经营总盘.md`
+- `01-创始人约束.md`
+- `02-价值承诺与报价.md`
+- `03-机会与成交管道.md`
+- `04-产品与上线状态.md`
+- `05-客户交付与回款.md`
+- `06-现金流与经营健康.md`
+- `07-资产与自动化.md`
+- `08-风险与关键决策.md`
+- `09-本周唯一主目标.md`
+- `10-今日最短动作.md`
+- `11-协作记忆.md`
+- `12-会话交接.md`
 
-```text
-我想围绕一个 AI 产品创建一间一人公司，请帮我调用 one-person-company-os。
-先给我公司创建草案；我确认后，再创建中文工作区、角色智能体和首个推进回合。
+配套目录：
+
+- `product/`
+- `sales/`
+- `delivery/`
+- `ops/`
+- `assets/`
+- `records/`
+- `automation/`
+- `产物/`
+
+旧的阶段/回合材料仍然保留兼容，但不再是产品的第一层主视图。
+
+## 状态模型
+
+状态文件仍然放在 `自动化/当前状态.json`，但核心模型已经升级成 v3：
+
+- `founder`
+- `focus`
+- `offer`
+- `pipeline`
+- `product`
+- `delivery`
+- `cash`
+- `assets`
+- `risk`
+
+为了兼容旧脚本，`stage_id` 和 `current_round` 仍会继续写入。
+
+## 默认交互协议
+
+每次真正执行，都应该先回答：
+
+- 当前头号目标是什么
+- 当前主瓶颈是什么
+- 当前主战场是哪一类：`sales / product / delivery / cash / asset`
+- 今天最短动作是什么
+- 这次真实改了哪些文件
+- 接下来该打开哪里继续
+
+固定的 `Step 1/5 -> Step 5/5`、保存透明、运行透明、Python 恢复机制仍然保留。
+
+## 本地命令
+
+```bash
+python3 scripts/preflight_check.py --mode 创建公司
+python3 scripts/ensure_python_runtime.py
+python3 scripts/init_business.py "北辰实验室" --path ./workspace --product-name "北辰助手" --stage 构建期
+python3 scripts/update_focus.py ./workspace/北辰实验室 --primary-goal "把 MVP 推到可演示并拿到第一批对话" --primary-arena product --today-action "先补 homepage hero 的价值表达和 CTA 路径"
+python3 scripts/advance_product.py ./workspace/北辰实验室 --state prototype --current-version "v0.1 hero"
+python3 scripts/advance_pipeline.py ./workspace/北辰实验室 --talking 3 --proposal 1 --next-revenue-action "把首版 demo 发给 3 位独立开发者并约反馈"
+python3 scripts/advance_delivery.py ./workspace/北辰实验室 --active-customers 1 --delivery-status "首位试用客户已进入 onboarding" --receivable 2999
+python3 scripts/update_cash.py ./workspace/北辰实验室 --cash-in 2999 --cash-out 500 --monthly-target 10000
+python3 scripts/record_asset.py ./workspace/北辰实验室 --kind templates --item "首位试用客户 onboarding 话术"
+python3 scripts/generate_artifact_document.py ./workspace/北辰实验室 --title "首页首屏规范" --category software
+python3 scripts/checkpoint_save.py ./workspace/北辰实验室 --reason "准备结束当前会话"
+python3 scripts/validate_release.py
 ```
 
-```text
-帮我启动当前阶段的第一个推进回合。
+## 一句话安装
+
+```bash
+clawhub install one-person-company-os
 ```
 
-```text
-继续推进当前回合，告诉我现在最短路径怎么走。
-```
+## 一句话启动
 
 ```text
-我卡住了，帮我进入校准回合。
+我正在围绕一个 AI 产品创建一人公司，请调用 one-person-company-os。不要先给我商业计划书模板。先帮我定义可卖承诺、第一批买家、以及把 MVP 推到可演示和可售卖的最短路径，然后直接创建工作区、告诉我当前主瓶颈，并把真实文件改出来。
 ```
 
-```text
-帮我判断现在是否应该切换阶段。
-```
+## 语言行为
 
-## 核心模式
-
-- `创建公司`
-- `启动回合`
-- `推进回合`
-- `校准回合`
-- `切换阶段`
-
-## 确认后会创建什么
-
-V2 工作区围绕“公司当前状态”和“当前回合”组织：
-
-```text
-公司名/
-  00-公司总览.md
-  01-产品定位.md
-  02-当前阶段.md
-  03-组织架构.md
-  04-当前回合.md
-  05-推进规则.md
-  06-触发器与校准规则.md
-  角色智能体/
-  流程/
-  产物/
-  记录/
-  自动化/
-```
-
-## 本地脚本
-
-- `scripts/init_company.py`
-- `scripts/build_agent_brief.py`
-- `scripts/start_round.py`
-- `scripts/update_round.py`
-- `scripts/calibrate_round.py`
-- `scripts/transition_stage.py`
-- `scripts/validate_release.py`
-
-## 参考资料
-
-- `references/bootstrap-playbook.md`
-- `references/round-execution-playbook.md`
-- `references/calibration-playbook.md`
-- `references/stage-transition-playbook.md`
-- `references/openclaw-runtime.md`
-- `references/chinese-workspace-conventions.md`
+- 中文输入 -> 默认输出中文运行过程与中文资料
+- 英文输入 -> 默认输出英文运行过程与英文资料
+- 磁盘路径保持稳定，便于自动化和发布
 
 ## 校验
 
@@ -109,8 +123,11 @@ V2 工作区围绕“公司当前状态”和“当前回合”组织：
 python3 scripts/validate_release.py
 ```
 
-## 使用原则
+它会校验：
 
-- 中文用户默认全部用中文，包括工作区和日常用语。
-- 创始人始终保留预算、上线、合规、客户触达等最终拍板权。
-- 周复盘不再是主循环，只作为兜底的战略复核。
+- 运行时恢复逻辑
+- 经营闭环工作区生成
+- 新业务脚本
+- 旧脚本兼容链路
+- DOCX 产物生成
+- release SVG 资产
