@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test script for lessac_offline_voice_system
+Test script for edge_tts_voice_system
 Verifies all components are working correctly.
 """
 
@@ -21,10 +21,10 @@ def test_imports():
         return False
     
     try:
-        from piper import PiperVoice
-        print("✓ piper-tts")
+        import edge_tts
+        print("✓ edge-tts")
     except ImportError as e:
-        print(f"✗ piper-tts: {e}")
+        print(f"✗ edge-tts: {e}")
         return False
     
     try:
@@ -39,47 +39,16 @@ def test_imports():
 def test_tts():
     """Test TTS functionality"""
     print("\nTesting TTS...")
-    
     try:
-        # Import locally to avoid issues if piper-tts not installed
-        from piper import PiperVoice
-        import soundfile as sf
-        import numpy as np
-        
-        # Check if voice model exists
-        model_path = os.path.join(os.path.dirname(__file__), "..", "assets", "piper_voice.onnx")
-        config_path = os.path.join(os.path.dirname(__file__), "..", "assets", "piper_voice.json")
-        
-        # If assets not in skill dir, check install dir
-        if not os.path.exists(model_path):
-            # Try default install location
-            model_path = os.path.expanduser("~/.openclaw/tts/piper_voice.onnx")
-            config_path = os.path.expanduser("~/.openclaw/tts/piper_voice.json")
-        
-        if not os.path.exists(model_path):
-            print("⚠ Voice model not found (expected after installation)")
-            return True  # Not an error, just not installed yet
-        
-        # Test loading voice
-        print(f"Loading voice from {model_path}...")
-        voice = PiperVoice.load(model_path, config_path=config_path)
-        print("✓ Voice loaded")
-        
-        # Test small generation
-        test_text = "Test."
-        audio_chunks = voice.synthesize(test_text)
-        
-        audio_data = bytearray()
-        for chunk in audio_chunks:
-            audio_data.extend(chunk.audio_int16_bytes)
-        
-        if audio_data:
-            print("✓ TTS generation works")
+        import sys
+        sys.path.insert(0, os.path.dirname(__file__))
+        from tts_edge_wrapper import text_to_speech
+        out = text_to_speech("Test.", "/tmp/test_edge_tts.mp3")
+        if out and os.path.exists(out):
+            print("✓ Edge TTS generation works")
             return True
-        else:
-            print("✗ No audio generated")
-            return False
-            
+        print("✗ No audio generated")
+        return False
     except Exception as e:
         print(f"✗ TTS test failed: {e}")
         return False
@@ -146,7 +115,7 @@ def test_voice_handler():
 def run_all_tests():
     """Run all tests"""
     print("=" * 60)
-    print("Lessac Offline Voice System - Installation Test")
+    print("Edge TTS Voice System - Installation Test")
     print("=" * 60)
     
     tests = [

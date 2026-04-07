@@ -1,28 +1,24 @@
 # Voice Models Reference
 
-## Default Voice: Lessac High Quality
+## Default Voice: Edge TTS (en-IE-ConnorNeural)
 
 ### Specifications
-- **Name**: Lessac (en_US-lessac-high)
+- **Name**: en-IE-ConnorNeural
+- **Provider**: Edge TTS
 - **Quality**: High
-- **Size**: 109MB
-- **Sample Rate**: 22050Hz
-- **Language**: English (US)
-- **Characteristics**: Clear articulation, expressive, natural rhythm
+- **Storage**: Cached audio only
+- **Language**: English (Ireland)
+- **Characteristics**: Clear articulation, natural pacing
 
-### About Lessac
-The Lessac voice is trained using the Lessac speech training system, which emphasizes:
-- Clear articulation
-- Expressive speech patterns
-- Natural rhythm and pacing
-- Good vocal variety
+### About the Edge TTS voice
+The outbound voice pipeline uses Edge TTS with a configurable voice. The default is `en-IE-ConnorNeural` and audio is cached locally.
 
 ### Performance
 - **Load time**: ~2 seconds (one-time)
 - **Generation time**: ~0.3-0.5 seconds per sentence
 - **Memory usage**: ~500MB during generation
 
-## Alternative Piper Voices
+## Alternative Edge TTS Voices
 
 ### Available Quality Levels
 - **Low**: ~10-30MB, basic quality
@@ -46,17 +42,9 @@ The Lessac voice is trained using the Lessac speech training system, which empha
 
 ### How to Change Voices
 
-1. Download desired voice from [Piper Voices Repository](https://huggingface.co/rhasspy/piper-voices)
-2. Replace files in installation directory:
-   - `piper_voice.onnx` (model file)
-   - `piper_voice.json` (config file)
-3. Update path in `piper_tts.py` if needed
+1. Set `OPENCLAW_EDGE_TTS_VOICE` to a supported Edge voice
+2. Re-run the installer to refresh cached audio and wrappers
 
-Example for Ryan voice:
-```bash
-wget https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/ryan/high/en_US-ryan-high.onnx -O piper_voice.onnx
-wget https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/ryan/high/en_US-ryan-high.onnx.json -O piper_voice.json
-```
 
 ## Speech Recognition Models
 
@@ -113,7 +101,7 @@ self.stt_model = "base"  # Change to "tiny", "small", or "medium"
 - **CPU**: 2+ cores
 
 ### Memory Usage Breakdown
-- Piper TTS model: 109MB (loaded into memory)
+- Edge TTS: no local model download required
 - faster-whisper model: 142MB (base, loaded into memory)
 - Python runtime: 100-200MB
 - Audio buffers: 10-50MB
@@ -144,7 +132,7 @@ self.stt_model = "base"  # Change to "tiny", "small", or "medium"
    - Try different voice model
 
 ### Model Sources
-- **Piper TTS**: https://huggingface.co/rhasspy/piper-voices
+- **Edge TTS**: local `edge-tts` package
 - **faster-whisper**: Automatically downloads from HuggingFace
 
 ### Updates

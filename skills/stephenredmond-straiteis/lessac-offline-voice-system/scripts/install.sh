@@ -76,41 +76,40 @@ install_python_packages() {
     pip install --upgrade pip
     
     # Install required packages
-    pip install faster-whisper piper-tts soundfile
+    pip install faster-whisper edge-tts soundfile
     
     log_info "Python packages installed"
 }
 
+prepare_runtime() {
+    log_step "Preparing runtime directories..."
+
+    mkdir -p "$INSTALL_DIR/cache"
+    mkdir -p "$INSTALL_DIR/runtime"
+    log_info "Runtime directories ready: $INSTALL_DIR/cache and $INSTALL_DIR/runtime"
+}
+
 download_voice_model() {
-    log_step "Downloading Lessac High Quality voice model..."
-    
-    VOICE_URL="https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/high/en_US-lessac-high.onnx"
-    CONFIG_URL="https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/high/en_US-lessac-high.onnx.json"
-    
+    log_step "Downloading Edge TTS runtime support..."
+
     mkdir -p "$INSTALL_DIR"
-    
-    # Download voice model
-    log_info "Downloading voice model (109MB)..."
-    wget -q "$VOICE_URL" -O "$INSTALL_DIR/piper_voice.onnx"
-    
-    # Download config
-    log_info "Downloading voice config..."
-    wget -q "$CONFIG_URL" -O "$INSTALL_DIR/piper_voice.json"
-    
-    log_info "Voice model downloaded to $INSTALL_DIR/"
+    log_info "No local model download required for Edge TTS; using hosted voice service via the edge-tts package."
+    log_info "Edge TTS runtime support ready for voice: ${OPENCLAW_EDGE_TTS_VOICE:-en-IE-ConnorNeural}"
 }
 
 copy_scripts() {
     log_step "Copying skill scripts..."
-    
-    # Copy Python scripts
+
     cp "$SKILL_DIR/scripts/voice_handler.py" "$INSTALL_DIR/"
-    cp "$SKILL_DIR/scripts/piper_tts.py" "$INSTALL_DIR/"
-    
-    # Copy bash script
+    cp "$SKILL_DIR/scripts/tts_edge_wrapper.py" "$INSTALL_DIR/"
     cp "$SKILL_DIR/scripts/voice_integration.sh" "$INSTALL_DIR/"
+    cp "$SKILL_DIR/scripts/transcribe-audio" "$INSTALL_DIR/"
+
     chmod +x "$INSTALL_DIR/voice_integration.sh"
-    
+    chmod +x "$INSTALL_DIR/voice_handler.py"
+    chmod +x "$INSTALL_DIR/tts_edge_wrapper.py"
+    chmod +x "$INSTALL_DIR/transcribe-audio"
+
     log_info "Scripts copied to $INSTALL_DIR/"
 }
 
@@ -119,19 +118,24 @@ create_config() {
     
     cat > "$INSTALL_DIR/config.json" << EOF
 {
-    "tts": {
-        "model": "$INSTALL_DIR/piper_voice.onnx",
-        "config": "$INSTALL_DIR/piper_voice.json",
-        "voice": "lessac_high"
-    },
     "stt": {
         "model": "base",
         "device": "cpu",
         "compute_type": "int8"
     },
+    "tts": {
+        "provider": "edge-tts",
+        "voice": "${OPENCLAW_EDGE_TTS_VOICE:-en-IE-ConnorNeural}",
+        "rate": "${OPENCLAW_EDGE_TTS_RATE:+0%}",
+        "pitch": "${OPENCLAW_EDGE_TTS_PITCH:+0Hz}",
+        "volume": "${OPENCLAW_EDGE_TTS_VOLUME:+0%}"
+    },
     "audio": {
         "sample_rate": 16000,
         "channels": 1
+    },
+    "cache": {
+        "dir": "$INSTALL_DIR/cache"
     }
 }
 EOF
@@ -142,11 +146,17 @@ EOF
 test_installation() {
     log_step "Testing installation..."
     
-    # Test TTS
-    log_info "Testing TTS (this may take a few seconds)..."
-    if "$INSTALL_DIR/venv/bin/python" "$INSTALL_DIR/piper_tts.py" "Installation test successful." "/tmp/test_install.wav" 2>/dev/null; then
+    # Test Edge TTS
+    log_info "Testing Edge TTS (this may take a few seconds)..."
+    if "$INSTALL_DIR/venv/bin/python" - <<'PY' >/dev/null 2>&1
+import sys
+sys.path.insert(0, '/root/.openclaw/tts')
+from tts_edge_wrapper import text_to_speech
+print(text_to_speech('Installation test successful.', '/tmp/test_install.mp3'))
+PY
+    then
         log_info "✓ TTS test passed"
-        rm -f "/tmp/test_install.wav"
+        rm -f "/tmp/test_install.mp3"
     else
         log_error "TTS test failed"
         return 1
@@ -166,24 +176,21 @@ test_installation() {
 show_usage() {
     log_step "Installation complete!"
     echo ""
-    echo "Lessac Offline Voice System has been installed to:"
+    echo "Voice helper runtime has been installed to:"
     echo "  $INSTALL_DIR"
     echo ""
+    echo "What this installer restores:"
+    echo "  - local faster-whisper transcription helper"
+    echo "  - local Edge TTS test/helper scripts"
+    echo "  - runtime cache and Python virtualenv"
+    echo ""
     echo "Usage examples:"
+    echo "  $INSTALL_DIR/transcribe-audio audio.ogg"
     echo "  $INSTALL_DIR/voice_integration.sh transcribe audio.ogg"
-    echo "  $INSTALL_DIR/voice_integration.sh tts \"Hello world\" output.wav"
-    echo "  $INSTALL_DIR/voice_integration.sh process voice_message.ogg"
+    echo "  $INSTALL_DIR/voice_integration.sh tts \"Hello world\" output.mp3"
     echo ""
-    echo "Python usage:"
-    echo "  from voice_handler import VoiceHandler"
-    echo "  handler = VoiceHandler()"
-    echo "  text = handler.audio_to_text('audio.ogg')"
-    echo "  audio = handler.text_to_audio('Response text')"
-    echo ""
-    echo "For OpenClaw integration, add to your agent:"
-    echo "  import sys"
-    echo "  sys.path.append('$INSTALL_DIR')"
-    echo "  from voice_handler import VoiceHandler"
+    echo "OpenClaw should handle inbound audio and outbound reply routing natively via openclaw.json."
+    echo "This skill no longer owns Telegram voice reply delivery."
     echo ""
     echo "Configuration: $INSTALL_DIR/config.json"
     echo "Virtual environment: $INSTALL_DIR/venv"
@@ -192,7 +199,7 @@ show_usage() {
 main() {
     echo ""
     echo "========================================="
-    echo "  Lessac Offline Voice System Installer  "
+    echo "  Edge TTS Voice System Installer  "
     echo "========================================="
     echo ""
     
@@ -224,6 +231,7 @@ main() {
     check_dependencies
     create_venv
     install_python_packages
+    prepare_runtime
     download_voice_model
     copy_scripts
     create_config

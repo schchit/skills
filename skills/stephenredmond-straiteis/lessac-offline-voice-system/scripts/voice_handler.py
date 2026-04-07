@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Complete Voice Handler for OpenClaw
+OpenClaw Voice Handler
 - Speech-to-Text: faster-whisper (offline)
-- Text-to-Speech: Piper TTS with Lessac High (offline)
+- Text-to-Speech: Edge TTS (local)
 """
 import subprocess
 import tempfile
@@ -14,7 +14,7 @@ class VoiceHandler:
     def __init__(self):
         """Initialize voice handler with both STT and TTS"""
         self.stt_model = "base"  # faster-whisper model size
-        self.tts_script = "/root/.openclaw/tts/piper_tts.py"
+        self.tts_script = "/root/.openclaw/tts/tts_edge_wrapper.py"
         
     def audio_to_text(self, audio_file):
         """
@@ -58,7 +58,7 @@ print(json.dumps({'text': text, 'language': info.language, 'probability': info.l
     
     def text_to_audio(self, text, output_file=None):
         """
-        Convert text to audio using Piper TTS
+        Convert text to audio using Edge TTS
         
         Args:
             text: Text to convert
@@ -99,7 +99,7 @@ print(json.dumps({'text': text, 'language': info.language, 'probability': info.l
         print(f"Transcribed: {transcribed}", file=sys.stderr)
         
         # Step 2: Generate response (placeholder - in real use, this would call the AI)
-        response_text = f"I heard you say: {transcribed}. This is a test response from the voice system."
+        response_text = f"I heard you say: {transcribed}. This is a test response from the voice system using Edge TTS."
         
         # Step 3: Convert to audio
         response_audio = self.text_to_audio(response_text)
