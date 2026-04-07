@@ -1,0 +1,11 @@
+{
+  "owner": "justoneapi",
+  "slug": "justoneapi-imdb",
+  "displayName": "IMDb API",
+  "latest": {
+    "version": "1.0.5",
+    "publishedAt": 1775375322328,
+    "commit": null
+  },
+  "history": []
+}
