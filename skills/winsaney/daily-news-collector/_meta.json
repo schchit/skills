@@ -1,0 +1,11 @@
+{
+  "owner": "winsaney",
+  "slug": "daily-news-collector",
+  "displayName": "daily-news-collector",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775207430072,
+    "commit": null
+  },
+  "history": []
+}
