@@ -1,0 +1,11 @@
+{
+  "owner": "openfindbearings",
+  "slug": "find-bearings",
+  "displayName": "find bearings skill",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775185570701,
+    "commit": null
+  },
+  "history": []
+}
