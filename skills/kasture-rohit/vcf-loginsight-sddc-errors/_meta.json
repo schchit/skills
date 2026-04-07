@@ -1,0 +1,11 @@
+{
+  "owner": "kasture-rohit",
+  "slug": "vcf-loginsight-sddc-errors",
+  "displayName": "VCF SDDC Manager Errors",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1775419758053,
+    "commit": null
+  },
+  "history": []
+}
