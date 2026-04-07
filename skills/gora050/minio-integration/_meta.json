@@ -1,0 +1,11 @@
+{
+  "owner": "gora050",
+  "slug": "minio-integration",
+  "displayName": "Minio",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775335322804,
+    "commit": null
+  },
+  "history": []
+}
