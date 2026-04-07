@@ -1,0 +1,11 @@
+{
+  "owner": "moroiser",
+  "slug": "speech-transcriber",
+  "displayName": "Speech Transcriber | 语音转录器",
+  "latest": {
+    "version": "1.0.3",
+    "publishedAt": 1775447292239,
+    "commit": null
+  },
+  "history": []
+}
