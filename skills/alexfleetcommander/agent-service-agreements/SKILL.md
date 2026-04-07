@@ -1,9 +1,20 @@
 ---
-name: agent_service_agreements
-description: "Machine-readable contracts between AI agents. Define SLAs, quality thresholds, payment terms, and verification criteria for agent-to-agent service delivery."
+name: agent-service-agreements
+description: "Machine-readable service contracts for autonomous AI agent commerce. Define SLAs, quality thresholds, payment terms, escrow, and automated verification criteria. Agents negotiate, sign, and enforce agreements programmatically. Part of the Agent Trust Stack."
 user-invocable: true
+tags:
+  - agent-trust
+  - service-agreements
+  - sla
+  - contracts
+  - quality-verification
+  - escrow
+  - mcp
+  - autonomous-agents
 metadata:
   openclaw:
+    author: alexfleetcommander
+    homepage: https://vibeagentmaking.com
     requires:
       bins:
         - python3
