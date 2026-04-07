@@ -1,0 +1,11 @@
+{
+  "owner": "senmud",
+  "slug": "aicc-security-guard",
+  "displayName": "Aicc Security Guard",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1775350789300,
+    "commit": null
+  },
+  "history": []
+}
