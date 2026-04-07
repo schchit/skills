@@ -1,11 +1,17 @@
 {
   "owner": "wensen2024",
   "slug": "financial-report-analysis",
-  "displayName": "财报分析",
+  "displayName": "financial-report-analysis",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775146984176,
-    "commit": "https://github.com/openclaw/skills/commit/de4c641ced1a742bffa43027ae94e54e2bc5c28e"
+    "version": "1.0.2",
+    "publishedAt": 1775198494930,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775146984176,
+      "commit": "https://github.com/openclaw/skills/commit/de4c641ced1a742bffa43027ae94e54e2bc5c28e"
+    }
+  ]
 }
