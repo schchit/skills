@@ -97,9 +97,12 @@ function rankResult(doc, queryWords) {
   return lexical * 0.5 + recency * 0.3 + tagBoost;
 }
 
+const MAX_SCAN = 10000; // Safety limit to prevent O(N) explosion
+
 function search(query, customer, limit = 5) {
   const queryWords = query.toLowerCase().split(/\s+/);
   const results = [];
+  let scanned = 0;
   const dirs = customer
     ? [join(CHROMA_DIR, sanitize(customer))]
     : readdirSync(CHROMA_DIR, { withFileTypes: true })
@@ -109,6 +112,7 @@ function search(query, customer, limit = 5) {
   for (const dir of dirs) {
     if (!existsSync(dir)) continue;
     for (const file of readdirSync(dir).filter(f => f.endsWith('.json'))) {
+      if (++scanned > MAX_SCAN) break;
       try {
         const doc = JSON.parse(readFileSync(join(dir, file), 'utf-8'));
         if (doc.type === 'crm_snapshot') continue;
@@ -116,6 +120,7 @@ function search(query, customer, limit = 5) {
         if (score > 0.1) results.push({ ...doc, score: Math.round(score * 1000) / 1000 });
       } catch { /* skip */ }
     }
+    if (scanned > MAX_SCAN) break;
   }
 
   return results.sort((a, b) => b.score - a.score).slice(0, limit);
@@ -141,20 +146,33 @@ function recall(customer, limit = 10) {
     .slice(0, limit);
 }
 
-function snapshot() {
-  // Store a CRM snapshot marker — actual CRM data is read by the agent
+function snapshot(summaryData) {
   const timestamp = new Date().toISOString();
   const date = timestamp.split('T')[0];
   const id = `snapshot_${date}`;
+
+  // Accept piped JSON or CLI --data argument for actual CRM data
+  const pipelineData = summaryData || process.env.CRM_SNAPSHOT_DATA || null;
+  let parsed = null;
+  if (pipelineData) {
+    try { parsed = JSON.parse(pipelineData); } catch { /* use as plain text */ }
+  }
+
   const doc = {
     id,
     type: 'crm_snapshot',
     timestamp,
-    note: 'Daily CRM pipeline snapshot. Agent reads CRM via gws skill and stores summary here.',
+    pipeline: parsed || (pipelineData ? { raw: pipelineData } : null),
+    note: parsed
+      ? `CRM snapshot: ${parsed.total_leads || '?'} leads, ${Object.keys(parsed.by_status || {}).length} statuses`
+      : 'Empty snapshot marker — pipe CRM data via --data or CRM_SNAPSHOT_DATA env var for disaster recovery',
   };
 
   writeFileSync(join(CHROMA_DIR, `${id}.json`), JSON.stringify(doc, null, 2));
-  console.log(`CRM snapshot marker created: ${id}`);
+  console.log(parsed
+    ? `CRM snapshot stored: ${id} (${parsed.total_leads || '?'} leads)`
+    : `CRM snapshot marker created: ${id} (no pipeline data — pass --data for full backup)`
+  );
 }
 
 function expand(id) {
@@ -230,7 +248,7 @@ function stats() {
 }
 
 function sanitize(str) {
-  return str.replace(/[^a-zA-Z0-9_+-]/g, '_');
+  return str.replace(/[^a-zA-Z0-9_]/g, '_').replace(/^_+/, '').slice(0, 64) || 'unknown';
 }
 
 // ─── CLI Parser ─────────────────────────────────────────────
@@ -263,7 +281,7 @@ switch (command) {
     expand(opts._positional || args[0]);
     break;
   case 'snapshot':
-    snapshot();
+    snapshot(opts._positional || opts.data);
     break;
   case 'stats':
     stats();
