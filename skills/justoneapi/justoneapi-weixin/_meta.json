@@ -1,0 +1,11 @@
+{
+  "owner": "justoneapi",
+  "slug": "justoneapi-weixin",
+  "displayName": "WeChat Official Accounts API",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1775377595070,
+    "commit": null
+  },
+  "history": []
+}
