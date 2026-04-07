@@ -1,0 +1,11 @@
+{
+  "owner": "eviost",
+  "slug": "orchestrator-v4",
+  "displayName": "orchestrator-v4",
+  "latest": {
+    "version": "2.2.0",
+    "publishedAt": 1775328001946,
+    "commit": null
+  },
+  "history": []
+}
