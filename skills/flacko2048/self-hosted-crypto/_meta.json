@@ -1,0 +1,11 @@
+{
+  "owner": "flacko2048",
+  "slug": "self-hosted-crypto",
+  "displayName": "Self-hosted Crypto Payment",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1775513312508,
+    "commit": null
+  },
+  "history": []
+}
