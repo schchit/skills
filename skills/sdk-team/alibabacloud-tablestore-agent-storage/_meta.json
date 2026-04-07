@@ -1,0 +1,11 @@
+{
+  "owner": "sdk-team",
+  "slug": "alibabacloud-tablestore-agent-storage",
+  "displayName": "Alibabacloud Tablestore Agent Storage",
+  "latest": {
+    "version": "0.0.2",
+    "publishedAt": 1775208333627,
+    "commit": null
+  },
+  "history": []
+}
