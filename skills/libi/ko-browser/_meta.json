@@ -1,0 +1,11 @@
+{
+  "owner": "libi",
+  "slug": "ko-browser",
+  "displayName": "ko-browser",
+  "latest": {
+    "version": "0.1.1",
+    "publishedAt": 1775189651510,
+    "commit": null
+  },
+  "history": []
+}
