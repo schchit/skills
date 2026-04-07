@@ -1,0 +1,11 @@
+{
+  "owner": "hello-ahang",
+  "slug": "flyai-trip-checker",
+  "displayName": "行程体检",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1775236810714,
+    "commit": null
+  },
+  "history": []
+}
