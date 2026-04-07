@@ -1,0 +1,11 @@
+{
+  "owner": "membranedev",
+  "slug": "pymetrics",
+  "displayName": "Pymetrics",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775379848324,
+    "commit": null
+  },
+  "history": []
+}
