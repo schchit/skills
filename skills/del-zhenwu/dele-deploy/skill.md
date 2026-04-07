@@ -43,12 +43,26 @@ When a user asks you to deploy, publish, or share a web application (like an HTM
 3. Call the `postme_deploy` skill with these parameters.
 4. Present the resulting URL to the user.
 
+### Visibility Control
+Apps default to **public** (visible on the Explore page). You can optionally set visibility:
+
+| Value | Behavior |
+|---|---|
+| `public` | Listed on Explore, anyone can view |
+| `unlisted` | Not listed, accessible via direct URL |
+| `password` | Requires a 4-character access code (auto-generated, returned in response) |
+| `hidden` | Only the owner can access |
+
+If `visibility` is set to `password`, the response will include an `accessCode` (4 chars, `0-9a-z`). **Present this code to the user** so they can share it with authorized visitors.
+
 ## Example
 If you generated a project in `/tmp/workspace/my-app`, you would call the skill with:
 - `target_path`: `/tmp/workspace/my-app`
 - `app_name`: `my-app-v1`
+- `visibility`: `password` (optional)
 
-The skill will return a success message containing the live URL, e.g., `Deployment successful! URL: https://www.dele.fun/app/my-app-v1/`.
+The skill will return a success message containing the live URL, e.g., `Deployment successful! URL: https://www.dele.fun/app/my-app-v1/`
+If password-protected: `Access code: x7k2`
 
 ## Tool Definition
 
@@ -78,6 +92,11 @@ The skill will return a success message containing the live URL, e.g., `Deployme
       "app_desc": {
         "type": "string",
         "description": "A short description of what the application does."
+      },
+      "visibility": {
+        "type": "string",
+        "enum": ["public", "unlisted", "password", "hidden"],
+        "description": "App visibility level. Defaults to 'public'. If set to 'password', a 4-char access code will be auto-generated and returned."
       }
     },
     "required": [
@@ -101,7 +120,8 @@ def execute(
     app_name: str, 
     api_url: str = "https://www.dele.fun/api/upload", 
     api_key: Optional[str] = None,
-    app_desc: Optional[str] = None
+    app_desc: Optional[str] = None,
+    visibility: Optional[str] = None
 ) -> str:
     """
     Deploy a local folder or HTML file to the Dele system.
@@ -111,6 +131,10 @@ def execute(
         
     if not re.match(r'^[a-z0-9-]+$', app_name):
         return "Error: app_name must contain only lowercase letters, numbers, and hyphens."
+
+    valid_visibility = {"public", "unlisted", "password", "hidden"}
+    if visibility and visibility not in valid_visibility:
+        return f"Error: visibility must be one of {valid_visibility}"
 
     files_to_upload = []
     
@@ -133,6 +157,11 @@ def execute(
         multipart_data.append(('appDesc', (None, app_desc)))
         
     file_handles = []
+    headers = {}
+    if api_key:
+        headers['Authorization'] = f"Bearer {api_key}"
+        headers['x-agent-user'] = "openclaw-agent"
+
     try:
         for file_path, rel_path in files_to_upload:
             f = open(file_path, 'rb')
@@ -140,23 +169,37 @@ def execute(
             multipart_data.append(('files', (os.path.basename(file_path), f)))
             multipart_data.append(('paths', (None, rel_path)))
 
-        headers = {}
-        if api_key:
-            headers['Authorization'] = f"Bearer {api_key}"
-            headers['x-agent-user'] = "openclaw-agent"
-
         response = requests.post(api_url, files=multipart_data, headers=headers)
         
-        if response.status_code in (200, 201):
-            data = response.json()
-            base_url = api_url.replace('/api/upload', '')
-            return f"Deployment successful! URL: {base_url}{data.get('url', f'/app/{app_name}/')}"
-        else:
+        if response.status_code not in (200, 201):
             try:
                 err_msg = response.json().get('error', response.text)
             except:
                 err_msg = response.text
             return f"Deployment failed (Status {response.status_code}): {err_msg}"
+
+        data = response.json()
+        base_url = api_url.replace('/api/upload', '')
+        app_url = f"{base_url}{data.get('url', f'/app/{app_name}/')}"
+        result = f"Deployment successful! URL: {app_url}"
+
+        # Set visibility if specified and not default
+        if visibility and visibility != "public":
+            vis_url = api_url.replace('/api/upload', '/api/apps/visibility')
+            vis_resp = requests.post(
+                vis_url,
+                json={"appName": app_name, "visibility": visibility},
+                headers=headers
+            )
+            if vis_resp.status_code == 200:
+                vis_data = vis_resp.json()
+                result += f"\nVisibility: {visibility}"
+                if visibility == "password" and vis_data.get("accessCode"):
+                    result += f"\nAccess code: {vis_data['accessCode']}"
+            else:
+                result += f"\nWarning: Failed to set visibility to '{visibility}'"
+
+        return result
             
     except Exception as e:
         return f"Error during deployment: {str(e)}"
