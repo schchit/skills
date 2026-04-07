@@ -1,0 +1,11 @@
+{
+  "owner": "membranedev",
+  "slug": "google-cloud-translate",
+  "displayName": "Google Cloud Translate",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775185418983,
+    "commit": null
+  },
+  "history": []
+}
