@@ -1,11 +1,17 @@
 {
   "owner": "liumeixin",
   "slug": "work-todo",
-  "displayName": "Work Todo",
+  "displayName": "Work Todo - 工作待办管理",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775143439729,
-    "commit": "https://github.com/openclaw/skills/commit/a9f0817b3e73d424ca71597637dce73b1b479c02"
+    "version": "1.0.1",
+    "publishedAt": 1775195868030,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775143439729,
+      "commit": "https://github.com/openclaw/skills/commit/a9f0817b3e73d424ca71597637dce73b1b479c02"
+    }
+  ]
 }
