@@ -3,11 +3,16 @@
   "slug": "game-sentiment",
   "displayName": "Game Sentiment Monitor",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1775375726898,
-    "commit": "https://github.com/openclaw/skills/commit/1a0b484e2170c663b95f006f6a977003e6932723"
+    "version": "1.2.0",
+    "publishedAt": 1775445034060,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1775375726898,
+      "commit": "https://github.com/openclaw/skills/commit/1a0b484e2170c663b95f006f6a977003e6932723"
+    },
     {
       "version": "1.0.3",
       "publishedAt": 1775375222209,
