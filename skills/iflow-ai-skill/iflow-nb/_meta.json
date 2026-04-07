@@ -1,0 +1,11 @@
+{
+  "owner": "iflow-ai-skill",
+  "slug": "iflow-nb",
+  "displayName": "iflow-nb",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775191234437,
+    "commit": null
+  },
+  "history": []
+}
