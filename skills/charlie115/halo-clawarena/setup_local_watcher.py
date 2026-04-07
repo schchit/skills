@@ -15,7 +15,7 @@ from typing import Any
 
 
 CLAW_DIR = Path.home() / ".clawarena"
-HOOK_CONFIG_PATH = CLAW_DIR / "openclaw_hook.json"
+DELIVERY_CONFIG_PATH = CLAW_DIR / "openclaw_delivery.json"
 WATCHER_PID_PATH = CLAW_DIR / "watcher.pid"
 WATCHER_LOG_PATH = CLAW_DIR / "watcher.log"
 WATCHER_LAUNCHER_PATH = CLAW_DIR / "run-watcher.sh"
@@ -67,24 +67,26 @@ def stop_existing_watcher() -> None:
     WATCHER_PID_PATH.unlink(missing_ok=True)
 
 
-def write_hook_config(args: argparse.Namespace) -> dict[str, Any]:
-    existing = read_json(HOOK_CONFIG_PATH)
+def write_delivery_config(args: argparse.Namespace) -> dict[str, Any]:
+    existing = read_json(DELIVERY_CONFIG_PATH)
     channel = args.channel or existing.get("channel")
     target = args.to or existing.get("to")
-    hook_token = args.hook_token or existing.get("token")
-    if not channel or not target or not hook_token:
+    reply_account = args.reply_account or existing.get("reply_account")
+    if not channel or not target:
         raise SystemExit(
-            "channel, to, and hook-token are required on first setup; reruns can reuse the saved config."
+            "channel and to are required on first setup; reruns can reuse the saved config."
         )
     config = {
-        "url": args.hook_url.rstrip("/") + "/hooks/agent",
-        "token": hook_token,
         "channel": channel,
         "to": target,
-        "deliver": "announce",
-        "timeoutSeconds": 120,
     }
-    atomic_write(HOOK_CONFIG_PATH, json.dumps(config, indent=2, sort_keys=True) + "\n", 0o600)
+    if reply_account:
+        config["reply_account"] = reply_account
+    atomic_write(
+        DELIVERY_CONFIG_PATH,
+        json.dumps(config, indent=2, sort_keys=True) + "\n",
+        0o600,
+    )
     return config
 
 
@@ -113,11 +115,9 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Set up the ClawArena local watcher")
     parser.add_argument("--channel", help="Active OpenClaw channel for delivery, e.g. telegram")
     parser.add_argument("--to", help="Active chat target, e.g. a Telegram numeric chat id")
-    parser.add_argument("--hook-token", help="Local OpenClaw hook token")
     parser.add_argument(
-        "--hook-url",
-        default="http://127.0.0.1:18789",
-        help="Base URL for the local OpenClaw gateway (default: http://127.0.0.1:18789)",
+        "--reply-account",
+        help="Optional OpenClaw account id for outbound delivery",
     )
     return parser.parse_args()
 
@@ -125,7 +125,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     skill_root = Path(__file__).resolve().parent
-    config = write_hook_config(args)
+    config = write_delivery_config(args)
     write_launcher(skill_root)
     stop_existing_watcher()
     pid = start_watcher()
@@ -134,9 +134,9 @@ def main() -> int:
             {
                 "watcher_started": True,
                 "pid": pid,
-                "hook_url": config["url"],
                 "channel": config["channel"],
                 "to": config["to"],
+                "reply_account": config.get("reply_account"),
                 "launcher": str(WATCHER_LAUNCHER_PATH),
                 "log_file": str(WATCHER_LOG_PATH),
             },

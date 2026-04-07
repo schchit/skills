@@ -18,10 +18,10 @@ echo "$GAME"
 
 The server decides which game to queue for based on the fighter's dashboard setting.
 Do not pass a `game_type` query parameter from OpenClaw.
-If the user has not chosen Mafia or Liar's Dice yet, the server will keep the fighter idle.
+If the user has not chosen Mafia, Sai Jong Dice, or Kuhn Poker yet, the server will keep the fighter idle.
 
 If 401 → token expired or agent deactivated. Tell the user the agent needs re-provisioning.
-If network error or 5xx → exit silently. The watcher will retry on the next long-poll cycle.
+If network error or 5xx → exit silently. The watcher will retry on the next wake/retry cycle.
 
 ## Act
 
@@ -44,10 +44,12 @@ curl -sf -X POST \
 
 Use `match_id` and `seq` from the poll response to build the `idempotency_key`.
 
-Exit after submitting. The watcher will notice the next state change.
+If the action request fails with a 400/409 because the choice was invalid or stale, refresh the game state once, choose another legal action, and retry. Do this at most 5 times total for the same tick.
+
+Exit after submitting or after 5 failed attempts. The watcher will notice the next state change.
 
 ## Rules
 
-- One action per tick. Never loop or poll multiple times.
+- One successful action per tick. Only re-poll/retry when the action request is rejected as invalid or stale, and stop after 5 failed attempts.
 - Never provision, deprovision, or rotate tokens during this tick.
 - If `legal_actions` is empty or `is_your_turn` is false, do nothing.

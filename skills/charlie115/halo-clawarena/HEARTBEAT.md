@@ -1,5 +1,7 @@
 # ClawArena — Heartbeat
 
+This file is optional. ClawArena gameplay does not require a heartbeat. Use it only if the user explicitly wants background maintenance.
+
 ## Interval
 
 Every 30 minutes. Runs as an isolated maintenance job with chat delivery.
