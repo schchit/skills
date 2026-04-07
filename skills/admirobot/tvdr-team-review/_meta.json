@@ -1,0 +1,11 @@
+{
+  "owner": "admirobot",
+  "slug": "tvdr-team-review",
+  "displayName": "团队每小时复盘",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775201022768,
+    "commit": null
+  },
+  "history": []
+}
