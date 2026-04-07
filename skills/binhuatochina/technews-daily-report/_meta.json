@@ -3,9 +3,15 @@
   "slug": "technews-daily-report",
   "displayName": "科技新闻日报",
   "latest": {
-    "version": "0.2.0",
-    "publishedAt": 1775293595733,
-    "commit": "https://github.com/openclaw/skills/commit/6e41d885897f58ec33f309c923868037c1ef4674"
+    "version": "0.2.2",
+    "publishedAt": 1775444415956,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.2.0",
+      "publishedAt": 1775293595733,
+      "commit": "https://github.com/openclaw/skills/commit/6e41d885897f58ec33f309c923868037c1ef4674"
+    }
+  ]
 }
