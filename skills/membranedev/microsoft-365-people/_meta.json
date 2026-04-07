@@ -1,0 +1,11 @@
+{
+  "owner": "membranedev",
+  "slug": "microsoft-365-people",
+  "displayName": "Microsoft 365 People",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775199799729,
+    "commit": null
+  },
+  "history": []
+}
