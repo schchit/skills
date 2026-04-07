@@ -3,9 +3,15 @@
   "slug": "jobdiva",
   "displayName": "Jobdiva",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775102575327,
-    "commit": "https://github.com/openclaw/skills/commit/e0f8b185f8c4b15fcb39f369da62d52041d70bdd"
+    "version": "1.0.2",
+    "publishedAt": 1775170797788,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775102575327,
+      "commit": "https://github.com/openclaw/skills/commit/e0f8b185f8c4b15fcb39f369da62d52041d70bdd"
+    }
+  ]
 }
