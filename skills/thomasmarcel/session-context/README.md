@@ -2,12 +2,17 @@
 
 Automatically loads recent conversation memory into new sessions and generates AI summaries during compaction to maintain continuity across conversations.
 
+**Two-layer continuity:**
+- An **AI summary** gives the agent high-level context from previous sessions
+- The **last 10 raw messages verbatim** let it resume exactly mid-conversation — same phrasing, same decisions, same thread
+
 ## Features
 
-- **Automatic Memory Loading**: Each new session automatically loads the latest memory file (today's or yesterday's) to provide immediate context
-- **AI-Powered Summarization**: When approaching token limits, OpenClaw automatically generates a concise AI summary of the conversation
-- **Seamless Continuity**: No manual intervention needed — memory persists across sessions and devices
-- **Token-Safe**: Content truncated to ~4000 characters to protect context window
+- **Exact Resumption**: Last 10 raw user/assistant turns are preserved verbatim and reinjected at session start — no paraphrasing loss
+- **AI-Powered Summarization**: When approaching token limits, OpenClaw generates a concise AI summary of the conversation
+- **Two-Day Context**: On session start, loads today's *and* yesterday's memory so intraday context is never lost
+- **Token-Safe**: Summaries capped at 6000 chars; raw messages capped at 1500 chars each — tunable
+- **Seamless**: No manual intervention needed
 
 ## Installation
 
@@ -21,7 +26,9 @@ clawhub install session-context
 
 ```bash
 cd ~/.openclaw/workspace/skills
-git clone https://github.com/thomasmarcel/openclaw-skill-session-context.git session-context
+git clone https://github.com/animo66/openclaw-skills.git tmp-skills
+cp -r tmp-skills/session-context .
+rm -rf tmp-skills
 openclaw skills enable session-context
 ```
 
@@ -29,42 +36,66 @@ openclaw skills enable session-context
 
 ### Session Start Hook
 
-When a new session begins:
-1. Skill finds the most recently modified `.md` file in the `memory/` directory
-2. Loads its content as a system message into the session context
-3. If no memory exists yet, starts fresh
+When a new session begins, two context blocks are injected:
 
-This ensures continuity: yesterday's important context is automatically available today.
+1. **AI Summary Block** — distilled summaries from today + yesterday (up to 6000 chars)
+2. **Recent Messages Block** — the last 10 user/assistant turns verbatim, so the agent can resume mid-conversation without losing exact phrasing or decisions
 
 ### Compaction Hook
 
-OpenClaw automatically compacts sessions before hitting token limits. When triggered:
-1. Hook checks if summarization thresholds are met (20+ messages OR 60% of token limit)
-2. Calls `agent.generateSummary(messages)` to produce an AI-generated summary
-3. Prepends the summary to today's memory file in `memory/YYYY-MM-DD.md` with a timestamp
-4. Session is compacted, freeing tokens while preserving key information
+When token thresholds are hit (20+ messages or 60% of limit):
 
-### Memory Files
+1. Generates an AI summary via `agent.generateSummary()`
+2. Prepends it to `memory/YYYY-MM-DD.md`
+3. Captures the last 10 raw message turns as a JSON block at the end of the file
 
-- Daily files: `memory/2025-04-03.md`, `memory/2025-04-04.md`, etc.
-- Each file accumulates summaries throughout the day, newest first
-- No global `MEMORY.md` is needed (but your `session:start` hook can load it if you prefer)
+### Memory File Format
+
+```
+memory/
+  2026-04-03.md
+  2026-04-04.md
+  ...
+```
+
+Each file looks like:
+
+```markdown
+## 22:41:00
+<AI summary of the session>
+
+---
+
+## Earlier summary...
+
+<!-- recent_messages_block -->
+[
+  {"role": "user", "content": "..."},
+  {"role": "assistant", "content": "..."},
+  ...
+]
+```
+
+The `<!-- recent_messages_block -->` marker is always at the end and replaced each compaction with the latest turns.
 
 ## Configuration
 
-The skill uses sensible defaults, but you can customize:
-
-**Summarization thresholds** (in `hooks/session/compact:before/handler.js`):
+**Number of raw messages to preserve** (in both handler files):
 ```js
-return (
-  msgCount >= 20 || // minimum messages to summarize
-  tokenCount > maxTokens * 0.6 // trigger at 60% of token limit
-);
+const MAX_RECENT_MESSAGES = 10;  // last N user/assistant turns
 ```
 
-**Content truncation** (in `hooks/session/start/handler.js`):
+**Max summary context injected at session start:**
 ```js
-const truncated = content.substring(0, 4000); // adjust as needed
+const MAX_SUMMARY_CHARS = 6000;
+```
+
+**Summarization thresholds:**
+```js
+return (
+  msgCount >= 20 ||              // minimum messages
+  tokenCount > maxTokens * 0.6   // 60% of token limit
+);
 ```
 
 ## Requirements
@@ -76,10 +107,6 @@ const truncated = content.substring(0, 4000); // adjust as needed
 ## License
 
 MIT
-
-## Contributing
-
-This skill is designed to be generic and useful to all OpenClaw users. Feel free to fork, improve, and submit PRs to the upstream repository.
 
 ---
 
