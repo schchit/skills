@@ -3,9 +3,15 @@
   "slug": "owner-briefing",
   "displayName": "Owner Briefing",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775048789186,
-    "commit": "https://github.com/openclaw/skills/commit/dad498988852b0e98a6990463c8ff63faacbf75c"
+    "version": "1.1.0",
+    "publishedAt": 1775159987147,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775048789186,
+      "commit": "https://github.com/openclaw/skills/commit/dad498988852b0e98a6990463c8ff63faacbf75c"
+    }
+  ]
 }
