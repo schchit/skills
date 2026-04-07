@@ -1,13 +1,18 @@
 {
   "owner": "onestepat4time",
   "slug": "aegis-bridge",
-  "displayName": "Aegis",
+  "displayName": "Aegis Bridge",
   "latest": {
-    "version": "2.10.0",
-    "publishedAt": 1775234831119,
-    "commit": "https://github.com/openclaw/skills/commit/af85fb9b70e0096d4d0468711bb919296223099a"
+    "version": "0.1.0",
+    "publishedAt": 1775411191028,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.10.0",
+      "publishedAt": 1775234831119,
+      "commit": "https://github.com/openclaw/skills/commit/af85fb9b70e0096d4d0468711bb919296223099a"
+    },
     {
       "version": "2.5.3",
       "publishedAt": 1775072766817,
