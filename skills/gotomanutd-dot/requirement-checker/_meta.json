@@ -1,0 +1,11 @@
+{
+  "owner": "gotomanutd-dot",
+  "slug": "requirement-checker",
+  "displayName": "Requirement Checker",
+  "latest": {
+    "version": "2.5.0",
+    "publishedAt": 1775328695667,
+    "commit": null
+  },
+  "history": []
+}
