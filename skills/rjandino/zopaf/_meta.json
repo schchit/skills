@@ -1,0 +1,11 @@
+{
+  "owner": "rjandino",
+  "slug": "zopaf",
+  "displayName": "Zopaf Negotiation Engine",
+  "latest": {
+    "version": "1.1.0",
+    "publishedAt": 1775446847112,
+    "commit": null
+  },
+  "history": []
+}
