@@ -1,0 +1,11 @@
+{
+  "owner": "admirobot",
+  "slug": "tvdr-comfyui-gen",
+  "displayName": "ComfyUI图像生成",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775201000539,
+    "commit": null
+  },
+  "history": []
+}
