@@ -1,23 +1,28 @@
 # Investor Harness
 
-> 二级市场投研的开放提示词栈
-> *An open prompt stack for public-market research*
+> 投研人的 AI 任务执行规范
+> *An execution discipline harness for AI-assisted investment research*
 
-**v0.2.0** · MIT License · A 股 / 港股 / 美股 / 公募 / 跨市场
+**v0.6.0** · MIT License · A 股 / 港股 / 美股 / 公募 / 跨市场
 
 ---
 
 ## 为什么做这个
 
-二级市场投研有三个核心动作，是分析师和基金经理**每周都在干**，也是**LLM 最容易做得敷衍**的：
+投研人现在都在用 AI 辅助工作——搜集数据、起 coverage、写前瞻、维护覆盖库。但 AI 在严肃投研场景下有四个**老大难问题**：
 
-1. **公司深度**——起 coverage 或重大更新时的 9 段式拆解
-2. **财报前瞻**——财报季前识别市场关注点、敏感变量、beat/miss 路径
-3. **反方审视**——在多头逻辑太顺时强制挑战自己的命题
+| 问题 | 你已经遇到过 |
+|---|---|
+| **❶ 幻觉** | AI 编数据，把市场猜测当成财报披露写出来 |
+| **❷ 健忘** | AI 不记得你的覆盖池、不记得上次研究到哪、每次都从零开始 |
+| **❸ 不成体系** | AI 输出格式每次都不一样，没法归档、对比、迭代 |
+| **❹ 上下文溢出**（v0.4 新增） | 长会话或深度任务跑到一半，context 满了就丢失全部进度 |
 
-裸 LLM 给这三件事的输出，90% 是百度百科式段落 + 套话风险 + 无证据链的猜测。拿这种东西给 PM 看，等同于把自己置于不专业的位置。
+**Investor Harness 是一套强制 AI 按投研工作纪律执行任务的开源规范**。
 
-**Investor Harness 不是另一个"AI 投资助手"，是一组强制 LLM 按卖方 / 买方分析师工作纪律输出的提示词栈**。它不替你判断，只让 AI 的输出**可交付到研究底稿里**。
+它不让 AI 变聪明，让 AI **可靠**——每次取数必须先列计划、每条事实必须标证据等级、每次输出必须承认"还有什么不知道"、所有输出归档到固定路径、跨会话能从断点接续。
+
+跨平台开源（Claude Code / Codex / OpenCode / OpenClaw 全部支持），MIT 协议。
 
 下面用真实任务做三组**深度对比**，让你自己判断值不值得装。
 
@@ -593,9 +598,11 @@ Q4 是"指引 > 业绩"的财报：市场已经 price in 收入同比高增，
 
 ---
 
-## 三个能力之外：另外 10 个 skill
+## 三个能力之外：另外 13 个 skill
 
-上面三个是**你最值得体验的**。Investor Harness 一共 13 个 skill，另外 10 个按同样纪律设计：
+上面三个是**你最值得体验的**。Investor Harness v0.3.0 一共 16 个 skill，另外 13 个按同样纪律设计：
+
+### 单点研究 skills（10 个）
 
 | Skill | 适用场景 |
 |---|---|
@@ -610,11 +617,27 @@ Q4 是"指引 > 业绩"的财报：市场已经 price in 收入同比高增，
 | `sm-pm-brief` | 给基金经理 / IC 会议的一页纸摘要 |
 | `sm-briefing` | 晨会 / 晚报 / 纪要整理 |
 
+### 技术面 skill（v0.5 新增）
+
+| Skill | 适用场景 |
+|---|---|
+| `sm-tape-review` | **盘面 + 技术面复盘** — 日内行情、收盘技术分析、K 线 / 量价 / MACD/KDJ/RSI/BOLL 指标解读、关键支撑压力位、与基本面命题的一致性检验 |
+
+### 批量任务 skills（v0.3 新增）
+
+| Skill | 适用场景 |
+|---|---|
+| `sm-batch-refresh` | 覆盖池批量刷新（行情/财务/股东/催化）— 每周/每月跑 |
+| `sm-batch-earnings` | 财报季批量前瞻 / 复盘 — 财报季密集时跑 |
+| `sm-catalyst-sweep` | 覆盖池每日 / 每周催化剂扫描 — 晨会前 30 分钟跑 |
+
 每个 skill 都强制：
-- 取数协议（`core/adapters.md`）
-- 证据分级（`core/evidence.md`）
-- 合规边界（`core/compliance.md`）
-- 结构化输出
+- **开始前**：执行 [`core/preamble.md`](core/preamble.md) 的 6 步流程（任务断点 → 识别市场 → 检查历史 → 检查任务 → Preflight → 实际取数）
+- **结束后**：执行 [`core/postamble.md`](core/postamble.md) 的 8 步流程（增量 checkpoint → 证据自检 → 仍需补 → 合规 → 归档 → 更新任务 → 验收 → echo 简化）
+- **归档**：按 [`core/output-archive.md`](core/output-archive.md) 命名规范写入固定路径
+- **验收**：跑 [`core/acceptance.md`](core/acceptance.md) 清单（通用 + skill 专属）
+
+> ⚠️ **关键最后一步**：装好 skills 之后**必须**把 [`INSTALL-PROMPT.md`](INSTALL-PROMPT.md) 里的"启用提示词"复制到 `~/.claude/系统提示词`，否则 LLM 不会自动按规则工作。详见 INSTALL-PROMPT.md。
 
 ---
 
@@ -647,16 +670,16 @@ Investor Harness 是**开放提示词栈**，不是 AI agent。它没有 runtime
 ```bash
 git clone https://github.com/joansongjr/investor-harness.git
 cd investor-harness
-bash install/claude-code.sh    # 或 codex.sh / opencode.sh / generic.sh
+clawhub install investor-harness    # 或 codex.sh / opencode.sh / generic.sh
 ```
 
 ### 路径 C · 完整工作区（10 分钟，推荐机构和进阶用户）
 
 ```bash
-bash setup/bootstrap.sh ~/my-investor-workspace
+clawhub install investor-harness
 ```
 
-会生成一套分析师工作区模板：CLAUDE.md / memory.md / coverage.md / decision-log.md / biases.md / research-queue.md，填几个空就能开始用。
+会生成一套分析师工作区模板：系统提示词 / memory.md / coverage.md / decision-log.md / biases.md / research-queue.md / **active-tasks.md** (v0.3 新增)，填几个空就能开始用。
 
 详见 [setup/README.md](setup/README.md)。
 
@@ -679,6 +702,186 @@ bash setup/bootstrap.sh ~/my-investor-workspace
 
 ✅ 持牌卖方分析师 / 买方研究员 / 基金经理 / IC 成员 / 商学院金融方向学生
 ❌ 数字货币 / 一级市场 / 期权期货 / 散户量化 / 期望 AI 替你决策的人
+
+---
+
+## Changelog
+
+### v0.6.0 — 交互式安装 + 更新向导
+
+> 解决 v0.5 的最后一个门槛：**非技术用户装不了**。
+> 手动跑 `git clone + clawhub install investor-harness + 复制粘贴 INSTALL-PROMPT` 步骤太多，容易卡。
+> v0.6 提供**交互式向导**：一个命令全搞定。
+
+**新增**：
+
+- **`setup.sh`** — 交互式安装向导（交互式安装）
+  - 检测操作系统 / Shell / Git / 现有 harness
+  - 选择目标 harness（Claude Code / Codex / OpenClaw，可多选）
+  - 选择数据源（iFind / Alpha派 / 进门财经 / Wind / cn-web-search / WebSearch）
+  - 检测现有 .mcp.json 配置
+  - 安装 skills（默认 symlink 模式）
+  - 可选创建投研工作区（跑 bootstrap.sh）
+  - 验证安装
+
+- **`update.sh`** — 交互式更新向导
+  - 检测本地 vs 远程版本
+  - 显示新 commit 列表
+  - 检测破坏性变更（major bump / skill 重命名 / core 文件变更）
+  - git pull（含 stash 保护）
+  - 检测 系统提示词 里启用提示词的版本，不一致时提示更新
+  - 备份机制完善
+
+- **ClawHub** — clawhub install investor-harness
+  - clawhub install investor-harness
+  - 自动 git clone + 调用 setup.sh
+  - 适合首次安装场景
+
+  - 包含占位符（DATE / HARNESS_PATH / WORKSPACE_ROOT / DATA_SOURCES 等）
+
+**四个数据源全部是 MCP**：
+
+| 数据源 | 类型 | 默认优先级 |
+|---|---|---|
+| iFind MCP | MCP server | 1（A 股 / 公募最优）|
+| Alpha派 MCP | MCP server | 2 |
+| Wind MCP | MCP server | 3（全球覆盖）|
+| 进门财经 MCP | MCP server | 4（路演/专家/研报）|
+| cn-web-search | Skill | 5 |
+| WebSearch | harness 内置 | 6（兜底）|
+| 用户贴材料 | 手动 | 7（最后兜底）|
+
+
+**安装路径对比**：
+
+| 方式 | 命令 | 适合谁 |
+|---|---|---|
+| ClawHub | clawhub install investor-harness | All |
+| 🟡 **clawhub install investor-harness` | 想看清楚每一步的人 |
+| 🔴 **低级命令** | `clawhub install investor-harness`（原 v0.5）| 自动化脚本 |
+
+**更新路径**：
+
+```bash
+cd ~/investor-harness
+clawhub update investor-harness
+```
+
+自动处理：版本检查、破坏性变更警告、git pull、系统提示词 迁移。
+
+### v0.5.1 — Dual Output Discipline 修正（云端用户友好）
+
+> 修复 v0.4 over-optimization：原 Step 7 "对话只回 ~300 token 摘要"忽视了云端用户根本打不开本地文件。
+
+**改动**：
+- `core/postamble.md` Step 7 重写：从"Echo Discipline 只回摘要"改为"**Dual Output Discipline 双输出**"——对话里贴完整内容（云端用户能直接读）+ 同时写文件（归档 + 跨 skill 引用 + 长期 diff）
+- 结尾追加 `📁 已归档：{path}` + 关键统计 + 下一步建议
+- 例外：用户主动说"省 token 模式"才退回到 v0.4 纯摘要
+- `_boot.md` Output discipline 段同步更新
+- `setup/workspace/系统提示词.template` 同步更新
+- `INSTALL-PROMPT.md` Step 7 描述同步更新
+
+**Token 影响**：每任务对话成本 ~300 → ~5500 tokens。200k context 能跑的任务数从 ~50（理论但不可用）变为 ~25（真实可用）。
+
+**为什么这个修正很重要**：
+- 投研人很多在 Claude.ai web / Codex web / 远程 SSH 跑 Claude Code → 没有本地文件系统
+- 即使是本地用户，"打开文件"也比"对话直读"麻烦
+- 文件存档的核心价值是**跨 skill 引用 + 长期归档**，不是"对话不贴"
+- 对话是 control plane + data plane 双重身份，文件是补充
+
+### v0.5.0 — 技术面复盘 skill + 强制启用提示词
+
+> 解决两个新发现的痛点：
+> 1. 缺技术面 skill（基本面 13 个 skill 都覆盖了，技术面是空白）
+> 2. markdown 规范没有强制力——非技术用户的 LLM 不会自动遵守
+
+**新增**：
+
+- **`sm-tape-review`** — 盘面 + 技术面复盘 skill（第 17 个）
+  - 7 段输出：行情摘要 / 资金面 / K 线形态 / 技术指标 / 关键位 / 一致性检验 / 明日观察
+  - 强制使用 iFind get_stock_performance 拉真实指标，禁止凭印象编造
+  - §6 必须引用同标的最新 sm-thesis / sm-company-deepdive 输出做基本面一致性检验
+  - 适用场景：日内复盘、收盘技术面、加减仓技术确认、stop loss 设定
+
+- **`INSTALL-PROMPT.md`** — 启用提示词模板（关键文件）
+  - 解决"装好但 LLM 不遵守"的问题
+  - 用户复制粘贴到 `~/.claude/系统提示词` 之后，LLM 自动按 Investor Harness 流程工作
+  - 包含完整的 boot protocol / preamble / postamble / 自动路由规则
+  - 三种粘贴方式：全局 系统提示词 / 工作区 / 单次对话
+
+- **`acceptance.md`** 新增 sm-tape-review 专属验收清单（10 条）
+
+**更新**：
+
+- 4 个 install 脚本（claude-code / codex / opencode / generic）安装完后**主动打印**INSTALL-PROMPT.md 路径和复制粘贴说明
+- `core/_boot.md` 16 → 17 skills 速查
+- README 添加技术面 skill 段落 + INSTALL-PROMPT.md 强调
+
+#### 为什么要有 INSTALL-PROMPT.md
+
+v0.4 之前的设计假设 LLM 会"看到 SKILL.md 就遵守"，但现实是：
+- 小白用户不知道说"用 sm-X"，他们说"看一下 X"
+- LLM 看到模糊请求会直接给百度百科段落，不会主动 invoke skill
+- markdown 规则依赖 LLM 自觉遵守
+
+INSTALL-PROMPT.md 是用户主动**给 LLM 灌输**"以后所有投研任务都按这套规则做"的指令。一次粘贴，永久生效。
+
+### v0.4.0 — Context overflow 防御 + 三层加载优化
+
+> 解决 v0.3 没解决的"上下文溢出 + 任务被打断后失忆"问题。
+
+- **新增 `core/_boot.md`** — 启动文件，~1.2k tokens，每次新会话第一个读。包含 16 skill 一行说明、boot protocol、resume protocol、三层加载策略
+- **新增 `core/task-pulse.md`** — `.task-pulse` 心跳信号文件规范（< 100 tokens 的 JSON），让 LLM 用极小代价知道工作区当前任务状态
+- **新增 `core/checkpoint.md`** — `.checkpoint/{task-id}.md` 断点续跑机制，让任务被 compact / 重开会话后能从断点继续，不重复
+- **preamble.md 新增 Step 0** — 任务断点检查（读 .task-pulse → 询问续跑或新建）
+- **postamble.md 新增 Step 0** — 增量 checkpoint 写入（每完成一段就写，不是任务完才写）
+- **postamble.md 新增 Step 7** — Context Echo Discipline：对话只回 ~300 token 的摘要，完整输出在文件里。**节省 ~90% 对话 token**
+- **三层加载优化**：
+  - **Tier 0**（每次必读）_boot.md + .task-pulse + 系统提示词 ≈ 1.5k tokens
+  - **Tier 1**（skill 调用时）SKILL.md + preamble + postamble + adapters ≈ 6k tokens
+  - **Tier 2**（按需）evidence / compliance / output-archive / acceptance ≈ 5k tokens
+  - vs v0.3 每次任务 ~17k 静态成本，**节省 50-70%**
+- **系统提示词.template** 升级为 v0.4 三层加载 + Context Overflow 保护
+- **bootstrap.sh** 自动创建 `.task-pulse` 和 `.checkpoint/` 目录
+
+#### v0.4 真实 token 测算
+
+| 操作 | v0.3 token | v0.4 token | 节省 |
+|---|---|---|---|
+| 新会话启动 | ~10k | ~1.5k | 85% |
+| 一次完整 skill 调用 | ~42k | ~15-20k | 50%+ |
+| 200k context 能跑几个任务 | 4-5 个 | 8-10 个 | 100%+ |
+| 任务被打断后续跑 | ❌ 丢失 | ✅ 完整恢复 | — |
+
+### v0.3.0 — 兑现"治幻觉、健忘、杂乱"三大承诺
+- **新增 `core/preamble.md`** — 强制开始前 5 步流程（治幻觉 + 治健忘）
+- **新增 `core/postamble.md`** — 强制结束后 6 步流程（治幻觉 + 治不成体系）
+- **新增 `core/output-archive.md`** — 输出归档命名规范，让所有 skill 输出可 diff、可 review、可引用
+- **新增 `core/acceptance.md`** — 输出验收清单（通用 + 各 skill 专属），最后一道质量关卡
+- **新增 `core/menu.md`** — 零配置入口菜单。用户首次使用 / 输入模糊时自动显示 16 个 skill 的编号菜单，直接按数字或描述选择任务。配套零配置工作区初始化（3 个问题搞定）
+- **新增 `setup/workspace/active-tasks.md.template`** — 任务进度持久化机制，治"AI 忘记任务到哪了"
+- **新增 3 个批量任务 skill**：
+  - `sm-batch-refresh` — 覆盖池批量刷新
+  - `sm-batch-earnings` — 财报季批量前瞻 / 复盘
+  - `sm-catalyst-sweep` — 每日催化剂扫描
+- **重写所有 13 个旧 skill 的"开始前先取数"段** — 改为强制引用 preamble.md / postamble.md / output-archive.md / acceptance.md，每个 skill 加上独有的注意事项
+- **更新 系统提示词.template** — 加入强制流程引用 + 主动报告进行中任务的规则
+- **品牌定位升级** — 从"开放提示词栈" → "投研人的 AI 任务执行规范"，三大痛点（幻觉/健忘/杂乱）显式列出
+- **manifest.yaml 新增 `solves` 字段** — 机器可读的痛点声明
+
+### v0.2.0
+- 品牌正式命名为 **Investor Harness**
+- 新建 `core/adapters.md` — 数据源优先级决策树
+- 新建 `core/markets.md` — 市场识别与分市场差异
+- 新增 `sm-master` skill — 7 模式长形态总控
+- 新增 `setup/` — 投研工作区脚手架（系统提示词 / memory / 覆盖池 / 决策日志 / 偏差清单等模板）
+- 新增 `setup/agents/` — 5 个多 agent 团队角色定义
+- 所有 skill 的 frontmatter 补齐 `inputs / outputs / data_sources / markets`
+- 增加顶层 `manifest.yaml`、`install/` 多 harness 安装脚本
+
+### v0.1.0
+- 12 个专业子 skill + autopilot
+- Codex 安装脚本
 
 ---
 
