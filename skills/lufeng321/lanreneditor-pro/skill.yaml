@@ -1,0 +1,269 @@
+# OpenClaw Skill: 微信公众号排版与发布
+# 
+# 功能：
+#   - 生成文章内容后自动排版
+#   - 选择模板样式
+#   - AI 自动生成封面图
+#   - 一键发布到微信公众号草稿箱
+# 
+# 配置：
+#   - apiBaseUrl: SaaS 平台地址
+#   - apiKey: 用户的 API 密钥
+
+name: wechat-md-publisher
+version: 1.2.0
+description: 微信公众号 Markdown 排版与一键发布（支持显式会话状态、自定义模板、多账号选择与 AI 封面图）
+author: lanren
+tags:
+  - wechat
+  - markdown
+  - publish
+  - editor
+  - ai-cover
+
+# ═════════════════════════════════════════════════════════════════════════════
+# 配置项（用户首次使用时填写）
+# ═════════════════════════════════════════════════════════════════════════════
+config:
+  - name: apiBaseUrl
+    label: SaaS 平台地址
+    type: string
+    required: true
+    placeholder: https://open.tyzxwl.cn
+    description: 你的微信公众号排版平台地址
+    
+  - name: apiKey
+    label: API 密钥
+    type: secret
+    required: true
+    placeholder: wemd_xxxxxxxxxxxxxxxx
+    description: 从排版平台获取的 API 密钥
+
+# ═════════════════════════════════════════════════════════════════════════════
+# 触发器（支持多种触发方式）
+# ═════════════════════════════════════════════════════════════════════════════
+triggers:
+  # 方式1：自然语言触发
+  - type: intent
+    patterns:
+      # 唤起技能相关
+      - "使用懒人编辑器.*"
+      - "启动懒人编辑器"
+      - "懒人编辑器"
+      - "打开懒人编辑器"
+      - "调用懒人编辑器"
+      
+      # 发布相关
+      - "发布到公众号"
+      - "发到公众号"
+      - "排版发布"
+      - "微信发布"
+      - "生成文章.*发布"
+      - "写文章.*公众号"
+      - "发到微信"
+      - "推送到公众号"
+      - "同步到微信"
+      - "微信文章"
+      
+      # 写作相关
+      - "写一篇.*文章"
+      - "帮我写.*文案"
+      - "生成.*文章"
+      - "创作.*内容"
+      
+      # 排版相关
+      - "排版.*公众号"
+      - "样式.*发布"
+      - "markdown.*微信"
+    
+      # 预览和查询
+      - "预览一下"
+      - "文章预览"
+      - "查询额度"
+      - "查看剩余额度"
+      - "还能发几篇"
+      - "我的额度"
+      - "剩余发布次数"
+
+  # 方式2：命令触发
+  - type: command
+    name: publish
+    description: 发布文章到微信公众号
+    args:
+      - name: content
+        description: 文章内容
+        required: false
+      - name: template
+        description: 模板名称或ID
+        required: false
+      - name: title
+        description: 文章标题
+        required: false
+      - name: author
+        description: 文章作者
+        required: false
+      - name: digest
+        description: 文章摘要
+        required: false
+      - name: contentSourceUrl
+        description: 阅读原文链接
+        required: false
+      - name: coverImage
+        description: 封面图指示(可通过AI生成)
+        required: false
+
+  - type: command
+    name: quota
+    description: 查询发布额度
+    
+  - type: command
+    name: preview
+    description: 预览文章排版
+    args:
+      - name: content
+        description: 文章内容
+        required: false
+      - name: template
+        description: 模板名称或ID
+        required: false
+
+  - type: command
+    name: status
+    description: 查询发布任务状态
+    args:
+      - name: taskId
+        description: 发布任务 ID
+        required: true
+
+# ═════════════════════════════════════════════════════════════════════════════
+# 工作流定义
+# ═════════════════════════════════════════════════════════════════════════════
+workflows:
+  # 主工作流：生成并发布文章
+  - name: generateAndPublish
+    description: 生成文章内容并发布到公众号
+    steps:
+      - name: generateContent
+        type: llm
+        description: 生成文章内容
+        
+      - name: selectTemplate
+        type: interactive
+        description: 选择排版模板
+        
+      - name: confirmPublish
+        type: interactive
+        description: 确认发布信息
+        
+      - name: publish
+        type: action
+        description: 执行发布
+        
+      - name: showResult
+        type: output
+        description: 展示发布结果
+
+# ═════════════════════════════════════════════════════════════════════════════
+# 资源文件
+# ═════════════════════════════════════════════════════════════════════════════
+resources:
+  - path: ./QUICKSTART.md
+    type: markdown
+    description: 快速入门指南
+    
+  - path: ./FAQ.md
+    type: markdown
+    description: 常见问题解答
+    
+  - path: ./templates/default.md
+    type: markdown
+    description: 模板说明文档
+
+# ═════════════════════════════════════════════════════════════════════════════
+# 权限声明
+# ═════════════════════════════════════════════════════════════════════════════
+permissions:
+  - name: network
+    description: 需要访问网络以调用 SaaS 平台 API
+    
+  - name: storage
+    description: 需要存储用户配置信息
+
+# ═════════════════════════════════════════════════════════════════════════════
+# 系统提示词（适用于 Coze、Dify 等平台）
+# ═════════════════════════════════════════════════════════════════════════════
+systemPrompt: |
+  你是一个微信公众号排版与发布助手。你必须严格按照以下步骤执行，不允许跳过或合并任何步骤。
+
+  ## ⚠️ 强制工作流程（每一步都必须完成，禁止跳过）
+
+  ### 第1步：接收用户需求
+  用户可能提供文章内容，或者让你生成文章内容。
+
+  ### 第2步：检查并选择用户自定义模板（必须执行，不可省略）
+  - 调用 GET /api/skill/templates 获取模板列表
+  - **只使用 isUserTemplate: true 的用户自定义模板，忽略系统内置模板**
+  - 检查返回结果中的 userTemplatesCount 字段：
+
+  **如果 userTemplatesCount > 0**：
+  - 列出所有用户自定义模板（仅 isUserTemplate: true 的），让用户选择
+  - 等待用户明确回复选择了哪个模板后，再进行下一步
+
+  **如果 userTemplatesCount = 0**：
+  - 停止发布流程，告知用户需要先创建自定义模板
+  - 展示以下创建模板的引导信息：
+
+  ---
+  ⚠️ 您还没有创建自定义排版模板，请先创建模板后再发布文章。
+
+  **创建模板的方式：**
+
+  1️⃣ **模板设计器**（推荐）
+     访问：https://open.tyzxwl.cn/website/template-designer.html
+     可视化设计你的专属排版样式
+
+  2️⃣ **Fork 官方模板**
+     访问：https://open.tyzxwl.cn/website/template-market.html
+     浏览 36+ 精选模板，点击 Fork 即可复制到你的模板库
+
+  3️⃣ **个人中心管理**
+     访问：https://open.tyzxwl.cn/profile.html?tab=templates
+     管理和编辑你已有的模板
+
+  创建完成后，再回来告诉我，我来帮你排版发布！
+  ---
+
+  - ❌ 禁止使用系统内置模板（isUserTemplate: false）
+  - ❌ 禁止自动选择任何模板
+  - ❌ 禁止在用户未回复前继续
+
+  ### 第3步：让用户选择发布的公众号（必须执行，不可省略）
+  - 调用 GET /api/skill/accounts 获取用户已授权的公众号列表
+  - 将所有公众号列出（包括公众号名称），让用户选择要发布到哪个公众号
+  - **等待用户明确回复选择了哪个公众号后，再进行下一步**
+  - ❌ 即使用户只有1个公众号，也必须展示并询问确认
+  - ❌ 禁止自动选择第一个公众号
+
+  ### 第4步：确认发布信息
+  - 汇总展示给用户确认：文章标题、所选模板名称、所选公众号名称
+  - 作者名称默认填写公众号名称（用户可自行修改）
+  - **等待用户回复"确认"后，才能调用发布接口**
+
+  ### 第5步：执行发布
+  - 调用 POST /api/skill/publish，参数中必须包含：
+    - templateId：第2步用户选择的自定义模板 ID
+    - accountId：第3步用户选择的公众号 appId
+    - author：默认使用公众号名称，用户指定则用用户的
+  - 调用 GET /api/skill/publish/status 轮询任务状态
+  - 返回发布结果给用户
+
+  ## 🚫 禁止事项（违反任何一条都是错误行为）
+  
+  1. **禁止使用系统内置模板**：只能使用用户自定义模板（isUserTemplate: true）
+  2. **禁止跳过模板检查**：必须检查用户是否有自定义模板
+  3. **禁止在无模板时继续发布**：用户没有自定义模板时必须引导创建
+  4. **禁止跳过公众号选择**：必须让用户亲自选择公众号
+  5. **禁止自动选择**：不要替用户做任何选择
+  6. **禁止合并步骤**：模板选择和公众号选择必须分开进行
+  7. **禁止在用户未确认前调用发布接口**
+  8. 如果发布失败，展示完整的错误信息
