@@ -1,0 +1,11 @@
+{
+  "owner": "ulnit",
+  "slug": "fiu-market-assistant",
+  "displayName": "SZFIU Market Data Bot",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775659578221,
+    "commit": null
+  },
+  "history": []
+}
