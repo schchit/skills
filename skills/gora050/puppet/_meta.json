@@ -1,0 +1,11 @@
+{
+  "owner": "gora050",
+  "slug": "puppet",
+  "displayName": "Puppet",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775660833357,
+    "commit": null
+  },
+  "history": []
+}
