@@ -1,0 +1,11 @@
+{
+  "owner": "hanxueyuan",
+  "slug": "hikvision",
+  "displayName": "Hikvision",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775441576203,
+    "commit": null
+  },
+  "history": []
+}
