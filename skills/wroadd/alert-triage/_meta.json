@@ -1,0 +1,11 @@
+{
+  "owner": "wroadd",
+  "slug": "alert-triage",
+  "displayName": "Alert Triage",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1775586659432,
+    "commit": null
+  },
+  "history": []
+}
