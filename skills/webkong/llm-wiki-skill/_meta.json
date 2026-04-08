@@ -1,0 +1,11 @@
+{
+  "owner": "webkong",
+  "slug": "llm-wiki-skill",
+  "displayName": "LLM-Wiki-Skill",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775560315290,
+    "commit": null
+  },
+  "history": []
+}
