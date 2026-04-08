@@ -1,0 +1,11 @@
+{
+  "owner": "gora050",
+  "slug": "nessus",
+  "displayName": "Nessus",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775597866923,
+    "commit": null
+  },
+  "history": []
+}
