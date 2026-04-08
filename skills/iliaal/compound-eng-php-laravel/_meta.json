@@ -1,0 +1,11 @@
+{
+  "owner": "iliaal",
+  "slug": "compound-eng-php-laravel",
+  "displayName": "php-laravel",
+  "latest": {
+    "version": "2.53.0",
+    "publishedAt": 1775440578186,
+    "commit": null
+  },
+  "history": []
+}
