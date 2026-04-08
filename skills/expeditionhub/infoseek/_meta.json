@@ -1,0 +1,11 @@
+{
+  "owner": "expeditionhub",
+  "slug": "infoseek",
+  "displayName": "InfoSeek",
+  "latest": {
+    "version": "2.0.0",
+    "publishedAt": 1775525687075,
+    "commit": null
+  },
+  "history": []
+}
