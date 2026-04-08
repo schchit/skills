@@ -3,9 +3,15 @@
   "slug": "firefly-iii-published",
   "displayName": "Firefly III API Client",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1775518842859,
-    "commit": "https://github.com/openclaw/skills/commit/ef235fe4dff79d4ee8a9cf9fb83f2c585b0d4b02"
+    "version": "1.0.5",
+    "publishedAt": 1775519885334,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1775518842859,
+      "commit": "https://github.com/openclaw/skills/commit/ef235fe4dff79d4ee8a9cf9fb83f2c585b0d4b02"
+    }
+  ]
 }
