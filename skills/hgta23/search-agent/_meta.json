@@ -1,0 +1,11 @@
+{
+  "owner": "hgta23",
+  "slug": "search-agent",
+  "displayName": "Search Agent Skill",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775663003051,
+    "commit": null
+  },
+  "history": []
+}
