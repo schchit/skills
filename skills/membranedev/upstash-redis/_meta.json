@@ -1,0 +1,11 @@
+{
+  "owner": "membranedev",
+  "slug": "upstash-redis",
+  "displayName": "Upstash Redis",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775621077522,
+    "commit": null
+  },
+  "history": []
+}
