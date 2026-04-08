@@ -1,0 +1,11 @@
+{
+  "owner": "lauraytwu-create",
+  "slug": "tencent-cloud-rum-skill",
+  "displayName": "Tencent Cloud Rum",
+  "latest": {
+    "version": "0.1.2",
+    "publishedAt": 1775622602982,
+    "commit": null
+  },
+  "history": []
+}
