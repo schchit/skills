@@ -1,0 +1,11 @@
+{
+  "owner": "gora050",
+  "slug": "amazon-elasticsearch",
+  "displayName": "Amazon Elasticsearch",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775552004251,
+    "commit": null
+  },
+  "history": []
+}
