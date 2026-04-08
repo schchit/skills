@@ -1,0 +1,11 @@
+{
+  "owner": "membranedev",
+  "slug": "tenderly",
+  "displayName": "Tenderly",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775588682965,
+    "commit": null
+  },
+  "history": []
+}
