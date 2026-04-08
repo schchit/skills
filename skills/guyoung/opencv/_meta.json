@@ -1,0 +1,11 @@
+{
+  "owner": "guyoung",
+  "slug": "opencv",
+  "displayName": "OpenCV",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775529386020,
+    "commit": null
+  },
+  "history": []
+}
