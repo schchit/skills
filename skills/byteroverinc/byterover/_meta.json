@@ -3,11 +3,16 @@
   "slug": "byterover",
   "displayName": "ByteRover",
   "latest": {
-    "version": "2.1.0",
-    "publishedAt": 1773739357616,
-    "commit": "https://github.com/openclaw/skills/commit/808e62d9115477b4bcc098501e213afa40a8eba1"
+    "version": "3.0.0",
+    "publishedAt": 1775617247622,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.1.0",
+      "publishedAt": 1773739357616,
+      "commit": "https://github.com/openclaw/skills/commit/808e62d9115477b4bcc098501e213afa40a8eba1"
+    },
     {
       "version": "2.0.0",
       "publishedAt": 1772421871970,
