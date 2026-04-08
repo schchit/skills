@@ -1,0 +1,11 @@
+{
+  "owner": "membranedev",
+  "slug": "wepay",
+  "displayName": "Wepay",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775631895176,
+    "commit": null
+  },
+  "history": []
+}
