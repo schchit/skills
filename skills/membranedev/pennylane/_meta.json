@@ -1,0 +1,11 @@
+{
+  "owner": "membranedev",
+  "slug": "pennylane",
+  "displayName": "Pennylane",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775437446899,
+    "commit": null
+  },
+  "history": []
+}
