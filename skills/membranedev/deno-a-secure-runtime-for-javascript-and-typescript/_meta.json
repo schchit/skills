@@ -1,0 +1,11 @@
+{
+  "owner": "membranedev",
+  "slug": "deno-a-secure-runtime-for-javascript-and-typescript",
+  "displayName": "Deno A Secure Runtime For Javascript And Typescript",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775646277869,
+    "commit": null
+  },
+  "history": []
+}
