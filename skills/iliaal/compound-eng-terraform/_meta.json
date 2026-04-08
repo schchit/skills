@@ -1,0 +1,11 @@
+{
+  "owner": "iliaal",
+  "slug": "compound-eng-terraform",
+  "displayName": "terraform",
+  "latest": {
+    "version": "2.53.0",
+    "publishedAt": 1775526974051,
+    "commit": null
+  },
+  "history": []
+}
