@@ -3,9 +3,15 @@
   "slug": "us-treasury-radar",
   "displayName": "Us Treasury Radar",
   "latest": {
-    "version": "3.8.0",
-    "publishedAt": 1775544866152,
-    "commit": "https://github.com/openclaw/skills/commit/67ccd5aeea5c1c1e84f866ed287ce9fa195264e8"
+    "version": "4.1.0",
+    "publishedAt": 1775551411936,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "3.8.0",
+      "publishedAt": 1775544866152,
+      "commit": "https://github.com/openclaw/skills/commit/67ccd5aeea5c1c1e84f866ed287ce9fa195264e8"
+    }
+  ]
 }
