@@ -1,0 +1,11 @@
+{
+  "owner": "membranedev",
+  "slug": "metomic",
+  "displayName": "Metomic",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775487844705,
+    "commit": null
+  },
+  "history": []
+}
