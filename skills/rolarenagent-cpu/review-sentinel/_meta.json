@@ -1,0 +1,11 @@
+{
+  "owner": "rolarenagent-cpu",
+  "slug": "review-sentinel",
+  "displayName": "Review Sentinel",
+  "latest": {
+    "version": "1.2.0",
+    "publishedAt": 1775623456989,
+    "commit": null
+  },
+  "history": []
+}
