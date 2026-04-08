@@ -1,0 +1,11 @@
+{
+  "owner": "membranedev",
+  "slug": "bearer",
+  "displayName": "Bearer",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775451823068,
+    "commit": null
+  },
+  "history": []
+}
