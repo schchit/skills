@@ -1,0 +1,11 @@
+{
+  "owner": "membranedev",
+  "slug": "zabbix",
+  "displayName": "Zabbix",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775639053902,
+    "commit": null
+  },
+  "history": []
+}
