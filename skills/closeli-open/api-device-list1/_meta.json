@@ -1,0 +1,11 @@
+{
+  "owner": "closeli-open",
+  "slug": "api-device-list1",
+  "displayName": "Closeli Open Device List Query",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775632965684,
+    "commit": null
+  },
+  "history": []
+}
