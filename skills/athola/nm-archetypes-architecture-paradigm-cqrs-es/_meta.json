@@ -1,0 +1,11 @@
+{
+  "owner": "athola",
+  "slug": "nm-archetypes-architecture-paradigm-cqrs-es",
+  "displayName": "Nm Archetypes Architecture Paradigm Cqrs Es",
+  "latest": {
+    "version": "1.8.2",
+    "publishedAt": 1775513207178,
+    "commit": null
+  },
+  "history": []
+}
