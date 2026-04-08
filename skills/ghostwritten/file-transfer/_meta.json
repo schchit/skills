@@ -1,0 +1,11 @@
+{
+  "owner": "ghostwritten",
+  "slug": "file-transfer",
+  "displayName": "File Transfer",
+  "latest": {
+    "version": "0.2.0",
+    "publishedAt": 1775613815533,
+    "commit": null
+  },
+  "history": []
+}
