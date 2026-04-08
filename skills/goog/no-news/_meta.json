@@ -1,0 +1,11 @@
+{
+  "owner": "goog",
+  "slug": "no-news",
+  "displayName": "Tech news from RSS(rich terminal support)",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775442868180,
+    "commit": null
+  },
+  "history": []
+}
