@@ -23,7 +23,17 @@ def load_config():
                 APP_ID = cfg.get("app_id", "")
                 APP_SECRET = cfg.get("app_secret", "")
     if not APP_ID or not APP_SECRET:
-        raise Exception("请设置环境变量 WECHAT_APP_ID 和 WECHAT_APP_SECRET，或创建 config.json")
+        raise Exception(
+            "❌ 缺少微信凭证！\n\n"
+            "获取方式：\n"
+            "1. 登录微信公众平台 https://mp.weixin.qq.com\n"
+            "2. 设置与开发 → 基本配置\n"
+            "3. 找到 AppID 和 AppSecret\n\n"
+            "设置方式：\n"
+            "- 环境变量：WECHAT_APP_ID 和 WECHAT_APP_SECRET\n"
+            "- 或创建 config.json 文件（参考 config.example.json）"
+        )
+
 
 def get_token():
     load_config()

@@ -1,6 +1,6 @@
 ---
 name: panda-wechat
-version: 1.4.0
+version: 2.0.1
 description: |
   告别公众号格式乱码！一行命令发布文章，100%保留样式。支持三套配色模板、青色/橙色/紫色一键切换。
 ---
@@ -114,14 +114,33 @@ description: |
 
 ## 配置（首次使用）
 
-**安全提示：凭证通过环境变量传递，不要硬编码！**
+**⚠️ 首次使用必须配置微信凭证！**
 
+### 获取微信凭证
+1. 登录微信公众平台：https://mp.weixin.qq.com
+2. 进入「设置与开发」→「基本配置」
+3. 找到 AppID 和 AppSecret（如未生成可重新生成）
+
+### 配置方式（二选一）
+
+**方式一：环境变量（推荐）**
 ```bash
 export WECHAT_APP_ID="你的AppID"
 export WECHAT_APP_SECRET="你的AppSecret"
 ```
 
-获取方式：微信公众平台后台 → 设置与开发 → 基本配置
+**方式二：配置文件**
+```bash
+cp config.example.json config.json
+# 编辑 config.json 填入你的 AppID 和 AppSecret
+```
+
+### 验证配置
+```bash
+python3 publish.py "测试" "作者" test.html
+# 如果看到 ❌ 缺少微信凭证，说明没配置好
+# 如果成功创建草稿，说明配置成功！
+```
 
 ## 发布流程
 

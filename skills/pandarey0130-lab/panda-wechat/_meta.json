@@ -3,9 +3,15 @@
   "slug": "panda-wechat",
   "displayName": "Panda WeChat",
   "latest": {
-    "version": "1.4.0",
-    "publishedAt": 1775488826349,
-    "commit": "https://github.com/openclaw/skills/commit/37a65c299512e3c96222fd10361621bf08fc454e"
+    "version": "2.0.1",
+    "publishedAt": 1775489939333,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.4.0",
+      "publishedAt": 1775488826349,
+      "commit": "https://github.com/openclaw/skills/commit/37a65c299512e3c96222fd10361621bf08fc454e"
+    }
+  ]
 }
