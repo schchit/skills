@@ -1,0 +1,11 @@
+{
+  "owner": "gora050",
+  "slug": "dapr",
+  "displayName": "Dapr",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775495287419,
+    "commit": null
+  },
+  "history": []
+}
