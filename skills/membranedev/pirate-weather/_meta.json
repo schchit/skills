@@ -1,0 +1,11 @@
+{
+  "owner": "membranedev",
+  "slug": "pirate-weather",
+  "displayName": "Pirate Weather",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775466210955,
+    "commit": null
+  },
+  "history": []
+}
