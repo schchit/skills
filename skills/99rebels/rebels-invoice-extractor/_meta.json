@@ -1,0 +1,11 @@
+{
+  "owner": "99rebels",
+  "slug": "rebels-invoice-extractor",
+  "displayName": "Invoice Extractor",
+  "latest": {
+    "version": "1.2.0",
+    "publishedAt": 1775494939826,
+    "commit": null
+  },
+  "history": []
+}
