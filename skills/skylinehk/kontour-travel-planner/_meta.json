@@ -3,11 +3,16 @@
   "slug": "kontour-travel-planner",
   "displayName": "Kontour Travel Planner",
   "latest": {
-    "version": "1.1.58",
-    "publishedAt": 1775322057403,
-    "commit": "https://github.com/openclaw/skills/commit/61c89c72868494bd39c0e9eb13df7fe72e6d04de"
+    "version": "1.2.5",
+    "publishedAt": 1775630339888,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.1.58",
+      "publishedAt": 1775322057403,
+      "commit": "https://github.com/openclaw/skills/commit/61c89c72868494bd39c0e9eb13df7fe72e6d04de"
+    },
     {
       "version": "1.1.56",
       "publishedAt": 1775228408840,
