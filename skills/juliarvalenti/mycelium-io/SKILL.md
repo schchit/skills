@@ -12,6 +12,8 @@ metadata:
       config:
         - ~/.mycelium/rooms/
         - ~/.mycelium/config.toml
+      env:
+        - MYCELIUM_API_URL
     install:
       - kind: brew
         formula: mycelium-io/tap/mycelium
@@ -31,14 +33,43 @@ brew install mycelium-io/tap/mycelium
 ```
 
 Source: https://github.com/mycelium-io/mycelium
+
+## OpenClaw Setup
+
+After installing the mycelium adapter (`mycelium adapter add openclaw`), you must allowlist the mycelium binary so agents can execute mycelium commands without manual approval.
+
+For specific agents (recommended):
+
+```bash
+openclaw approvals allowlist add --agent "agent-alpha" "~/.local/bin/mycelium"
+openclaw approvals allowlist add --agent "agent-beta" "~/.local/bin/mycelium"
+```
+
+Or for all agents (convenient but less restrictive):
+
+```bash
+openclaw approvals allowlist add --agent "*" "~/.local/bin/mycelium"
+```
+
+Then restart the gateway:
+
+```bash
+openclaw gateway restart
+```
+
+Without this step, agents will prompt for approval every time they try to run a mycelium command (e.g., `mycelium session join`).
 All interaction flows through **rooms** (shared namespaces) and **CognitiveEngine** (the mediator).
 Agents never communicate directly with each other.
 
 ## Authentication & Data Storage
 
-**Authentication**: The CLI connects to `MYCELIUM_API_URL`. Authentication is handled by your backend deployment — the CLI sends no credentials by default. If your backend requires auth, configure it at the server level (reverse proxy, network policy, etc.).
+**Authentication**: The CLI connects to `MYCELIUM_API_URL` (declared in `requires.env` above, default: `http://localhost:8000`). Authentication is handled by your backend deployment — the CLI sends no credentials by default. If your backend requires auth, configure it at the server level (reverse proxy, network policy, etc.).
 
-**Local data**: memories are written as plaintext markdown files under `~/.mycelium/rooms/{room}/` (declared in `config_paths`). These files are readable by any process with filesystem access on this machine. Do not store secrets or sensitive information as room memories. Room sync pushes/pulls these files to/from the backend via HTTP — ensure `MYCELIUM_API_URL` points to a trusted, access-controlled server.
+**Network behavior**: The CLI sends HTTP requests **only** to the single endpoint at `MYCELIUM_API_URL`. This is used for: writing memories to the search index, semantic search queries, coordination session joins/responses, and room sync. No other endpoints are contacted at runtime.
+
+**Local data**: Memories are written as plaintext markdown files under `~/.mycelium/rooms/{room}/` (declared in `requires.config` above). These files are readable by any process with filesystem access on this machine. **Do not store secrets, credentials, or PII as room memories.** Room sync pushes/pulls these files to/from the backend via HTTP — ensure `MYCELIUM_API_URL` points to a trusted, access-controlled server.
+
+**Scope limits**: This skill only reads and writes files under `~/.mycelium/`. It does not access files outside this directory, does not read environment variables beyond those declared above, and does not modify system configuration or other skills.
 
 ## Core Concepts
 
@@ -191,11 +222,11 @@ mycelium room synthesize
 
 ## Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `MYCELIUM_API_URL` | Backend API URL (default: `http://localhost:8000`) |
-| `MYCELIUM_AGENT_HANDLE` | This agent's identity handle |
-| `MYCELIUM_ROOM` | Active room name |
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MYCELIUM_API_URL` | Yes (declared in metadata) | Backend API URL (default: `http://localhost:8000`). All network traffic goes to this single endpoint. |
+| `MYCELIUM_AGENT_HANDLE` | No | Override this agent's identity handle (default: derived from OpenClaw agent ID) |
+| `MYCELIUM_ROOM` | No | Override active room name (default: read from `~/.mycelium/config.toml`) |
 
 ## When to Use What
 
