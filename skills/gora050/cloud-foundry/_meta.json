@@ -1,0 +1,11 @@
+{
+  "owner": "gora050",
+  "slug": "cloud-foundry",
+  "displayName": "Cloud Foundry",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775559984522,
+    "commit": null
+  },
+  "history": []
+}
