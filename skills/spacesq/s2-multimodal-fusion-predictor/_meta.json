@@ -1,0 +1,11 @@
+{
+  "owner": "spacesq",
+  "slug": "s2-multimodal-fusion-predictor",
+  "displayName": "S2 多模态融合与空间预测引擎",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775437615005,
+    "commit": null
+  },
+  "history": []
+}
