@@ -1,0 +1,11 @@
+{
+  "owner": "testdino-inc",
+  "slug": "testdino-playwright",
+  "displayName": "TestDino Playwright Reporting",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775455521263,
+    "commit": null
+  },
+  "history": []
+}
