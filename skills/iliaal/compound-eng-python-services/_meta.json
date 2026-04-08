@@ -1,0 +1,11 @@
+{
+  "owner": "iliaal",
+  "slug": "compound-eng-python-services",
+  "displayName": "python-services",
+  "latest": {
+    "version": "2.53.0",
+    "publishedAt": 1775444258664,
+    "commit": null
+  },
+  "history": []
+}
