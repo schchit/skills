@@ -1,0 +1,11 @@
+{
+  "owner": "crayfish-ai",
+  "slug": "feishu-notifier",
+  "displayName": "Feishu Task Notifier",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775544395256,
+    "commit": null
+  },
+  "history": []
+}
