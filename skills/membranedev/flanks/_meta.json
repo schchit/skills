@@ -1,0 +1,11 @@
+{
+  "owner": "membranedev",
+  "slug": "flanks",
+  "displayName": "Flanks",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775451888805,
+    "commit": null
+  },
+  "history": []
+}
