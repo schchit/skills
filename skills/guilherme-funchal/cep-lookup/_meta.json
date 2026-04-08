@@ -1,0 +1,11 @@
+{
+  "owner": "guilherme-funchal",
+  "slug": "cep-lookup",
+  "displayName": "Brazilian CEP using the ViaCEP API",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775586019524,
+    "commit": null
+  },
+  "history": []
+}
