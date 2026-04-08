@@ -1,0 +1,11 @@
+{
+  "owner": "sdk-team",
+  "slug": "alibabacloud-cms-alert-rule-create",
+  "displayName": "Alibabacloud Cms Alert Rule Create",
+  "latest": {
+    "version": "0.0.1",
+    "publishedAt": 1775642166239,
+    "commit": null
+  },
+  "history": []
+}
