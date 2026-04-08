@@ -1,0 +1,11 @@
+{
+  "owner": "bin-huang",
+  "slug": "google-analytics-cli",
+  "displayName": "Google Analytics CLI",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775547309216,
+    "commit": null
+  },
+  "history": []
+}
