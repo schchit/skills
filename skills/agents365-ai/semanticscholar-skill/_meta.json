@@ -1,0 +1,11 @@
+{
+  "owner": "agents365-ai",
+  "slug": "semanticscholar-skill",
+  "displayName": "Semanticscholar Skill",
+  "latest": {
+    "version": "0.3.0",
+    "publishedAt": 1775627932231,
+    "commit": null
+  },
+  "history": []
+}
