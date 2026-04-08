@@ -1,0 +1,11 @@
+{
+  "owner": "shepdogpack",
+  "slug": "solana-token-monitor",
+  "displayName": "Solana Token Monitor",
+  "latest": {
+    "version": "1.1.0",
+    "publishedAt": 1775495123437,
+    "commit": null
+  },
+  "history": []
+}
