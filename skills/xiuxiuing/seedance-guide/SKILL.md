@@ -1,6 +1,6 @@
 ---
-name: seedance-guide
-description: The ultimate Seedance 2.0 storyboard director. Generate movie-grade 9:16 vlogs, cinematic prompts, and auto-audio scripts from multimodal inputs. Optimized for Claude Code, Cursor, and OpenClaw.
+name: Seedance 2.0 Guide - Cinematic Storyboard & Prompt Director
+description: Professional Seedance 2.0 / Jimeng (即梦) Storyboard & Prompt Engineering Guide. Create movie-grade 9:16 vlogs, cinematic AI video prompts, and auto-audio scripts from multimodal inputs. Optimized for Claude Code, Cursor, and OpenClaw.
 ---
 
 # 🎬 Seedance 2.0 Storyboard Director
@@ -45,11 +45,14 @@ Based on the user's answers, supplement missing information:
 -   **Sound**: Do you need background music, sound effects, or dialogue?
 
 ### Step 3: Generate Prompt
-Output standard **storyboard prompts** (Markdown code blocks).
+Output standard **storyboard prompts** using either the **Basic** or **Advanced** template based on the user's needs.
 
 ---
 
 ## Prompt Structure Template
+
+### 1. Basic (Storyboard Script)
+Best for: Quick ideas, simple narratives.
 
 ```markdown
 【Overall Setting】
@@ -60,8 +63,8 @@ Aspect Ratio: [16:9 / 2.35:1]
 【Storyboard Script】
 0-3s: [Camera + Visual] Camera slowly zooms in, the protagonist in @image1 stands at...
 3-6s: [Action + Effect] Referencing the actions in @video1, the protagonist starts to...
-6-10s: [Climax] Camera rotates around, lighting becomes...
-10-15s: [Ending] Image freezes, subtitles emerge...
+6-12s: [Climax] Camera rotates around, lighting becomes...
+12-15s: [Ending] Image freezes, subtitles emerge...
 
 【Sound Design】
 BGM: [Emotion/Style]
@@ -72,6 +75,33 @@ Sound Effects: [Specific sounds]
 @video1 Action reference
 ```
 
+### 2. Advanced (Directorial Breakdown)
+Best for: High-precision restoration, complex scenes, e-commerce.
+
+```markdown
+【Directorial Breakdown】
+SUBJECTS: [Detailed character/object description, e.g., muscle lines, material texture]
+ENVIRONMENT: [Lighting, weather, interior/exterior details]
+MOOD/STYLE: [Color grade, cinematic feel, emotion]
+
+【Timeline】
+0-5s (Segment 1): [Detailed action + Camera directives]. Use 【@asset】 brackets to anchor visuals to text.
+5-10s (Segment 2): [Detailed action + Camera directives].
+10-15s (Segment 3): [Ending/Climax].
+
+【Technical Requirements】
+Camera: [e.g., 1-to-1 restoration of @video1, Close-up quick push-in, Handheld feel]
+Visual Consistency: [Strictly refer to @image1 for character appearance]
+
+【Sound & Voice】
+Voice Tone: [e.g., Passionate explaining, calm narration]
+Sound Effects: [Precise timing for SFX]
+
+【Material Reference】
+@image1 Subjects/Character
+@video1 Motion/Camera reference
+```
+
 ---
 
 ## Advanced Techniques
@@ -80,14 +110,17 @@ Sound Effects: [Specific sounds]
 -   **Instruction**: `Extend @video1 by 5s`
 -   **Note**: The generated length should select the duration of the **"newly added part"**.
 
-### 2. Camera Cloning
--   **Instruction**: `Completely reference the camera movement and lens language of @video1`
--   **Note**: Ensure the camera movement in the reference video is clear.
+### 2. Camera/Motion Cloning (1-to-1 Restoration)
+-   **Instruction**: `Completely reference the camera movement and lens language of @video1` or `Restore the motion of @video1 1-to-1`.
+-   **Note**: Ensure the camera movement or character action in the reference video is clear.
 
 ### 3. Expression/Motion Transfer
--   **Instruction**: `Maintain the character image from @image1 and replicate the expressions and actions from @video1`
+-   **Instruction**: `Maintain the character image from @image1 and replicate the expressions and actions from @video1`.
 
-### 4. Video Editing/Plot Subversion
+### 4. Brackets Anchoring
+-   **Instruction**: Use `【...】` brackets to anchor specific attributes or asset references directly within the script (e.g., `A woman 【@image1】 holding a watch 【@image2】`).
+
+### 5. Video Editing/Plot Subversion
 -   **Instruction**: `Subvert the plot of @video1, at 5s let the protagonist...`
 
 ---

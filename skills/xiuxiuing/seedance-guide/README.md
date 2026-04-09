@@ -1,16 +1,16 @@
-# 🎬 Seedance 2.0 Storyboard Director
+# 🎬 Seedance 2.0 Guide - Cinematic Storyboard & Prompt Director
 
 [English](README.md) | [中文](README_CN.md)
 
-A comprehensive professional storyboard and prompt director for **Jimeng Seedance 2.0**. Optimized for **Claude Code, Cursor, and OpenClaw**, this skill guides you from a simple idea to a "movie-grade" video generation prompt, leveraging Seedance's full multimodal power.
+A comprehensive professional storyboard and prompt engineering director for **Jimeng (即梦) Seedance 2.0**. Optimized for **Claude Code, Cursor, and OpenClaw**, this skill guides you from a simple idea to a "movie-grade" video generation prompt, leveraging Seedance's full multimodal power (Image-to-Video, Video-to-Video).
 
 ## ✨ Key Features
 
--   **🎬 Storyboard-First Approach**: Breaks down your video idea into a professional timeline (0-3s, 3-6s, etc.).
--   **🛠️ Multimodal Mastery**: Expert handling of `@image`, `@video`, and `@audio` references for character consistency and motion transfer.
--   **🎥 Advanced Camera Language**: Deep knowledge of cinematic camera movements (Hitchcock zoom, dolly shots, etc.).
--   **🩹 Video Extension & Editing**: Specialized guidance for extending clips or "subverting" existing plots.
--   **🏮 Festive Templates**: Built-in support for storytelling, commercials, Wuxia action, and festive scenes (like Lunar New Year).
+-   **🎯 SEO & Prompt Optimized**: Expertly crafted for **Seedance 2.0** and **Jimeng**.
+-   **Dual-Mode Driven Workflow**: Supports both **Basic** (Storyboard Script) and **Advanced** (Directorial Breakdown) formats.
+-   **🛠️ Multimodal Mastery**: Expert handling of `@image`, `@video`, and `@audio` references.
+-   **🎥 High-Precision Motion/Camera Cloning**: Supports 1-to-1 video restoration.
+-   **🩹 Video Extension & Editing**: Specialized guidance for extending and subverting plots.
 
 ## 🚀 How to Use
 

@@ -1,128 +1,126 @@
 # Seedance 2.0 Storyboard Director Examples
 
-This document demonstrates how to use the `seedance-guide` skill for various video creation scenarios.
+This document demonstrates how to use the `seedance-guide` skill using both **Basic (Storyboard Script)** and **Advanced (Directorial Breakdown)** formats.
 
-## 1. 情感叙事 (Emotional Storytelling)
+---
 
-**UseCase**: 温情、家庭、回忆类视频。
+## 1. Basic Examples (Storyboard Script)
+*Ideal for quick creative ideas and simple narrative flow.*
 
-### Prompt Template
+### A. 情感叙事 (Emotional Storytelling)
+**Prompt Template:**
 ```markdown
-【整体设定】
-风格：电影级写实，温馨治愈
-时长：15s
-画幅：16:9 宽屏
-氛围：日落时分的暖色调，充满这种家庭的温馨感
+【Overall Setting】
+Style: Cinematic Realistic, Warm & Healing
+Duration: 15s
+Aspect Ratio: 16:9
 
-【分镜脚本】
-0-3s：[远景→中景] 镜头缓慢推进，夕阳映照着老房子的窗户，@image1 中的老人坐在摇椅上。
-3-6s：[特写] 镜头聚焦老人的手，手中拿着一张泛黄的照片（@image2），手指轻轻抚摸。
-6-10s：[回忆闪回] 画面边缘羽化，模糊转场到 @video1 中的场景（年轻时的婚礼片段），色调变得明亮鲜活。
-10-13s：[现实回归] 镜头拉回现实，老人嘴角微微上扬，眼中含泪。
-13-15s：[结尾] 画面渐暗，字幕浮现 "爱，永恒不变"。
+【Storyboard Script】
+0-3s: [Wide to Medium] Camera slowly pushes in. Sunset light shines on an old house. The elderly person in @image1 sits on a rocking chair.
+3-6s: [Close-up] Camera focuses on the hands, holding a yellowed photo (@image2).
+6-12s: [Flashback] Soft edge transition to scene in @video1 (younger wedding). Bright and vivid.
+12-15s: [Ending] Back to reality. The elderly person smiles with tears. Fade to black.
 
-【声音设计】
-配乐：舒缓感人的钢琴曲，带有一点怀旧感。
-音效：摇椅晃动的嘎吱声，窗外的风铃声。
+【Sound Design】
+BGM: Piano music, nostalgic.
+SFX: Rocking chair creaking, wind chimes.
 
-【素材引用】
-@image1 老人参考
-@image2 照片参考
-@video1 回忆片段参考
+【Material Reference】
+@image1 Elderly person
+@image2 Photo
+@video1 Flashback reference
 ```
 
-## 2. 动作/武侠 (Action & Wuxia)
-
-**UseCase**: 打斗、舞蹈、高动态场景。
-
-### Prompt Template
+### B. 视频延长 (Video Extension)
+**Prompt Template:**
 ```markdown
-【整体设定】
-风格：中国水墨动作片
-时长：10s
-画幅：2.35:1 电影宽屏
-氛围：肃杀、紧张、落叶纷飞
+Extend @video1 by 5s.
 
-【分镜脚本】
-0-2s：[对峙] 远景，两名侠客（@image1 和 @image2）站在竹林中对峙，风吹过竹叶沙沙作响。
-2-5s：[交锋] 极速推镜头，@image1 拔剑冲刺，完全复刻 @video1 的运镜和出招动作。
-5-8s：[慢动作] 剑锋碰撞的瞬间，时间流速变慢（Bullet Time），镜头环绕展示剑气震飞落叶的细节。
-8-10s：[收招] 两人交错而过，背对站立，画面定格。
+【Storyboard Script】
+0-5s: [Continuity] The protagonist continues running. Camera transitions to drone overhead view. The protagonist enters a dense forest. Lighting changes from bright daylight to dappled shadows.
 
-【声音设计】
-配乐：激昂的鼓点+古琴。
-音效：利刃出鞘声、金属碰撞声、衣袍猎猎作响声。
+【Sound Design】
+Maintain BGM rhythm, add forest bird sounds.
 
-【素材引用】
-@image1 侠客A
-@image2 侠客B
-@video1 动作参考
+【Material Reference】
+@video1 Original video
 ```
 
-## 3. 产品广告 (Commercial)
+---
 
-**UseCase**: 高端产品展示 (咖啡、美妆、数码)。
+## 2. Advanced Examples (Directorial Breakdown)
+*Ideal for high-precision motion transfer, e-commerce, and complex cinematography.*
 
-### Prompt Template
+### A. 武侠动作复刻 (Martial Arts 1-to-1 Restoration)
+**Prompt Template:**
 ```markdown
-【整体设定】
-风格：高端极简，商业广告质感
-时长：15s
-画幅：9:16 竖屏
+【Directorial Breakdown】
+SUBJECTS: A woman in traditional black silk martial arts attire, sharp eyes, agile movements.
+ENVIRONMENT: Bamboo forest at dawn, thick fog, falling leaves.
+MOOD/STYLE: Ink-wash cinematic, high contrast, deadly cold atmosphere.
 
-【分镜脚本】
-0-3s：[悬念] 黑色背景中，一束光打在 @image1 产品轮廓上，缓缓旋转展示流线型设计。
-3-6s：[拆解/特写] 产品部件爆炸图视角，展示内部精密结构（参考 @image2），镜头穿梭其中。
-6-9s：[应用场景] 快速切换生活场景（咖啡厅、办公室、户外），展示产品实际使用状态。
-9-12s：[质感展示] 微距镜头拍摄产品表面纹理，光影流转。
-12-15s：[落版] 产品全身像，Logo (@image3) 浮现，Slogan："极致体验"。
+【Timeline】
+0-5s (Segment 1): [1-to-1 Restoration of @video1]. Strictly follow the sword parrying action and camera shake. The woman 【@image1】 deflects incoming flying daggers with a heavy blade.
+5-10s (Segment 2): [Slow Motion Transition]. Camera rotates 360 degrees around the character (Bullet Time). Time slows to 0.2x. Leaves freeze in mid-air.
+10-15s (Segment 3): [Resolution]. The woman sheath her sword. Camera pulls back to a wide shot of the foggy forest.
 
-【声音设计】
-配乐：轻快时尚的电子乐。
-音效：科技感扫光音效、清脆的组装声。
+【Technical Requirements】
+Camera: Strictly refer to the camera movement of @video1. Handheld feel during action.
+Visual Consistency: Maintain the face and outfit from @image1.
 
-【素材引用】
-@image1 产品主体
-@image2 内部结构
-@image3 Logo
+【Sound & Voice】
+Sound Effects: Precise metallic "clink" synchronized with the parry in Segment 1. Wind whistling through bamboo.
+
+【Material Reference】
+@image1 Character reference
+@video1 Action & Camera reference
 ```
 
-## 4. 视频延长 (Video Extension)
-
-**UseCase**: 续写已有视频，保持连贯性。
-
-### Prompt Template
+### B. 电商直播脚本 (E-commerce Livestream Script)
+**Prompt Template:**
 ```markdown
-将 @video1 延长 5s。
+【Directorial Breakdown】
+SUBJECTS: A 【fashionable and energetic】beautiful woman 【@image1】, holding and showcasing a 【smart sports watch】 【@image2】.
+ENVIRONMENT: Modern, bright minimalist studio, soft ring light.
+MOOD/STYLE: Vibrant commercial, clean and professional.
 
-【分镜脚本】
-0-5s：[原有结尾延续] 视频结尾的主角继续向前奔跑，镜头逐渐拉高变成无人机俯瞰视角。主角跑过草地，进入一片茂密的森林。光线从明亮的日光逐渐转变为森林中斑驳的树影。
+【Timeline】
+0-5s (Segment 1): [Talking Head]. The woman is passionately explaining while looking directly at the camera. Her hands hold the watch 【@image2】 up to her chest.
+5-10s (Segment 2): [Feature Close-up]. Cut to a macro shot of the watch face. A finger taps the screen, showing the heart rate UI (referencing @image3).
+10-15s (Segment 3): [Call to Action]. Back to medium shot. The woman points to the "Buy" button overlay. She smiles and waves.
 
-【声音设计】
-延续原视频的背景音乐节奏，加入森林鸟叫声。
+【Technical Requirements】
+Camera: Fixed tripod for stable talking head. Quick cut to macro at 5s.
+Voice Tone: Enthusiastic, high-pitched "livestream seller" style.
 
-【参考素材】
-@video1 原视频
+【Sound & Voice】
+Voice Tone: Passionate, rhythmic "Family! We have a deal today!"
+BGM: Upbeat corporate pop.
+
+【Material Reference】
+@image1 Host reference
+@image2 Product reference
+@image3 Screen UI reference
 ```
 
-## 5. 剧情颠覆 (Plot Twist)
-
-**UseCase**: 修改已有视频的走向。
-
-### Prompt Template
+### C. 叙事分镜 (Cinematic Narrative - "The Shadow Tailor")
+**Prompt Template:**
 ```markdown
-颠覆 @video1 的剧情。
+【Directorial Breakdown】
+SUBJECTS: A tailor with defined muscle lines on his back, visible through a translucent black silk shirt. Silver needles tucked in his belt.
+ENVIRONMENT: A dimly lit high-end private studio, antique mirrors reflecting candlelight.
+MOOD/STYLE: Dark noir, high-end "deadly waltz" aesthetic.
 
-【分镜脚本】
-0-3s：[保持] 保持原视频开头的温馨对话。
-3-6s：[反转] 突然，主角（@image1）的表情从微笑瞬间变得惊恐，看向窗外。
-6-10s：[新剧情] 窗外出现巨大的不明飞行物（@image2），红光笼罩整个房间。主角拉起同伴开始逃跑。
+【Timeline】
+0-3s: [Close-up/Wide-angle POV]. The tailor rests both hands on a black marble tabletop, head lowered and still. Strictly maintain the lighting from @image1.
+3-10s: [Medium Shot]. Referencing the fluid movements in @video1, the tailor begins to "dance" while cutting fabric. The scissors reflect candlelight like a blade.
+10-15s: [Extreme Close-up]. A silver needle pierces the silk. A single drop of crimson liquid (blood) stains the fabric. Quick fade to black.
 
-【声音设计】
-配乐从温馨突然转为紧张急促的警报声。
+【Technical Requirements】
+Camera: Start with a steady wide-angle, then switch to the rhythmic "waltz" camera movement from @video1.
+Visual Consistency: Refer to @image1 for the studio's eerie lighting and furniture.
 
-【参考素材】
-@video1 原视频
-@image1 主角参考
-@image2 UFO参考
+【Material Reference】
+@image1 Visual/Lighting reference
+@video1 Motion reference
 ```
