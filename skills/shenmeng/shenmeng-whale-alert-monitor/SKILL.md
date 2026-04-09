@@ -1,9 +1,18 @@
 ---
 name: whale-alert-monitor
+version: 3.0.0
 description: |
   追踪加密货币巨鲸动向、大额转账预警、交易所资金流向分析。
   当你想追踪聪明钱的每一步，监测大户交易行为时使用此技能。
   已接入 SkillPay，每次调用 0.01 USDT。
+author: shenmeng
+tags:
+  - crypto
+  - whale
+  - monitoring
+  - alert
+  - blockchain
+changelog: "v3.0.0 - 全新升级版本，增强多链支持和智能分析"
 ---
 
 # 🐋 Whale Alert Monitor
