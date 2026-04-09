@@ -26,17 +26,26 @@ clawhub install cellcog
 
 **Read the cellcog skill first** for SDK setup. This skill shows you what's possible.
 
-**Quick pattern (v1.0+):**
+**OpenClaw agents (fire-and-forget — recommended for long tasks):**
 ```python
-# Fire-and-forget - returns immediately
 result = client.create_chat(
-    prompt="[your dashboard/app request]",
-    notify_session_key="agent:main:main",
-    task_label="dashboard-task",
-    chat_mode="agent"  # Agent mode handles most dashboards well
+    prompt="[your task prompt]",
+    notify_session_key="agent:main:main",  # OpenClaw only
+    task_label="my-task",
+    chat_mode="agent",  # See cellcog skill for all modes
 )
-# Daemon notifies you when complete - do NOT poll
 ```
+
+**All other agents (blocks until done):**
+```python
+result = client.create_chat(
+    prompt="[your task prompt]",
+    task_label="my-task",
+    chat_mode="agent",
+)
+```
+
+See the **cellcog** mothership skill for complete SDK API reference — delivery modes, timeouts, file handling, and more.
 
 ---
 
@@ -188,3 +197,4 @@ Reserve `"agent team"` for truly complex applications requiring significant desi
 5. **Design direction**: "Modern minimal", "Corporate professional", "Playful and colorful", specific color schemes.
 
 6. **Responsive needs**: "Desktop only" vs "Must work on mobile."
+
