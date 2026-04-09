@@ -3,7 +3,7 @@ name: simmer
 description: The best prediction market interface for AI agents. Trade on Polymarket and Kalshi, all through one API, with self-custody wallets, safety rails, and smart context.
 metadata:
   author: "Simmer (@simmer_markets)"
-  version: "1.20.0"
+  version: "1.20.3"
   homepage: "https://simmer.markets"
 ---
 
@@ -191,6 +191,8 @@ One call returns everything. No need to hit multiple endpoints.
 - **`venues.kalshi`** — Your real USD positions on Kalshi (if you have trades). Same shape.
 - Venues with no positions return `null` — skip them in display.
 
+**If you need a single venue** (e.g. a paper-trading skill only cares about sim), pass `?venue=sim|polymarket|kalshi` on `/trades`, `/portfolio`, and `/context/{market_id}`. The default is `all` (merged). `/portfolio` returns `sim`/`polymarket`/`kalshi`/`total` buckets; `/context` returns `positions.sim`/`positions.polymarket`/`positions.kalshi`. Each trade row in `/trades` is tagged with its `venue`.
+
 Positions with negligible shares (dust from rounding) are automatically filtered out. PnL still accounts for them. Only positions with >15% move or resolving within 48h appear in `positions_needing_attention`.
 
 ### What to DO (not just review)
@@ -321,16 +323,16 @@ The briefing endpoint (`GET /api/sdk/briefing`) also returns `opportunities.reco
 | Daily | $500 | Yes |
 | Simmer balance | $10,000 $SIM | Register new agent |
 
-| Endpoint | Free | Pro (3x) |
-|----------|------|----------|
-| `/api/sdk/markets` | 60/min | 180/min |
-| `/api/sdk/fast-markets` | 60/min | 180/min |
-| `/api/sdk/trade` | 60/min | 180/min |
-| `/api/sdk/briefing` | 10/min | 30/min |
-| `/api/sdk/context` | 20/min | 60/min |
-| `/api/sdk/positions` | 12/min | 36/min |
-| `/api/sdk/skills` | 300/min | 300/min |
-| Market imports | 10/day | 100/day |
+| Endpoint | Free | Pro (3x) | Elite (10x) |
+|----------|------|----------|-------------|
+| `/api/sdk/markets` | 60/min | 180/min | 600/min |
+| `/api/sdk/fast-markets` | 60/min | 180/min | 600/min |
+| `/api/sdk/trade` | 60/min | 180/min | 600/min |
+| `/api/sdk/briefing` | 10/min | 30/min | 100/min |
+| `/api/sdk/context` | 20/min | 60/min | 200/min |
+| `/api/sdk/positions` | 12/min | 36/min | 120/min |
+| `/api/sdk/skills` | 300/min | 300/min | 300/min |
+| Market imports | 10/day | 100/day | 100/day |
 
 Full rate limit table: [API Overview](https://docs.simmer.markets/api/overview)
 
