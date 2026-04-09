@@ -1,9 +1,32 @@
 ---
 name: tencent-cloud-cos
 description: >
-  腾讯云对象存储(COS)和数据万象(CI)集成技能。当用户需要上传、下载、管理云存储文件，
-  或需要进行图片处理（质量评估、超分辨率、抠图、二维码识别、水印）、智能图片搜索、
-  文档转PDF、视频智能封面生成等操作时使用此技能。
+  腾讯云对象存储(COS)和数据万象(CI)集成技能。覆盖文件存储管理、AI处理和知识库三大核心场景。
+  存储场景：上传文件到云端、下载云端文件、批量管理存储桶文件、获取文件签名链接分享、查看文件元信息。
+  图片处理场景：图片质量评估打分、AI超分辨率放大、AI智能裁剪、二维码/条形码识别、添加文字水印、获取图片EXIF信息、
+  缩放、裁剪、旋转、格式转换。
+  文档处理场景：Word/Excel/PPT等办公文档转PDF、文档预览。
+  媒体处理场景：视频智能封面提取、视频转码、视频截帧、获取媒体信息。
+  内容审核场景：图片/视频/音频/文本/文档内容审核，检测违规内容。
+  智能语音场景：语音识别（音频转文字）、语音合成（文字转语音）、音频降噪、人声分离。
+  文件处理场景：文件哈希计算、文件压缩打包、文件解压。
+  内容识别场景：图片标签识别、OCR文字识别。
+  知识库场景：一键创建知识库、上传文档到知识库、从知识库检索内容片段。
+  智能检索场景：MetaInsight以图搜图、以文搜图、人脸搜索、元数据检索、多模态文档检索。
+  当用户提到以下关键词或口语化表述时应触发此技能：
+  上传到COS、腾讯云存储、对象存储、云存储、存储桶、Bucket、
+  图片处理、图片压缩、图片放大、超分辨率、抠图、裁剪、二维码识别、水印、
+  文档转换、转PDF、视频封面、智能封面、以图搜图、图片搜索、MetaInsight、
+  COS上传、COS下载、签名URL、腾讯云文件、数据万象、CI处理、
+  内容审核、图片审核、视频审核、文本审核、语音识别、语音合成、降噪、人声分离、
+  OCR、文字识别、图片标签、
+  创建知识库、建一个知识库、上传到知识库、往知识库里加文件、查询知识库、
+  从知识库找、搜索知识库、知识库检索、文档检索、文档搜索。
+  即使用户没有明确提到COS或腾讯云，只要涉及"把文件传到云上"、"生成下载链接"、
+  "处理云端图片"、"帮我建个知识库"、"把文档放进知识库"、"从知识库里搜一下"、
+  "加密COS凭证"、"COS密钥不安全"、"加密一下COS密钥"、"保护COS密钥"等意图，也应该触发此技能。
+description_zh: "腾讯云 COS 对象存储、数据万象数据智能处理、MetaInsight多模态检索、知识库搭建"
+description_en: "Tencent Cloud COS Object Storage, CI Data Intelligence Processing, MetaInsight Multi-modal Retrieval, Knowledge Base Setup"
 metadata:
   {
     "openclaw":
@@ -48,7 +71,7 @@ metadata:
               {
                 "SecretId":
                   {
-                    "label": "腾讯云 API 密钥 ID（云基础设施主凭证）",
+                    "label": "腾讯云 API 密钥 ID",
                     "type": "cloud-credential",
                     "provider": "Tencent Cloud",
                     "sensitivity": "critical",
@@ -56,7 +79,7 @@ metadata:
                   },
                 "SecretKey":
                   {
-                    "label": "腾讯云 API 密钥 Key（云基础设施主凭证）",
+                    "label": "腾讯云 API 密钥 Key",
                     "type": "cloud-credential",
                     "provider": "Tencent Cloud",
                     "sensitivity": "critical",
@@ -82,44 +105,16 @@ metadata:
                     "description": "Credentials exist only in shell session environment variables; nothing written to disk",
                     "persistsToDisk": false,
                     "recommendation": "RECOMMENDED — use with STS temporary credentials"
-                  },
-                "persist":
-                  {
-                    "description": "Credentials written to ~/.mcporter/mcporter.json (mode 600) and optionally ~/.cos.conf (mode 600)",
-                    "persistsToDisk": true,
-                    "filesWritten": ["~/.mcporter/mcporter.json", "~/.cos.conf"],
-                    "filePermissions": "600",
-                    "recommendation": "CAUTION — plaintext credentials on disk; requires explicit --persist flag and user confirmation",
-                    "risks": [
-                      "Disk theft or backup leak exposes credentials",
-                      "Malware can read plaintext credentials",
-                      "Credentials do not auto-expire; manual rotation required"
-                    ]
                   }
               },
             "requirements": [
               "MUST use sub-account keys with least-privilege COS-only policy; root account keys are FORBIDDEN",
               "STS temporary credentials are recommended; default behavior is ephemeral (no disk persistence)",
-              "Persistent credential storage requires explicit --persist flag (not the default)",
               "Credentials are NEVER echoed back to the user in chat"
             ]
           },
         "install":
           [
-            {
-              "id": "node-mcporter",
-              "kind": "node",
-              "package": "mcporter",
-              "bins": ["mcporter"],
-              "label": "Install mcporter (MCP CLI)"
-            },
-            {
-              "id": "node-cos-mcp",
-              "kind": "node",
-              "package": "cos-mcp",
-              "bins": ["cos-mcp"],
-              "label": "Install cos-mcp (COS MCP Server)"
-            },
             {
               "id": "node-cos-sdk",
               "kind": "node",
@@ -133,7 +128,21 @@ metadata:
 
 # 腾讯云 COS 技能
 
-通过 cos-mcp MCP 工具 + Node.js SDK 脚本 + COSCMD 管理腾讯云对象存储和数据万象。
+一站式管理腾讯云对象存储(COS)和数据万象(CI)，通过统一的 Node.js SDK 脚本提供以下能力：
+
+- **文件存储**：上传、下载、列出、删除文件，获取签名下载链接，批量操作，复制
+- **存储桶管理**：列出/创建存储桶，ACL、跨域、标签、版本控制、生命周期管理
+- **图片处理**：缩放、裁剪、旋转、格式转换、文字水印、质量评估、超分辨率、智能裁剪、二维码识别
+- **内容识别**：图片标签识别、OCR 文字识别
+- **文档处理**：办公文档转 PDF、文档预览（图片/HTML）
+- **媒体处理**：视频智能封面、转码、截帧、媒体信息
+- **内容审核**：图片/视频/音频/文本/文档违规检测
+- **智能语音**：语音识别、语音合成、音频降噪、人声分离
+- **文件处理**：哈希计算、压缩、解压
+- **智能检索 MetaInsight**：数据集管理、索引管理、以图搜图、文本搜图、人脸搜索、元数据检索、多模态文档检索
+- **🚀 知识库**：一键创建知识库（自动创建桶+数据集+绑定），上传文档到知识库，语义检索知识库内容
+
+所有操作通过 `scripts/cos_node.mjs` 单一脚本完成，输出 JSON 格式。
 
 ## 首次使用 — 自动设置
 
@@ -145,311 +154,73 @@ metadata:
 {baseDir}/scripts/setup.sh --check-only
 ```
 
-如果输出显示一切 OK（cos-mcp 已安装、凭证已配置），跳到「执行策略」。
+如果 Node.js 和 cos-nodejs-sdk-v5 已安装、环境变量已配置，跳到「操作指南」。
 
 ### 步骤 2：如果未配置，引导用户提供凭证
 
 告诉用户：
-> 我需要你的腾讯云凭证来连接 COS 存储服务。
+> 我需要你的腾讯云凭证来连接 COS 存储服务。请放心，你的密钥会受到以下保护：
 >
-> ⚠️ **重要安全说明**：本技能需要**腾讯云云基础设施主凭证**（SecretId/SecretKey），
-> 这些凭证可访问你的 COS 对象存储和数据万象 API。凭证泄露可能导致存储桶数据被窃取或篡改。
+> #### 🛡️ 凭证安全保障
+> - **默认不落盘**：凭证仅存于当前终端会话内存中，关闭终端即消失
+> - **可选持久化**：如需保存，凭证写入项目本地 `.env` 文件（仅当前用户可读，权限 600）
+> - **支持 AES-256 加密**：持久化后可一键加密为 `.env.enc`，明文自动删除，密钥绑定本机+本用户，拷贝到其他环境无法解密
+> - **自动防误提交**：`.env` / `.env.enc` 自动添加到 `.gitignore`，不会进入版本控制
+> - **永远不会在对话中回显你的密钥**
 >
-> **默认安全行为**：凭证仅存于当前终端会话的环境变量中，**不会写入任何磁盘文件**。
-> 关闭终端后凭证自动消失。
->
-> #### 🔒 推荐方案：STS 临时凭证（有效期短，过期自动失效）
->
-> 如果你已有 STS 临时凭证，请提供：
-> 1. **SecretId** — 临时密钥 ID（STS 返回的 TmpSecretId）
-> 2. **SecretKey** — 临时密钥 Key（STS 返回的 TmpSecretKey）
-> 3. **Token** — 临时安全令牌（STS 返回的 SecurityToken）
+> #### 🔒 推荐方案：STS 临时凭证（最安全，自带有效期）
+> 1. **SecretId** — TmpSecretId
+> 2. **SecretKey** — TmpSecretKey
+> 3. **Token** — SecurityToken
 > 4. **Region** — 存储桶区域（如 ap-guangzhou）
-> 5. **Bucket** — 存储桶名称（格式 name-appid，如 mybucket-1250000000）
+> 5. **Bucket** — 存储桶名称（格式 name-appid）
 >
-> 获取方式：通过 [腾讯云 STS 服务](https://cloud.tencent.com/document/product/1312/48195) 获取临时凭证。
+> #### ⚠️ 降级方案：永久密钥（必须使用子账号最小权限密钥）
+> 1. **SecretId** / **SecretKey** / **Region** / **Bucket**
 >
-> #### ⚠️ 降级方案：永久密钥
->
-> 如果无法使用 STS，可提供永久密钥：
-> 1. **SecretId** — 腾讯云 API 密钥 ID
-> 2. **SecretKey** — 腾讯云 API 密钥 Key
-> 3. **Region** — 存储桶区域（如 ap-guangzhou）
-> 4. **Bucket** — 存储桶名称（格式 name-appid，如 mybucket-1250000000）
->
-> **默认情况下永久密钥也不会持久化到磁盘**。如果你需要使用方式一（mcporter），
-> 需显式加 `--persist` 标志，此时凭证才会写入 `~/.mcporter/mcporter.json`（权限 600）。
->
-> ⚠️ **持久化凭证到磁盘的风险**（仅 `--persist` 模式）：
-> - 磁盘被窃取/备份泄露时凭证暴露
-> - 恶意软件可能读取明文凭证
-> - 凭证不会自动过期，需手动清理
->
-> **必须使用子账号密钥**，仅授予 COS 相关权限（如 `QcloudCOSDataFullControl`），**严禁使用主账号密钥**。
->
-> #### 可选配置（两种方案均适用）
-> 5. **DatasetName**（可选） — 数据万象数据集名称（仅智能搜索需要）
-> 6. **Domain**（可选） — 自定义域名，用于替换默认的 COS 访问域名（如 cdn.example.com）
-> 7. **ServiceDomain**（可选） — 自定义服务域名，用于自定义 COS API 请求域名
-> 8. **Protocol**（可选） — 协议，如 https 或 http
->
-> 你可以在 [腾讯云控制台 > 访问管理 > API密钥管理](https://console.cloud.tencent.com/cam/capi) 获取密钥，
-> 在 [COS 控制台](https://console.cloud.tencent.com/cos/bucket) 查看存储桶信息。
+> #### 可选配置
+> - **DatasetName** — 数据万象数据集名称（仅 MetaInsight 检索需要）
+> - **Domain** / **ServiceDomain** / **Protocol** — 自定义域名配置
 
-### 步骤 3：用户提供凭证后，运行自动设置
+### 步骤 3：设置环境变量并运行安装
 
-#### STS 临时凭证模式（推荐 — 默认不持久化到磁盘）：
-```bash
-export TENCENT_COS_SECRET_ID="<TmpSecretId>"
-export TENCENT_COS_SECRET_KEY="<TmpSecretKey>"
-export TENCENT_COS_TOKEN="<SecurityToken>"
-export TENCENT_COS_REGION="<Region>"
-export TENCENT_COS_BUCKET="<Bucket>"
-# 可选：
-# export TENCENT_COS_DATASET_NAME="<DatasetName>"
-
-{baseDir}/scripts/setup.sh --from-env
-```
-
-默认行为：
-- ✅ 凭证仅存在于当前 shell session 的环境变量中
-- ✅ **不写入** `~/.mcporter/mcporter.json` 或任何磁盘文件
-- ✅ 关闭终端后凭证自动消失
-- ⚠️ 方式一（mcporter）需要配置文件，默认模式下不可用；如需使用请加 `--persist`
-
-#### 永久密钥模式（默认也不持久化到磁盘）：
 ```bash
 export TENCENT_COS_SECRET_ID="<SecretId>"
 export TENCENT_COS_SECRET_KEY="<SecretKey>"
+export TENCENT_COS_TOKEN="<Token>"  # STS 临时凭证才需要
 export TENCENT_COS_REGION="<Region>"
 export TENCENT_COS_BUCKET="<Bucket>"
-# 可选：
-# export TENCENT_COS_DATASET_NAME="<DatasetName>"
-# export TENCENT_COS_DOMAIN="<Domain>"
-# export TENCENT_COS_SERVICE_DOMAIN="<ServiceDomain>"
-# export TENCENT_COS_PROTOCOL="<Protocol>"
 
+# 默认模式：凭证仅存于当前 session，关闭终端后需重新 export
 {baseDir}/scripts/setup.sh --from-env
-```
 
-#### 显式持久化模式（仅当需要方式一 mcporter 时使用，需用户确认风险）：
-```bash
+# 持久化模式：凭证写入项目本地 .env 文件，下次自动读取
 {baseDir}/scripts/setup.sh --from-env --persist
 ```
 
-> ⚠️ `--persist` 会将凭证以明文写入 `~/.mcporter/mcporter.json`（权限 600），
-> 可能因磁盘窃取、备份泄露、恶意软件等方式暴露。仅在确实需要方式一时使用。
+脚本会自动安装 `cos-nodejs-sdk-v5` 到项目本地 `node_modules/` 并验证连接。
 
-备选方式（凭证会出现在 shell 历史中，不推荐）：
-```bash
-{baseDir}/scripts/setup.sh --secret-id "<SecretId>" --secret-key "<SecretKey>" --region "<Region>" --bucket "<Bucket>"
-```
-
-脚本会自动：
-- 检查并本地安装 cos-mcp 和 cos-nodejs-sdk-v5 到项目 `node_modules`（`npm install`，非全局）
-- 检查并本地安装 mcporter 到项目 `node_modules`（`npm install`，非全局；通过 `npx mcporter` 调用）
-- 将凭证导出到当前 shell session 的环境变量中（**不写入** `~/.zshrc` / `~/.bashrc`）
-- **默认模式**：仅设置环境变量，**不写入任何配置文件到磁盘**
-- **`--persist` 模式**：创建/更新 `~/.mcporter/mcporter.json`，写入 cos-mcp 服务器配置（凭证通过 env 字段传递，权限 600）
-- 如 coscmd 已安装则配置 `~/.cos.conf`（权限 600，仅 `--persist` 模式）；**不会**自动安装 coscmd
-- 验证 COS 连接
-
-### 系统变更摘要
-
-用户安装前应了解 setup.sh 会产生的所有变更：
-
-**默认模式（推荐 — 凭证不持久化到磁盘）：**
-
-| 变更类型 | 具体内容 | 持久性 |
-|----------|----------|--------|
-| npm 本地安装 | `cos-mcp`、`cos-nodejs-sdk-v5`、`mcporter` 安装到项目 `node_modules/` | 持久（仅限项目目录） |
-| 项目文件 | 如无 `package.json` 则创建 | 持久（仅限项目目录） |
-| 环境变量 | `TENCENT_COS_*` export 到当前 session | 临时（关闭终端失效） |
-
-> ✅ 默认模式**不会**写入 `~/.mcporter/mcporter.json` 或 `~/.cos.conf`，凭证不持久化到磁盘。
-
-**`--persist` 模式（凭证会持久化到磁盘，需显式指定）：**
-
-| 变更类型 | 具体内容 | 持久性 |
-|----------|----------|--------|
-| npm 本地安装 | `cos-mcp`、`cos-nodejs-sdk-v5`、`mcporter` 安装到项目 `node_modules/` | 持久（仅限项目目录） |
-| 项目文件 | 如无 `package.json` 则创建 | 持久（仅限项目目录） |
-| 配置文件 | `~/.mcporter/mcporter.json`（⚠️ 含明文凭证） | 持久（用户主目录） |
-| 配置文件 | `~/.cos.conf`（仅当 coscmd 已安装时，⚠️ 含明文凭证） | 持久（用户主目录） |
-| 环境变量 | `TENCENT_COS_*` export 到当前 session | 临时（关闭终端失效） |
-
-> ⚠️ 脚本**不会**：
-> - 写入 `~/.zshrc` / `~/.bashrc` 或任何 shell 启动文件
-> - 执行 `npm install -g`（全局安装）
-> - 执行 `pip install`（不自动安装 Python 包）
-> - 修改用户 shell 配置文件的权限
-> - **默认不会将凭证写入任何磁盘文件**（需显式 `--persist` 才会写入）
-
-**凭证写入的文件**（⚠️ 仅 `--persist` 模式；默认模式不写入任何凭证文件）：
-| 文件 | 内容 | 权限 |
-|------|------|------|
-| `~/.mcporter/mcporter.json` | MCP 服务器配置中的 env 字段含凭证 | 600 |
-| `~/.cos.conf` | coscmd 配置（仅当 coscmd 已安装时） | 600 |
-
-> 如需完全清理凭证：`rm -f ~/.mcporter/mcporter.json ~/.cos.conf`
-> 如需持久化环境变量，用户可自行在 shell 配置中添加 export 语句。
-> **强烈建议**：优先使用 STS 临时凭证（默认模式即可），避免凭证持久化到磁盘。
-> 如使用永久密钥，**必须使用子账号最小权限密钥**，详见「最小权限与子账号密钥」章节。
-
-设置完成后即可开始使用。
-
-## 执行策略
-
-三种方式按优先级降级，确保操作始终可完成：
-
-1. **方式一：cos-mcp MCP 工具**（优先） — 功能最全，支持存储 + 图片处理 + 智能搜索 + 文档媒体处理
-2. **方式二：Node.js SDK 脚本** — 通过 `scripts/cos_node.mjs` 执行存储操作
-3. **方式三：COSCMD 命令行** — 通过 shell 命令执行存储操作
-
-```
-mcporter + cos-mcp 可用？（npx mcporter --version && 配置存在）
-  ├─ 是 → 使用方式一 mcporter 调用（全部功能）
-  └─ 否 → cos-mcp MCP 工具可直接调用？（getCosConfig 返回结果）
-              ├─ 是 → 使用方式一直接调用（全部功能）
-              └─ 否 → Node.js + cos-nodejs-sdk-v5 可用？
-                        ├─ 是 → 使用方式二（存储操作）
-                        └─ 否 → coscmd 可用？（which coscmd）
-                                  ├─ 是 → 使用方式三（存储操作）
-                                  └─ 否 → 运行 setup.sh 安装
-```
-
-**判断方式一(mcporter)**：`npx mcporter --version` 成功 且 `cat ~/.mcporter/mcporter.json | grep cos-mcp` 有输出。
-**判断方式一(直接)**：尝试调用 `getCosConfig` MCP 工具，若返回结果则可用。
-**判断方式二**：`node -e "require('cos-nodejs-sdk-v5')"` 成功则可用。
-**判断方式三**：`which coscmd` 有输出则可用。
+**持久化说明**：`--persist` 会将凭证写入项目目录下的 `.env` 文件（权限 600），并自动添加到 `.gitignore`。
+`cos_node.mjs` 启动时会自动读取 `.env`（环境变量优先于 `.env` 文件）。清理凭证：`rm -f .env`。
 
 ---
 
-## 方式一：cos-mcp MCP 工具（优先）
+## 操作指南
 
-> GitHub: https://github.com/Tencent/cos-mcp
-
-MCP 配置模板见 `references/config_template.json`。
-
-### 调用格式
-
-通过 mcporter 命令行调用 cos-mcp MCP 工具：
+所有操作通过单一脚本 `scripts/cos_node.mjs` 完成，输出 JSON 格式。
 
 ```
-npx mcporter call cos-mcp.<tool_name> --config ~/.mcporter/mcporter.json --output json [--args '<JSON>']
+node {baseDir}/scripts/cos_node.mjs <action> [--option value ...]
 ```
 
-列出所有可用工具：
-```
-npx mcporter list cos-mcp --config ~/.mcporter/mcporter.json --schema
-```
+**全局可选参数**（所有 action 均支持，用于覆盖环境变量中的默认值）：
+- `--bucket <BucketName>` — 指定操作的存储桶（覆盖 `TENCENT_COS_BUCKET`）
+- `--region <Region>` — 指定地域（覆盖 `TENCENT_COS_REGION`）
+- `--dataset-name <Name>` — 指定数据集名称（覆盖 `TENCENT_COS_DATASET_NAME`）
 
-**判断 mcporter 是否可用**：`npx mcporter --version` 成功 且 `~/.mcporter/mcporter.json` 包含 cos-mcp 配置。
-如果 mcporter 不可用，可回退到客户端直接调用 MCP 工具（`getCosConfig` 等）。
+> 初始配置的 Region、Bucket、DatasetName 只是默认值，每次调用都可以通过参数自由指定。
 
-### 工具总览
-
-| 类别 | 说明 |
-|------|------|
-| 存储操作 | 上传、下载、列出、获取签名URL |
-| 图片处理 | 质量评估、超分辨率、抠图、二维码识别、水印 |
-| 智能搜索 | 以图搜图、文本搜图（需预建数据集） |
-| 文档媒体 | 文档转PDF、视频智能封面（异步任务） |
-
-### 常用操作
-
-> 以下示例同时展示两种调用格式。mcporter 格式省略公共前缀 `npx mcporter call cos-mcp.` 和 `--config ~/.mcporter/mcporter.json --output json`。
-> 完整 mcporter 命令：`npx mcporter call cos-mcp.<tool> --config ~/.mcporter/mcporter.json --output json --args '<JSON>'`
-
-#### 存储
-
-```bash
-# 上传本地文件（mcporter 格式）
-npx mcporter call cos-mcp.putObject --config ~/.mcporter/mcporter.json --output json --args '{"filePath":"/path/to/file.jpg","targetDir":"images"}'
-
-# 上传本地文件（客户端直接调用格式）
-putObject  filePath="/path/to/file.jpg"  targetDir="images"
-
-# 上传字符串内容
-putString  content="hello world"  fileName="test.txt"  targetDir="docs"
-
-# 通过 URL 上传
-putObjectSourceUrl  sourceUrl="https://example.com/image.png"  targetDir="images"
-
-# 列出文件
-getBucket  Prefix="images/"
-
-# 下载文件
-getObject  objectKey="images/photo.jpg"
-
-# 获取签名下载链接
-getObjectUrl  objectKey="images/photo.jpg"
-```
-
-#### 图片处理
-
-```
-# 图片质量评估
-assessQuality  objectKey="images/photo.jpg"
-
-# AI 超分辨率
-aiSuperResolution  objectKey="images/photo.jpg"
-
-# AI 智能抠图
-aiPicMatting  objectKey="images/photo.jpg"
-
-# 二维码识别
-aiQrcode  objectKey="images/qrcode.jpg"
-
-# 添加文字水印
-waterMarkFont  objectKey="images/photo.jpg"  text="版权所有"
-
-# 获取图片元信息
-imageInfo  objectKey="images/photo.jpg"
-```
-
-#### 智能搜索（需预建数据集）
-
-```
-# 以图搜图
-imageSearchPic  uri="https://example.com/query.jpg"
-
-# 文本搜图
-imageSearchText  text="蓝天白云"
-```
-
-#### 文档与媒体处理（异步任务）
-
-```
-# 文档转 PDF
-createDocToPdfJob  objectKey="docs/report.docx"
-# 查询任务结果
-describeDocProcessJob  jobId="<jobId>"
-
-# 视频智能封面
-createMediaSmartCoverJob  objectKey="videos/demo.mp4"
-# 查询任务结果
-describeMediaJob  jobId="<jobId>"
-```
-
-工具详细参数定义见 `references/api_reference.md`。
-
----
-
-## 方式二：Node.js SDK 脚本
-
-> 官方文档: https://www.tencentcloud.com/zh/document/product/436/8629
-
-当 cos-mcp 不可用时，通过 `scripts/cos_node.mjs` 执行存储操作。凭证从环境变量读取。
-
-支持的环境变量：
-- `TENCENT_COS_SECRET_ID` / `TENCENT_COS_SECRET_KEY` / `TENCENT_COS_REGION` / `TENCENT_COS_BUCKET`（必需）
-- `TENCENT_COS_TOKEN`（可选，STS 临时凭证的 SecurityToken）
-- `TENCENT_COS_DOMAIN` / `TENCENT_COS_SERVICE_DOMAIN` / `TENCENT_COS_PROTOCOL`（可选，自定义域名）
-
-### 常用命令
-
-> 以下省略 `node {baseDir}/scripts/cos_node.mjs` 前缀。完整格式：`node {baseDir}/scripts/cos_node.mjs <action> [options]`
+### COS 存储操作
 
 ```bash
 # 上传文件
@@ -462,7 +233,7 @@ put-string --content "文本内容" --key remote/file.txt --content-type "text/p
 download --key remote/path/file.jpg --output /path/to/save/file.jpg
 
 # 列出文件
-list --prefix "images/"
+list --prefix "images/" --max-keys 100
 
 # 获取签名 URL
 sign-url --key remote/path/file.jpg --expires 3600
@@ -472,211 +243,489 @@ head --key remote/path/file.jpg
 
 # 删除文件
 delete --key remote/path/file.jpg
+
+# 批量删除
+delete-multiple --keys '["file1.txt","file2.txt"]'
+
+# 复制对象
+copy-object --source bucket.cos.region.myqcloud.com/source.jpg --key dest.jpg
 ```
 
-所有命令输出 JSON 格式，`success: true` 表示成功，退出码 0。
+### COS 存储桶管理
 
-### 限制
-
-仅支持存储操作，**不支持**图片处理、智能搜索、文档转换。
-
----
-
-## 方式三：COSCMD 命令行
-
-> 官方文档: https://www.tencentcloud.com/zh/document/product/436/10976
-
-当方式一和方式二均不可用时使用。配置持久化在 `~/.cos.conf`。
-
-自定义域名支持（有限）：
-- **ServiceDomain** — 对应 coscmd 的 `-e ENDPOINT` 参数，设置后 Region 失效
-- **Protocol** — 若为 `http`，对应 coscmd 的 `--do-not-use-ssl` 参数
-- **Domain** — COSCMD 不支持 CDN 自定义域名
-
-### 常用命令
+> ⚠️ **安全限制**：本技能禁止删除存储桶和清空存储桶操作。
 
 ```bash
-# 上传
-coscmd upload /path/to/file.jpg remote/path/file.jpg
-coscmd upload -r /path/to/folder/ remote/folder/
+# 列出所有存储桶
+list-buckets
 
-# 下载
-coscmd download remote/path/file.jpg /path/to/save/file.jpg
-coscmd download -r remote/folder/ /path/to/save/
+# 创建存储桶
+create-bucket --bucket mybucket-1250000000 --region ap-guangzhou
 
-# 列出文件
-coscmd list images/
+# 检查存储桶是否存在
+head-bucket --bucket mybucket-1250000000
 
-# 删除
-coscmd delete remote/path/file.jpg
-coscmd delete -r remote/folder/ -f
+# 获取/设置存储桶 ACL
+get-bucket-acl
+put-bucket-acl --acl private
 
-# 签名 URL
-coscmd signurl remote/path/file.jpg -t 3600
+# 获取/设置跨域配置
+get-bucket-cors
+put-bucket-cors --origin "*" --methods "GET,POST,PUT"
 
-# 文件信息
-coscmd info remote/path/file.jpg
+# 获取/设置标签
+get-bucket-tagging
+put-bucket-tagging --tags '[{"Key":"env","Value":"prod"}]'
 
-# 复制/移动
-coscmd copy <BucketName-APPID>.cos.<Region>.myqcloud.com/source.jpg dest.jpg
-coscmd move <BucketName-APPID>.cos.<Region>.myqcloud.com/source.jpg dest.jpg
+# 查询版本控制/生命周期/地域
+get-bucket-versioning
+get-bucket-lifecycle
+get-bucket-location
 ```
 
-### 限制
+### CI 图片基础处理
 
-仅支持存储操作，**不支持**图片处理、智能搜索、文档转换。
+```bash
+# 获取图片元信息
+image-info --key images/photo.jpg
+
+# 图片缩放
+image-thumbnail --key images/photo.jpg --width 200 --height 200
+
+# 图片裁剪
+image-crop --key images/photo.jpg --width 300 --height 300 --gravity center
+
+# 图片旋转
+image-rotate --key images/photo.jpg --degree 90
+
+# 格式转换（webp/png/jpg/avif/heif/tpg）
+image-format --key images/photo.jpg --format webp
+
+# 添加文字水印（支持中文）
+watermark-font --key images/photo.jpg --text "版权所有"
+```
+
+### CI AI 图片处理
+
+```bash
+# 图片质量评估
+assess-quality --key images/photo.jpg
+
+# AI 超分辨率
+ai-super-resolution --key images/photo.jpg
+
+# AI 智能裁剪
+ai-pic-matting --key images/photo.jpg --width 200 --height 200
+
+# 二维码识别
+ai-qrcode --key images/qrcode.jpg
+```
+
+### CI 内容识别
+
+```bash
+# 图片标签识别
+recognize-image --key images/photo.jpg
+
+# OCR 文字识别
+ocr-general --key images/document.jpg
+```
+
+### CI 文档处理
+
+```bash
+# 文档转 PDF（自动轮询等待结果）
+create-doc-to-pdf-job --key docs/report.docx
+
+# 查询文档处理任务
+describe-doc-job --job-id <jobId>
+
+# 文档预览（转图片）
+doc-preview --key docs/report.docx --page 1 --format jpg
+
+# 获取文档在线预览 HTML 链接
+doc-preview-html-url --key docs/report.docx
+```
+
+### CI 媒体处理
+
+```bash
+# 视频智能封面（自动轮询等待结果）
+create-media-smart-cover-job --key videos/demo.mp4
+
+# 查询媒体处理任务
+describe-media-job --job-id <jobId>
+
+# 视频转码
+media-transcode-job --key videos/demo.mp4 --format mp4
+
+# 视频截帧
+media-snapshot --key videos/demo.mp4 --time 5 --format jpg
+
+# 获取媒体文件信息
+media-info --key videos/demo.mp4
+```
+
+### CI 内容审核
+
+```bash
+# 图片同步审核
+audit-image --key images/photo.jpg
+
+# 图片异步审核任务
+audit-image-job --key images/photo.jpg
+
+# 视频审核任务
+audit-video-job --key videos/demo.mp4
+
+# 音频审核任务
+audit-audio-job --key audio/song.mp3
+
+# 文本审核任务
+audit-text-job --content "待审核的文本内容"
+
+# 文档审核任务
+audit-document-job --key docs/report.docx
+
+# 查询审核任务结果（--type 可选 image/video/audio/text/document）
+describe-audit-job --job-id <jobId> --type image
+```
+
+### CI 智能语音
+
+```bash
+# 语音识别
+speech-recognition-job --key audio/meeting.mp3 --engine 16k_zh_video
+
+# 语音合成（文字转语音）
+tts-job --text "你好，欢迎使用腾讯云"
+
+# 音频降噪
+noise-reduction-job --key audio/noisy.mp3
+
+# 人声分离
+voice-separate-job --key audio/song.mp3
+```
+
+### CI 文件处理
+
+```bash
+# 文件哈希计算（md5/sha1/sha256）
+file-hash --key docs/report.docx --type md5
+
+# 文件压缩
+file-compress-job --prefix "images/" --format zip
+
+# 文件解压
+file-uncompress-job --key archive.zip --prefix "output/"
+
+# 查询文件处理任务
+describe-file-job --job-id <jobId>
+```
+
+### CI MetaInsight
+
+#### 数据集管理
+
+```bash
+# 列出所有数据集
+list-datasets
+
+# 创建数据集（模板：Official:COSBasicMeta / Official:ImageSearch / Official:FaceSearch）
+create-dataset --name my-dataset --template "Official:ImageSearch" --description "图片搜索"
+
+# 查询数据集详情
+describe-dataset --name my-dataset
+
+# 绑定存储桶到数据集（默认 Mode=1 存量索引，自动索引桶内已有文件）
+create-dataset-binding --name my-dataset
+create-dataset-binding --name my-dataset --uri "cos://other-bucket-1250000000"
+
+# 仅增量索引（Mode=0，只索引绑定后新上传的文件）
+create-dataset-binding --name my-dataset --mode 0
+
+# 查询数据集的绑定关系
+describe-dataset-bindings --name my-dataset
+```
+
+#### 索引管理
+
+```bash
+# 创建文件元数据索引
+create-file-meta-index --name my-dataset --uri "cos://bucket/images/photo.jpg" --media-type image
+
+# 查询文件元数据索引
+describe-file-meta-index --name my-dataset --uri "cos://bucket/images/photo.jpg"
+
+# 删除文件元数据索引
+delete-file-meta-index --name my-dataset --uri "cos://bucket/images/photo.jpg"
+```
+
+#### 检索（需预建数据集）
+
+三种检索需要**不同模板**的数据集，通过环境变量或 `--dataset` 参数分别指定：
+
+| 检索类型 | 所需数据集模板 | 环境变量 |
+|---------|---------------|----------|
+| 图片检索（以图搜图/文本搜图） | `Official:ImageSearch` | `TENCENT_COS_DATASET_IMAGE_SEARCH` |
+| 人脸搜索 | `Official:FaceSearch` | `TENCENT_COS_DATASET_FACE_SEARCH` |
+| 元数据检索 | `Official:COSBasicMeta` | `TENCENT_COS_DATASET_META` |
+
+> `TENCENT_COS_DATASET_NAME` 作为图片检索的兜底值。所有 action 都支持 `--dataset` 参数覆盖。
+
+```bash
+# 以图搜图（ImageSearch 数据集）
+image-search-pic --uri "https://example.com/query.jpg"
+
+# 文本搜图（ImageSearch 数据集）
+image-search-text --text "蓝天白云"
+
+# 人脸搜索（FaceSearch 数据集）
+face-search --uri "cos://bucket/photo.jpg" --max-face-num 1 --limit 10 --threshold 80
+
+# 元数据检索 — 简单查询（任意数据集）
+dataset-simple-query --dataset my-dataset --sort CustomId --order desc --max-results 50
+dataset-simple-query --dataset my-dataset --query '{"Operation":"eq","Field":"ContentType","Value":"image/jpeg"}'
+
+# 多模态检索 — 文档检索（DocSearch 数据集）
+hybrid-search --text "包含一颗大树的文档" --dataset docsearch --templates DocSearch --limit 10
+hybrid-search --text "关键词" --dataset docsearch --filter '{"$and":[{"MediaType":{"$in":["image","document"]}},{"Size":{"$gt":123}}]}'
+```
+
+### 🚀 知识库（快捷功能）
+
+> **重要**：这是一组面向用户口语化描述的快捷流程。用户不需要知道底层命令，只需用自然语言描述意图。
+
+#### 用户意图识别
+
+| 用户可能的说法 | 对应操作 |
+|---------------|----------|
+| "帮我创建一个知识库" "建一个知识库" "我想做个文档库" | → 执行 `create-knowledge-base` |
+| "上传到知识库" "把文件放进知识库" "往知识库里加文档" | → 执行 `upload`（指向知识库对应的桶） |
+| "查询知识库" "从知识库找" "搜索知识库" "知识库里有没有关于XX的内容" | → 执行 `hybrid-search`（指向知识库对应的数据集） |
+
+#### 流程 1：创建知识库
+
+当用户说"创建知识库"/"建一个知识库"/"我想做个文档库"时：
+
+1. 如果用户没指定名称 → 询问用户想给知识库起什么名字
+2. 执行创建：
+
+```bash
+create-knowledge-base --name <用户指定的名称>
+```
+
+3. 自动完成三步：创建存储桶 → 创建 DocSearch 数据集 → 绑定
+4. **记住本次创建的知识库信息**（桶名、地域、数据集名），后续上传/查询时直接使用
+5. 告诉用户：
+
+> ✅ 知识库「<名称>」已创建！
+> - 你可以把文档（PDF、Word、Excel、PPT、TXT 等）上传到这个知识库
+> - 上传后系统会自动建立索引（需要几秒到几分钟）
+> - 之后你可以直接说"从知识库里搜一下XXX"来查询内容
+
+#### 流程 2：上传到知识库
+
+当用户说"上传到知识库"/"把文件放进知识库"/"往知识库里加文档"时：
+
+**判断使用哪个知识库：**
+
+1. 如果本次对话中已创建/使用过知识库 → 直接使用该知识库的桶和地域
+2. 如果不确定 → 执行 `list-datasets` 列出所有数据集，筛选 TemplateId 为 `Official:DocSearch` 的数据集：
+   - 只有 1 个 DocSearch 数据集 → 直接使用它，通过数据集绑定关系推断对应的桶
+   - 有多个 DocSearch 数据集 → 列出让用户选择
+   - 没有 DocSearch 数据集 → 告诉用户"你还没有知识库，要帮你创建一个吗？"
+3. 确定知识库后，执行上传：
+
+```bash
+upload --file <用户的文件路径> --key <文件名> --bucket <知识库桶名> --region <知识库地域>
+```
+
+4. 告诉用户：
+
+> ✅ 文件已上传到知识库「<名称>」，索引建立中，稍后即可检索。
+
+#### 流程 3：查询知识库
+
+当用户说"查询知识库"/"从知识库找XX"/"搜索知识库"/"知识库里有没有关于XX的"/"从知识库里搜一下"时：
+
+**判断使用哪个知识库：**
+
+1. 如果本次对话中已创建/使用过知识库 → 直接使用该知识库的数据集
+2. 如果不确定 → 执行 `list-datasets` 列出所有数据集，筛选 TemplateId 为 `Official:DocSearch` 的数据集：
+   - 只有 1 个 DocSearch 数据集 → 直接使用它
+   - 有多个 DocSearch 数据集 → 列出让用户选择（展示名称和文件数）
+   - 没有 DocSearch 数据集 → 告诉用户"你还没有知识库，要帮你创建一个吗？"
+3. 确定知识库后，执行检索：
+
+```bash
+hybrid-search --text "<用户的查询内容>" --dataset <知识库数据集名> --templates DocSearch
+```
+
+4. **结果呈现**（不要直接输出 JSON，用友好格式）：
+   - 按相关度排序展示检索结果
+   - 每条结果展示：**相关度分数** + **来源文件名** + **匹配内容摘要**
+   - 如果没有匹配结果 → 告诉用户"知识库中没有找到相关内容，你可以上传更多文档试试"
+
+### CI 通用请求（扩展入口）
+
+用于调用尚未封装为独立 action 的 CI 能力：
+
+```bash
+ci-request --method POST --path "image/auditing" --body '<xml>...</xml>'
+ci-request --method GET --path "jobs/<jobId>"
+```
 
 ---
 
 ## 功能对照表
 
-| 功能 | 方式一 cos-mcp | 方式二 Node SDK | 方式三 COSCMD |
-|------|:-:|:-:|:-:|
-| 上传文件 | ✅ | ✅ | ✅ |
-| 上传字符串/Base64 | ✅ | ✅ | ❌ |
-| 通过 URL 上传 | ✅ | ❌ | ❌ |
-| 下载文件 | ✅ | ✅ | ✅ |
-| 列出文件 | ✅ | ✅ | ✅ |
-| 获取签名 URL | ✅ | ✅ | ✅ |
-| 删除文件 | ❌ | ✅ | ✅ |
-| 查看文件信息 | ❌ | ✅ | ✅ |
-| 递归上传/下载目录 | ❌ | ❌ | ✅ |
-| 图片处理（CI） | ✅ | ❌ | ❌ |
-| 智能搜索 | ✅ | ❌ | ❌ |
-| 文档转 PDF | ✅ | ❌ | ❌ |
-| 视频智能封面 | ✅ | ❌ | ❌ |
+| 分类 | action | 说明 |
+|------|--------|------|
+| **存储** | `upload` | 上传文件 |
+| | `put-string` | 上传字符串 |
+| | `download` | 下载文件 |
+| | `list` | 列出文件 |
+| | `sign-url` | 获取签名链接 |
+| | `delete` | 删除文件 |
+| | `delete-multiple` | 批量删除 |
+| | `head` | 文件元信息 |
+| | `copy-object` | 复制对象 |
+| **存储桶管理** | `list-buckets` | 列出所有存储桶 |
+| | `create-bucket` | 创建存储桶 |
+| | `head-bucket` | 检查存储桶是否存在 |
+| | `get-bucket-acl` / `put-bucket-acl` | ACL 权限管理 |
+| | `get-bucket-cors` / `put-bucket-cors` | 跨域配置 |
+| | `get-bucket-tagging` / `put-bucket-tagging` | 标签管理 |
+| | `get-bucket-versioning` | 查询版本控制 |
+| | `get-bucket-lifecycle` | 查询生命周期 |
+| | `get-bucket-location` | 查询存储桶地域 |
+| **图片基础** | `image-info` | 图片元信息 |
+| | `image-thumbnail` | 缩放 |
+| | `image-crop` | 裁剪 |
+| | `image-rotate` | 旋转 |
+| | `image-format` | 格式转换 |
+| | `watermark-font` | 文字水印 |
+| **AI图片** | `assess-quality` | 质量评估 |
+| | `ai-super-resolution` | 超分辨率 |
+| | `ai-pic-matting` | 智能裁剪 |
+| | `ai-qrcode` | 二维码识别 |
+| **内容识别** | `recognize-image` | 图片标签识别 |
+| | `ocr-general` | OCR 文字识别 |
+| **文档处理** | `create-doc-to-pdf-job` | 文档转 PDF |
+| | `describe-doc-job` | 查询文档任务 |
+| | `doc-preview` | 文档预览（转图片） |
+| | `doc-preview-html-url` | 文档在线预览链接 |
+| **媒体处理** | `create-media-smart-cover-job` | 智能封面 |
+| | `describe-media-job` | 查询媒体任务 |
+| | `media-transcode-job` | 视频转码 |
+| | `media-snapshot` | 视频截帧 |
+| | `media-info` | 媒体文件信息 |
+| **内容审核** | `audit-image` | 图片同步审核 |
+| | `audit-image-job` | 图片异步审核 |
+| | `audit-video-job` | 视频审核 |
+| | `audit-audio-job` | 音频审核 |
+| | `audit-text-job` | 文本审核 |
+| | `audit-document-job` | 文档审核 |
+| | `describe-audit-job` | 查询审核结果 |
+| **智能语音** | `speech-recognition-job` | 语音识别 |
+| | `tts-job` | 语音合成 |
+| | `noise-reduction-job` | 音频降噪 |
+| | `voice-separate-job` | 人声分离 |
+| **文件处理** | `file-hash` | 哈希计算 |
+| | `file-compress-job` | 文件压缩 |
+| | `file-uncompress-job` | 文件解压 |
+| | `describe-file-job` | 查询文件任务 |
+| **MetaInsight 管理** | `list-datasets` | 列出数据集 |
+| | `create-dataset` | 创建数据集 |
+| | `describe-dataset` | 查询数据集详情 |
+| | `create-dataset-binding` | 绑定存储桶 |
+| | `describe-dataset-bindings` | 查询绑定关系 |
+| **MetaInsight 索引** | `create-file-meta-index` | 创建文件索引 |
+| | `describe-file-meta-index` | 查询文件索引 |
+| | `delete-file-meta-index` | 删除文件索引 |
+| **MetaInsight 检索** | `image-search-pic` | 以图搜图 |
+| | `image-search-text` | 文本搜图 |
+| | `face-search` | 人脸搜索 |
+| | `dataset-simple-query` | 元数据检索 |
+| | `hybrid-search` | 多模态检索（文档检索） |
+| **通用** | `ci-request` | 调用任意 CI API |
+| **🚀 知识库** | `create-knowledge-base` | "创建知识库" → 一键创建桶+数据集+绑定 |
+| | `upload` → 指向知识库桶 | "上传到知识库" → 上传文档 |
+| | `hybrid-search` → 指向知识库数据集 | "查询知识库" → 语义检索文档内容 |
+| **🚫 禁止** | ~~deleteBucket~~ | **不允许删除/清空存储桶** |
+| **🔐 凭证管理** | `encrypt-env` | 加密 .env → .env.enc 并删除明文 |
+| | `decrypt-env` | 解密 .env.enc → .env 还原明文 |
 
 ## 安全注意事项
 
-### 凭证处理策略 — 两种模式
+### 凭证处理
 
-本技能支持两种凭证模式，**默认不持久化凭证到磁盘**：
+凭证存储有三种模式，安全性递增：
 
-#### 模式 A：默认模式 — ephemeral（推荐 ✅，安全默认行为）
+| 模式 | 存储位置 | 安全性 | 用法 |
+|------|---------|--------|------|
+| **默认模式** | shell session 环境变量 | ⭐⭐⭐ 最安全（关闭终端即消失） | `setup.sh --from-env` |
+| **持久化模式** | 项目 `.env` 文件（权限 600） | ⭐⭐ 便捷但明文 | `setup.sh --from-env --persist` |
+| **加密持久化** | 项目 `.env.enc`（AES-256-GCM） | ⭐⭐⭐ 推荐 | 先 `--persist`，再 `encrypt-env` |
 
-| 特性 | 说明 |
-|------|------|
-| 凭证来源 | STS 临时凭证（推荐）或永久子账号密钥 |
-| 存储方式 | 仅存于当前 shell session 环境变量中 |
-| 磁盘写入 | **不写入任何凭证文件**（这是默认行为，无需额外标志） |
-| 有效期 | STS 临时凭证自带有效期（默认 1800 秒），过期自动失效；永久密钥关闭终端后环境变量消失 |
-| 终端关闭后 | 凭证自动消失 |
-| 可用执行方式 | 方式二（Node.js SDK）、方式三（COSCMD） |
-| 不可用执行方式 | 方式一（mcporter，因需要配置文件） |
+#### 加密存储（推荐）
 
-#### 模式 B：`--persist` 模式（显式持久化 ⚠️，仅当需要方式一 mcporter 时使用）
+持久化后执行 `encrypt-env` 即可加密凭证：
 
-| 特性 | 说明 |
-|------|------|
-| 凭证来源 | 子账号的 SecretId / SecretKey（必须使用子账号最小权限密钥） |
-| 存储方式 | 环境变量 + 持久化到配置文件 |
-| 磁盘写入 | `~/.mcporter/mcporter.json`（权限 600）、`~/.cos.conf`（权限 600，如 coscmd 已安装） |
-| 有效期 | 永久有效，需手动轮换/清理 |
-| 终端关闭后 | 配置文件中的凭证仍存在 |
-| 可用执行方式 | 全部三种方式 |
-| 风险 | 明文凭证持久化在磁盘上，可能因磁盘窃取、备份泄露、恶意软件读取而暴露 |
-| 触发方式 | 需显式指定 `--persist` 标志，不会意外触发 |
-
-### 凭证持久化存储与暴露风险（仅 `--persist` 模式）
-
-> ⚠️ **重要安全提示**：只有显式使用 `--persist` 标志时，setup.sh 才会将 SecretId/SecretKey 持久化写入磁盘文件。**默认行为不写入任何凭证文件**。持久存储会增加凭证暴露风险（如磁盘被窃取、备份泄露、恶意软件读取等）。
->
-> **除非确实需要方式一（mcporter），否则不要使用 `--persist`。**
-
-`--persist` 模式下凭证存储位置：
-
-| 文件 | 写入场景 | 存储内容 | 权限 | 风险 |
-|------|----------|----------|------|------|
-| `~/.mcporter/mcporter.json` | 始终写入 | cos-mcp 服务器配置的 env 字段含 SecretId/SecretKey | 600 | 凭证明文存储在用户主目录 |
-| `~/.cos.conf` | 仅当 coscmd 已预装时 | coscmd 配置含 SecretId/SecretKey | 600 | 凭证明文存储在用户主目录 |
-
-**降低风险的措施**：
-1. **不使用 `--persist`**（默认行为即完全避免凭证持久化）
-2. **优先使用 STS 临时凭证**（凭证自带有效期，过期自动失效）
-3. **使用最小权限子账号密钥**（见下方详细指导），不要使用主账号密钥
-4. **不再使用时及时清理凭证**：`rm -f ~/.mcporter/mcporter.json ~/.cos.conf`
-5. **定期轮换密钥**：在 [腾讯云控制台 > 访问管理 > API密钥管理](https://console.cloud.tencent.com/cam/capi) 定期更换密钥
-
-### 安装包供应链风险
-
-本技能通过 npm 安装以下 registry 包（标准 npm 安装，无任意 URL 下载）：
-- `cos-mcp` — 腾讯云 COS MCP 服务器
-- `cos-nodejs-sdk-v5` — 腾讯云 COS Node.js SDK
-- `mcporter` — MCP 命令行工具
-
-这些包来自 npm 公共 registry，与所有 npm 包一样存在供应链风险。建议在安装前通过 `npm info <package>` 核实包的发布者和版本。
-
-### 最小权限与子账号密钥（强烈推荐）
-
-> ⚠️ **永远不要使用主账号密钥**。主账号密钥拥有账户下所有资源的完全控制权，一旦泄露后果严重。
-
-推荐创建专用子账号并授予仅限 COS 操作的最小权限策略：
-
-1. 进入 [腾讯云控制台 > 访问管理 > 用户列表](https://console.cloud.tencent.com/cam)，创建子用户
-2. 仅授予以下预设策略之一：
-   - `QcloudCOSDataReadOnlyAccess` — 仅读取（如果只需下载/列出）
-   - `QcloudCOSDataFullControl` — COS 数据读写（推荐，如需上传+下载）
-   - 如需数据万象(CI)功能，额外添加 `QcloudCIFullAccess`
-3. 可进一步通过**自定义策略**限制到具体存储桶：
-   ```json
-   {
-     "statement": [{
-       "effect": "allow",
-       "action": ["cos:*"],
-       "resource": ["qcs::cos:<Region>::uid/<APPID>:<BucketName>/*"]
-     }]
-   }
-   ```
-4. 为该子账号创建 API 密钥，并使用该密钥配置本技能
-
-### 临时凭证（STS Token）— 推荐方案
-
-> 🔒 **这是本技能推荐的凭证模式**，默认行为即不持久化凭证到磁盘。
-
-使用腾讯云 [STS 临时凭证](https://cloud.tencent.com/document/product/1312/48195)：
-- 临时凭证有有效期（默认 1800 秒），过期自动失效
-- 默认模式下凭证**不会写入任何磁盘文件**
-- 适合自动化流水线、短期任务、安全要求较高的场景
-- cos-mcp / Node.js SDK / coscmd 均支持通过环境变量传入 STS Token（设置 `TENCENT_COS_TOKEN` 环境变量）
-
-使用方式：
 ```bash
-export TENCENT_COS_SECRET_ID="<TmpSecretId>"
-export TENCENT_COS_SECRET_KEY="<TmpSecretKey>"
-export TENCENT_COS_TOKEN="<SecurityToken>"
-export TENCENT_COS_REGION="<Region>"
-export TENCENT_COS_BUCKET="<Bucket>"
-{baseDir}/scripts/setup.sh --from-env
+# 1. 先持久化
+setup.sh --from-env --persist
+
+# 2. 加密（自动删除明文 .env，生成 .env.enc）
+node scripts/cos_node.mjs encrypt-env
+
+# 3. 之后脚本自动从 .env.enc 解密读取，所有功能正常使用
+node scripts/cos_node.mjs list
 ```
 
-### 通用安全原则
+**加密原理**：
+- 算法：AES-256-GCM（认证加密，防篡改）
+- 密钥派生：`SHA-256(hostname + username + 项目绝对路径)`
+- **加密文件绑定当前机器和用户**，拷贝到其他机器/用户无法解密
+- 如需还原明文：`node scripts/cos_node.mjs decrypt-env`
+- 清理凭证：`rm -f .env .env.enc`
 
-setup.sh 在处理凭证时遵循以下原则（两种模式通用）：
+**其他安全要求**：
+- **永远不要在对话中回显** SecretId/SecretKey
+- 推荐使用 **STS 临时凭证**（自带有效期，过期自动失效）
 
-1. **不修改用户的 shell 配置文件**：凭证不会写入 `~/.zshrc`、`~/.bashrc` 或其他 shell RC 文件
-2. **环境变量仅当前 session 有效**：关闭终端后环境变量失效，需重新 export
-3. **配置文件权限 600**：所有写入的配置文件仅当前用户可读写（仅 `--persist` 模式）
-4. **不执行全局安装**：npm 包安装到项目本地 `node_modules/`，不使用 `npm install -g`
-5. **不自动安装系统包**：不执行 `pip install` 或其他系统级包安装
+### 最小权限与子账号密钥
 
-### 其他安全建议
+> ⚠️ **永远不要使用主账号密钥**。
 
-1. **凭证属于敏感信息**：SecretId / SecretKey 泄露可导致存储桶数据被窃取或篡改
-2. **推荐使用 `--from-env` 模式**设置凭证，避免凭证出现在 shell 历史记录中
-3. **凭证不明文展示**：永远不要在对话中回显用户的 SecretId/SecretKey，引导用户自行通过 setup.sh 或编辑配置文件设置
-4. **mcporter 配置使用 env 方式**：凭证通过环境变量传递给子进程，不暴露在 `ps aux` 进程列表中
-5. **定期轮换密钥**：建议每 90 天更换一次 API 密钥，在 [控制台 > API密钥管理](https://console.cloud.tencent.com/cam/capi) 操作
-6. **凭证清理**：不再使用时执行 `rm -f ~/.mcporter/mcporter.json ~/.cos.conf` 清除持久化凭证
+推荐创建专用子账号并授予最小权限策略：
+- `QcloudCOSDataReadOnlyAccess` — 仅读取
+- `QcloudCOSDataFullControl` — COS 数据读写
+- 如需数据万象功能，额外添加 `QcloudCIFullAccess`
+
+可进一步限制到具体存储桶：
+```json
+{
+  "statement": [{
+    "effect": "allow",
+    "action": ["cos:*"],
+    "resource": ["qcs::cos:<Region>::uid/<APPID>:<BucketName>/*"]
+  }]
+}
+```
+
+### 安装包说明
+
+本技能通过 npm 安装 `cos-nodejs-sdk-v5`（腾讯云 COS 官方 Node.js SDK），安装到项目本地 `node_modules/`，不执行全局安装。
 
 ## 使用规范
 
 1. **首次使用先运行** `{baseDir}/scripts/setup.sh --check-only` 检查环境
-2. **mcporter 调用必须带** `--config ~/.mcporter/mcporter.json` 和 `--output json`（使用 `npx mcporter` 调用）
-3. **所有文件路径**（`objectKey`/`cospath`/`--key`）为存储桶内的相对路径，如 `images/photo.jpg`
-4. **图片处理/智能搜索/文档转换仅方式一可用**，不可用时明确告知用户
-5. **异步任务**（文档转换、视频封面）需通过 `jobId` 轮询结果
-6. **上传后主动获取链接**：上传完成后调用 `getObjectUrl` 或 `sign-url` 返回访问链接
-7. **错误处理**：调用失败时先用 `setup.sh --check-only` 诊断环境问题
-8. **方式二脚本源码**见 `scripts/cos_node.mjs`
-9. **MCP 工具详细参数**见 `references/api_reference.md`
-10. **MCP 配置模板**见 `references/config_template.json`
+2. **所有文件路径**（`--key`）为存储桶内的相对路径，如 `images/photo.jpg`
+3. **异步任务**（文档转换、视频封面）脚本会自动轮询结果，也可通过 `--job-id` 手动查询
+4. **上传后主动获取链接**：上传完成后调用 `sign-url` 返回访问链接
+5. **错误处理**：调用失败时先用 `setup.sh --check-only` 诊断环境问题
+6. **扩展 CI 能力**：通过 `ci-request` action 可调用任意 CI API（内容审核、文件处理等）
+7. **脚本源码**见 `scripts/cos_node.mjs`
+8. **命令参考**见 `references/api_reference.md`
