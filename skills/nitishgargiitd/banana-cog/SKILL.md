@@ -131,3 +131,4 @@ Transform and enhance existing images:
 4. **For character consistency**: Describe the character in detail first, then reference "the same character" in subsequent prompts.
 
 5. **Include composition**: "Rule of thirds", "close-up portrait", "wide establishing shot"
+
