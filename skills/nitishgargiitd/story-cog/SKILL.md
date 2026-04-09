@@ -243,3 +243,4 @@ Deep character work:
 5. **Show, don't tell**: Ask for scenes, not summaries. "Write the moment she realizes..." not "Describe that she was sad."
 
 6. **Iterate**: First drafts are starting points. Use CellCog to revise, expand, and refine.
+
