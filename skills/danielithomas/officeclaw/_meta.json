@@ -3,11 +3,16 @@
   "slug": "officeclaw",
   "displayName": "OfficeClaw",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1772317790901,
-    "commit": "https://github.com/openclaw/skills/commit/a8b7941c205935fa56d371864511e3c32a1fb931"
+    "version": "1.0.4",
+    "publishedAt": 1775286115473,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1772317790901,
+      "commit": "https://github.com/openclaw/skills/commit/a8b7941c205935fa56d371864511e3c32a1fb931"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1771224412945,
