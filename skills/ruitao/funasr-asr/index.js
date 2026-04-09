@@ -12,7 +12,7 @@ const yaml = require('js-yaml');
 
 module.exports = {
   name: 'funasr-asr',
-  description: 'FunASR 本地语音识别 - 阿里巴巴达摩院（小内存模式）',
+  description: 'FunASR 本地语音识别 - 内存优化版 v2（单进程分段，SenseVoiceSmall 默认）',
 
   // 加载配置
   async loadConfig() {
@@ -59,6 +59,7 @@ module.exports = {
     // 加载配置
     const config = await this.loadConfig();
     const modelMode = mode || config.model?.mode || 'small';
+    const segmentSeconds = options.segmentSeconds || 600;
 
     return new Promise((resolve, reject) => {
       const scriptPath = path.join(__dirname, 'scripts', 'transcribe.py');
@@ -67,16 +68,12 @@ module.exports = {
       let cmd = `python3 ${scriptPath} "${audioPath}"`;
       cmd += ` --mode ${modelMode}`;
       cmd += ` --format ${format}`;
+      cmd += ` --segment ${segmentSeconds}`;
 
-      if (verbose) {
-        cmd += ' --verbose';
-      }
+      if (verbose) cmd += ' --verbose';
+      if (noWait) cmd += ' --no-wait';
 
-      if (noWait) {
-        cmd += ' --no-wait';
-      }
-
-      console.log(`[FunASR] 模式: ${modelMode}, 内存: ${modelMode === 'small' ? '~500MB' : '~2GB'}`);
+      console.log(`[FunASR] 模式: ${modelMode}, 分段: ${segmentSeconds}s, 内存: ${modelMode === 'small' ? '~500MB' : '~2GB'}`);
 
       exec(cmd, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
         if (error) {

@@ -1,6 +1,6 @@
 {
   "name": "funasr-asr",
-  "version": "1.2.2",
+  "version": "2.0.0",
   "description": "FunASR 本地语音识别 / Local Speech Recognition - 阿里达摩院开源 ASR，支持多语言（中英日韩粤），小内存模式 / Alibaba DAMO Academy open-source ASR, multilingual (ZH/EN/JA/KO/YUE), small memory mode",
   "main": "index.js",
   "scripts": {
@@ -21,7 +21,7 @@
   "license": "MIT",
   "openclaw": {
     "type": "skill",
-    "version": "1.2.2",
+    "version": "2.0.0",
     "triggers": [
       "语音消息转录",
       "音频转文字",
