@@ -223,3 +223,4 @@ There is a real learning curve to generating videos with CellCog. It takes time,
 5. **Reference trends**: Mention specific formats ("Get ready with me", "POV", "storytime") for platform-native content.
 
 6. **Think mobile-first**: All content will be viewed on phones. Bold text, clear visuals, vertical format.
+
