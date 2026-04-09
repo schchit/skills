@@ -14,7 +14,7 @@ Proven workflows from real production use on a Ghost Pro site.
 }
 ```
 
-The credentials file is read at runtime by the token generation script.
+Stored at: `~/.openclaw/credentials/ghost-admin.json`
 
 **Get your key:** Ghost Admin > Settings > Integrations > Add custom integration > Admin API Key.
 
@@ -91,19 +91,44 @@ PUT /posts/{id}/ with updated_at from fetched post
 
 ## Workflow 4: Upload Image and Set as Feature Image
 
-```bash
-# 1. Upload image
-curl -X POST "{url}/ghost/api/admin/images/upload/" \
-  -H "Authorization: Ghost {token}" \
-  -F "file=@/path/to/image.jpg" \
-  -F "purpose=image"
-# Returns image URL
+**Use Python requests — not curl.** Curl multipart uploads silently fail on macOS zsh with certain file paths. Python requests is the reliable path.
 
-# 2. Set on post
-curl -X PUT "{url}/ghost/api/admin/posts/{id}/?source=html" \
-  -H "Authorization: Ghost {token}" \
-  -H "Content-Type: application/json" \
-  -d '{"posts":[{"feature_image":"https://returned-url","updated_at":"..."}]}'
+```python
+import requests, json, subprocess
+
+creds = json.load(open('/Users/you/.openclaw/credentials/ghost-admin.json'))
+GHOST_URL = creds['url']
+
+def get_token():
+    # Uses the Node.js ghost-token.js script from references/api.md
+    return subprocess.check_output(['node', 'scripts/ghost-token.js']).decode().strip()
+
+headers = {'Authorization': f'Ghost {get_token()}', 'Accept-Version': 'v5.0'}
+
+# 1. Upload image
+with open('/path/to/image.jpg', 'rb') as f:
+    r = requests.post(
+        f'{GHOST_URL}/ghost/api/admin/images/upload/',
+        headers=headers,
+        files={'file': ('image.jpg', f, 'image/jpeg')},
+        data={'purpose': 'image'}
+    )
+image_url = r.json()['images'][0]['url']
+
+# 2. Set as feature image + OG image on a post (fetch updated_at first)
+post = requests.get(f'{GHOST_URL}/ghost/api/admin/posts/{POST_ID}/', headers=headers).json()['posts'][0]
+requests.put(
+    f'{GHOST_URL}/ghost/api/admin/posts/{POST_ID}/',
+    headers=headers,
+    json={"posts": [{
+        "id": POST_ID,
+        "updated_at": post['updated_at'],
+        "feature_image": image_url,
+        "og_image": image_url,
+        "twitter_image": image_url,
+    }]}
+)
+# Replace /posts/ with /pages/ for page resources
 ```
 
 ---
@@ -371,7 +396,7 @@ Ghost pages (not posts) work well as persistent content stores — about pages, 
 Keep a `memory/ghost-queue.md` with pending posts in structured format:
 ```markdown
 ## Queue
-- [ ] Title: "Post Title" | Tags: Bitcoin, Essay | Status: draft | Notes: needs intro
+- [ ] Title: "Post Title" | Tags: Essay, AI | Status: draft | Notes: needs intro
 - [x] Title: "Published Post" | Published: 2026-03-10
 ```
 
@@ -541,18 +566,18 @@ Running more than one Ghost site? Structure credentials and agent workflows to h
 Store at `~/.openclaw/credentials/ghost-sites.json`
 
 **Token generation per site:**
-
-Use the `scripts/ghost-token.js` pattern from `references/api.md`, pointing it at your multi-site credentials file. Read the token and URL as separate steps — never bundle them in a single output:
-
 ```bash
-# Capture token only — no URL in same output
-TOKEN=$(node scripts/ghost-token.js --site primary)
-
-# Read URL separately from credentials
-GHOST_URL=$(node -e "
-const s=JSON.parse(require('fs').readFileSync(process.env.HOME+'/.openclaw/credentials/ghost-sites.json','utf8'));
-process.stdout.write(s.sites['primary'].url);
-")
+node -e "
+const {createHmac}=require('node:crypto');
+const sites=JSON.parse(require('fs').readFileSync(process.env.HOME+'/.openclaw/credentials/ghost-sites.json','utf8'));
+const site=sites.sites['primary']; // change to 'secondary' as needed
+const [id,secret]=site.key.split(':');
+const h=Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT',kid:id})).toString('base64url');
+const n=Math.floor(Date.now()/1000);
+const p=Buffer.from(JSON.stringify({iat:n,exp:n+300,aud:'/admin/'})).toString('base64url');
+const s=createHmac('sha256',Buffer.from(secret,'hex')).update(h+'.'+p).digest('base64url');
+// output(JSON.stringify({token:h+'.'+p+'.'+s,url:site.url}));
+"
 ```
 
 **Cross-post the same content to multiple sites:**
@@ -582,90 +607,440 @@ Keep separate publishing logs per site in memory:
 - Last published: 2026-03-10
 ```
 
+---
+
+## Workflow 14: Site Audit — Find and Fix Content Debt
+
+Use case: You've been publishing for a while and your archive has gaps — missing feature images, empty excerpts, orphaned tags, posts with broken internal links. This workflow pulls your full post list and produces an actionable audit report.
+
+Run this periodically (monthly or before major site pushes). It requires no npm packages — pure Node.js built-ins.
+
+### Step 1: Generate a JWT token
+
+```bash
+TOKEN=$(node -e "
+const {createHmac}=require('node:crypto');
+const creds=JSON.parse(require('fs').readFileSync(process.env.HOME+'/.openclaw/credentials/ghost-admin.json','utf8'));
+const [id,secret]=creds.key.split(':');
+const h=Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT',kid:id})).toString('base64url');
+const n=Math.floor(Date.now()/1000);
+const p=Buffer.from(JSON.stringify({iat:n,exp:n+300,aud:'/admin/'})).toString('base64url');
+const s=createHmac('sha256',Buffer.from(secret,'hex')).update(h+'.'+p).digest('base64url');
+process.stdout.write(h+'.'+p+'.'+s);
+")
+URL=$(node -e "const c=JSON.parse(require('fs').readFileSync(process.env.HOME+'/.openclaw/credentials/ghost-admin.json','utf8'));process.stdout.write(c.url);")
+```
+
+### Step 2: Fetch all published posts
+
+```bash
+node -e "
+const https=require('https');
+const {createHmac}=require('node:crypto');
+const fs=require('fs');
+
+const creds=JSON.parse(fs.readFileSync(process.env.HOME+'/.openclaw/credentials/ghost-admin.json','utf8'));
+const [id,secret]=creds.key.split(':');
+
+function makeToken(){
+  const h=Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT',kid:id})).toString('base64url');
+  const n=Math.floor(Date.now()/1000);
+  const p=Buffer.from(JSON.stringify({iat:n,exp:n+300,aud:'/admin/'})).toString('base64url');
+  const s=createHmac('sha256',Buffer.from(secret,'hex')).update(h+'.'+p).digest('base64url');
+  return h+'.'+p+'.'+s;
+}
+
+async function fetchPage(page){
+  return new Promise((resolve,reject)=>{
+    const url=new URL(creds.url);
+    const path='/ghost/api/admin/posts/?limit=15&page='+page+'&status=published&fields=id,title,slug,published_at,updated_at,feature_image,custom_excerpt,tags,meta_description&include=tags';
+    const options={hostname:url.hostname,path,method:'GET',headers:{'Authorization':'Ghost '+makeToken()}};
+    const req=https.request(options,res=>{
+      let data='';
+      res.on('data',d=>data+=d);
+      res.on('end',()=>resolve(JSON.parse(data)));
+    });
+    req.on('error',reject);
+    req.end();
+  });
+}
+
+(async()=>{
+  let page=1, allPosts=[];
+  while(true){
+    const data=await fetchPage(page);
+    if(!data.posts||data.posts.length===0) break;
+    allPosts=allPosts.concat(data.posts);
+    if(!data.meta?.pagination?.next) break;
+    page++;
+    await new Promise(r=>setTimeout(r,300));
+  }
+
+  const now=Date.now();
+  const ninetyDaysAgo=now-(90*24*60*60*1000);
+
+  const issues={
+    noFeatureImage: [],
+    noExcerpt: [],
+    noMetaDescription: [],
+    noTags: [],
+    notUpdatedIn90Days: [],
+    slugWarnings: [],
+  };
+
+  for(const p of allPosts){
+    if(!p.feature_image) issues.noFeatureImage.push({id:p.id,title:p.title,slug:p.slug});
+    if(!p.custom_excerpt) issues.noExcerpt.push({id:p.id,title:p.title,slug:p.slug});
+    if(!p.meta_description) issues.noMetaDescription.push({id:p.id,title:p.title,slug:p.slug});
+    if(!p.tags||p.tags.length===0) issues.noTags.push({id:p.id,title:p.title,slug:p.slug});
+    if(new Date(p.updated_at).getTime()<ninetyDaysAgo) issues.notUpdatedIn90Days.push({id:p.id,title:p.title,slug:p.slug,updated_at:p.updated_at});
+    // Slug warnings: numeric-only, very short, or contains underscores
+    if(/^\d+$/.test(p.slug)||p.slug.length<4||p.slug.includes('_'))
+      issues.slugWarnings.push({id:p.id,title:p.title,slug:p.slug});
+  }
+
+  // output('=== GHOST SITE AUDIT ===');
+  // output('Total published posts:', allPosts.length);
+  // output('Run at:', new Date().toISOString());
+  // output('');
+  // output('--- MISSING FEATURE IMAGES ('+issues.noFeatureImage.length+') ---');
+  issues.noFeatureImage.forEach(p=>// output(' •',p.title,'→',p.slug));
+  // output('');
+  // output('--- MISSING EXCERPTS ('+issues.noExcerpt.length+') ---');
+  issues.noExcerpt.forEach(p=>// output(' •',p.title,'→',p.slug));
+  // output('');
+  // output('--- MISSING META DESCRIPTIONS ('+issues.noMetaDescription.length+') ---');
+  issues.noMetaDescription.forEach(p=>// output(' •',p.title,'→',p.slug));
+  // output('');
+  // output('--- NO TAGS ('+issues.noTags.length+') ---');
+  issues.noTags.forEach(p=>// output(' •',p.title,'→',p.slug));
+  // output('');
+  // output('--- NOT UPDATED IN 90+ DAYS ('+issues.notUpdatedIn90Days.length+') ---');
+  issues.notUpdatedIn90Days.forEach(p=>// output(' •',p.title,'| last updated:',p.updated_at));
+  // output('');
+  // output('--- SLUG WARNINGS ('+issues.slugWarnings.length+') ---');
+  issues.slugWarnings.forEach(p=>// output(' •',p.title,'→',p.slug));
+  // output('');
+  // output('=== END AUDIT ===');
+})();
+" 2>&1
+```
+
+### What the audit checks
+
+| Check | What it flags | Why it matters |
+|---|---|---|
+| Missing feature image | Posts with no `feature_image` | Feature images are required for social sharing previews and feed cards. Posts without them look broken on Twitter/LinkedIn shares. |
+| Missing excerpt | Posts with no `custom_excerpt` | Excerpts drive Ghost's client-side search and appear in feed cards. Missing excerpts = invisible in search, weak social previews. |
+| Missing meta description | Posts with no `meta_description` | Google uses this in search results. Empty = Google writes its own, usually badly. |
+| No tags | Posts with zero tags | Tags are Ghost's primary navigation and filtering mechanism. Untagged posts are orphaned — readers can't find them via tag pages. |
+| Not updated in 90+ days | Posts with a stale `updated_at` | Useful for identifying candidates for a content refresh pass. Not always an issue — but flags the oldest untouched content. |
+| Slug warnings | Very short slugs, numeric-only, underscores | Short or auto-generated slugs hurt SEO. Numeric-only (`/123/`) are meaningless to search engines. Underscores break URL parsing in some clients. |
+
+### Step 3: Fix issues via batch update
+
+After reviewing the audit output, use Workflow 3 (Batch Update) to fix the flagged posts. Priority order:
+
+1. **Missing feature images** — highest impact on social sharing and feed aesthetics
+2. **Missing excerpts** — fixes search visibility immediately
+3. **Missing meta descriptions** — SEO fix, worth doing in bulk
+4. **No tags** — assign at least one primary tag per post
+5. **Slug warnings** — fix carefully; changing slugs breaks existing links (add redirects first via Ghost Admin → Labs)
+
+### Pitfalls
+
+- The audit script regenerates a JWT before each paginated page fetch — tokens expire in 5 minutes and large sites (100+ posts) take time to fetch.
+- `not updated in 90 days` does NOT mean the content is bad — a timeless essay published two years ago that still ranks well doesn't need touching. Use judgment.
+- Slug fixes require adding a redirect in Ghost Admin → Settings → Labs → Redirects (upload a JSON file) before changing the slug, or you'll create dead links.
 
 ---
 
-## Workflow 14: Native Audio Card Embedding
+## Workflow 15: Content Performance Intelligence
 
-Use case: Add a playable audio file to any Ghost post — audiobook chapters, podcast episodes, spoken-word articles. Ghost renders this as a native audio card with a built-in player.
+Use case: You've been publishing for months. You want to know what's actually working — which posts drive email engagement, which content never reached your subscribers, and where your pages have health gaps.
 
-This is a two-step process: upload the audio file to Ghost's media store, then embed the returned URL as a `kg-audio-card` HTML block.
+Ghost's Admin API exposes email engagement data (opens, clicks) per post, member counts by tier, post and page metadata. This workflow assembles all of it into a three-section report.
 
-**Step 1: Upload the audio file**
+**What this covers:**
+- Audience snapshot: active subscribers, free vs paid split
+- Section 1 — Email performance: open rate, click rate, CTO, divergence analysis
+- Section 2 — Web-only posts: content published but never emailed (amplification candidates + health snapshot)
+- Section 3 — Pages: evergreen content health (AI consultant, about, landing pages etc.)
 
-Ghost's `/images/upload/` endpoint accepts audio files (MP3, M4A, OGG, WAV). The `purpose=image` field is correct even for audio — that's the only accepted value.
+**What Ghost's API cannot give you** (the ceiling):
+- Per-post or per-page view counts — dashboard-only, backed by Tinybird, no API access
+- Traffic sources / referrers — not exposed
+- Free → paid conversion per post — not exposed
+- Time-on-page — not exposed
+
+For per-post view counts, wire a third-party analytics tool alongside Ghost:
+- **Plausible** (`plausible.io/api/v1/stats/breakdown?property=event:page`) — simple, privacy-first, clean REST API
+- **Fathom** (`usefathom.com/api`) — similar to Plausible
+- **GA4** (`analyticsdata.googleapis.com`) — more complex OAuth but most widely used
+
+All three return per-URL view counts you can join to Ghost post slugs.
+
+### The script
+
+Save as `ghost-performance.js` and run with `node ghost-performance.js`.
+
+```js
+const https = require('https');
+const { createHmac } = require('node:crypto');
+const fs = require('fs');
+
+const creds = JSON.parse(fs.readFileSync(process.env.HOME + '/.openclaw/credentials/ghost-admin.json', 'utf8'));
+const [id, secret] = creds.key.split(':');
+
+function makeToken() {
+  const h = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT', kid: id })).toString('base64url');
+  const n = Math.floor(Date.now() / 1000);
+  const p = Buffer.from(JSON.stringify({ iat: n, exp: n + 300, aud: '/admin/' })).toString('base64url');
+  const s = createHmac('sha256', Buffer.from(secret, 'hex')).update(h + '.' + p).digest('base64url');
+  return h + '.' + p + '.' + s;
+}
+
+function apiGet(path) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(creds.url);
+    const options = {
+      hostname: url.hostname,
+      path,
+      method: 'GET',
+      headers: { 'Authorization': 'Ghost ' + makeToken(), 'Accept-Version': 'v5.0' }
+    };
+    const req = https.request(options, res => {
+      let data = '';
+      res.on('data', d => data += d);
+      res.on('end', () => resolve(JSON.parse(data)));
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+async function fetchAll(endpoint, include = '') {
+  let page = 1, all = [];
+  const type = endpoint.includes('/pages/') ? 'pages' : 'posts';
+  while (true) {
+    const inc = include ? '&include=' + include : '';
+    const data = await apiGet(`/ghost/api/admin/${endpoint}?limit=15&page=${page}&status=published${inc}`);
+    if (!data[type] || data[type].length === 0) break;
+    all = all.concat(data[type]);
+    if (!data.meta?.pagination?.next) break;
+    page++;
+    await new Promise(r => setTimeout(r, 300));
+  }
+  return all;
+}
+
+function healthFlags(item) {
+  const flags = [];
+  if (!item.feature_image) flags.push('no feature image');
+  if (!item.custom_excerpt) flags.push('no excerpt');
+  if (!item.meta_description) flags.push('no meta description');
+  if (!item.tags || item.tags.length === 0) flags.push('no tags');
+  return flags;
+}
+
+(async () => {
+  // --- Audience snapshot ---
+  const allMembers = await apiGet('/ghost/api/admin/members/?limit=1');
+  const activeMembers = await apiGet('/ghost/api/admin/members/?limit=1&filter=subscribed:true');
+  const freeMembers = await apiGet('/ghost/api/admin/members/?limit=1&filter=subscribed:true,status:free');
+  const paidMembers = await apiGet('/ghost/api/admin/members/?limit=1&filter=subscribed:true,status:paid');
+  const totalSubs = activeMembers?.meta?.pagination?.total ?? '?';
+  const freeSubs = freeMembers?.meta?.pagination?.total ?? '?';
+  const paidSubs = paidMembers?.meta?.pagination?.total ?? '?';
+
+  // --- Posts ---
+  const allPosts = await fetchAll('posts/', 'email,tags');
+  const emailed = allPosts.filter(p => p.email && p.email.email_count > 0);
+  const webOnly = allPosts.filter(p => !p.email || p.email.email_count === 0);
+
+  // --- Pages ---
+  const allPages = await fetchAll('pages/', 'tags');
+
+  // --- Email performance ---
+  const withRates = emailed.map(p => {
+    const sent = p.email.email_count || 0;
+    const opened = p.email.opened_count || 0;
+    const clicked = p.email.clicked_count || 0;
+    const openRate = sent > 0 ? ((opened / sent) * 100).toFixed(1) : null;
+    const clickRate = sent > 0 ? ((clicked / sent) * 100).toFixed(1) : null;
+    const cto = opened > 0 ? ((clicked / opened) * 100).toFixed(1) : null;
+    return { ...p, sent, opened, clicked, openRate, clickRate, cto };
+  }).filter(p => p.openRate !== null);
+
+  const byOpen = [...withRates].sort((a, b) => parseFloat(b.openRate) - parseFloat(a.openRate));
+  const byClick = [...withRates].sort((a, b) => parseFloat(b.clickRate) - parseFloat(a.clickRate));
+  const divergent = withRates
+    .filter(p => parseFloat(p.openRate) > 40 && parseFloat(p.clickRate) < 3)
+    .sort((a, b) => parseFloat(b.openRate) - parseFloat(a.openRate));
+
+  const fmtEmail = p =>
+    `  • ${p.title}\n    Sent: ${p.sent} | Open: ${p.openRate}% | Click: ${p.clickRate}% | CTO: ${p.cto}% | Segment: ${p.email_recipient_filter || 'all'}`;
+
+  // --- Output ---
+  // output('=== GHOST CONTENT PERFORMANCE REPORT ===');
+  // output('Run at:', new Date().toISOString());
+  // output('');
+  // output('AUDIENCE');
+  // output(`  Active subscribers: ${totalSubs} (free: ${freeSubs} / paid: ${paidSubs})`);
+  // output(`  Total published posts: ${allPosts.length} | Emailed: ${emailed.length} | Web-only: ${webOnly.length}`);
+  // output(`  Total published pages: ${allPages.length}`);
+  // output('');
+
+  // output('--- SECTION 1: EMAIL PERFORMANCE ---');
+  // output('');
+  // output('Top 5 by open rate:');
+  byOpen.slice(0, 5).forEach(p => // output(fmtEmail(p)));
+  // output('');
+  // output('Top 5 by click rate:');
+  byClick.slice(0, 5).forEach(p => // output(fmtEmail(p)));
+  // output('');
+  // output('High open / low click — weak CTA candidates (opens >40%, clicks <3%):');
+  if (divergent.length === 0) // output('  None — CTAs are converting well.');
+  divergent.slice(0, 5).forEach(p => // output(fmtEmail(p)));
+  // output('');
+
+  // output('--- SECTION 2: WEB-ONLY POSTS (never emailed) ---');
+  // output('Note: per-post view counts require a third-party analytics tool (Plausible, Fathom, GA4).');
+  // output('');
+  if (webOnly.length === 0) {
+    // output('  All published posts have been emailed.');
+  } else {
+    webOnly.forEach(p => {
+      const flags = healthFlags(p);
+      const flagStr = flags.length > 0 ? ' ⚠ ' + flags.join(', ') : ' ✓';
+      // output(`  • ${p.title}`);
+      // output(`    Published: ${p.published_at?.slice(0, 10)} | Slug: /${p.slug}/${flagStr}`);
+    });
+  }
+  // output('');
+
+  // output('--- SECTION 3: PAGES ---');
+  // output('Note: page view counts require a third-party analytics tool (Plausible, Fathom, GA4).');
+  // output('');
+  if (allPages.length === 0) {
+    // output('  No published pages found.');
+  } else {
+    allPages.forEach(p => {
+      const flags = healthFlags(p);
+      const flagStr = flags.length > 0 ? ' ⚠ ' + flags.join(', ') : ' ✓';
+      // output(`  • ${p.title}`);
+      // output(`    Updated: ${p.updated_at?.slice(0, 10)} | Slug: /${p.slug}/${flagStr}`);
+    });
+  }
+  // output('');
+  // output('=== END REPORT ===');
+})();
+```
+
+### Reading the report
+
+**Open rate benchmarks:**
+| Rate | Signal |
+|---|---|
+| Under 20% | Below average — subject line or sender reputation issue |
+| 20–40% | Solid — typical for engaged lists |
+| 40–60% | Strong — highly engaged audience |
+| 60%+ | Exceptional — or MPP inflation (see pitfalls) |
+
+**Click rate benchmarks:**
+| Rate | Signal |
+|---|---|
+| Under 1% | Low — CTA buried or missing |
+| 1–3% | Average |
+| 3–5% | Strong |
+| 5%+ | Exceptional |
+
+**Click-to-open (CTO)** — the most honest signal. Of everyone who opened, how many clicked? High CTO means the content delivered on the subject line's promise. Low CTO means a curiosity open, not a real read.
+
+**High open / low click (divergent posts):** Hidden wins. The subject line worked — people opened. But nothing inside drove a click. Add a CTA, a relevant link, or a "continue reading" anchor. A small edit can unlock latent engagement from an already-warm audience.
+
+**Web-only posts:** Invisible to your subscriber list. Ghost doesn't allow retroactive API email sends — duplicate the post and publish fresh, or use Ghost Admin to manually resend if that option is available.
+
+**Pages:** Evergreen content (about, landing pages, tools). Health flags catch SEO gaps — missing meta descriptions and excerpts on pages hurt search visibility just as much as on posts.
+
+### Saving the report
 
 ```bash
-curl -s -X POST "{url}/ghost/api/admin/images/upload/" \
-  -H "Authorization: Ghost {token}" \
-  -F "file=@/path/to/audio.mp3" \
-  -F "purpose=image"
+node ghost-performance.js > ghost-performance-$(date +%Y-%m-%d).md
 ```
 
-Returns:
-```json
-{ "images": [{ "url": "https://your-site.ghost.io/content/media/2026/03/audio-file.mp3" }] }
-```
+Run monthly. Compare rates over time to spot list fatigue, content drift, or CTA decay.
 
-**Step 2: Embed as a Ghost audio card**
+### Pitfalls
 
-Use the `kg-audio-card` card format in your post HTML. Ghost renders this as its native player — play/pause, seek bar, duration.
-
-```html
-<div class="kg-card kg-audio-card">
-  <audio src="AUDIO_URL" preload="metadata"></audio>
-  <div class="kg-audio-card-container">
-    <div class="kg-audio-title">YOUR AUDIO TITLE</div>
-    <div class="kg-audio-player-container">
-      <button class="kg-audio-play-icon" aria-label="Play audio">
-        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-      </button>
-      <div class="kg-audio-current-time">0:00</div>
-      <div class="kg-audio-time"> / <span class="kg-audio-duration"></span></div>
-      <input type="range" class="kg-audio-seek-bar" value="0" max="100">
-      <button class="kg-audio-playback-rate">1&#215;</button>
-      <button class="kg-audio-unmute-icon" aria-label="Mute">
-        <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
-      </button>
-      <input type="range" class="kg-audio-volume-bar" value="100" max="100">
-    </div>
-  </div>
-</div>
-```
-
-Replace `AUDIO_URL` with the URL returned in Step 1, and `YOUR AUDIO TITLE` with the display title for the player.
-
-**Step 3: Include in the post HTML**
-
-Add the audio card anywhere in your post's `html` field — top of article, after intro paragraph, wherever it belongs:
-
-```bash
-# Create or update a post with audio embedded
-curl -s -X PUT "{url}/ghost/api/admin/posts/{post_id}/?source=html" \
-  -H "Authorization: Ghost {token}" \
-  -H "Content-Type: application/json" \
-  -d "{\"posts\":[{\"html\":\"<p>Listen to this article:</p>\n\nAUDIO_CARD_HTML\n\n<p>Article body continues here.</p>\",\"updated_at\":\"FETCHED_UPDATED_AT\"}]}"
-```
-
-**Email behavior:** The native Ghost audio card is stripped in email delivery — subscribers see plain text where the player was. If audio is essential to your article, add a fallback line before the card: `<p><em>(Audio version below — web readers only.)</em></p>`
-
-**Format notes:**
-- MP3 is the most broadly supported format — use it by default
-- Ghost does not transcode uploads — upload in the format you want served
-- File size: Ghost Pro has a 100MB upload limit
-- The audio card title field is display-only; it doesn't affect SEO or post metadata
+- `email.opened_count` and `email.clicked_count` only return data with `&include=email` — omitting it returns null even for emailed posts.
+- **Apple Mail Privacy Protection (MPP)** pre-loads email pixels on iOS/macOS, inflating open rates. Open rates above 70% on small lists are often MPP artifacts. Click rate and CTO are more reliable signals.
+- The `email_recipient_filter` field shows segment (`all`, `free`, `paid`) — compare like-for-like when benchmarking rates across posts.
+- Token expires in 5 minutes — the script regenerates before every paginated fetch so long archives won't expire mid-run.
+- Pages use the `/pages/` endpoint, not `/posts/` — they won't appear in post queries even though they share most fields.
 
 
 ---
 
-## Theme Management
+## Workflow 16: Tag Management
 
-Ghost theme upload and activation requires owner-level access. Use Ghost Admin → Design → Upload theme to deploy a custom theme zip file. Activation follows immediately in the same UI.
+Full tag CRUD via the Ghost Admin API. Requires an **owner-level token** for write operations — integration tokens return `403` on create/update/delete. List is readable with any token.
 
-For Ghost Pro instances on newer versions, the Admin API may accept theme upload via standard JWT — test with:
-```bash
-curl -s -X POST "{url}/ghost/api/admin/themes/upload/" \
-  -H "Authorization: Ghost {token}" \
-  -F "file=@/path/to/theme.zip"
+```python
+import requests, json, subprocess
+
+creds     = json.load(open('/Users/you/.openclaw/credentials/ghost-admin.json'))
+GHOST_URL = creds['url']
+
+def get_token():
+    # Uses the Node.js ghost-token.js script from references/api.md
+    return subprocess.check_output(['node', 'scripts/ghost-token.js']).decode().strip()
+
+headers = {'Authorization': f'Ghost {get_token()}', 'Accept-Version': 'v5.0'}
+
+def safe_check(r, action):
+    if r.status_code == 403:
+        print(f"[tag-mgmt] {action} requires owner-level token — manage tags manually in Ghost Admin or use an owner token.")
+        return False
+    return True
+
+# List all tags
+tags = requests.get(f'{GHOST_URL}/ghost/api/admin/tags/?limit=all', headers=headers).json().get('tags', [])
+for t in tags:
+    print(t['id'], t['name'], t['slug'])
+
+# Create a tag
+r = requests.post(f'{GHOST_URL}/ghost/api/admin/tags/', headers=headers,
+    json={"tags": [{"name": "Your Tag", "slug": "your-tag"}]})
+if safe_check(r, "Create"):
+    print(r.json()['tags'][0]['id'])
+
+# Update a tag
+TAG_ID = "tag-id-from-list"
+r = requests.put(f'{GHOST_URL}/ghost/api/admin/tags/{TAG_ID}/', headers=headers,
+    json={"tags": [{"id": TAG_ID, "name": "Updated Name", "slug": "updated-slug"}]})
+safe_check(r, "Update")
+
+# Delete a tag
+r = requests.delete(f'{GHOST_URL}/ghost/api/admin/tags/{TAG_ID}/', headers=headers)
+if safe_check(r, "Delete") and r.status_code == 204:
+    print("Deleted.")
+
+# Bulk assign a tag to all posts missing it
+posts = requests.get(f'{GHOST_URL}/ghost/api/admin/posts/?limit=all&include=tags', headers=headers).json()['posts']
+for post in posts:
+    existing = [{"id": t["id"]} for t in post.get("tags", [])]
+    if not any(t["id"] == TAG_ID for t in existing):
+        existing.append({"id": TAG_ID})
+        requests.put(
+            f'{GHOST_URL}/ghost/api/admin/posts/{post["id"]}/',
+            headers=headers,
+            json={"posts": [{"id": post["id"], "updated_at": post["updated_at"], "tags": existing}]}
+        )
+        print(f"Tagged: {post['title']}")
 ```
-If it returns `200` — JWT works. If `403` — use Ghost Admin directly.
+
+### Pitfalls
+- `GET /tags/` works with integration tokens. All write operations require owner-level credentials.
+- Tag slugs must be unique — `POST` returns `422` if a slug already exists.
+- Deleting a tag removes it from all posts — it does not delete the posts.

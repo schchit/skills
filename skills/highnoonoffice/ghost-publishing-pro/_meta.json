@@ -3,11 +3,16 @@
   "slug": "ghost-publishing-pro",
   "displayName": "Ghost Publishing Pro",
   "latest": {
-    "version": "1.4.2",
-    "publishedAt": 1774382207889,
-    "commit": "https://github.com/openclaw/skills/commit/0b155d03a3e44cafd2fac0c369a80c7b86bac36f"
+    "version": "1.7.7",
+    "publishedAt": 1775743555457,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.4.2",
+      "publishedAt": 1774382207889,
+      "commit": "https://github.com/openclaw/skills/commit/0b155d03a3e44cafd2fac0c369a80c7b86bac36f"
+    },
     {
       "version": "1.2.5",
       "publishedAt": 1774056444077,
