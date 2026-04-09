@@ -3,11 +3,16 @@
   "slug": "ve-exchange-rates",
   "displayName": "ve-exchange-rates",
   "latest": {
-    "version": "1.1.1",
-    "publishedAt": 1773409131278,
-    "commit": "https://github.com/openclaw/skills/commit/5bc1fe8ac73e09413d1804a491d3181cb17a1d0b"
+    "version": "1.0.5",
+    "publishedAt": 1775319172573,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.1.1",
+      "publishedAt": 1773409131278,
+      "commit": "https://github.com/openclaw/skills/commit/5bc1fe8ac73e09413d1804a491d3181cb17a1d0b"
+    },
     {
       "version": "1.1.0",
       "publishedAt": 1772295874455,
