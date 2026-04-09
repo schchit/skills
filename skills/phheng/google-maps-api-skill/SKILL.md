@@ -1,6 +1,7 @@
 ---
 name: google-maps-api-skill
-description: This skill helps users automatically scrape business data from Google Maps using the BrowserAct Google Maps API. Agent should proactively trigger this skill for needs like: 1. Find restaurants in a specific city; 2. Extract contact info of dental clinics; 3. Research local competitors; 4. Collect addresses of coffee shops; 5. Generate lead lists for specific industries; 6. Monitor business ratings and reviews; 7. Get opening hours of local services; 8. Find specialized stores (e.g., Turkish-style restaurants); 9. Analyze business categories in a region; 10. Extract website links from local businesses; 11. Gather phone numbers for sales outreach; 12. Map out service providers in a specific country.
+description: "This skill helps users automatically scrape business data from Google Maps using the BrowserAct Google Maps API. Agent should proactively trigger this skill for needs like finding restaurants in a specific city, extracting contact info of dental clinics, researching local competitors, collecting addresses of coffee shops, generating lead lists for specific industries, monitoring business ratings and reviews, getting opening hours of local services, finding specialized stores (e.g., Turkish-style restaurants), analyzing business categories in a region, extracting website links from local businesses, gathering phone numbers for sales outreach, mapping out service providers in a specific country."
+metadata: {"clawdbot":{"emoji":"🌐","requires":{"bins":["python"],"env":["BROWSERACT_API_KEY"]}}}
 ---
 
 # Google Maps Automation Scraper Skill
@@ -9,16 +10,16 @@ description: This skill helps users automatically scrape business data from Goog
 This skill leverages BrowserAct's Google Maps API template to provide a one-stop business data collection service. It extracts structured details directly from Google Maps, including business names, categories, contact info, ratings, and more. Simply provide the search keywords and location bias to get clean, actionable data.
 
 ## ✨ Features
-1. **No Hallucinations, Stable & Precise Data Extraction**: Preset workflows avoid AI-generated hallucinations.
-2. **No CAPTCHA Issues**: Built-in mechanisms bypass reCAPTCHA and other verification challenges.
-3. **No IP Access Restrictions or Geo-fencing**: Overcomes regional IP limits for global access.
-4. **Faster Execution**: Tasks run more quickly than pure AI-driven browser automation.
-5. **High Cost-Effectiveness**: Significantly reduces data acquisition costs compared to high-token AI solutions.
+1. **No Hallucinations**: Pre-set workflows avoid AI generative hallucinations, ensuring stable and precise data extraction.
+2. **No Captcha Issues**: No need to handle reCAPTCHA or other verification challenges.
+3. **No IP Restrictions**: No need to handle regional IP restrictions or geofencing.
+4. **Faster Execution**: Tasks execute faster compared to pure AI-driven browser automation solutions.
+5. **Cost-Effective**: Significantly lowers data acquisition costs compared to high-token-consuming AI solutions.
 
 ## 🔑 API Key Setup
-Before running, ensure the `BROWSERACT_API_KEY` environment variable is set. If missing, do not proceed; request the user to provide it.
+Before running, check the `BROWSERACT_API_KEY` environment variable. If not set, do not take other measures; ask and wait for the user to provide it.
 **Agent must inform the user**:
-> "Since you haven't configured the BrowserAct API Key, please go to the [BrowserAct Console](https://www.browseract.com/reception/integrations) to get your Key and provide it in this chat."
+> "Since you haven't configured the BrowserAct API Key, please visit the [BrowserAct Console](https://www.browseract.com/reception/integrations) to get your Key."
 
 ## 🛠️ Input Parameters
 Configure the following parameters based on user requirements:
@@ -38,7 +39,7 @@ Configure the following parameters based on user requirements:
    - **Description**: Specifies the country or region bias (e.g., us, gb, ca).
    - **Default**: `us`
 
-## 🚀 How to Call
+## 🚀 Usage
 Execute the following script to get results in one command:
 
 ```bash
@@ -47,13 +48,13 @@ python -u ./scripts/google_maps_api.py "keywords" "language" "country"
 ```
 
 ### ⏳ Execution Monitoring
-As this involves automated browser operations, it may take several minutes. The script will output timestamped status logs (e.g., `[14:30:05] Task Status: running`).
-**Agent Note**:
-- Monitor the terminal output while waiting.
-- New status logs mean the task is running; do not assume it is hung.
-- Retry only if the status stops updating or the script exits without results.
+Since this task involves automated browser operations, it may take some time (several minutes). The script will **continuously output status logs with timestamps** (e.g., `[14:30:05] Task Status: running`).
+**Agent Instructions**:
+- While waiting for the script result, keep monitoring the terminal output.
+- As long as the terminal is outputting new status logs, the task is running normally; do not mistake it for a deadlock or unresponsiveness.
+- Only if the status remains unchanged for a long time or the script stops outputting without returning a result should you consider triggering the retry mechanism.
 
-## 📊 Output Data
+## 📊 Data Output
 Upon success, the script parses and prints the following fields from the API:
 - `Title Name`: Official business name
 - `Category_primary`: Main business category
@@ -65,14 +66,14 @@ Upon success, the script parses and prints the following fields from the API:
 - `business_status`: Operational status (e.g., operational)
 
 ## ⚠️ Error Handling & Retry
-If an error occurs (network issues or task failure), follow this logic:
+If an error occurs during script execution (e.g., network fluctuations or task failure), the Agent should follow this logic:
 
-1. **Check Output**:
-   - If it contains `"Invalid authorization"`, the API Key is invalid. **Do not retry**; ask the user for a correct Key.
-   - Otherwise, if it starts with `Error:` or returns no results, **automatically retry once**.
+1. **Check Output Content**:
+   - If the output **contains** `"Invalid authorization"`, it means the API Key is invalid or expired. **Do not retry**; guide the user to re-check and provide the correct API Key.
+   - If the output **does not contain** `"Invalid authorization"` but the task failed (e.g., output starts with `Error:` or returns empty results), the Agent should **automatically try to re-execute the script once**.
 
 2. **Retry Limit**:
-   - Only one automatic retry. If it fails again, report the specific error to the user.
+   - Automatic retry is limited to **one time**. If the second attempt fails, stop retrying and report the specific error information to the user.
 
 ## 🌟 Typical Use Cases
 1. **Lead Generation**: Find "SaaS companies" in "us" for sales outreach.
