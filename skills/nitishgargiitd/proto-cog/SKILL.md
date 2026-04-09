@@ -3,8 +3,10 @@ name: proto-cog
 description: "Build prototypes you can click. UI/UX wireframes, app mockups, and fully interactive HTML prototypes — from napkin sketch to clickable experience in one prompt. Landing pages, mobile app screens, SaaS dashboards, design systems, and user flows — prototyped and playable, not just pretty."
 metadata:
   openclaw:
-    emoji: "✏️"
+    emoji: "📐"
+    os: [darwin, linux, windows]
 author: CellCog
+homepage: https://cellcog.ai
 dependencies: [cellcog]
 ---
 
@@ -26,17 +28,26 @@ clawhub install cellcog
 
 **Read the cellcog skill first** for SDK setup. This skill shows you what's possible.
 
-**Quick pattern (v1.0+):**
+**OpenClaw agents (fire-and-forget — recommended for long tasks):**
 ```python
-# Fire-and-forget - returns immediately
 result = client.create_chat(
-    prompt="[your prototype request]",
-    notify_session_key="agent:main:main",
-    task_label="prototype-task",
-    chat_mode="agent"  # Agent mode for most prototypes
+    prompt="[your task prompt]",
+    notify_session_key="agent:main:main",  # OpenClaw only
+    task_label="my-task",
+    chat_mode="agent",  # See cellcog skill for all modes
 )
-# Daemon notifies you when complete - do NOT poll
 ```
+
+**All other agents (blocks until done):**
+```python
+result = client.create_chat(
+    prompt="[your task prompt]",
+    task_label="my-task",
+    chat_mode="agent",
+)
+```
+
+See the **cellcog** mothership skill for complete SDK API reference — delivery modes, timeouts, file handling, and more.
 
 ---
 
@@ -256,3 +267,4 @@ CellCog prototypes can include:
 5. **State the purpose**: "For user testing", "For investor demo", "For developer handoff" — context shapes fidelity level.
 
 6. **Think in flows, not pages**: "Signup → Onboarding → Dashboard" is more useful than 3 disconnected page requests.
+

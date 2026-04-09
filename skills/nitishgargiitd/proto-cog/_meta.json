@@ -1,13 +1,18 @@
 {
   "owner": "nitishgargiitd",
   "slug": "proto-cog",
-  "displayName": "proto-cog",
+  "displayName": "Proto Cog",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1770774382138,
-    "commit": "https://github.com/openclaw/skills/commit/c2d6713ef356d9fdaa8087e21982b29eebeed490"
+    "version": "1.0.7",
+    "publishedAt": 1775627916179,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1770774382138,
+      "commit": "https://github.com/openclaw/skills/commit/c2d6713ef356d9fdaa8087e21982b29eebeed490"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1770511433954,
