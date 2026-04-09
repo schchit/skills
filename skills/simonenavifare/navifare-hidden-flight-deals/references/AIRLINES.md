@@ -49,11 +49,10 @@ Quick reference for common airline codes used in flight searches.
 - **QF** - Qantas
 - **NZ** - Air New Zealand
 - **AI** - Air India
-- **9W** - Jet Airways
 
 ### Latin America
 - **LA** - LATAM Airlines
-- **AM** - Aeroméxico
+- **AM** - Aeromexico
 - **CM** - Copa Airlines
 - **AV** - Avianca
 
@@ -101,7 +100,6 @@ Quick reference for common airline codes used in flight searches.
 - **G9** - Air Arabia
 - **XQ** - SunExpress
 - **WY** - Oman Air
-- **FP** - Mango (South Africa)
 
 ## Alliance Members
 
@@ -118,11 +116,9 @@ Members include: AA, BA, IB, AY, QR, JL, QF, CX, LA, AS, WY
 
 ### Germany
 - **DE** - Condor
-- **4U** - Germanwings (now Eurowings)
 - **EW** - Eurowings
 
 ### UK & Ireland
-- **BE** - Flybe (defunct)
 - **LS** - Jet2.com
 - **FR** - Ryanair
 - **EI** - Aer Lingus
@@ -145,7 +141,6 @@ Members include: AA, BA, IB, AY, QR, JL, QF, CX, LA, AS, WY
 - **UX** - Air Europa
 - **NT** - Binter Canarias
 - **AZ** - ITA Airways
-- **AP** - AlbaStar
 - **EN** - Air Dolomiti
 
 ## Flight Number Format Examples
@@ -154,18 +149,18 @@ Flight numbers consist of:
 - **2-letter airline code** + **1-4 digit number**
 
 Examples:
-- BA553 → British Airways flight 553
-- LH400 → Lufthansa flight 400
-- FR1234 → Ryanair flight 1234
-- U2 3811 → easyJet flight 3811 (note space)
+- BA553 -> British Airways flight 553
+- LH400 -> Lufthansa flight 400
+- FR1234 -> Ryanair flight 1234
+- U2 3811 -> easyJet flight 3811 (note space)
 
 ### Extraction Rule
 When extracting flight numbers for Navifare:
 - **Extract ONLY the numeric part**
-- BA553 → "553"
-- LH400 → "400"
-- U2 3811 → "3811"
-- FR1234 → "1234"
+- BA553 -> "553"
+- LH400 -> "400"
+- U2 3811 -> "3811"
+- FR1234 -> "1234"
 
 The airline name/code is stored separately in the `airline` field.
 
@@ -174,19 +169,13 @@ The airline name/code is stored separately in the `airline` field.
 ### From Flight Numbers
 - **Two letters at start**: BA553, LH400, AF123
 - **One letter + number**: U23811 (easyJet), W63456 (Wizz Air)
-- **Single letter codes are rare**: Y (MyWay Airlines), I (IBC Airways)
-
-### From Logos/Branding
-- Look for airline logos on screenshots
-- Check aircraft livery colors
-- Look for "operated by" text (codeshares)
 
 ### From Context
 If user mentions:
-- "Lufthansa flight" → LH
-- "British Airways" → BA
-- "Ryanair" → FR
-- "easyJet" → U2
+- "Lufthansa flight" -> LH
+- "British Airways" -> BA
+- "Ryanair" -> FR
+- "easyJet" -> U2
 
 ## Codeshares & Partners
 
@@ -208,9 +197,7 @@ Always extract the **operating carrier** (actual airline flying the plane):
 - **SkyTeam**: AF, KL, DL flights often codeshare
 - **oneworld**: AA, BA, IB flights often codeshare
 
-## Regional Carriers & Subsidiaries
-
-Many major airlines have regional subsidiaries:
+## Airline Groups & Subsidiaries
 
 ### Lufthansa Group
 - **LH** - Lufthansa
@@ -235,6 +222,26 @@ Many major airlines have regional subsidiaries:
 - **MT** - Malta Air
 - **RK** - Ryanair UK
 
+## Common User References
+
+Users often use informal names:
+
+### Informal -> Official
+- "British" -> BA (British Airways)
+- "Lufthansa" -> LH
+- "Air France" -> AF
+- "KLM" -> KL
+- "Ryanair" -> FR
+- "easyJet" -> U2
+- "Swiss" -> LX
+- "Austrian" -> OS
+- "ITA" or "Alitalia" -> AZ (ITA Airways)
+- "Emirates" -> EK
+- "Qatar" -> QR
+- "Singapore" -> SQ
+- "ANA" -> NH
+- "JAL" -> JL
+
 ## Handling Unknown Airlines
 
 If you encounter an airline code not in this list:
@@ -243,56 +250,6 @@ If you encounter an airline code not in this list:
 2. **Look for full name**: User might have mentioned "Delta" but code is DL
 3. **Check for typos**: Common: BA vs BU, UA vs AA, LH vs LX
 4. **Context from route**: Some airlines only fly certain routes
-
-## Common User References
-
-Users often use informal names:
-
-### Informal → Official
-- "British" → BA (British Airways)
-- "Lufthansa" → LH (Lufthansa)
-- "Air France" → AF (Air France)
-- "KLM" → KL (KLM)
-- "Ryanair" → FR (Ryanair)
-- "easyJet" → U2 (easyJet)
-- "Swiss" → LX (Swiss)
-- "Austrian" → OS (Austrian)
-- "ITA" or "Alitalia" → AZ (ITA Airways)
-- "Emirates" → EK (Emirates)
-- "Qatar" → QR (Qatar Airways)
-- "Singapore" → SQ (Singapore Airlines)
-- "ANA" → NH (All Nippon Airways)
-- "JAL" → JL (Japan Airlines)
-
-### Budget Carrier Nicknames
-- "Ryanair" (never "Ryan Air") → FR
-- "easyJet" (note capitalization) → U2
-- "Wizz" or "Wizz Air" → W6
-
-## Special Cases
-
-### Multi-Airline Itineraries
-Some flights have different airlines per segment:
-
-Example:
-- Segment 1: BA (British Airways) LHR→JFK
-- Segment 2: AA (American) JFK→LAX
-
-Extract each segment with its respective airline code.
-
-### Cargo Airlines
-Passenger searches should not include cargo-only airlines:
-- FX (FedEx), 5X (UPS), QY (DHL), etc.
-
-If user mentions cargo, clarify they want passenger flights.
-
-### Defunct Airlines
-Some codes refer to airlines no longer operating:
-- **AZ** was Alitalia, now ITA Airways (still AZ code)
-- **BE** was Flybe (defunct 2020)
-- **9W** was Jet Airways (suspended 2019)
-
-If searching historical flights, note airline may no longer exist.
 
 ---
 

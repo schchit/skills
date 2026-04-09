@@ -59,7 +59,7 @@ Quick reference for common airport codes used in flight searches.
 - **AUH** - Abu Dhabi International
 - **DOH** - Doha Hamad International
 - **IST** - Istanbul Airport
-- **SAW** - Istanbul Sabiha Gökçen
+- **SAW** - Istanbul Sabiha Gokcen
 - **TLV** - Tel Aviv Ben Gurion
 
 ### Asia-Pacific
@@ -87,12 +87,12 @@ Quick reference for common airport codes used in flight searches.
 
 ### Latin America
 - **MEX** - Mexico City International
-- **GRU** - São Paulo Guarulhos
-- **GIG** - Rio de Janeiro Galeão
+- **GRU** - Sao Paulo Guarulhos
+- **GIG** - Rio de Janeiro Galeao
 - **EZE** - Buenos Aires Ezeiza
 - **SCL** - Santiago International
-- **BOG** - Bogotá El Dorado
-- **LIM** - Lima Jorge Chávez
+- **BOG** - Bogota El Dorado
+- **LIM** - Lima Jorge Chavez
 
 ### Africa
 - **CAI** - Cairo International
@@ -106,18 +106,18 @@ Quick reference for common airport codes used in flight searches.
 ### Germany
 - **TXL/BER** - Berlin Brandenburg
 - **HAM** - Hamburg
-- **DUS** - Düsseldorf
+- **DUS** - Dusseldorf
 - **STR** - Stuttgart
 - **CGN** - Cologne Bonn
 
 ### France
-- **NCE** - Nice Côte d'Azur
-- **LYS** - Lyon Saint-Exupéry
+- **NCE** - Nice Cote d'Azur
+- **LYS** - Lyon Saint-Exupery
 - **MRS** - Marseille Provence
 - **TLS** - Toulouse Blagnac
 
 ### Spain & Portugal
-- **AGP** - Málaga
+- **AGP** - Malaga
 - **SVQ** - Seville
 - **PMI** - Palma de Mallorca
 - **OPO** - Porto
@@ -165,7 +165,7 @@ Many budget airlines operate primarily from these airports:
 - **CIA** (Rome Ciampino) - Ryanair, Wizz Air
 - **BGY** (Milan Bergamo) - Ryanair
 - **HHN** (Frankfurt Hahn) - Ryanair
-- **NRN** (Düsseldorf Weeze) - Ryanair
+- **NRN** (Dusseldorf Weeze) - Ryanair
 - **BRE** (Bremen) - Ryanair
 - **NYO** (Stockholm Skavsta) - Ryanair
 - **TRF** (Oslo Torp) - Ryanair, Wizz Air
@@ -180,7 +180,7 @@ If you encounter an airport code not in this list:
    - US codes: 3 random letters (JFK, LAX, ORD)
    - Canada codes: Y + 2 letters (YYZ, YVR, YUL)
    - Australia codes: Often city names (SYD, MEL, BNE)
-4. **Major cities**: Default to main airport (London→LHR, Paris→CDG, Tokyo→NRT)
+4. **Major cities**: Default to main airport (London->LHR, Paris->CDG, Tokyo->NRT, New York->JFK)
 
 ## Common Ambiguities
 
@@ -213,7 +213,7 @@ If you encounter an airport code not in this list:
 
 **Istanbul (2)**:
 - IST (Istanbul Airport) - New main hub
-- SAW (Sabiha Gökçen) - Asian side, budget airlines
+- SAW (Sabiha Gokcen) - Asian side, budget airlines
 
 **Dubai (2)**:
 - DXB (Dubai International) - Main hub
@@ -229,4 +229,4 @@ This ensures accurate searches and prevents booking mistakes.
 
 ---
 
-**Note**: This list covers ~200 of the most commonly used airports. For complete coverage, the Navifare system has access to 10,000+ airports worldwide.
+**Note**: This list covers ~200 of the most commonly used airports. The Navifare system has access to 10,000+ airports worldwide.

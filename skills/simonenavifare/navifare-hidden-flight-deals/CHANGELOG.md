@@ -1,10 +1,26 @@
 # Changelog
 
+## v1.3.0 (2026-04-08)
+
+### Changed
+
+- **Renamed to navifare-hidden-flight-deals** for ClawHub marketplace. Internal tool names unchanged.
+- **Updated all example dates** to 2026 to reflect current year across SKILL.md, README.md, and EXAMPLES.md.
+- **ClawHub metadata**: Added `clawhub_url`, `repository`, and `author_url` to skill frontmatter.
+- **Revenue share section**: Added partner revenue share information to README.
+- **Streamlined README**: Cleaner quick-start flow, better organized for marketplace browsing.
+- **Documentation link**: Added link to live MCP documentation at navifare.com/mcp.
+
+### Fixed
+
+- **Stale dates**: All examples now use 2026 dates instead of 2025.
+- **Consistent formatting**: Replaced unicode arrows/emojis in SKILL.md agent instructions with plain text equivalents for better cross-client compatibility.
+
 ## v1.2.0 (2026-02-23)
 
 ### Improved
 
-- **Privacy & data scope**: Expanded privacy section to clearly describe what data is and is not sent to the Navifare MCP server. Only pre-booking itinerary details (flights, times, prices) are transmitted — no PII, no booking confirmations, no passenger names or payment info. Added links to [navifare.com](https://navifare.com) and [Terms of Service](https://navifare.com/terms).
+- **Privacy & data scope**: Expanded privacy section to clearly describe what data is and is not sent to the Navifare MCP server. Only pre-booking itinerary details (flights, times, prices) are transmitted -- no PII, no booking confirmations, no passenger names or payment info. Added links to navifare.com and Terms of Service.
 - **Screenshot PII protection**: Skill instructions now explicitly direct agents to extract only itinerary data from screenshots and exclude any personal information before sending to the MCP server.
 
 ## v1.1.1 (2026-02-23)
@@ -13,7 +29,7 @@
 
 - **Tool name consistency**: All documentation now correctly references `flight_pricecheck` and `format_flight_pricecheck_request`. Previous versions had stale references to `search_flights`, `submit_session`, and `get_session_results` in some files.
 - **Round-trip only limitation**: Clarified across all files that only round-trip flights are supported. The README previously claimed one-way support, which was incorrect.
-- **Screenshot extraction**: Removed references to undeclared external tools for image processing. Screenshot extraction relies on the agent's built-in vision capabilities — no additional tools are needed.
+- **Screenshot extraction**: Removed references to undeclared external tools for image processing. Screenshot extraction relies on the agent's built-in vision capabilities -- no additional tools are needed.
 - **Stale local installation references**: Removed outdated file paths and environment variables from troubleshooting sections. The MCP server is a hosted service at `https://mcp.navifare.com/mcp`.
 
 ### Changed
