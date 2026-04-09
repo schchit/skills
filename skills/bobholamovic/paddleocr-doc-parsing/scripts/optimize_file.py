@@ -5,9 +5,16 @@ Compresses and optimizes large files to meet size requirements.
 Supports image files only.
 
 Usage:
-    python scripts/optimize_file.py input.png output.png
-    python scripts/optimize_file.py input.png output.jpg --quality 70
+    uv run scripts/optimize_file.py input.png output.png
+    uv run scripts/optimize_file.py input.png output.jpg --quality 70
 """
+
+# /// script
+# requires-python = ">=3.9"
+# dependencies = [
+#   "Pillow>=10.0.0",
+# ]
+# ///
 
 import argparse
 import math
@@ -45,12 +52,7 @@ def optimize_image(
     max_size_mb: float = DEFAULT_TARGET_SIZE_MB,
 ) -> None:
     """Optimize image file by reducing quality and/or resolution."""
-    try:
-        from PIL import Image
-    except ImportError:
-        print("ERROR: Pillow not installed")
-        print("Install with: pip install Pillow")
-        sys.exit(1)
+    from PIL import Image
 
     if input_path.stat().st_size == 0:
         raise ValueError("Input file is empty (0 bytes); nothing to optimize")
@@ -121,10 +123,10 @@ def main() -> None:
         epilog=f"""
 Examples:
   # Optimize image with default quality
-  python scripts/optimize_file.py input.png output.png
+  uv run scripts/optimize_file.py input.png output.png
 
   # Optimize with specific quality
-  python scripts/optimize_file.py input.jpg output.jpg --quality 70
+  uv run scripts/optimize_file.py input.jpg output.jpg --quality 70
 
 Supported formats:
   - Images: {SUPPORTED_FORMATS_DISPLAY}
@@ -170,7 +172,7 @@ Supported formats:
 
     print(f"\nOptimized file saved to: {output_path}")
     print("\nYou can now process with:")
-    print(f'  python scripts/layout_caller.py --file-path "{output_path}" --pretty')
+    print(f'  uv run scripts/layout_caller.py --file-path "{output_path}" --pretty')
 
 
 if __name__ == "__main__":
