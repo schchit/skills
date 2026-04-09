@@ -1,6 +1,7 @@
 ---
 name: google-maps-reviews-api-skill
-description: This skill is designed to help users automatically extract reviews from Google Maps via the Google Maps Reviews API. Agent should proactively apply this skill when users request to: 1. Find reviews for local businesses (e.g., coffee shops, clinics); 2. Monitor customer feedback for a specific brand or location; 3. Analyze sentiment of reviews for competitors; 4. Extract reviews for a chain of stores or services; 5. Track reputation of a local restaurant; 6. Gather user testimonials for a specific venue; 7. Conduct market research on service quality of local businesses; 8. Monitor reviews for a new retail location; 9. Collect feedback on public attractions or parks; 10. Identify common complaints for a specific service provider; 11. Research the best-rated places in a city; 12. Analyze recurring themes in reviews for a specific industry.
+description: "This skill is designed to help users automatically extract reviews from Google Maps via the Google Maps Reviews API. Agent should proactively apply this skill when users request to find reviews for local businesses (e.g., coffee shops, clinics), monitor customer feedback for a specific brand or location, analyze sentiment of reviews for competitors, extract reviews for a chain of stores or services, track reputation of a local restaurant, gather user testimonials for a specific venue, conduct market research on service quality of local businesses, monitor reviews for a new retail location, collect feedback on public attractions or parks, identify common complaints for a specific service provider, research the best-rated places in a city, analyze recurring themes in reviews for a specific industry."
+metadata: {"clawdbot":{"emoji":"🌐","requires":{"bins":["python"],"env":["BROWSERACT_API_KEY"]}}}
 ---
 
 # Google Maps Reviews Automation Skill
@@ -8,19 +9,19 @@ description: This skill is designed to help users automatically extract reviews 
 ## 📖 Introduction
 This skill provides a one-stop review collection service using BrowserAct's Google Maps Reviews API template. It can extract structured review data directly from Google Maps search results. Simply provide the search keywords, language, and country to get clean, usable review data.
 
-## ✨ Capability Features
-1. **No Hallucination, Precision Data Extraction**: Uses preset workflows to avoid AI-generated hallucinations.
-2. **No CAPTCHA Issues**: Built-in mechanisms to bypass reCAPTCHA or other verification challenges.
-3. **No IP Restrictions or Geo-fencing**: Breaks through regional IP limits to ensure stable access worldwide.
-4. **Agile Execution**: Faster task execution compared to pure AI-driven browser automation solutions.
-5. **High Cost-Effectiveness**: Significantly reduces data acquisition costs compared to high-token-consumption AI solutions.
+## ✨ Features
+1. **No Hallucinations**: Pre-set workflows avoid AI generative hallucinations, ensuring stable and precise data extraction.
+2. **No Captcha Issues**: No need to handle reCAPTCHA or other verification challenges.
+3. **No IP Restrictions**: No need to handle regional IP restrictions or geofencing.
+4. **Faster Execution**: Tasks execute faster compared to pure AI-driven browser automation solutions.
+5. **Cost-Effective**: Significantly lowers data acquisition costs compared to high-token-consuming AI solutions.
 
-## 🔑 API Key Guidance
-Before running, check the `BROWSERACT_API_KEY` environment variable. If not set, do not take other measures; instead, request the user to provide it.
+## 🔑 API Key Setup
+Before running, check the `BROWSERACT_API_KEY` environment variable. If not set, do not take other measures; ask and wait for the user to provide it.
 **Agent must inform the user**:
-> "Since you haven't configured the BrowserAct API Key, please go to the [BrowserAct Console](https://www.browseract.com/reception/integrations) to get your Key and provide it to me in this chat."
+> "Since you haven't configured the BrowserAct API Key, please visit the [BrowserAct Console](https://www.browseract.com/reception/integrations) to get your Key."
 
-## 🛠️ Input Parameters Details
+## 🛠️ Input Parameters
 The Agent should flexibly configure the following parameters when calling the script:
 
 1. **KeyWords (Search Keywords)**
@@ -40,22 +41,22 @@ The Agent should flexibly configure the following parameters when calling the sc
    - **Supported values**: `us`, `gb`, `ca`, `au`, `jp`, etc.
    - **Default**: `us`
 
-## 🚀 Invocation Method (Recommended)
-The Agent should execute the following script to get results:
+## 🚀 Usage
+Agent should use the following independent script to achieve "one-line command result":
 
 ```bash
 # Example call
-python -u ./.cursor/skills/google-maps-reviews-api-skill/scripts/google_maps_reviews_api.py "Keywords" "Language" "Country"
+python -u ./scripts/google_maps_reviews_api.py "Keywords" "Language" "Country"
 ```
 
-### ⏳ Running Status Monitoring
-Since this task involves automated browser operations, it may take several minutes. The script will continuously output status logs with timestamps (e.g., `[14:30:05] Task Status: running`).
-**Agent Notes**:
-- Stay focused on the terminal output while waiting for results.
-- As long as the terminal is outputting new status logs, the task is running normally; do not misjudge it as hung or non-responsive.
-- If the status remains unchanged for a long time or the script stops outputting without returning results, consider a retry.
+### ⏳ Execution Monitoring
+Since this task involves automated browser operations, it may take some time (several minutes). The script will **continuously output status logs with timestamps** (e.g., `[14:30:05] Task Status: running`).
+**Agent Instructions**:
+- While waiting for the script result, keep monitoring the terminal output.
+- As long as the terminal is outputting new status logs, the task is running normally; do not mistake it for a deadlock or unresponsiveness.
+- Only if the status remains unchanged for a long time or the script stops outputting without returning a result should you consider triggering the retry mechanism.
 
-## 📊 Output Data Description
+## 📊 Data Output
 After successful execution, the script parses and prints results from the API response:
 - `author_name`: Display name of the reviewer
 - `author_profile_url`: Profile URL of the reviewer
@@ -65,15 +66,15 @@ After successful execution, the script parses and prints results from the API re
 - `likes_count`: Number of likes
 - `author_image_url`: Reviewer's avatar URL
 
-## ⚠️ Exception Handling & Retry Mechanism
-If an error occurs (e.g., network fluctuations or task failure), follow this logic:
+## ⚠️ Error Handling & Retry
+If an error occurs during script execution (e.g., network fluctuations or task failure), the Agent should follow this logic:
 
 1. **Check Output Content**:
-   - If output contains `"Invalid authorization"`, the API Key is invalid or expired. **Do not retry**; guide the user to provide a correct Key.
-   - If output does not contain `"Invalid authorization"` but the task fails (e.g., output starts with `Error:` or returns empty results), the Agent should **automatically try to re-run the script once**.
+   - If the output **contains** `"Invalid authorization"`, it means the API Key is invalid or expired. **Do not retry**; guide the user to re-check and provide the correct API Key.
+   - If the output **does not contain** `"Invalid authorization"` but the task failed (e.g., output starts with `Error:` or returns empty results), the Agent should **automatically try to re-execute the script once**.
 
 2. **Retry Limit**:
-   - Automatic retry is limited to **once**. If the second attempt fails, stop and report the error to the user.
+   - Automatic retry is limited to **one time**. If the second attempt fails, stop retrying and report the specific error information to the user.
 
 ## 🌟 Typical Use Cases
 1. **Local Business Analysis**: Find reviews for cafes or clinics in a specific area.
