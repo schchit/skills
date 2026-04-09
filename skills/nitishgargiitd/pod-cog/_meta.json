@@ -3,11 +3,16 @@
   "slug": "pod-cog",
   "displayName": "Pod Cog",
   "latest": {
-    "version": "1.0.6",
-    "publishedAt": 1775180638379,
-    "commit": "https://github.com/openclaw/skills/commit/8ba28d19b5bd9368637384f6657378f0f3c2ca2a"
+    "version": "1.0.8",
+    "publishedAt": 1775627909657,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.6",
+      "publishedAt": 1775180638379,
+      "commit": "https://github.com/openclaw/skills/commit/8ba28d19b5bd9368637384f6657378f0f3c2ca2a"
+    },
     {
       "version": "1.0.3",
       "publishedAt": 1774585068917,
