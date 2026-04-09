@@ -1,6 +1,8 @@
 #!/bin/bash
 # Push a KW roster JSON file to GitHub
 # Usage: push-to-github.sh <KW_NUMBER> <YEAR> '<JSON_CONTENT>'
+#    or: echo '<JSON>' | push-to-github.sh <KW_NUMBER> <YEAR>
+#    or: push-to-github.sh <KW_NUMBER> <YEAR> /path/to/file.json
 # Example: push-to-github.sh 08 2026 '{"meta":...}'
 
 set -e
@@ -9,8 +11,35 @@ KW=$(printf '%02d' "$1")
 YEAR="$2"
 JSON_CONTENT="$3"
 
-if [ -z "$KW" ] || [ -z "$YEAR" ] || [ -z "$JSON_CONTENT" ]; then
+if [ -z "$KW" ] || [ -z "$YEAR" ]; then
   echo "Usage: push-to-github.sh <KW_NUMBER> <YEAR> '<JSON_CONTENT>'"
+  echo "   or: echo '<JSON>' | push-to-github.sh <KW_NUMBER> <YEAR>"
+  exit 1
+fi
+
+# If $3 is a file path, read from it
+if [ -n "$JSON_CONTENT" ] && [ -f "$JSON_CONTENT" ]; then
+  JSON_CONTENT=$(cat "$JSON_CONTENT")
+fi
+
+# If no $3 and stdin is not a terminal, read from stdin
+if [ -z "$JSON_CONTENT" ] && [ ! -t 0 ]; then
+  JSON_CONTENT=$(cat)
+fi
+
+if [ -z "$JSON_CONTENT" ]; then
+  echo "ERROR: No JSON content provided."
+  echo "Pass as argument, file path, or pipe via stdin."
+  exit 1
+fi
+
+# Validate JSON before pushing
+if ! echo "$JSON_CONTENT" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
+  echo "ERROR: Content is NOT valid JSON. Refusing to push."
+  echo "First 200 chars of content:"
+  echo "$JSON_CONTENT" | head -c 200
+  echo ""
+  echo "Make sure to pass the actual JSON string, not a shell command."
   exit 1
 fi
 

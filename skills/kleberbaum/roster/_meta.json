@@ -3,11 +3,16 @@
   "slug": "roster",
   "displayName": "Roster",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1771281274794,
-    "commit": "https://github.com/openclaw/skills/commit/21bd1623f3456b44b012a6f981c2ca2cda13063c"
+    "version": "1.5.0",
+    "publishedAt": 1775576594668,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1771281274794,
+      "commit": "https://github.com/openclaw/skills/commit/21bd1623f3456b44b012a6f981c2ca2cda13063c"
+    },
     {
       "version": "1.0.3",
       "publishedAt": 1771232109404,

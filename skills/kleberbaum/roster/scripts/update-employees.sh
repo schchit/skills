@@ -1,14 +1,37 @@
 #!/bin/bash
 # Update employees.json on GitHub
 # Usage: update-employees.sh '<FULL_JSON_CONTENT>'
+#    or: echo '<JSON>' | update-employees.sh
+#    or: update-employees.sh /path/to/employees.json
 # The script replaces the entire employees.json with the provided content.
 
 set -e
 
 JSON_CONTENT="$1"
 
+# If $1 is a file path, read from it
+if [ -n "$JSON_CONTENT" ] && [ -f "$JSON_CONTENT" ]; then
+  JSON_CONTENT=$(cat "$JSON_CONTENT")
+fi
+
+# If no $1 and stdin is not a terminal, read from stdin
+if [ -z "$JSON_CONTENT" ] && [ ! -t 0 ]; then
+  JSON_CONTENT=$(cat)
+fi
+
 if [ -z "$JSON_CONTENT" ]; then
   echo "Usage: update-employees.sh '<FULL_EMPLOYEES_JSON>'"
+  echo "   or: echo '<JSON>' | update-employees.sh"
+  exit 1
+fi
+
+# Validate JSON before pushing
+if ! echo "$JSON_CONTENT" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
+  echo "ERROR: Content is NOT valid JSON. Refusing to push."
+  echo "First 200 chars of content:"
+  echo "$JSON_CONTENT" | head -c 200
+  echo ""
+  echo "Make sure to pass the actual JSON string, not a shell command."
   exit 1
 fi
 
