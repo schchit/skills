@@ -3,11 +3,16 @@
   "slug": "data-cog",
   "displayName": "Data Cog",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1774585036868,
-    "commit": "https://github.com/openclaw/skills/commit/7ff6164ab5aa7db8f20b78f4b4fa4690a20886ef"
+    "version": "1.0.7",
+    "publishedAt": 1775627871920,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1774585036868,
+      "commit": "https://github.com/openclaw/skills/commit/7ff6164ab5aa7db8f20b78f4b4fa4690a20886ef"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1770774061965,
