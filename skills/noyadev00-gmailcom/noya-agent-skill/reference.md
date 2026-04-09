@@ -1,8 +1,16 @@
 # Noya Agent API Reference
 
-Base URL: `https://safenet.one`
+Noya exposes **three separate surfaces**:
 
-All endpoints require authentication via the `x-api-key` header (except where noted).
+| API | Base URL | Auth | Purpose |
+| --- | --- | --- | --- |
+| Agent API | `https://safenet.one` | `x-api-key: noya_<key>` | Conversational multi-agent system — messaging, threads, chat completions, user/agent summaries, OpenClaw handoff |
+| Data API  | `https://data-endpoints.noya.ai` | None | Public structured-data endpoints — CoinGecko, CoinGlass, DeFiLlama, Moralis, GeckoTerminal, Santiment, CryptoNews, alternative.me, Noya Tokens catalog, Noya Polymarket intelligence |
+| Docs | `https://mcp.noya.ai` | None | Full docs as plain markdown — `/llms.txt` for index, `/llms.mdx/docs/{path}/content.md` for full page content. Read before guessing tool parameters or response shapes |
+
+This reference documents the **Agent API**. For the Data API paths and bodies, see the "Data Endpoints (no API key)" section of `SKILL.md`. For docs lookup, see the "Read the Docs" step at the top of the Core Workflow in `SKILL.md`.
+
+All Agent API endpoints below require authentication via the `x-api-key` header (except where noted).
 
 ---
 

@@ -3,11 +3,16 @@
   "slug": "noya-agent-skill",
   "displayName": "Noya Agent Skill",
   "latest": {
-    "version": "1.0.6",
-    "publishedAt": 1771814414842,
-    "commit": "https://github.com/openclaw/skills/commit/f5fbd6ea52e897ac3eb071a141a57f1bc132fc63"
+    "version": "1.0.11",
+    "publishedAt": 1775765920265,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.6",
+      "publishedAt": 1771814414842,
+      "commit": "https://github.com/openclaw/skills/commit/f5fbd6ea52e897ac3eb071a141a57f1bc132fc63"
+    },
     {
       "version": "1.0.5",
       "publishedAt": 1771707447959,

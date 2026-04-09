@@ -1,23 +1,30 @@
 ---
 name: noya-agent-skill
-description: Interact with the Noya AI agent for crypto trading, prediction markets, token analysis, and DCA strategies via curl. Use when the user wants to trade tokens, check portfolios, analyze markets, manage DCA strategies, or interact with Polymarket/Rain prediction markets.
-metadata: {"openclaw":{"emoji":"🤖","homepage":"https://agent.noya.ai","requires":{"env":["NOYA_API_KEY"],"bins":["curl","jq"]},"primaryEnv":"NOYA_API_KEY"}}
+description: Interact with the Noya AI platform for crypto trading, prediction markets, token analysis, DCA strategies, and structured crypto data (prices, TVL, funding rates, on-chain analytics, sentiment, news) via curl. Use when the user wants to trade tokens, check portfolios, analyze markets, manage DCA strategies, interact with Polymarket/Rain prediction markets, or pull deterministic crypto data without hitting the agent graph.
+metadata: {"openclaw":{"emoji":"🤖","homepage":"https://agent.noya.ai","requires":{"env":[],"optionalEnv":["NOYA_API_KEY"],"bins":["curl","jq"]},"primaryEnv":"NOYA_API_KEY"}}
 ---
 
 # Noya Agent
 
-Noya is a multi-agent AI system for crypto trading, prediction markets (Polymarket, Rain), token analysis, and DCA strategies. All transactions are gas-sponsored — users pay no gas fees.
+Noya is a multi-agent AI system for crypto trading, prediction markets (Polymarket, Rain), token analysis, and DCA strategies, plus a large suite of public structured-data endpoints (prices, TVL, funding rates, liquidations, wallet analytics, news, sentiment, prediction-market intelligence, AI-scored token catalog). All on-chain transactions are gas-sponsored — users pay no gas fees.
 
 - **Website:** [agent.noya.ai](https://agent.noya.ai)
-- **API Base URL:** `https://safenet.one`
+- **Agent API Base URL:** `https://safenet.one` (requires `NOYA_API_KEY`)
+- **Data API Base URL:** `https://data-endpoints.noya.ai` (no API key, no account needed)
+- **Docs Base URL:** `https://mcp.noya.ai` (public, no auth — `/llms.txt` for index, `/llms.mdx/docs/{path}/content.md` for full page content)
 
 ## Trust & Security
 
-- All API calls use HTTPS. Only `NOYA_API_KEY` is read from the environment.
+- All API calls use HTTPS. Only `NOYA_API_KEY` is read from the environment, and it is only needed for the conversational agent endpoints.
+- The public data endpoints at `data-endpoints.noya.ai` are unauthenticated and can be called without any setup.
 - All on-chain transactions require explicit user confirmation via an interrupt prompt before execution.
 - Use a short-lived API key (30-day) for testing. Revoke it from Settings > API Keys if compromised.
 
 ## Setup
+
+The public data endpoints (see [Data Endpoints](#data-endpoints-no-api-key)) work immediately with no setup.
+
+To additionally use the conversational agent endpoints (messaging, threads, chat completions, user summary, agent summary):
 
 1. Create an account at [agent.noya.ai](https://agent.noya.ai)
 2. Go to Settings > API Keys and generate a key
@@ -56,6 +63,11 @@ Use Noya when users want to:
 - Set up or manage DCA (dollar-cost averaging) strategies
 - View DeFi positions
 - Start a voice conversation with the Noya agent
+- Pull deterministic crypto data: spot/historical prices (CoinGecko), TVL & yields (DeFiLlama), funding rates / open interest / liquidations (CoinGlass), wallet balances / transfers / DeFi & NFT positions (Moralis), crypto news with sentiment (CryptoNews), Fear & Greed index, social sentiment (Santiment), on-chain DEX pools & trades (GeckoTerminal), AI-scored token catalog, Polymarket market intelligence
+
+**Routing guidance:**
+- **Use the data endpoints** (no API key, direct curl) for deterministic lookups — prices, TVL, funding rates, sentiment, news, on-chain analytics, prediction-market discovery. Faster and cheaper than going through the agent graph.
+- **Use the agent** (`noya-message.sh`) for anything that requires reasoning, execution, or the user's connected wallet: swaps, bridges, transfers, DCA setup, placing Polymarket orders, personalized portfolio Q&A.
 
 **Don't use for:** Non-crypto tasks, local file operations, or general knowledge questions.
 
@@ -64,6 +76,22 @@ Use Noya when users want to:
 Every interaction uses the Noya REST API. The primary endpoint is `POST /api/messages/stream` which returns a streamed response. **Always use the provided `noya-message.sh` script** to send messages — it handles streaming, chunk parsing, and formatted output. Do not call the message endpoint with raw curl.
 
 **OpenClaw integration:** For every new chat OpenClaw initiates with Noya, first call the system message endpoint (step 2.5) to hand off conversation context. This makes the chat feel like a seamless continuation of the user's conversation with OpenClaw.
+
+### 0. Read the Docs (when unsure)
+
+When you need to understand a tool's parameters, response shape, or usage patterns, fetch the docs directly as plain markdown — no API key required:
+
+```bash
+# Full index of all doc pages
+curl -s https://mcp.noya.ai/llms.txt
+
+# Full content of a specific page
+curl -s https://mcp.noya.ai/llms.mdx/docs/data-endpoints/coinglass/content.md
+curl -s https://mcp.noya.ai/llms.mdx/docs/data-endpoints/moralis/content.md
+curl -s https://mcp.noya.ai/llms.mdx/docs/data-endpoints/coingecko/content.md
+```
+
+The index lists every page with its description. Use it to discover what's available, then fetch the specific page for parameter details and examples. Always check the docs before guessing at a response shape.
 
 ### 1. Discover Capabilities (first use)
 
@@ -276,6 +304,157 @@ curl -s -X DELETE -H "x-api-key: $NOYA_API_KEY" \
   "https://safenet.one/api/chat/session/SESSION_ID"
 ```
 
+## Data Endpoints (no API key)
+
+Noya also exposes a large set of public, unauthenticated structured-data endpoints at `https://data-endpoints.noya.ai`. These are ideal for deterministic lookups — they do **not** route through the agent graph, so they are faster and require no `NOYA_API_KEY`.
+
+**Conventions:**
+- All POST endpoints take a JSON body with the parameters below. GET endpoints take none.
+- All endpoints return JSON from the upstream provider.
+- No auth header required.
+
+Prefer these over `noya-message.sh` whenever the user just wants raw data.
+
+### alternative.me
+
+| Tool | Method | Path | Body |
+| --- | --- | --- | --- |
+| Fear & Greed Index | POST | `/alternative/fear-greed` | `{ "limit": 10 }` (optional) |
+
+### GeckoTerminal (on-chain DEX data)
+
+| Tool | Method | Path | Body |
+| --- | --- | --- | --- |
+| Token pools | POST | `/geckoterminal/token-pools` | `{ "network": "eth", "tokenAddress": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2" }` |
+| Pool OHLCV candles | POST | `/geckoterminal/pool-ohlcv` | `{ "network": "eth", "poolAddress": "0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640", "timeframe": "day", "limit": 7 }` |
+| Pool trades | POST | `/geckoterminal/pool-trades` | `{ "network": "eth", "poolAddress": "0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640" }` |
+| Trending pools | GET | `/geckoterminal/trending-pools` | — |
+| Token info + top pools | POST | `/geckoterminal/token-info` | `{ "network": "eth", "addresses": ["0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"] }` |
+
+### CoinGecko
+
+| Tool | Method | Path | Body |
+| --- | --- | --- | --- |
+| Batch spot prices | POST | `/coingecko/price` | `{ "tokenIds": ["bitcoin","ethereum"], "vsCurrencies": ["usd"], "include24hrChange": true, "includeMarketCap": true }` |
+| OHLCV candles | POST | `/coingecko/ohlcv` | `{ "tokenId": "bitcoin", "vsCurrency": "usd", "days": "7", "interval": "daily" }` |
+| Token info / contracts | POST | `/coingecko/token-info` | `{ "tokenId": "ethereum" }` |
+| Trending tokens | GET  | `/coingecko/trending` | — |
+| Search by name/symbol | POST | `/coingecko/search` | `{ "query": "eth" }` |
+| Price history | POST | `/coingecko/price-history` | `{ "tokenId": "bitcoin", "days": "30" }` or `{ "tokenId": "bitcoin", "from": "2026-01-01", "to": "2026-02-01" }` |
+| Price at date | POST | `/coingecko/price-at-date` | `{ "tokenId": "bitcoin", "date": "2025-12-31" }` |
+
+> Note: CoinGecko endpoints use token **IDs** (e.g. `bitcoin`, `ethereum`), not symbols. Use `/coingecko/search` first if you only know the symbol.
+
+### CoinGlass (derivatives)
+
+| Tool | Method | Path |
+| --- | --- | --- |
+| Funding rates | POST | `/coinglass/funding-rates` |
+| Open interest by exchange | POST | `/coinglass/open-interest` |
+| Aggregated liquidations | POST | `/coinglass/liquidations` |
+| Long/short ratio | POST | `/coinglass/long-short-ratio` |
+| Supported coins | GET  | `/coinglass/supported-coins` |
+| Supported exchanges | GET  | `/coinglass/supported-exchanges` |
+| Futures trading pairs | POST | `/coinglass/exchange-pairs` |
+| Liquidations by exchange | POST | `/coinglass/liquidations-by-exchange` |
+| Funding rate history (OHLC) | POST | `/coinglass/funding-rate-history` |
+| Open interest history (OHLC) | POST | `/coinglass/open-interest-history` |
+| Liquidation history | POST | `/coinglass/liquidation-history` |
+| Long/short ratio history | POST | `/coinglass/long-short-ratio-history` |
+
+### CryptoNews
+
+| Tool | Method | Path | Body |
+| --- | --- | --- | --- |
+| News articles | POST | `/cryptonews/news` | `{ "tickers": "BTC,ETH", "items": 10, "sentiment": "positive" }` |
+| Sentiment analysis | POST | `/cryptonews/sentiment` | `{ "tickers": "BTC,ETH", "date": "last7days" }` |
+| Trending tickers | GET | `/cryptonews/trending` | — |
+
+### DeFiLlama
+
+| Tool | Method | Path |
+| --- | --- | --- |
+| Protocol/chain TVL | POST | `/defillama/tvl` |
+| Yield pools (APY/APR) | POST | `/defillama/yields` |
+| Protocol fees & revenue | POST | `/defillama/protocol-fees` |
+| DEX volumes | POST | `/defillama/dex-volumes` |
+| Stablecoin supply | POST | `/defillama/stablecoins` |
+| Bridge volume/flows | POST | `/defillama/bridges` |
+| List all bridges | GET  | `/defillama/bridges/list` |
+
+### Moralis (wallet analytics)
+
+`chain` accepts names (`eth`, `bsc`, `polygon`, `arbitrum`, `base`, `optimism`, `avalanche`) or hex IDs. Add `toBlock` to query historical state at a specific block.
+
+| Tool | Method | Path | Body |
+| --- | --- | --- | --- |
+| Wallet balances & net worth | POST | `/moralis/wallet` | `{ "address": "0x...", "chain": "eth", "toBlock": 19500000 }` (toBlock optional) |
+| ERC20 transfer history | POST | `/moralis/transfers` | `{ "address": "0x...", "chain": "eth", "limit": 100 }` |
+| Active DeFi positions | POST | `/moralis/defi-positions` | `{ "address": "0x...", "chain": "eth", "toBlock": 19500000 }` |
+| NFT holdings | POST | `/moralis/nft-holdings` | `{ "address": "0x...", "chain": "eth", "toBlock": 19500000 }` |
+
+### Noya Tokens (AI-scored catalog)
+
+| Tool | Method | Path |
+| --- | --- | --- |
+| Text + filter search | POST | `/noya/tokens/search` |
+| Similar tokens | POST | `/noya/tokens/similar` |
+| Recommendations by risk | POST | `/noya/tokens/recommendations` |
+| Top AI-scored tokens | POST | `/noya/tokens/top-score` |
+| Service health | GET  | `/noya/tokens/health` |
+| Available analysis versions | GET  | `/noya/tokens/versions` |
+| Tokens by version | POST | `/noya/tokens/by-version` |
+| Full token analysis detail | POST | `/noya/tokens/detail` |
+
+### Noya Polymarket (prediction-market intelligence)
+
+| Tool | Method | Path |
+| --- | --- | --- |
+| Semantic search | POST | `/noya/polymarket/search` |
+| Similar markets | POST | `/noya/polymarket/similar` |
+| Personalized recommendations | POST | `/noya/polymarket/recommendations` |
+| Top markets by EV | POST | `/noya/polymarket/top-ev` |
+| Hybrid text + filter | POST | `/noya/polymarket/filter` |
+| Event list | POST | `/noya/polymarket/events` |
+| Markets for an event slug | POST | `/noya/polymarket/by-event` |
+| Tags | POST | `/noya/polymarket/tags` |
+| Service health | GET  | `/noya/polymarket/health` |
+
+### Santiment (social)
+
+| Tool | Method | Path |
+| --- | --- | --- |
+| Social sentiment time-series | POST | `/santiment/sentiment` |
+| Tokens trending on social | POST | `/santiment/social-trending` |
+
+### Calling a data endpoint with curl
+
+```bash
+# POST with a JSON body (no auth header)
+curl -s -X POST "https://data-endpoints.noya.ai/coingecko/price" \
+  -H "Content-Type: application/json" \
+  -d '{"tokenIds":["bitcoin","ethereum"],"vsCurrencies":["usd"],"include24hrChange":true}' \
+  | jq
+```
+
+```bash
+# GET (no body, no auth)
+curl -s "https://data-endpoints.noya.ai/coingecko/trending" | jq
+```
+
+```bash
+# Fear & Greed
+curl -s -X POST "https://data-endpoints.noya.ai/alternative/fear-greed" \
+  -H "Content-Type: application/json" -d '{"limit":7}' | jq
+```
+
+If the user provides a plain symbol ("SOL", "ARB"), resolve it to a CoinGecko ID first:
+
+```bash
+curl -s -X POST "https://data-endpoints.noya.ai/coingecko/search" \
+  -H "Content-Type: application/json" -d '{"query":"sol"}' | jq '.coins[0].id'
+```
+
 ## Common Patterns
 
 ### Check Portfolio
@@ -339,6 +518,51 @@ before delegating a task to it.
   for any source that failed.
 ```
 
+### Quick Price Check (no API key)
+```
+User: "What's the price of BTC and ETH right now?"
+
+curl -s -X POST "https://data-endpoints.noya.ai/coingecko/price" \
+  -H "Content-Type: application/json" \
+  -d '{"tokenIds":["bitcoin","ethereum"],"vsCurrencies":["usd"],"include24hrChange":true}' | jq
+
+→ Returns USD prices and 24h change. No agent round-trip, no thread ID.
+```
+
+### Market Sentiment Snapshot (no API key)
+```
+User: "How's market sentiment today?"
+
+1. curl -s -X POST "https://data-endpoints.noya.ai/alternative/fear-greed" \
+     -H "Content-Type: application/json" -d '{"limit":1}' | jq
+2. curl -s -X POST "https://data-endpoints.noya.ai/santiment/social-trending" \
+     -H "Content-Type: application/json" -d '{}' | jq
+→ Fear & Greed index + top social-trending tokens.
+```
+
+### Wallet Snapshot for Any Address (no API key)
+```
+User: "What's in wallet 0xabc...?"
+
+curl -s -X POST "https://data-endpoints.noya.ai/moralis/wallet" \
+  -H "Content-Type: application/json" \
+  -d '{"address":"0xabc...","chain":"eth"}' | jq
+
+→ Works for any address. For the user's own connected wallet, prefer
+  /api/user/summary (agent API) which also includes DCA & Polymarket.
+```
+
+### Discover Top Polymarket Opportunities (no API key)
+```
+User: "Show me the best Polymarket bets right now"
+
+curl -s -X POST "https://data-endpoints.noya.ai/noya/polymarket/top-ev" \
+  -H "Content-Type: application/json" -d '{"limit":10}' | jq
+
+→ Use for research. To actually place a trade, switch to the agent
+  via noya-message.sh (requires API key + user wallet).
+```
+
 ### Voice Chat
 ```
 User: "I want to talk to Noya"
@@ -375,11 +599,20 @@ If Noya responds with a **Safe deployment request**, the user must complete this
 
 ## Error Handling
 
+**Agent API (`safenet.one`):**
+
 | Error | Solution |
 |-------|----------|
 | `401 Unauthorized` | API key is invalid, expired, or revoked. Generate a new one at agent.noya.ai |
 | `400 Bad Request` | Missing `message` or `threadId` in request body |
 | `429 Rate limit` | Wait a few minutes. Limit is 15 requests per 5-minute window |
+
+**Data API (`data-endpoints.noya.ai`):**
+
+| Error | Solution |
+|-------|----------|
+| `400 Bad Request` | Missing or invalid body field — check the path's body schema in the [Data Endpoints](#data-endpoints-no-api-key) section |
+| `5xx` | Upstream provider issue (CoinGecko, DeFiLlama, etc.). Retry or fall back to a sibling endpoint |
 
 ## Scripts
 
