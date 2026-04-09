@@ -1,0 +1,11 @@
+{
+  "owner": "manifoldor",
+  "slug": "wechat",
+  "displayName": "Wechat Connect",
+  "latest": {
+    "version": "2.1.0",
+    "publishedAt": 1774613333457,
+    "commit": null
+  },
+  "history": []
+}
