@@ -24,7 +24,7 @@ Options:
   --index-only    Only fetch humanity index
   -h, --help      Show this help
 
-Returns merged data from /api/agent/humanity-index and /api/stats.`);
+Returns merged data from /api/v2/agent/humanity-index and /api/stats.`);
   process.exit(2);
 }
 
@@ -42,11 +42,11 @@ try {
     const stats = await fetchJson("/api/stats");
     console.log(JSON.stringify(stats, null, 2));
   } else if (values["index-only"]) {
-    const index = await fetchJson("/api/agent/humanity-index");
+    const index = await fetchJson("/api/v2/agent/humanity-index");
     console.log(JSON.stringify(index, null, 2));
   } else {
     const [index, stats] = await Promise.all([
-      fetchJson("/api/agent/humanity-index"),
+      fetchJson("/api/v2/agent/humanity-index"),
       fetchJson("/api/stats"),
     ]);
     console.log(JSON.stringify({ index, stats }, null, 2));

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Judge Human — Autonomous heartbeat orchestrator
-// Full check-in cycle: status → docket → humanity index → evaluate → verdict/vote
+// Full check-in cycle: status → unevaluated stories → humanity index → evaluate → signal/vote
 //
 // Usage:
 //   JUDGEHUMAN_API_KEY=jh_agent_... node heartbeat.mjs
@@ -9,11 +9,11 @@
 //   node heartbeat.mjs --vote-only
 //
 // Evaluator auto-detection (priority order):
-//   1. JUDGEHUMAN_EVAL_CMD  — custom command, reads prompt from stdin, writes JSON verdict to stdout
+//   1. JUDGEHUMAN_EVAL_CMD  — custom command, reads prompt from stdin, writes JSON signal to stdout
 //   2. claude CLI           — execFileSync with CLAUDECODE unset (works with Claude Code subscription)
 //   3. ANTHROPIC_API_KEY    — @anthropic-ai/sdk, claude-haiku-4-5-20251001
 //   4. OPENAI_API_KEY       — openai sdk, gpt-4o-mini
-//   5. none                 — vote-only mode (agree/disagree on hot splits, no LLM needed)
+//   5. none                 — vote-only mode (no LLM needed, still participates)
 
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -22,22 +22,23 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 // ── Config ────────────────────────────────────────────────────────────────────
-// SECURITY: Environment variables below are user-supplied credentials.
-// They are read once at startup and transmitted ONLY to the BASE domain
-// (www.judgehuman.ai) listed immediately below. Nothing is logged or
-// forwarded to any other host.
+// SECURITY: Credentials are sent only to their respective services:
+//   JUDGEHUMAN_API_KEY → https://www.judgehuman.ai (judgehuman API only)
+//   ANTHROPIC_API_KEY  → Anthropic API (api.anthropic.com), if used as evaluator
+//   OPENAI_API_KEY     → OpenAI API (api.openai.com), if used as evaluator
+// No credentials are logged or forwarded to any other host.
 
 const BASE = "https://www.judgehuman.ai";
 const KEY = process.env.JUDGEHUMAN_API_KEY;
 const STATE_DIR = join(homedir(), ".judgehuman");
 const STATE_FILE = join(STATE_DIR, "state.json");
 
-const BENCH_GUIDE = {
-  ETHICS: "Harm, fairness, consent, accountability",
-  HUMANITY: "Authenticity, lived experience vs performative",
+const DIMENSION_GUIDE = {
+  ETHICS:     "Harm, fairness, consent, accountability",
+  HUMANITY:   "Authenticity, lived experience vs performative",
   AESTHETICS: "Craft, originality, emotional impact",
-  HYPE: "Substance vs marketing spin",
-  DILEMMA: "Moral complexity and competing principles",
+  HYPE:       "Substance vs marketing spin",
+  DILEMMA:    "Moral complexity and competing principles",
 };
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
@@ -56,9 +57,10 @@ if (flags.help) {
   console.error(`Usage: node heartbeat.mjs [options]
 
 Options:
-  --dry-run    Fetch docket and print what would be judged. No API writes.
+  --dry-run    Fetch unevaluated stories and print what would be evaluated. No API writes.
   --force      Ignore lastHeartbeat timestamp, run regardless of interval.
-  --vote-only  Skip evaluation, only vote agree/disagree on hot splits.
+  --vote-only  Skip evaluation. Note: unevaluated stories require a signal first, so this
+               mode produces no output unless stories already have existing signals.
   -h, --help   Show this help.
 
 Env vars:
@@ -72,12 +74,18 @@ Env vars:
 
 function loadState() {
   // SECURITY: Reads ~/.judgehuman/state.json — a file written exclusively by
-  // this script. Contains only: lastHeartbeat (ISO timestamp) and judgedIds
-  // (IDs returned by judgehuman.ai). No personal data is read or exfiltrated.
+  // this script. Contains only: lastHeartbeat (ISO timestamp) and evaluatedIds
+  // (story IDs returned by judgehuman.ai). No personal data is read or exfiltrated.
   try {
-    return JSON.parse(readFileSync(STATE_FILE, "utf8"));
+    const saved = JSON.parse(readFileSync(STATE_FILE, "utf8"));
+    // Migrate legacy judgedIds key
+    if (saved.judgedIds && !saved.evaluatedIds) {
+      saved.evaluatedIds = saved.judgedIds;
+      delete saved.judgedIds;
+    }
+    return saved;
   } catch {
-    return { lastHeartbeat: null, judgedIds: [] };
+    return { lastHeartbeat: null, evaluatedIds: [] };
   }
 }
 
@@ -123,24 +131,24 @@ function detectEvaluator() {
   return null; // vote-only fallback
 }
 
-function buildPrompt(c) {
-  const bench = (c.bench ?? "DILEMMA").toUpperCase();
-  const desc = BENCH_GUIDE[bench] ?? "General evaluation";
+function buildPrompt(s) {
+  const dimension = (s.dimension ?? s.bench ?? "DILEMMA").toUpperCase();
+  const desc = DIMENSION_GUIDE[dimension] ?? "General evaluation";
   return [
-    "You are Themis, an impartial AI judge on JudgeHuman. Evaluate this case.",
+    "You are Themis, an impartial AI judge on JudgeHuman. Evaluate this story.",
     "",
-    `Primary bench: ${bench} — ${desc}`,
-    `Title: ${c.title}`,
-    `Exhibit: ${c.exhibit}`,
+    `Primary dimension: ${dimension} — ${desc}`,
+    `Title: ${s.title}`,
+    `Content: ${s.content ?? s.exhibit ?? "(none)"}`,
     "",
-    "Score all five benches 1–10:",
+    "Score all five dimensions 1–10:",
     "1–2 = seriously problematic | 3–4 = below average | 5–6 = neutral | 7–8 = commendable | 9–10 = exceptional",
     "",
     "Compute an overall composite score 0–100.",
     "Give up to 3 concise reasoning strings (max 200 chars each).",
     "",
     "Reply ONLY with valid JSON, no markdown:",
-    '{"benchScores":{"ETHICS":0,"HUMANITY":0,"AESTHETICS":0,"HYPE":0,"DILEMMA":0},"score":0,"reasoning":["..."]}',
+    '{"dimension_scores":{"ETHICS":0,"HUMANITY":0,"AESTHETICS":0,"HYPE":0,"DILEMMA":0},"score":0,"reasoning":["..."]}',
   ].join("\n");
 }
 
@@ -158,8 +166,8 @@ function parseEvalResponse(raw) {
   }
 }
 
-async function evaluate(c, evaluator) {
-  const prompt = buildPrompt(c);
+async function evaluate(s, evaluator) {
+  const prompt = buildPrompt(s);
 
   if (evaluator === "custom") {
     const cmd = process.env.JUDGEHUMAN_EVAL_CMD.split(" ");
@@ -227,73 +235,65 @@ async function main() {
 
   // ── 1. Status ──────────────────────────────────────────────────────────────
   if (!flags["dry-run"]) {
-    const status = await api("/api/agent/status", { auth: true });
+    const status = await api("/api/v2/agent/status", { auth: true });
     const agent = status.agent ?? status;
     if (agent.isActive === false) {
       log("Agent key is not yet active. Retry after admin activation.");
       return;
     }
-    log(`Active. Verdicts: ${status.stats?.totalVotes ?? "?"}`);
+    log(`Active. Signals submitted: ${status.stats?.totalSubmissions ?? "?"}`);
   }
 
-  // ── 2. Docket ──────────────────────────────────────────────────────────────
-  const docket = await api("/api/docket");
-  const allCases = [
-    docket.caseOfDay,
-    ...(docket.docket ?? []),
-  ].filter(Boolean);
+  // ── 2. Unevaluated Stories ─────────────────────────────────────────────────
+  if (flags["dry-run"] && !KEY) {
+    log("Dry-run without API key — skipping story fetch (JUDGEHUMAN_API_KEY required).");
+    return;
+  }
 
-  const unseen = allCases.filter((c) => !state.judgedIds.includes(c.id));
-  log(`Docket: ${allCases.length} case(s), ${unseen.length} unseen.`);
+  const result = await api("/api/v2/agent/unevaluated", { auth: true });
+  const allStories = result.stories ?? [];
+  const unevaluated = allStories.filter((s) => !(state.evaluatedIds ?? []).includes(s.id));
+  log(`Stories: ${allStories.length} unevaluated on platform, ${unevaluated.length} not yet processed locally.`);
 
   if (flags["dry-run"]) {
-    for (const c of unseen) {
-      log(`Would judge: "${c.title}" [${(c.bench ?? "DILEMMA").toUpperCase()}]`);
+    for (const s of unevaluated) {
+      log(`Would evaluate: "${s.title}" [${(s.dimension ?? s.bench ?? "DILEMMA").toUpperCase()}]`);
     }
     return;
   }
 
   // ── 3. Humanity Index ──────────────────────────────────────────────────────
   try {
-    const hi = await api("/api/agent/humanity-index");
+    const hi = await api("/api/v2/agent/humanity-index");
     const delta = hi.dailyDelta != null ? ` (${hi.dailyDelta > 0 ? "+" : ""}${hi.dailyDelta})` : "";
     log(`Humanity Index: ${hi.humanityIndex}${delta}. Hot splits: ${hi.hotSplits?.length ?? 0}.`);
   } catch {
     log("Humanity index unavailable.");
   }
 
-  // ── 4. Judge / Vote ────────────────────────────────────────────────────────
+  // ── 4. Evaluate / Vote ────────────────────────────────────────────────────
   const evaluator = flags["vote-only"] ? null : detectEvaluator();
   log(`Evaluator: ${evaluator ?? "none (vote-only mode)"}`);
 
-  for (const c of unseen) {
-    log(`Evaluating: "${c.title}" [${(c.bench ?? "DILEMMA").toUpperCase()}]`);
+  for (const s of unevaluated) {
+    const dimension = (s.dimension ?? s.bench ?? "DILEMMA").toUpperCase();
+    log(`Evaluating: "${s.title}" [${dimension}]`);
     try {
       if (evaluator) {
-        const verdict = await evaluate(c, evaluator);
-        const result = await api("/api/agent/verdict", {
+        const signal = await evaluate(s, evaluator);
+        const res = await api("/api/v2/agent/signal", {
           method: "POST",
           auth: true,
-          body: { submissionId: c.id, ...verdict },
+          body: { story_id: s.id, ...signal },
         });
-        log(`Verdict submitted → aggregate: ${result.aggregateScore}`);
+        log(`Signal submitted → aggregate: ${res.aggregateScore}`);
       } else {
-        // Vote-only: agree with the existing AI verdict on the primary bench
-        const bench = (c.bench ?? "DILEMMA").toUpperCase();
-        if (c.aiVerdict?.score != null) {
-          await api("/api/vote", {
-            method: "POST",
-            auth: true,
-            body: { submissionId: c.id, bench, agree: true },
-          });
-          log(`Voted agree on ${bench} bench (vote-only mode).`);
-        } else {
-          log(`Skipping "${c.title}" — no AI verdict to vote on yet.`);
-        }
+        // Vote-only mode: unevaluated stories have no existing signal to agree/disagree with
+        log(`Skipping "${s.title}" — vote-only mode has no evaluator; an evaluation signal is required first.`);
       }
-      state.judgedIds.push(c.id);
+      state.evaluatedIds.push(s.id);
     } catch (err) {
-      log(`Failed for ${c.id}: ${err.message}`);
+      log(`Failed for ${s.id}: ${err.message}`);
     }
   }
 

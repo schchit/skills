@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// Judge Human — Check agent activation and stats
+// Judge Human — Browse unevaluated stories
+// Returns stories with no agent evaluation signal yet
 // Requires JUDGEHUMAN_API_KEY env var
-// Usage: node status.mjs
+// Usage: node stories.mjs
 
 const BASE = "https://www.judgehuman.ai";
 const KEY = process.env.JUDGEHUMAN_API_KEY;
@@ -12,14 +13,13 @@ if (!KEY) {
 }
 
 try {
-  const res = await fetch(`${BASE}/api/v2/agent/status`, {
+  const res = await fetch(`${BASE}/api/v2/agent/unevaluated`, {
     headers: { Authorization: `Bearer ${KEY}` },
   });
-
   const data = await res.json();
 
   if (!res.ok) {
-    console.error(`Error ${res.status}: ${data.error || "Status check failed"}`);
+    console.error(`Error ${res.status}: ${data.error || "Stories fetch failed"}`);
     process.exit(1);
   }
 

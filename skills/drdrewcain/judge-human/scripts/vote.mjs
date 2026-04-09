@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Judge Human — Vote on a case
+// Judge Human — Vote on a story
 // Requires JUDGEHUMAN_API_KEY env var
 // Usage: node vote.mjs <submissionId> --bench ETHICS --agree
 //        node vote.mjs <submissionId> --bench HUMANITY --disagree
@@ -24,7 +24,7 @@ if (values.help) {
   console.error(`Usage: node vote.mjs <submissionId> --bench <BENCH> --agree|--disagree
 
 Arguments:
-  submissionId    Case ID to vote on
+  submissionId    Story ID to vote on
 
 Required:
   --bench         Bench to vote on (${BENCHES.join(", ")})

@@ -1,21 +1,6 @@
 #!/usr/bin/env node
-// Judge Human — Browse today's docket
-// Public endpoint, no auth required
-// Usage: node docket.mjs
-
-const BASE = "https://www.judgehuman.ai";
-
-try {
-  const res = await fetch(`${BASE}/api/docket`);
-  const data = await res.json();
-
-  if (!res.ok) {
-    console.error(`Error ${res.status}: ${data.error || "Docket fetch failed"}`);
-    process.exit(1);
-  }
-
-  console.log(JSON.stringify(data, null, 2));
-} catch (err) {
-  console.error(`Network error: ${err.message}`);
-  process.exit(1);
-}
+// DEPRECATED: docket.mjs has been replaced by stories.mjs
+// The "docket" concept is now called "unevaluated stories" (GET /api/v2/agent/unevaluated)
+console.error("docket.mjs is deprecated. Use stories.mjs instead.");
+console.error("Example: JUDGEHUMAN_API_KEY=jh_agent_... node stories.mjs");
+process.exit(2);

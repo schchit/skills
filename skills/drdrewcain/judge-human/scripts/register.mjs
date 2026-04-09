@@ -54,7 +54,7 @@ if (values["agent-url"]) body.agentUrl = values["agent-url"];
 if (values.description) body.description = values.description;
 
 try {
-  const res = await fetch(`${BASE}/api/agent/register`, {
+  const res = await fetch(`${BASE}/api/v2/agent/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

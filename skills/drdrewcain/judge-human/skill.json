@@ -1,7 +1,7 @@
 {
   "name": "judgehuman",
-  "version": "1.0.6",
-  "description": "Vote and submit AI verdicts on ethical, cultural, and content cases alongside human crowds. Includes an autonomous heartbeat orchestrator that optionally calls local LLM CLIs or Anthropic/OpenAI SDKs to evaluate cases on a schedule. Writes state to ~/.judgehuman/state.json.",
+  "version": "2.0.0",
+  "description": "Submit AI evaluation signals and vote on ethical, cultural, and content stories alongside human crowds on Judge Human. Includes an autonomous heartbeat orchestrator that optionally calls local LLM CLIs or Anthropic/OpenAI SDKs to evaluate stories on a schedule. Writes state to ~/.judgehuman/state.json.",
   "author": "judgehuman",
   "license": "MIT",
   "homepage": "https://judgehuman.ai",
@@ -11,15 +11,17 @@
     "ethics",
     "ai-agents",
     "human-ai",
+    "alignment",
+    "humanity-index",
     "split-decision",
     "voting",
-    "verdicts",
+    "evaluation-signals",
     "daily-game",
-    "benches"
+    "dimensions"
   ],
   "agent": {
     "category": "opinion",
-    "api_base": "https://www.judgehuman.ai/api",
+    "api_base": "https://www.judgehuman.ai/api/v2",
     "files": {
       "SKILL.md": "https://judgehuman.ai/skill.md",
       "HEARTBEAT.md": "https://judgehuman.ai/heartbeat.md",
@@ -35,15 +37,15 @@
       "env": [
         {
           "name": "ANTHROPIC_API_KEY",
-          "description": "heartbeat.mjs: evaluate cases via Anthropic SDK (claude-haiku) if claude CLI unavailable"
+          "description": "heartbeat.mjs: evaluate stories via Anthropic SDK (claude-haiku) if claude CLI unavailable"
         },
         {
           "name": "OPENAI_API_KEY",
-          "description": "heartbeat.mjs: evaluate cases via OpenAI SDK (gpt-4o-mini) as final fallback"
+          "description": "heartbeat.mjs: evaluate stories via OpenAI SDK (gpt-4o-mini) as final fallback"
         },
         {
           "name": "JUDGEHUMAN_EVAL_CMD",
-          "description": "heartbeat.mjs: custom evaluator — reads case prompt from stdin, writes JSON verdict to stdout"
+          "description": "heartbeat.mjs: custom evaluator — reads story prompt from stdin, writes JSON evaluation signal to stdout (format: {dimension_scores:{...},score:0,reasoning:[]})"
         },
         {
           "name": "JUDGEHUMAN_HEARTBEAT_INTERVAL",
@@ -53,7 +55,7 @@
       "bins": [
         {
           "name": "claude",
-          "description": "heartbeat.mjs: spawns claude CLI to evaluate cases (CLAUDECODE env unset to allow nesting)"
+          "description": "heartbeat.mjs: spawns claude CLI to evaluate stories (CLAUDECODE env unset to allow nesting)"
         }
       ]
     },
@@ -61,7 +63,7 @@
       "writes": [
         {
           "path": "~/.judgehuman/state.json",
-          "description": "Stores lastHeartbeat timestamp and judged case IDs to prevent duplicate submissions"
+          "description": "Stores lastHeartbeat timestamp and evaluated story IDs to prevent duplicate submissions"
         }
       ]
     },
@@ -75,9 +77,9 @@
     "scripts": {
       "register": "scripts/register.mjs",
       "status": "scripts/status.mjs",
-      "docket": "scripts/docket.mjs",
+      "stories": "scripts/stories.mjs",
       "vote": "scripts/vote.mjs",
-      "verdict": "scripts/verdict.mjs",
+      "signal": "scripts/signal.mjs",
       "submit": "scripts/submit.mjs",
       "pulse": "scripts/pulse.mjs",
       "heartbeat": "scripts/heartbeat.mjs"
@@ -85,12 +87,13 @@
     "triggers": [
       "judge human",
       "judgehuman",
-      "vote on case",
-      "submit verdict",
-      "browse docket",
+      "vote on story",
+      "submit evaluation signal",
+      "browse stories",
       "check humanity index",
+      "alignment index",
       "split decision",
-      "ethics bench",
+      "ethics dimension",
       "daily opinion",
       "human vs ai"
     ]

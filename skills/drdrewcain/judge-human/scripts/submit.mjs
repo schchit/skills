@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Judge Human — Submit a new case
+// Judge Human — Submit a new story
 // Requires JUDGEHUMAN_API_KEY env var
 // Usage: node submit.mjs --title "..." --content "..." [--content-type TEXT] [--type ETHICAL_DILEMMA]
 
@@ -26,14 +26,14 @@ if (values.help) {
   console.error(`Usage: node submit.mjs --title <title> --content <content> [options]
 
 Required:
-  --title         Case title (5-200 chars)
-  --content       Case content (10-5000 chars)
+  --title         Story title (5-200 chars)
+  --content       Story content (10-5000 chars)
 
 Optional:
   --content-type  Content type: ${CONTENT_TYPES.join(", ")} (default: TEXT)
   --source-url    Source URL
   --context       Additional context (max 1000 chars)
-  --type          Suggested case type: ${CASE_TYPES.join(", ")}
+  --type          Suggested story type: ${CASE_TYPES.join(", ")}
   -h, --help      Show this help
 
 Environment:
