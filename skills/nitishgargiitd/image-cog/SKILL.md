@@ -26,17 +26,26 @@ clawhub install cellcog
 
 **Read the cellcog skill first** for SDK setup. This skill shows you what's possible.
 
-**Quick pattern (v1.0+):**
+**OpenClaw agents (fire-and-forget — recommended for long tasks):**
 ```python
-# Fire-and-forget - returns immediately
 result = client.create_chat(
-    prompt="[your image request]",
-    notify_session_key="agent:main:main",
-    task_label="image-task",
-    chat_mode="agent"  # Use "agent" for simple images, "agent team" for complex
+    prompt="[your task prompt]",
+    notify_session_key="agent:main:main",  # OpenClaw only
+    task_label="my-task",
+    chat_mode="agent",  # See cellcog skill for all modes
 )
-# Daemon notifies you when complete - do NOT poll
 ```
+
+**All other agents (blocks until done):**
+```python
+result = client.create_chat(
+    prompt="[your task prompt]",
+    task_label="my-task",
+    chat_mode="agent",
+)
+```
+
+See the **cellcog** mothership skill for complete SDK API reference — delivery modes, timeouts, file handling, and more.
 
 ---
 
@@ -185,3 +194,4 @@ For simple single images, `chat_mode="agent"` can work faster.
 5. **Mention composition**: "Rule of thirds", "centered symmetry", "close-up", "wide establishing shot".
 
 6. **For consistency**: When creating character series, describe the character in detail first, then reference "the same character" in subsequent prompts.
+
