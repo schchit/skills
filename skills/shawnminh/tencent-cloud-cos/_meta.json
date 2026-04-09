@@ -3,11 +3,16 @@
   "slug": "tencent-cloud-cos",
   "displayName": "腾讯云COS存储",
   "latest": {
-    "version": "1.0.6",
-    "publishedAt": 1772789851064,
-    "commit": "https://github.com/openclaw/skills/commit/305902a95f357f2e54dbe3c7b93f51f05e5b8a0f"
+    "version": "1.1.1",
+    "publishedAt": 1775191435893,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.6",
+      "publishedAt": 1772789851064,
+      "commit": "https://github.com/openclaw/skills/commit/305902a95f357f2e54dbe3c7b93f51f05e5b8a0f"
+    },
     {
       "version": "1.0.5",
       "publishedAt": 1772277855760,
