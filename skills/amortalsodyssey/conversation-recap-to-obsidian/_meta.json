@@ -3,9 +3,15 @@
   "slug": "conversation-recap-to-obsidian",
   "displayName": "Conversation Recap to Obsidian",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774446021867,
-    "commit": "https://github.com/openclaw/skills/commit/a2ae81bf1fe0977a9d4052c7c5ee5dd21be9240a"
+    "version": "1.2.1",
+    "publishedAt": 1775707364864,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774446021867,
+      "commit": "https://github.com/openclaw/skills/commit/a2ae81bf1fe0977a9d4052c7c5ee5dd21be9240a"
+    }
+  ]
 }

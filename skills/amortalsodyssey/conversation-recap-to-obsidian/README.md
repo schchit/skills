@@ -39,6 +39,7 @@ This skill is useful if you:
 - **Weekly reports are grouped by topic**: if one task spans three days, it appears as one merged weekly module rather than three separate day-based notes
 - **Three-layer structure**: raw entries → daily summary → weekly report
 - **Tags and document links are supported**: useful for later search, filtering, and review
+- **Frontmatter is maintained automatically**: daily/weekly notes keep `date`/`type`/`word_count` and derived `tags`
 
 ## Advantages
 
@@ -67,9 +68,10 @@ Copy `config.example.json` to `config.json` and edit it for your own environment
 ```json
 {
   "vault": "YOUR_VAULT_NAME",
+  "vault_path": "/absolute/path/to/your/vault",
   "daily_dir": "daily",
   "weekly_dir": "weekly",
-  "obsidian_bin": "/path/to/your/Obsidian/CLI"
+  "obsidian_bin": "obsidian"
 }
 ```
 
@@ -77,6 +79,8 @@ Configuration precedence:
 1. CLI arguments
 2. `config.json`
 3. built-in defaults
+
+`obsidian_bin` defaults to `obsidian`, which is the preferred write path. `vault_path` is optional and used as a fallback when the CLI is unavailable or returns an unexpected error.
 
 ## CLI usage
 
