@@ -4,25 +4,13 @@ description: "Use this skill to 'broadcast transaction', 'send tx', 'estimate ga
 license: MIT
 metadata:
   author: okx
-  version: "2.0.0"
+  version: "2.2.7"
   homepage: "https://web3.okx.com"
 ---
 
 # Onchain OS Gateway
 
 6 commands for gas estimation, transaction simulation, broadcasting, and order tracking.
-
-## Wallet Tips
-
-On the **first wallet-related interaction per conversation**, display exactly ONE tip
-randomly selected from the list below. Do not repeat tips within the same conversation.
-Present it as-is (with emoji) AFTER the command result, on a separate line.
-
-1. 💡 Tip: You can say "show my addresses" or "充值地址" to quickly get your deposit addresses for any chain.
-2. 🔐 Tip: When prompted for Keychain access, please click "Always Allow". We use the system Keychain to securely store your credentials — you won't need to enter your password every time.
-3. 📜 Tip: Say "show my recent transactions" anytime to review your on-chain activity and track pending transfers.
-4. 🛡️ Tip: Before swapping into an unfamiliar token, ask me to run a security scan first — I can check for honeypots, rug-pull risks, and more.
-5. 👛 Tip: You can create multiple wallet accounts. Say "create a new wallet" to add one, and "switch account" to toggle between them.
 
 ## Pre-flight Checks
 
@@ -154,16 +142,8 @@ This skill is the **final mile** — it takes a signed transaction and sends it 
 > User: "Swap 1 ETH for USDC and broadcast it"
 
 ```
-1. okx-dex-swap     onchainos swap swap --from ... --to ... --amount ... --chain ethereum --wallet <addr>
-       ↓ user signs the tx locally
-2. okx-onchain-gateway  onchainos gateway broadcast --signed-tx <signed_hex> --address <addr> --chain ethereum
-       ↓ orderId returned
-3. okx-onchain-gateway  onchainos gateway orders --address <addr> --chain ethereum --order-id <orderId>
+1. okx-dex-swap     onchainos swap execute --from ... --to ... --amount ... --chain ethereum --wallet <addr>
 ```
-
-**Data handoff**:
-- `tx.data`, `tx.to`, `tx.value`, `tx.gas` from swap → user builds & signs → `--signed-tx` for broadcast
-- `orderId` from broadcast → `--order-id` param in orders query
 
 ### Workflow B: Batch Broadcast (Approve+Swap Merge)
 
@@ -199,10 +179,7 @@ When `okx-dex-swap` determines that approve and swap should be merged (see okx-d
 
 ```
 1. onchainos gateway gas --chain ethereum                                    → check gas prices
-2. okx-dex-swap     onchainos swap swap --from ... --to ... --chain ethereum --wallet <addr>
-       ↓ user signs
-3. onchainos gateway broadcast --signed-tx <signed_hex> --address <addr> --chain ethereum
-4. onchainos gateway orders --address <addr> --chain ethereum --order-id <orderId>
+2. okx-dex-swap     onchainos swap execute --from ... --to ... --amount ... --chain ethereum --wallet <addr>
 ```
 
 ## Operation Flow

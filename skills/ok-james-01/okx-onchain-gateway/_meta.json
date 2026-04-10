@@ -3,11 +3,16 @@
   "slug": "okx-onchain-gateway",
   "displayName": "Okx Onchain Gateway",
   "latest": {
-    "version": "2.0.0",
-    "publishedAt": 1773843916676,
-    "commit": "https://github.com/openclaw/skills/commit/dfb17550a3fa4ff96c4fe2aae87f9fc797c77e65"
+    "version": "2.2.7",
+    "publishedAt": 1775723057083,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.0.0",
+      "publishedAt": 1773843916676,
+      "commit": "https://github.com/openclaw/skills/commit/dfb17550a3fa4ff96c4fe2aae87f9fc797c77e65"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1773296191231,
