@@ -3,11 +3,16 @@
   "slug": "shenmeng-whale-alert-monitor",
   "displayName": "Whale Alert Monitor 鲸鱼监控",
   "latest": {
-    "version": "100.1.0",
-    "publishedAt": 1775807095053,
-    "commit": "https://github.com/openclaw/skills/commit/4873a6445b793e738b59a934f714d1275eb92b69"
+    "version": "1775829171.0.0",
+    "publishedAt": 1775829197745,
+    "commit": null
   },
   "history": [
+    {
+      "version": "100.1.0",
+      "publishedAt": 1775807095053,
+      "commit": "https://github.com/openclaw/skills/commit/4873a6445b793e738b59a934f714d1275eb92b69"
+    },
     {
       "version": "1.8.0",
       "publishedAt": 1775746542772,
