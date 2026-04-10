@@ -6,7 +6,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { spawn, execSync } from "node:child_process";
+import { spawn, execFileSync } from "node:child_process";
 import { randomUUID, createHash } from "node:crypto";
 
 const DEFAULT_BASE_URL = process.env.AGENTWORK_BASE_URL?.trim() || "https://agentwork.one";
@@ -510,7 +510,7 @@ function checkProviderCli(provider) {
   const cli = PROVIDER_CLI_REQUIREMENT[provider];
   if (!cli) return;
   try {
-    execSync(`which ${cli}`, { stdio: "pipe" });
+    execFileSync("which", [cli], { stdio: "pipe" });
   } catch {
     fatal({
       error_code: "MISSING_PROVIDER_CLI",

@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, chmodSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { importNodePackage } from '../runtime-node-packages.mjs';
 
@@ -17,10 +17,13 @@ function resolvePassphraseDir(keystorePath) {
 function storePassphrase(passphrase, credDir) {
   if (process.platform === 'darwin') {
     try {
-      execSync(
-        `security add-generic-password -a agentwork-hot-wallet -s agentwork-hot-wallet -w "${passphrase}" -U`,
-        { stdio: 'pipe' },
-      );
+      execFileSync('security', [
+        'add-generic-password',
+        '-a', 'agentwork-hot-wallet',
+        '-s', 'agentwork-hot-wallet',
+        '-w', passphrase,
+        '-U',
+      ], { stdio: 'pipe' });
       return 'keychain';
     } catch {
       // fall through
@@ -29,10 +32,12 @@ function storePassphrase(passphrase, credDir) {
 
   if (process.platform === 'linux') {
     try {
-      execSync(
-        `echo -n "${passphrase}" | secret-tool store --label "agentwork-hot-wallet" service agentwork-hot-wallet account hot-wallet`,
-        { stdio: 'pipe' },
-      );
+      execFileSync('secret-tool', [
+        'store',
+        '--label', 'agentwork-hot-wallet',
+        'service', 'agentwork-hot-wallet',
+        'account', 'hot-wallet',
+      ], { stdio: 'pipe', input: passphrase });
       return 'secret-tool';
     } catch {
       // fall through
@@ -47,10 +52,12 @@ function storePassphrase(passphrase, credDir) {
 function readPassphrase(credDir) {
   if (process.platform === 'darwin') {
     try {
-      return execSync(
-        'security find-generic-password -a agentwork-hot-wallet -s agentwork-hot-wallet -w',
-        { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' },
-      ).trim();
+      return execFileSync('security', [
+        'find-generic-password',
+        '-a', 'agentwork-hot-wallet',
+        '-s', 'agentwork-hot-wallet',
+        '-w',
+      ], { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' }).trim();
     } catch {
       // fall through
     }
@@ -58,10 +65,11 @@ function readPassphrase(credDir) {
 
   if (process.platform === 'linux') {
     try {
-      return execSync(
-        'secret-tool lookup service agentwork-hot-wallet account hot-wallet',
-        { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' },
-      ).trim();
+      return execFileSync('secret-tool', [
+        'lookup',
+        'service', 'agentwork-hot-wallet',
+        'account', 'hot-wallet',
+      ], { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' }).trim();
     } catch {
       // fall through
     }
@@ -158,14 +166,22 @@ export async function auditKeystore(opts) {
   let passphraseStorage = 'none';
   if (process.platform === 'darwin') {
     try {
-      execSync('security find-generic-password -a agentwork-hot-wallet -s agentwork-hot-wallet', { stdio: 'pipe' });
+      execFileSync('security', [
+        'find-generic-password',
+        '-a', 'agentwork-hot-wallet',
+        '-s', 'agentwork-hot-wallet',
+      ], { stdio: 'pipe' });
       passphraseStorage = 'keychain';
     } catch {
       passphraseStorage = existsSync(`${credDir}/.passphrase`) ? 'file' : 'none';
     }
   } else if (process.platform === 'linux') {
     try {
-      execSync('secret-tool lookup service agentwork-hot-wallet account hot-wallet', { stdio: ['pipe', 'pipe', 'pipe'] });
+      execFileSync('secret-tool', [
+        'lookup',
+        'service', 'agentwork-hot-wallet',
+        'account', 'hot-wallet',
+      ], { stdio: ['pipe', 'pipe', 'pipe'] });
       passphraseStorage = 'secret-tool';
     } catch {
       passphraseStorage = existsSync(`${credDir}/.passphrase`) ? 'file' : 'none';
