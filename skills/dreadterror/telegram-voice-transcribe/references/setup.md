@@ -44,7 +44,11 @@ module.exports = {
     if (!voice) return msg;                        // not a voice message
     try {
       const out = execFileSync('python3', [SCRIPT, '--file-id', voice.file_id], {
-        env: { ...process.env },
+        env: {
+          OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+          TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+          PATH: process.env.PATH,
+        },
         timeout: 30_000,
       });
       const { transcript, language, duration_s } = JSON.parse(out);
