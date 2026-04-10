@@ -135,6 +135,16 @@ COLORS: Cream background (#F5F0E6), Coral Red (#E07A5F), Mint Green (#81B29A), M
 ELEMENTS: Geometric simplified icons, no gradients, playful decorative elements (dots, stars)
 ```
 
+**Infographic + vector-illustration + warm palette**:
+```
+Flat vector illustration infographic. Clean black outlines on all elements.
+PALETTE OVERRIDE (warm): Warm-only color palette, no cool colors.
+COLORS: Soft Peach background (#FFECD2), Warm Orange (#ED8936),
+        Terracotta (#C05621), Golden Yellow (#F6AD55), Deep Brown (#744210)
+ELEMENTS: Geometric simplified icons, no gradients, rounded corners,
+          modular card layout, consistent icon style
+```
+
 ### Scene
 
 ```
@@ -172,6 +182,17 @@ COLORS: Cream background (#F5F0E6), steps in Coral/Mint/Mustard, black outlines
 ELEMENTS: Rounded rectangles, thick arrows, simple icons per step
 ```
 
+**Flowchart + sketch-notes + macaron palette**:
+```
+Hand-drawn educational flowchart on warm cream paper. Slight wobble on all lines.
+PALETTE: macaron — soft pastel color blocks
+COLORS: Warm Cream background (#F5F0E8), zone fills in Macaron Blue (#A8D8EA),
+        Lavender (#D5C6E0), Mint (#B5E5CF), Coral Red (#E8655A) for emphasis
+ELEMENTS: Rounded cards with dashed/solid borders, wavy hand-drawn arrows with labels,
+          simple stick-figure characters, doodle decorations (stars, underlines)
+STYLE: Color fills don't completely fill outlines, hand-drawn lettering, generous white space
+```
+
 ### Comparison
 
 ```
@@ -197,6 +218,15 @@ COLORS: Left side Coral (#E07A5F), Right side Mint (#81B29A), cream background
 ELEMENTS: Bold icons, black outlines, centered divider line
 ```
 
+**Comparison + vector-illustration + warm palette**:
+```
+Flat vector comparison with split layout. Clear visual separation.
+PALETTE OVERRIDE (warm): Warm-only color palette, no cool colors.
+COLORS: Left side Warm Orange (#ED8936), Right side Terracotta (#C05621),
+        Soft Peach background (#FFECD2), Deep Brown (#744210) accents
+ELEMENTS: Bold icons, black outlines, centered divider line
+```
+
 ### Framework
 
 ```
@@ -217,6 +247,15 @@ ASPECT: 16:9
 ```
 Flat vector framework diagram with geometric nodes and bold connectors.
 COLORS: Cream background (#F5F0E6), nodes in Coral/Mint/Mustard/Blue, black outlines
+ELEMENTS: Rounded rectangles or circles for nodes, thick connecting lines
+```
+
+**Framework + vector-illustration + warm palette**:
+```
+Flat vector framework diagram with geometric nodes and bold connectors.
+PALETTE OVERRIDE (warm): Warm-only color palette, no cool colors.
+COLORS: Soft Peach background (#FFECD2), nodes in Warm Orange (#ED8936),
+        Terracotta (#C05621), Golden Yellow (#F6AD55), black outlines
 ELEMENTS: Rounded rectangles or circles for nodes, thick connecting lines
 ```
 
@@ -265,6 +304,39 @@ RIGHT: [Color B] side with silhouette/icon for [Option B]
 DIVIDER: Geometric shape or negative space boundary
 TEXTURE: Halftone transitions between sides
 ```
+
+---
+
+## Palette Override
+
+When a palette is specified (via `--palette` or preset), it overrides the style's default colors:
+
+1. Read style file → get rendering rules (Visual Elements, Style Rules, line treatment)
+2. Read palette file (`palettes/<palette>.md`) → get Colors + Background
+3. Palette Colors **replace** style's default Color Palette in prompt
+4. Palette Background **replaces** style's Background color (keep style's texture description)
+5. Build prompt: style rendering instructions + palette colors
+
+**Prompt frontmatter** includes palette when specified:
+```yaml
+---
+illustration_id: 01
+type: infographic
+style: vector-illustration
+palette: macaron
+---
+```
+
+**Example**: `vector-illustration` + `macaron` palette:
+```
+Flat vector illustration infographic. Clean black outlines on all elements.
+PALETTE: macaron — soft pastel color blocks
+COLORS: Warm Cream background (#F5F0E8), Macaron Blue (#A8D8EA), Mint (#B5E5CF),
+        Lavender (#D5C6E0), Peach (#FFD5C2), Coral Red (#E8655A) for emphasis
+ELEMENTS: Geometric simplified icons, no gradients, playful decorative elements
+```
+
+When no palette is specified, use the style's built-in Color Palette as before.
 
 ---
 
