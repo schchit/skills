@@ -1,11 +1,17 @@
 {
   "owner": "alukardo",
   "slug": "manual-qztc",
-  "displayName": "manual-qztc",
+  "displayName": "Manual Qztc",
   "latest": {
-    "version": "5.2.0",
-    "publishedAt": 1775752290745,
-    "commit": "https://github.com/openclaw/skills/commit/9f810441c6db3ad4c37a3809fb7262df0c73b8e2"
+    "version": "5.3.0",
+    "publishedAt": 1775798275926,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "5.2.0",
+      "publishedAt": 1775752290745,
+      "commit": "https://github.com/openclaw/skills/commit/9f810441c6db3ad4c37a3809fb7262df0c73b8e2"
+    }
+  ]
 }

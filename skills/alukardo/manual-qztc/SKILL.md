@@ -1,9 +1,9 @@
 ---
 name: manual-qztc
-description: 教学工作手册生成工具 v5.2。Generator+Reviewer双模式，支持Pipeline一键生成+审查。
+description: 仅供QZTC内部使用。教学工作手册生成工具 v5.3。Generator+Reviewer双模式，支持Pipeline一键生成+审查。
 ---
 
-# 教学工作手册生成工具 v5.2
+# 教学工作手册生成工具 v5.3
 
 > 🎯 **设计模式**: Generator + Reviewer + Pipeline + Tool Wrapper
 > 📁 **代码文件**: `manual_generator.py`
