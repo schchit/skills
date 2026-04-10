@@ -1,6 +1,6 @@
 ---
 name: web-collection
-description: Browser plugin data collection via a local bridge, in strict synchronous closed-loop mode. Use for Douyin, TikTok, Xiaohongshu, Amazon, and Bilibili collection tasks.
+description: Browser plugin data collection via a local bridge or cloud dispatch to a connected local connector, in strict synchronous closed-loop mode. Cloud mode includes async command-result querying. Use for Douyin, TikTok, Xiaohongshu, Amazon, and Bilibili collection tasks.
 metadata: { "openclaw": { "emoji": "🕸️", "requires": { "bins": ["curl", "node"] } } }
 ---
 
@@ -14,13 +14,27 @@ Use this skill for browser-extension collection tasks on:
 - Amazon
 - Bilibili
 
+## Human Tutorial
+
+This skill is implementation-oriented. For end-user onboarding and step-by-step human instructions, use:
+
+- https://vcn5grhrq8y0.feishu.cn/wiki/BGUhwC0cKimwTJkXDSuc0YFBnib
+
+When the user asks "how to use it" or needs UI-level operation guidance, prefer this tutorial and keep the response aligned with its wording.
+
 ## Core Rules
 
 1. Use the user's normal Chrome environment, not the isolated `openclaw` browser profile.
-2. Prefer the local bridge + plugin flow over generic browser tooling.
+2. Prefer the connector flow over generic browser tooling.
 3. Default to synchronous closed-loop execution.
 4. Do not reply before the collection script finishes.
-5. Use the same base URL for collect, status, and stop.
+5. Choose one execution mode first:
+   - `local`: talk to the local bridge directly
+   - `cloud`: call the cloud connector dispatch API, which forwards to the user's connected local connector
+6. In `cloud` mode, do not rewrite the collection payload. Only wrap it in:
+   - `device_id`
+   - `action`
+   - `payload`
 
 ## First-Time Setup
 
@@ -38,6 +52,9 @@ Helper script:
 {baseDir}/scripts/export_preference.sh show
 {baseDir}/scripts/export_preference.sh check
 {baseDir}/scripts/export_preference.sh apply-recommended
+{baseDir}/scripts/export_preference.sh set-key defaultConnectionMode cloud
+{baseDir}/scripts/export_preference.sh set-key defaultCloudDeviceId desktop-local-smoke-fix
+{baseDir}/scripts/export_preference.sh set-key defaultCloudToken <user_api_key>
 {baseDir}/scripts/export_preference.sh set-key defaultExportMode csv
 ```
 
@@ -48,33 +65,69 @@ Required defaults:
 - `defaultFetchDetail`
 - `defaultDetailSpeed`
 
+Mode-specific defaults:
+
+- `local`
+  - no extra required key if the default local bridge URL works
+- `cloud`
+  - cloud base URL is fixed to `https://i-sync.cn` by default
+  - `defaultCloudDeviceId`
+  - `defaultCloudToken`
+
 `run.sh` enforces this. If these are incomplete, collection must not start.
 
 ### First-run flow
 
 On first use:
 
-1. Briefly explain the four required defaults:
+1. Determine the execution mode first:
+   - `local`
+   - `cloud`
+2. If the mode is `cloud`, collect these values first:
+   - `defaultCloudDeviceId`
+   - `defaultCloudToken`
+   - cloud URL is fixed and does not need user input
+3. Then handle the common defaults:
    - 导出方式
    - 默认采集条数
    - 是否默认采集详情
    - 默认采集速度
-2. Ask only one question first:
+4. Ask only one question for the common defaults:
    - `推荐配置`
    - `自己配置`
-3. If the user chooses `推荐配置`, run:
+5. If the user chooses `推荐配置`, run:
 
 ```bash
 {baseDir}/scripts/export_preference.sh apply-recommended
 ```
 
-4. If the user chooses `自己配置`, ask for all four values in one message, not one by one.
-5. Only continue when `check` passes.
+6. If the user chooses `自己配置`, ask for all four values in one message, not one by one.
+7. Only continue when `check` passes.
 
-Preferred quick-reply prompt:
+Preferred mode prompt:
 
 ```text
-第一次使用网页采集，需要先完成默认配置。
+第一次使用网页采集，需要先确认运行环境。
+请选择：
+- 本地
+- 云端
+[[quick_replies: 本地, 云端]]
+```
+
+Preferred cloud prompt:
+
+```text
+检测到你要走云端分发，还需要这两个配置：
+- device_id
+- API token
+
+请一次性发给我。
+```
+
+Preferred quick-reply prompt for common defaults:
+
+```text
+常用配置还需要确认一次。
 这些配置包括：
 - 导出方式
 - 默认采集条数
@@ -103,10 +156,31 @@ Preferred custom-config prompt:
 
 Recommended defaults:
 
+- 运行位置：`local`
 - 导出方式：`多维表格`
 - 采集条数：`20`
 - 采集详情：`true`
 - 采集速度：`fast`
+
+## Cloud Mode
+
+Use `cloud` mode when the collection request should be sent to the platform backend first, and then dispatched to the user's connected local connector.
+
+Cloud responsibilities:
+
+- call `/api/v1/connector/cloud/dispatch`
+- authenticate with `Authorization: Bearer <user_api_key>`
+- include `device_id`
+- keep the collection body unchanged inside `payload`
+- poll `/api/v1/connector/cloud/commands/{command_id}` for final status and result
+- if single-command query is unavailable, fallback to `/api/v1/connector/cloud/commands?device_id=...`
+- treat `result` + `task_updates` as the source of completion snapshot
+
+Do not:
+
+- call the user's local `19820` port from the cloud path
+- rewrite `payload` semantics
+- mix local admin token logic into cloud requests
 
 ## Export Behavior
 
@@ -129,8 +203,9 @@ The wrapper:
 
 - applies stored preferences
 - enforces required setup
-- prefers the connector repo's real bridge loop when available
-- falls back to the bundled loop only if needed
+- runs either local bridge mode or cloud dispatch mode
+- prefers the connector repo's real local bridge loop when available
+- falls back to the bundled local loop only if needed
 
 ## Common Commands
 
@@ -141,6 +216,17 @@ bash {baseDir}/scripts/run.sh \
   --platform douyin \
   --keyword "AI" \
   --ensure-bridge
+```
+
+Douyin keyword search via cloud dispatch:
+
+```bash
+bash {baseDir}/scripts/run.sh \
+  --connection-mode cloud \
+  --cloud-device-id desktop-local-smoke-fix \
+  --cloud-token '<user_api_key>' \
+  --platform douyin \
+  --keyword "AI员工"
 ```
 
 Amazon keyword search:
@@ -181,7 +267,7 @@ Supported methods:
 
 ## Closed Loop
 
-The loop must:
+`local` mode:
 
 1. verify `pluginConnected=true`
 2. wait for idle state
@@ -190,13 +276,36 @@ The loop must:
 5. poll `/api/tasks/<taskId>` until `completed` or `error`
 6. if export is required, verify the expected export result
 
+`cloud` mode:
+
+1. query `/api/v1/connector/cloud/status?device_id=...`
+2. dispatch `action=collect` to `/api/v1/connector/cloud/dispatch`
+3. keep querying command result (`/api/v1/connector/cloud/commands/{command_id}` preferred)
+4. after each poll, refresh current collection state from command status
+5. wait for `completed` or terminal error state
+6. on completion, read `result` and `task_updates` for records/count/export snapshot and include key fields in the final reply
+
+Quick query examples:
+
+```bash
+curl -H "Authorization: Bearer <token_or_api_key>" \
+  "https://i-sync.cn/api/v1/connector/cloud/commands?device_id=<device_id>"
+```
+
+```bash
+curl -H "Authorization: Bearer <token_or_api_key>" \
+  "https://i-sync.cn/api/v1/connector/cloud/commands/<command_id>"
+```
+
 ## Final Reply
 
 When successful:
 
-1. If export mode is `bitable` and `export.tableUrl` exists, include the table link first.
-2. If export mode is `csv`, explicitly say export mode is CSV.
-3. Then include:
+1. Mention whether the run used `local` or `cloud` mode.
+2. If `cloud` mode was used, include the command status.
+3. If export mode is `bitable` and `export.tableUrl` exists, include the table link first.
+4. If export mode is `csv`, explicitly say export mode is CSV.
+5. Then include:
    - status
    - export status
    - collected count
@@ -209,7 +318,11 @@ When `bitable` export is expected but no table link exists, explicitly say expor
 - `pluginConnected=false`
   - Chrome/plugin is not connected to the bridge
 - bridge/status mismatch
-  - ensure collect, status, and stop all use the same base URL
+  - in `local` mode, ensure collect, status, and stop all use the same local base URL
+- cloud dispatch auth failed
+  - check `defaultCloudToken`
+- cloud dispatch could not reach device
+  - check `defaultCloudDeviceId` and whether the local connector is online
 - `TASK_RUNNING`
   - use stop + retry, or `--force-stop-before-start`
 - long record output hiding key fields

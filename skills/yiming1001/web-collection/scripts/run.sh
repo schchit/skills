@@ -3,7 +3,8 @@ set -euo pipefail
 
 # Unified entry for local/cloud deployment.
 # - local: run the bundled closed loop against the local bridge
-# - remote: if WEB_COLLECTION_REMOTE_SSH is set, run on collector host via SSH
+# - cloud: dispatch through the cloud connector API to a connected local connector
+# - remote: legacy path; if WEB_COLLECTION_REMOTE_SSH is set, run on collector host via SSH
 
 PLATFORM="douyin"
 METHOD=""
@@ -26,16 +27,24 @@ TABLE_NAME=""
 FIELDS_JSON=""
 FILTERS_JSON=""
 
+CONNECTION_MODE="${WEB_COLLECTION_CONNECTION_MODE:-local}"
 BRIDGE_URL="${WEB_COLLECTION_BRIDGE_URL:-http://127.0.0.1:19820}"
+CLOUD_BASE_URL="${WEB_COLLECTION_CLOUD_BASE_URL:-https://i-sync.cn}"
+CLOUD_DEVICE_ID="${WEB_COLLECTION_CLOUD_DEVICE_ID:-}"
+CLOUD_TOKEN="${WEB_COLLECTION_CLOUD_TOKEN:-}"
 SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 REMOTE_SSH="${WEB_COLLECTION_REMOTE_SSH:-}"
 REMOTE_WORKDIR="${WEB_COLLECTION_REMOTE_WORKDIR:-/Users/zhym/coding/web_pluging/web_collection}"
+HAS_CONNECTION_MODE_ARG="false"
 HAS_PLATFORM_ARG="false"
 HAS_MAX_ITEMS_ARG="false"
 HAS_FETCH_DETAIL_ARG="false"
 HAS_DETAIL_SPEED_ARG="false"
 HAS_BASE_URL_ARG="false"
+HAS_CLOUD_BASE_URL_ARG="false"
+HAS_CLOUD_DEVICE_ID_ARG="false"
+HAS_CLOUD_TOKEN_ARG="false"
 HAS_EXPORT_TARGET_ARG="false"
 
 usage() {
@@ -45,6 +54,7 @@ Usage:
 
 Common examples:
   run.sh --keyword "小龙虾AI助手" --max-items 10 --ensure-bridge
+  run.sh --connection-mode cloud --cloud-device-id desktop-local-smoke-fix --cloud-token '<user_api_key>' --keyword "AI员工"
   run.sh --platform amazon --keyword "Chinese antiques" --max-items 20 --ensure-bridge
   run.sh --platform amazon --method productLink --link "https://www.amazon.com/dp/B0..." --ensure-bridge
   run.sh --platform amazon --method productReview --link "https://www.amazon.com/dp/B0..." --filters-json '{"sortBy":"recent"}' --ensure-bridge
@@ -54,6 +64,7 @@ Common examples:
   run.sh --keyword "小龙虾" --export-target bitable --max-items 20 --ensure-bridge
 
 Options:
+  --connection-mode <local|cloud> default: local
   --platform <name>              default: douyin
   --method <name>                optional; default depends on platform
   --keyword <text>               repeatable
@@ -73,11 +84,18 @@ Options:
   --fields-json <json-array>     optional
   --filters-json <json-object>   optional
   --base-url <url>               optional override, same as WEB_COLLECTION_BRIDGE_URL
+  --cloud-base-url <url>         optional override, same as WEB_COLLECTION_CLOUD_BASE_URL
+  --cloud-device-id <id>         optional override, same as WEB_COLLECTION_CLOUD_DEVICE_ID
+  --cloud-token <token>          optional override, same as WEB_COLLECTION_CLOUD_TOKEN
   --ensure-bridge
   --bridge-cmd '<cmd>'
 
 Env:
+  WEB_COLLECTION_CONNECTION_MODE default: local
   WEB_COLLECTION_BRIDGE_URL       default: http://127.0.0.1:19820
+  WEB_COLLECTION_CLOUD_BASE_URL   optional override, default: https://i-sync.cn
+  WEB_COLLECTION_CLOUD_DEVICE_ID  optional, target connector device_id
+  WEB_COLLECTION_CLOUD_TOKEN      optional, bearer token for cloud dispatch
   WEB_COLLECTION_BRIDGE_CMD       optional bridge start command
   WEB_COLLECTION_REMOTE_SSH       optional, e.g. user@collector-host
   WEB_COLLECTION_REMOTE_WORKDIR   default: /Users/zhym/coding/web_pluging/web_collection
@@ -86,6 +104,11 @@ EOF
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --connection-mode)
+      CONNECTION_MODE="${2:-local}"
+      HAS_CONNECTION_MODE_ARG="true"
+      shift 2
+      ;;
     --platform)
       PLATFORM="${2:-}"
       HAS_PLATFORM_ARG="true"
@@ -166,6 +189,21 @@ while [[ $# -gt 0 ]]; do
     --base-url|--bridge-url)
       BRIDGE_URL="${2:-}"
       HAS_BASE_URL_ARG="true"
+      shift 2
+      ;;
+    --cloud-base-url)
+      CLOUD_BASE_URL="${2:-}"
+      HAS_CLOUD_BASE_URL_ARG="true"
+      shift 2
+      ;;
+    --cloud-device-id)
+      CLOUD_DEVICE_ID="${2:-}"
+      HAS_CLOUD_DEVICE_ID_ARG="true"
+      shift 2
+      ;;
+    --cloud-token)
+      CLOUD_TOKEN="${2:-}"
+      HAS_CLOUD_TOKEN_ARG="true"
       shift 2
       ;;
     --ensure-bridge)
@@ -253,19 +291,27 @@ apply_export_target() {
 }
 
 apply_stored_preferences() {
-  local pref_platform pref_max_items pref_fetch_detail pref_detail_speed pref_bridge_url
+  local pref_connection_mode pref_platform pref_max_items pref_fetch_detail pref_detail_speed pref_bridge_url pref_cloud_base_url pref_cloud_device_id pref_cloud_token
 
+  pref_connection_mode="$(resolve_preference_value defaultConnectionMode)"
   pref_platform="$(resolve_preference_value defaultPlatform)"
   pref_max_items="$(resolve_preference_value defaultMaxItems)"
   pref_fetch_detail="$(resolve_preference_value defaultFetchDetail)"
   pref_detail_speed="$(resolve_preference_value defaultDetailSpeed)"
   pref_bridge_url="$(resolve_preference_value defaultBridgeUrl)"
+  pref_cloud_base_url="$(resolve_preference_value defaultCloudBaseUrl)"
+  pref_cloud_device_id="$(resolve_preference_value defaultCloudDeviceId)"
+  pref_cloud_token="$(resolve_preference_value defaultCloudToken)"
 
+  [[ "$HAS_CONNECTION_MODE_ARG" == "true" || -z "$pref_connection_mode" ]] || CONNECTION_MODE="$pref_connection_mode"
   [[ "$HAS_PLATFORM_ARG" == "true" || -z "$pref_platform" ]] || PLATFORM="$pref_platform"
   [[ "$HAS_MAX_ITEMS_ARG" == "true" || -z "$pref_max_items" ]] || MAX_ITEMS="$pref_max_items"
   [[ "$HAS_FETCH_DETAIL_ARG" == "true" || -z "$pref_fetch_detail" ]] || FETCH_DETAIL="$pref_fetch_detail"
   [[ "$HAS_DETAIL_SPEED_ARG" == "true" || -z "$pref_detail_speed" ]] || DETAIL_SPEED="$pref_detail_speed"
   [[ "$HAS_BASE_URL_ARG" == "true" || -z "$pref_bridge_url" ]] || BRIDGE_URL="$pref_bridge_url"
+  [[ "$HAS_CLOUD_BASE_URL_ARG" == "true" || -z "$pref_cloud_base_url" ]] || CLOUD_BASE_URL="$pref_cloud_base_url"
+  [[ "$HAS_CLOUD_DEVICE_ID_ARG" == "true" || -z "$pref_cloud_device_id" ]] || CLOUD_DEVICE_ID="$pref_cloud_device_id"
+  [[ "$HAS_CLOUD_TOKEN_ARG" == "true" || -z "$pref_cloud_token" ]] || CLOUD_TOKEN="$pref_cloud_token"
 }
 
 preferences_are_effectively_complete() {
@@ -288,6 +334,26 @@ ensure_required_preferences() {
   fi
 
   die "web-collection setup incomplete: ask the user to choose 推荐配置 or 自己配置 first, then persist all required defaults (export mode, max items, fetch detail, detail speed)"
+}
+
+normalize_connection_mode() {
+  local raw="${1:-local}"
+  local lower
+  lower="$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')"
+  case "$lower" in
+    local|cloud)
+      printf '%s\n' "$lower"
+      ;;
+    *)
+      die "invalid connection mode: $raw (expected local or cloud)"
+      ;;
+  esac
+}
+
+ensure_cloud_preferences() {
+  [[ -n "$CLOUD_BASE_URL" ]] || die "cloud mode requires cloud base URL (set defaultCloudBaseUrl or pass --cloud-base-url)"
+  [[ -n "$CLOUD_DEVICE_ID" ]] || die "cloud mode requires cloud device id (set defaultCloudDeviceId or pass --cloud-device-id)"
+  [[ -n "$CLOUD_TOKEN" ]] || die "cloud mode requires cloud token (set defaultCloudToken or pass --cloud-token)"
 }
 
 route_config_rows() {
@@ -491,11 +557,16 @@ resolve_loop_script() {
   printf '%s\n' "$bundled_loop"
 }
 
+resolve_cloud_loop_script() {
+  printf '%s\n' "$SKILL_DIR/scripts/cloud_dispatch_loop.sh"
+}
+
 if [[ -z "$BRIDGE_CMD" ]]; then
   BRIDGE_CMD="$(default_bridge_cmd || true)"
 fi
 
 apply_stored_preferences
+CONNECTION_MODE="$(normalize_connection_mode "$CONNECTION_MODE")"
 
 if [[ -n "$EXPORT_TARGET" ]]; then
   apply_export_target "$EXPORT_TARGET"
@@ -535,7 +606,26 @@ run_collect_local() {
   "${cmd[@]}"
 }
 
-if [[ -n "$REMOTE_SSH" ]]; then
+run_collect_cloud() {
+  local cloud_base_url="$1"
+  local cloud_device_id="$2"
+  local cloud_token="$3"
+  local payload_json="$4"
+  local loop_script
+  loop_script="$(resolve_cloud_loop_script)"
+
+  bash "$loop_script" \
+    --payload "$payload_json" \
+    --base-url "$cloud_base_url" \
+    --device-id "$cloud_device_id" \
+    --token "$cloud_token"
+}
+
+if [[ "$CONNECTION_MODE" == "cloud" ]]; then
+  ensure_cloud_preferences
+  echo "[web-collection] mode=cloud base=$CLOUD_BASE_URL device=$CLOUD_DEVICE_ID" >&2
+  run_collect_cloud "$CLOUD_BASE_URL" "$CLOUD_DEVICE_ID" "$CLOUD_TOKEN" "$PAYLOAD_JSON"
+elif [[ -n "$REMOTE_SSH" ]]; then
   echo "[web-collection] mode=remote host=$REMOTE_SSH bridge=$BRIDGE_URL" >&2
   PAYLOAD_JSON_B64="$(printf '%s' "$PAYLOAD_JSON" | base64)"
   ssh "$REMOTE_SSH" \

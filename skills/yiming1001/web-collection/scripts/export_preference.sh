@@ -41,6 +41,9 @@ read_preferences_json() {
 normalize_key() {
   local key="${1:-}"
   case "$key" in
+    mode|connectionMode|defaultConnectionMode)
+      printf '%s\n' "defaultConnectionMode"
+      ;;
     export|exportMode|defaultExportMode|"")
       printf '%s\n' "defaultExportMode"
       ;;
@@ -56,8 +59,17 @@ normalize_key() {
     detailSpeed|defaultDetailSpeed)
       printf '%s\n' "defaultDetailSpeed"
       ;;
-    bridgeUrl|defaultBridgeUrl)
+    localBaseUrl|defaultLocalBaseUrl|bridgeUrl|defaultBridgeUrl)
       printf '%s\n' "defaultBridgeUrl"
+      ;;
+    cloudBaseUrl|defaultCloudBaseUrl)
+      printf '%s\n' "defaultCloudBaseUrl"
+      ;;
+    cloudDeviceId|defaultCloudDeviceId)
+      printf '%s\n' "defaultCloudDeviceId"
+      ;;
+    cloudToken|defaultCloudToken)
+      printf '%s\n' "defaultCloudToken"
       ;;
     *)
       printf '%s\n' "$key"
@@ -70,6 +82,12 @@ validate_key_value() {
   local value="$2"
 
   case "$key" in
+    defaultConnectionMode)
+      [[ "$value" == "local" || "$value" == "cloud" ]] || {
+        echo "invalid connection mode: $value (expected local or cloud)" >&2
+        exit 1
+      }
+      ;;
     defaultExportMode)
       [[ "$value" == "csv" || "$value" == "bitable" ]] || {
         echo "invalid export mode: $value (expected csv or bitable)" >&2
@@ -112,6 +130,24 @@ validate_key_value() {
     defaultBridgeUrl)
       [[ -n "$value" ]] || {
         echo "invalid bridgeUrl: empty" >&2
+        exit 1
+      }
+      ;;
+    defaultCloudBaseUrl)
+      [[ -n "$value" ]] || {
+        echo "invalid cloudBaseUrl: empty" >&2
+        exit 1
+      }
+      ;;
+    defaultCloudDeviceId)
+      [[ -n "$value" ]] || {
+        echo "invalid cloudDeviceId: empty" >&2
+        exit 1
+      }
+      ;;
+    defaultCloudToken)
+      [[ -n "$value" ]] || {
+        echo "invalid cloudToken: empty" >&2
         exit 1
       }
       ;;
@@ -224,7 +260,32 @@ fs.renameSync(tempPath, prefPath);
 show_preferences() {
   local pref_path="$1"
   local legacy_path="$2"
-  read_preferences_json "$pref_path" "$legacy_path"
+
+  node -e '
+const fs = require("node:fs");
+const prefPath = process.argv[1];
+const legacyPath = process.argv[2];
+
+const read = (filePath) => {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf8"));
+  } catch {
+    return null;
+  }
+};
+
+const mask = (value) => {
+  if (typeof value !== "string" || value.length === 0) return value;
+  if (value.length <= 8) return "****";
+  return `${value.slice(0, 4)}...${value.slice(-4)}`;
+};
+
+const data = read(prefPath) ?? read(legacyPath) ?? {};
+if (typeof data.defaultCloudToken === "string" && data.defaultCloudToken) {
+  data.defaultCloudToken = mask(data.defaultCloudToken);
+}
+process.stdout.write(JSON.stringify(data, null, 2) + "\n");
+' "$pref_path" "$legacy_path"
 }
 
 check_required_preferences() {
@@ -245,18 +306,30 @@ const read = (filePath) => {
 };
 
 const data = read(prefPath) ?? read(legacyPath) ?? {};
+const mode = typeof data.defaultConnectionMode === "string" && data.defaultConnectionMode
+  ? data.defaultConnectionMode
+  : "local";
+const redactedPreferences = { ...data };
+if (typeof redactedPreferences.defaultCloudToken === "string" && redactedPreferences.defaultCloudToken) {
+  const token = redactedPreferences.defaultCloudToken;
+  redactedPreferences.defaultCloudToken = token.length <= 8 ? "****" : `${token.slice(0, 4)}...${token.slice(-4)}`;
+}
 const required = [
   "defaultExportMode",
   "defaultMaxItems",
   "defaultFetchDetail",
   "defaultDetailSpeed",
 ];
+if (mode === "cloud") {
+  required.push("defaultCloudDeviceId", "defaultCloudToken");
+}
 
 const missing = required.filter((key) => data[key] === undefined || data[key] === null || data[key] === "");
 const result = {
   complete: missing.length === 0,
+  mode,
   missing,
-  preferences: data,
+  preferences: redactedPreferences,
 };
 
 process.stdout.write(JSON.stringify(result, null, 2) + "\n");
@@ -267,6 +340,7 @@ process.exit(missing.length === 0 ? 0 : 1);
 apply_recommended_preferences() {
   local pref_path="$1"
   local legacy_path="$2"
+  write_value "defaultConnectionMode" "local" "$pref_path" "$legacy_path"
   write_value "defaultExportMode" "bitable" "$pref_path" "$legacy_path"
   write_value "defaultMaxItems" "20" "$pref_path" "$legacy_path"
   write_value "defaultFetchDetail" "true" "$pref_path" "$legacy_path"
@@ -288,12 +362,16 @@ Usage:
   export_preference.sh clear
 
 Supported keys:
+  defaultConnectionMode local | cloud
   defaultExportMode   csv | bitable
   defaultPlatform     douyin | tiktok | xiaohongshu | amazon | bilibili
   defaultMaxItems     integer
   defaultFetchDetail  true | false
   defaultDetailSpeed  slow | medium | fast
   defaultBridgeUrl    string
+  defaultCloudBaseUrl string
+  defaultCloudDeviceId string
+  defaultCloudToken   string
 EOF
 }
 
