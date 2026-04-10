@@ -36,6 +36,7 @@ Use Asrai tools when the user asks about crypto prices, market analysis, trading
 | "unlocked coins" / vesting pressure | `late_unlocked_coins` | — |
 | "low cap gems" / DEX / chain tokens | `chain_tokens` | `dexscreener`, `high_volume_low_cap` |
 | "portfolio" / "Abu's picks" | `portfolio` | `coin_info` |
+| "my positions" / "open trades" / "my PnL" / "what am I trading" | `positions` | — |
 
 **Important:** For buy opportunity questions ALWAYS call `trade_signals` — it combines trending movers, bounces, SAR & MACD entries, RSI, and Galaxy Score in one call.
 
@@ -124,7 +125,28 @@ Requires `ASRAI_PRIVATE_KEY` set in `~/.env` or environment. Payment is signed a
 | `chain_tokens(chain, max_mcap)` | Low-cap tokens on a specific chain | $0.005 |
 | `portfolio` | Abu's curated model portfolio — investment reference | $0.005 |
 | `ask_ai(question)` | AI analyst freeform answer | $0.01 |
+| `positions` | Your live open positions across connected exchanges (MEXC, Binance, Lighter) — requires exchange keys configured via /exchange_apis in Telegram | $0.005–$0.015 (1–3 calls) |
 | `indicator_guide(name)` | Reference guide for Asrai-specific indicators | FREE |
+
+## Exchange positions setup
+
+To use the `positions` tool, add exchange API keys to `~/.env`:
+
+```
+# MEXC
+MEXC_API_KEY=mx0vgl...
+MEXC_SECRET_KEY=your_secret...
+
+# Binance
+BINANCE_API_KEY=your_api_key...
+BINANCE_SECRET_KEY=your_secret...
+
+# Lighter
+LIGHTER_L1_ADDRESS=0x...
+LIGHTER_API_PRIVATE_KEY=0x...
+```
+
+Only configure the exchanges you use — tool auto-detects which keys are set.
 
 ## Output rules
 

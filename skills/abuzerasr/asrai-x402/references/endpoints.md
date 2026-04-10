@@ -73,6 +73,11 @@ x402 automatic — $0.005 USDC per endpoint on Base mainnet ($0.01 for `/ai`)
 - `GET /api/portfolio/` — full portfolio
 - `GET /api/portfolio/<symbol>` — portfolio for specific coin
 
+### Exchange Positions
+- `GET /api/exchange/<exchange>/<api_key>/<secret_key>` — live positions for exchange (`mexc`, `binance`, `lighter`)
+  - Keys read from `~/.env` automatically: `MEXC_API_KEY`, `MEXC_SECRET_KEY`, `BINANCE_API_KEY`, `BINANCE_SECRET_KEY`, `LIGHTER_L1_ADDRESS`, `LIGHTER_API_PRIVATE_KEY`
+  - Returns: account info, open positions, unrealized PnL, leverage, margin, liquidation price
+
 ### AI
 - `POST /ai` body: `{"message": "<question>"}` — AI analyst ($0.01)
 
