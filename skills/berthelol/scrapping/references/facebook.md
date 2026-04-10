@@ -12,17 +12,29 @@ Public page data. Pass `get_business_hours=true` to include business hours.
 
 ## Content
 
-### Posts
+### Profile Posts
 ```
-GET /v1/facebook/posts?handle={page_name}&cursor={cursor}
+GET /v1/facebook/profile/posts?handle={page_name}&cursor={cursor}
 ```
-Unified endpoint for posts and reels from a Facebook page (previously separate endpoints).
+Posts from a Facebook profile/page.
 
-### Reels
+### Profile Reels
 ```
-GET /v1/facebook/reels?handle={page_name}&cursor={cursor}
+GET /v1/facebook/profile/reels?handle={page_name}&cursor={cursor}
 ```
-Facebook page reels, 10 per request. Requires manual pagination using `next_page_id` and `cursor`.
+Reels from a Facebook profile/page.
+
+### Profile Photos
+```
+GET /v1/facebook/profile/photos?handle={page_name}&cursor={cursor}
+```
+Photos from a Facebook profile/page.
+
+### Post Details
+```
+GET /v1/facebook/post?url={post_url}
+```
+Full details for a specific Facebook post.
 
 ### Group Posts
 ```
@@ -32,9 +44,9 @@ Public posts from a Facebook group.
 
 ### Transcript
 ```
-GET /v1/facebook/transcript?url={post_url}
+GET /v1/facebook/post/transcript?url={post_url}
 ```
-Dedicated transcript endpoint for Facebook posts/reels. Pass the post URL.
+Transcript endpoint for Facebook posts/reels. Pass the post URL.
 
 ## Comments
 
@@ -50,6 +62,12 @@ GET /v1/facebook/post/comments?feedback_id={id}&cursor={cursor}
 
 ## Ad Library
 
+### Ad Details
+```
+GET /v1/facebook/adLibrary/ad?url={ad_url}
+```
+Full details for a specific ad. Includes EU transparency data.
+
 ### Search Ads
 ```
 GET /v1/facebook/adLibrary/search/ads?query={company_name}&cursor={cursor}
@@ -61,16 +79,21 @@ Parameters:
 - `start_date` / `end_date` — filter by date range
 - `language` — filter by language
 
-### Ad Details
+### Company Ads
 ```
-GET /v1/facebook/ad?url={ad_url}
+GET /v1/facebook/adLibrary/company/ads?company_id={id}&cursor={cursor}
 ```
-Full details for a specific ad. Also accepts a URL parameter directly. Includes EU transparency data.
+Ads for a specific company in the Meta Ad Library.
+
+### Search Companies
+```
+GET /v1/facebook/adLibrary/search/companies?query={company_name}&cursor={cursor}
+```
+Search for companies in the Meta Ad Library.
 
 ## Notes
 
-- Posts endpoint is unified (posts + reels together)
-- Facebook reels endpoint returns 10 per request, uses manual pagination with `next_page_id` and `cursor`
+- Profile content is split into separate endpoints: posts, reels, and photos
 - For comments, using `feedback_id` is much faster than passing the URL
 - Ad library supports sorting by `total_impressions` or `relevancy_monthly_grouped`, plus date and language filters
 - AI transcripts limited to videos under 2 minutes

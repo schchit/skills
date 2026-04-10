@@ -73,7 +73,7 @@ These work across most endpoints:
 | Parameter | Description |
 |-----------|-------------|
 | `trim=true` | Returns a trimmed, smaller response — keeps context window manageable and saves tokens when you only need key fields like names, stats, and IDs |
-| `cursor` | Pagination cursor returned in previous response — pass it to get the next page. Each page costs 1 credit, so only paginate if the user needs more results |
+| `cursor` | Pagination cursor returned in previous response — pass it to get the next page. Each page costs 1 credit, so only paginate if the user needs more results. Note: the v3 TikTok profile/videos endpoint uses `max_cursor` instead of `cursor` |
 | `includeExtras=true` | Returns additional fields (like counts, descriptions) on YouTube endpoints — without this, channel-videos only returns titles and IDs |
 | `sort_by` | Sort results — values depend on endpoint (e.g., `popular`, `relevance`, `total_impressions`, `recency`). Check the platform reference for valid values per endpoint, since passing an invalid value returns a 400 error |
 
@@ -88,14 +88,14 @@ Many endpoints return paginated results. The pattern is:
 
 ```bash
 # First page
-curl -s -G "https://api.scrapecreators.com/v1/tiktok/profile/videos" \
+curl -s -G "https://api.scrapecreators.com/v3/tiktok/profile/videos" \
   --data-urlencode "handle=khaby.lame" \
   -H "x-api-key: $SCRAPECREATORS_API_KEY" | jq .
 
-# Next page (using cursor from previous response)
-curl -s -G "https://api.scrapecreators.com/v1/tiktok/profile/videos" \
+# Next page (using max_cursor from previous response)
+curl -s -G "https://api.scrapecreators.com/v3/tiktok/profile/videos" \
   --data-urlencode "handle=khaby.lame" \
-  --data-urlencode "cursor=CURSOR_VALUE" \
+  --data-urlencode "max_cursor=CURSOR_VALUE" \
   -H "x-api-key: $SCRAPECREATORS_API_KEY" | jq .
 ```
 
@@ -139,7 +139,7 @@ PROFILE=$(curl -s -G "https://api.scrapecreators.com/v1/tiktok/profile" \
   -H "x-api-key: $SCRAPECREATORS_API_KEY")
 
 # 2. Get their recent posts
-POSTS=$(curl -s -G "https://api.scrapecreators.com/v1/tiktok/profile/videos" \
+POSTS=$(curl -s -G "https://api.scrapecreators.com/v3/tiktok/profile/videos" \
   --data-urlencode "handle=creator_name" \
   -H "x-api-key: $SCRAPECREATORS_API_KEY")
 
@@ -159,7 +159,7 @@ curl -s -G "https://api.scrapecreators.com/v1/instagram/profile" \
   -H "x-api-key: $SCRAPECREATORS_API_KEY" > natgeo_profile.json
 
 # Save as CSV (extract specific fields with jq)
-curl -s -G "https://api.scrapecreators.com/v1/tiktok/profile/videos" \
+curl -s -G "https://api.scrapecreators.com/v3/tiktok/profile/videos" \
   --data-urlencode "handle=creator" \
   -H "x-api-key: $SCRAPECREATORS_API_KEY" \
   | jq -r '.aweme_list[] | [.aweme_id, .desc, .statistics.play_count, .statistics.digg_count] | @csv' \
@@ -182,7 +182,7 @@ curl -s -G "https://api.scrapecreators.com/v1/tiktok/profile" \
 ### Aggregate across posts
 ```bash
 # Average engagement across recent posts
-curl -s -G "https://api.scrapecreators.com/v1/tiktok/profile/videos" \
+curl -s -G "https://api.scrapecreators.com/v3/tiktok/profile/videos" \
   --data-urlencode "handle=creator" \
   -H "x-api-key: $SCRAPECREATORS_API_KEY" \
   | jq '[.aweme_list[] | .statistics.digg_count] | (add / length)'
@@ -211,7 +211,7 @@ curl -s -G "https://api.scrapecreators.com/v1/tiktok/creators/popular" \
 - **No rate limits** — run as many concurrent requests as needed.
 - **29-second timeout** — requests that take longer will time out (AWS Lambda limit). Most complete in ~3 seconds.
 - **AI transcript limit** — videos over 2 minutes that need AI-generated transcripts won't return transcripts. YouTube transcripts have their own dedicated endpoint and are unaffected.
-- **v2 endpoints** — some endpoints (Instagram search reels, Instagram comments) have v2 versions that require manual pagination. The v1 convenience endpoints that auto-paginate are being deprecated.
+- **Versioned endpoints** — some endpoints have moved beyond v1: TikTok profile videos is now v3 (uses `max_cursor` instead of `cursor`), TikTok video info is v2, Instagram user posts / reels search / post comments are v2. Check the platform reference files for current versions.
 - **Response format** — all responses are JSON. Use `trim=true` to reduce payload size when you only need key fields.
 
 ## Error handling

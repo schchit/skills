@@ -18,11 +18,12 @@ Lightweight profile lookup by numeric user ID. Use this when you already have a 
 
 ## Content
 
-### User Posts
+### User Posts (v2)
 ```
-GET /v1/instagram/user/posts?handle={username}&cursor={cursor}
+GET /v2/instagram/user/posts?handle={username}&cursor={cursor}
 ```
 Paginated list of a user's public posts. Use this to get all post types (photos, carousels, reels) in chronological order.
+Note: v1 version is being deprecated — use v2.
 
 ### Post/Reel Info
 ```
@@ -82,10 +83,10 @@ Note: v1 version is being deprecated — use v2.
 
 ## Deprecated
 
-- **Reels using Song** — deprecated endpoint, no longer available.
+- **Reels using Song** (`GET /v1/instagram/song/reels`) — deprecated endpoint, no longer available.
 
 ## Notes
 
 - v2 endpoints require manual pagination (pass cursor yourself) — this gives you more control over how many results to fetch, which is important since each page costs credits
-- v1 convenience endpoints that auto-paginate are being phased out (deprecated as of Feb 2026) — always prefer v2 for search and comments
+- v1 convenience endpoints that auto-paginate are being phased out (deprecated as of Feb 2026) — always prefer v2 for posts, search, and comments
 - Use `trim=true` to reduce response size — especially useful for posts/reels where the full response includes large media URL arrays you may not need

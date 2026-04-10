@@ -1,6 +1,6 @@
 # TikTok API Endpoints
 
-Base path: `/v1/tiktok`
+Base path: `/tiktok` (most endpoints use v1, but some have been upgraded to v2 or v3)
 
 ## Profile & User Data
 
@@ -12,7 +12,7 @@ Returns public profile data: bio, follower/following counts, total likes, avatar
 
 ### Audience Demographics
 ```
-GET /v1/tiktok/user/demographics?handle={username}
+GET /v1/tiktok/user/audience?handle={username}
 ```
 Returns audience country breakdown. **Costs 26 credits** because it requires heavy computation on the backend — only use when the user specifically needs audience geography data, not for general profile lookups.
 
@@ -32,14 +32,14 @@ Paginated list of accounts the user follows.
 
 ### User Posts (Profile Videos)
 ```
-GET /v1/tiktok/profile/videos?handle={username}&cursor={cursor}&sort_by={sort}
+GET /v3/tiktok/profile/videos?handle={username}&max_cursor={max_cursor}&sort_by={sort}
 ```
-Paginated list of a user's videos. `sort_by=popular` returns most popular first.
+Paginated list of a user's videos. `sort_by=popular` returns most popular first. Note: pagination parameter is `max_cursor` (not `cursor`).
 Response contains `aweme_list` array with video objects. Each video has `statistics` with `play_count`, `digg_count` (likes), `comment_count`, `share_count`, `collect_count`.
 
 ### Video Info
 ```
-GET /v1/tiktok/video?video_id={id}
+GET /v2/tiktok/video?video_id={id}
 ```
 Full details for a single video: description, play/like/comment/share counts, music info, hashtags. Use this when you already have a specific `video_id` and need detailed metadata — it's cheaper than fetching all profile videos when you only need one.
 
@@ -54,6 +54,12 @@ Returns the transcript of a TikTok video. Note: AI-generated transcripts are lim
 GET /v1/tiktok/video/comments?video_id={id}&cursor={cursor}
 ```
 Paginated comments on a video.
+
+### Comment Replies
+```
+GET /v1/tiktok/video/comment/replies?video_id={id}&comment_id={comment_id}&cursor={cursor}
+```
+Paginated replies to a specific comment on a video.
 
 ### Live Stream
 ```
@@ -147,14 +153,27 @@ GET /v1/tiktok/product?product_id={id}
 ```
 Full product details including exact stock count, related promotional videos.
 
+### Shop Products
+```
+GET /v1/tiktok/shop/products?handle={username}
+```
+List products from a user's TikTok Shop.
+
 ### Product Reviews
 ```
-GET /v1/tiktok/product/reviews?product_id={id}
+GET /v1/tiktok/shop/product/reviews?product_id={id}
 ```
 Returns up to 100 product reviews at once.
+
+### User Showcase
+```
+GET /v1/tiktok/user/showcase?handle={username}
+```
+Returns a user's showcase (featured products/content on their profile).
 
 ## Common parameters
 
 - `trim=true` — trimmed response with key fields only
-- `cursor` — pagination cursor from previous response
+- `cursor` — pagination cursor from previous response (most endpoints)
+- `max_cursor` — pagination cursor for profile videos (v3 endpoint)
 - `sort_by=popular` — sort user posts by popularity
