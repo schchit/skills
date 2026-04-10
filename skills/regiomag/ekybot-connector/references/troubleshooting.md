@@ -212,9 +212,7 @@ Active sessions: 0
 
 **Solutions:**
 1. Check logs: `cat ~/.openclaw/ekybot-connector/telemetry.log`
-2. Test single telemetry send: `scripts/send_telemetry.sh`
 3. Check for port conflicts or resource limits
-4. Run with verbose mode: `scripts/start_telemetry.sh --verbose`
 
 ### Daemon Dies Silently
 
@@ -255,8 +253,6 @@ scripts/register_workspace.sh --verbose
 scripts/health_check.sh --verbose
 
 # Telemetry with debug
-scripts/send_telemetry.sh --verbose
-scripts/start_telemetry.sh --verbose
 ```
 
 ### Manual API Testing

@@ -188,7 +188,7 @@ main() {
         print_check "Multi-agent configuration enabled" 0
     else
         print_check "Multi-agent configuration enabled" 1
-        print_info "Run: scripts/setup_communication.sh"
+        print_info "Run: scripts/configure-relay.sh"
     fi
     
     if validate_gateway_status; then
@@ -213,7 +213,7 @@ main() {
         fi
     else
         print_check "Multiple agents configured" 1
-        print_info "Run: scripts/setup_communication.sh"
+        print_info "Run: scripts/configure-relay.sh"
     fi
     
     print_section "Communication Test"
@@ -255,7 +255,7 @@ main() {
         echo
         echo "To complete setup:"
         if ! validate_openclaw_config; then
-            echo "  • Run: scripts/setup_communication.sh"
+            echo "  • Run: scripts/configure-relay.sh"
         fi
         if ! validate_gateway_status; then
             echo "  • Run: openclaw gateway restart"
@@ -268,7 +268,7 @@ main() {
             echo "  • Run: scripts/register_workspace.sh"
         fi
         if ! validate_openclaw_config; then
-            echo "  • Run: scripts/setup_communication.sh"
+            echo "  • Run: scripts/configure-relay.sh"
         fi
         if ! validate_gateway_status; then
             echo "  • Run: openclaw gateway restart"

@@ -80,8 +80,7 @@ REGISTRATION_DATA=$(cat <<EOF
   "gatewayUrl": "$GATEWAY_URL",
   "metadata": {
     "platform": "$(uname -s)",
-    "hostname": "$(hostname)",
-    "registered_at": "$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+    "registered_at": "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
   }
 }
 EOF
@@ -140,4 +139,4 @@ echo "Configuration saved to: $CONFIG_FILE"
 echo
 print_status "Next steps:"
 echo "  1. Test connection: scripts/health_check.sh"
-echo "  2. Start telemetry: scripts/start_telemetry.sh"
+echo "  2. Start telemetry: runtime/src/telemetry.js (via Node.js)"

@@ -1,342 +1,346 @@
 ---
 name: ekybot-connector
-description: "Transform your local OpenClaw agents into a remote-controlled team. iOS/Android apps, web dashboard, multi-agent chat, real-time cost monitoring. This connector bridges OpenClaw to the Ekybot command center — control your AI agents from anywhere."
+description: Connect OpenClaw to Ekybot for remote agent control, Companion machine health, and project memory sync. Use when installing/configuring the connector, validating connectivity, or improving onboarding from first connection to first successful live test.
+homepage: https://www.ekybot.com
+repository: https://github.com/regiomag/ekybot-connector
+source: https://github.com/regiomag/ekybot-connector
+license: MIT
+requires:
+  env:
+    - EKYBOT_ENROLLMENT_TOKEN
+  node: ">=18.0.0"
 ---
 
-# Ekybot — Remote Command Center for OpenClaw Agents
+# Ekybot Connector
 
-**Control your OpenClaw AI agents from anywhere.**  
-**📱 iOS • 🤖 Android • 🌐 Web**
-
----
-
-## What this skill does
-
-**This connector links your local OpenClaw agents to the Ekybot command center.**
-
-Many visitors think "this is just another skill" — it's not. This is the bridge to a complete **remote AI agent management platform**.
+Bridge your local OpenClaw gateway to [Ekybot](https://www.ekybot.com) — a remote command center for your AI agents.
 
 ```
-OpenClaw (local agents)
-        ↓
-Ekybot Connector (this skill)
-        ↓
-Ekybot Cloud Platform
-        ↓
-📱 iOS / 🤖 Android / 🌐 Web Apps
+OpenClaw (your machine) → Ekybot Connector → Ekybot Cloud → 📱 iOS / 🤖 Android / 🌐 Web
 ```
 
----
+## What you get
 
-## Why use Ekybot?
+**📱 Chat with agents from phone** (iOS & Android apps) + **🌐 Web dashboard** at ekybot.com
 
-**Unlike local dashboards, Ekybot lets you manage your AI agents remotely.**
+**💬 @mention inter-agent collaboration** — agents talk to each other in shared channels
 
-• 📱 **iOS & Android apps** — Control agents from your phone anywhere
-• 🌐 **Web dashboard** — Full-featured remote interface  
-• 🤖 **Multi-agent chat interface** — Unified team conversations
-• 💰 **AI cost monitoring** — Real-time spend tracking across agents
-• 📊 **Live logs and status** — Monitor agent health remotely
-• 👥 **Team collaboration** — Share agents access with colleagues
-• ⚡ **Push notifications** — Get alerts when agents need attention
+**🧠 4-layer memory system**
+- `SOUL.md` — agent personality & identity
+- `MEMORY.md` — long-term curated memory (survives session resets)
+- `memory/YYYY-MM-DD.md` — daily logs & raw context
+- `KB.md` — shared Knowledge Base per project (editable from dashboard)
 
----
+**🤖 Full agent management from the app**
+- Create, edit, delete agents from web or mobile
+- Assign a different AI model per agent (Claude, GPT, Gemini, Ollama…)
+- Set budgets & cost guards per agent
 
-## The key insight
+**⏰ Cron & automation management**
+- Create, edit, schedule cron jobs from the dashboard
+- Heartbeat monitoring, reminders, periodic tasks
 
-> **OpenClaw runs locally. Ekybot lets you control it from anywhere.**
+**📊 Session monitoring & cost control**
+- Real-time token usage per session
+- Session size alerts & automatic summarization before reset
+- Budget guards to prevent runaway API costs
 
-This changes everything. Instead of SSH-ing into servers or being tied to your desk, you manage your AI agent team from your phone during lunch, from the train, or from another continent.
+**📋 Project management & tracking**
+- Roadmap with task assignment to agents
+- Progress tracking per agent & project
+- Status updates visible from dashboard
 
----
+**💻 Machine health** visible from dashboard
 
-## Ekybot vs Local Dashboards
+## Installation (automated)
 
-| Feature | Local dashboards | Ekybot |
-|---------|------------------|--------|
-| **Mobile access** | ❌ | ✅ iOS/Android apps |
-| **Remote control** | ❌ | ✅ From anywhere |
-| **Multi-agent chat** | Rare | ✅ Built-in |
-| **Cost tracking** | Basic | ✅ Real-time + alerts |
-| **Team collaboration** | Limited | ✅ Multi-user access |
-| **Push notifications** | ❌ | ✅ Agent alerts |
-| **Works offline** | ✅ | Hybrid (cached) |
-| **Setup complexity** | Medium | ✅ One-click |
+The setup script handles everything: copy bundled runtime, install deps, enroll, verify, daemon. **No git clone required** — all runtime files are included in the skill package.
 
----
+### ⚠️ Before you start — Backup
 
-## Core Features
+Before installing, back up your OpenClaw config:
 
-### 📱 Mobile Agent Management
-- **Start/stop agents** from your phone
-- **Monitor costs** in real-time during commutes  
-- **View logs and status** anywhere
-- **Chat with agents** on-the-go
-- **Receive push notifications** for critical alerts
-
-**Perfect for:** Remote work, travel, emergency responses, weekend monitoring.
-
-### 🌐 Unified Dashboard  
-- **All agents in one place** — no more terminal juggling
-- **Cross-agent conversations** — see the full context
-- **Cost analytics** — optimize your AI spend
-- **Team access control** — invite colleagues safely
-- **Activity feeds** — know what happened while you were away
-
-**Perfect for:** Team management, cost optimization, daily operations.
-
-### 🤖 Multi-Agent Orchestration
-- **Agent-to-agent messaging** — coordinate complex workflows
-- **Task delegation** — distribute work intelligently  
-- **Centralized logging** — debug across your entire AI team
-- **Performance monitoring** — identify bottlenecks
-- **Workflow automation** — chain agent actions
-
-**Perfect for:** Complex projects, enterprise deployments, AI team scaling.
-
----
-
-## Why Remote AI Agent Management Matters
-
-**The old way:** SSH into servers → run terminal commands → check local dashboards → hope nothing breaks when you're away.
-
-**The Ekybot way:** Mobile-first AI agent monitoring → real-time cost alerts → team collaboration → manage from anywhere.
-
-**Business impact:**
-- **Faster response times** — Fix issues from your phone, not just your desk
-- **Better cost control** — See AI spend in real-time, set budget alerts  
-- **Team productivity** — Share agent access without VPN/server access
-- **Reduced downtime** — Monitor agent health 24/7, even on weekends
-- **Scale confidently** — Add team members and agents without infrastructure headaches
-
-**Mobile stats matter:** 73% of AI agent issues happen outside office hours. With Ekybot mobile apps, you're always connected to your AI team.
-
----
-
-## Security & Transparency
-
-**This connector is designed for trust and transparency.**
-
-**The connector:**
-• ✅ **Runs locally** on your machine (no remote code execution)  
-• ✅ **Only streams metadata** — agent status, logs, costs (no private files)
-• ✅ **No file access** unless you explicitly configure it
-• ✅ **Secure token authentication** — your data stays protected
-• ✅ **Open architecture** — source components available for review
-
-### What Data is Sent to Ekybot?
-
-**The connector streams:**
-• Agent status (running/stopped/health)
-• Execution logs and performance metrics  
-• Cost and usage statistics
-• Agent conversation metadata (timing, models used)
-
-**Never sent:** Local files, credentials, SSH keys, system configuration files
-
-**⚠️ Privacy Transparency:** Conversation content IS transmitted to display in web/mobile interface (user-controlled via telemetry settings)
-
-### Installation & Configuration Changes
-
-**During setup, the connector:**
-• Adds Ekybot endpoint to your OpenClaw configuration
-• Generates a secure authentication token  
-• Enables agent telemetry streaming
-• Creates background monitoring service (can be disabled)
-
-**All changes are reversible** — uninstall removes everything cleanly.
-
-### Dependencies
-
-**Required components (automatically handled):**
-• Node.js telemetry client (`@ekybot/connector`)
-• OpenClaw configuration utilities
-• Secure HTTP client for API communication
-
-**Background service:** Lightweight monitoring daemon (< 10MB RAM usage)
-
----
-
-## Perfect for Different Scenarios
-
-### 📱 Personal Use (1-2 agents)
-**Best for:** Solo entrepreneurs, consultants, researchers, power users
-
-**Typical setup:** Assistant + Specialist agents  
-**Use cases:** Personal productivity, research projects, content creation, side projects
-
-### 👥 Small Teams (3-5 agents)  
-**Best for:** Startups, agencies, consulting teams, small businesses
-
-**Typical setup:** Coordinator + Researcher + Developer + Marketing agents  
-**Use cases:** Client projects, product development, team collaboration
-
-### 🏢 Enterprise (5+ agents)
-**Best for:** Large companies, departments, complex operations
-
-**Typical setup:** Manager + Analysts + Specialists + Support agents  
-**Use cases:** Enterprise workflows, department automation, multi-project management
-
----
-
-## Quick Setup
-
-### Get Started in 3 Steps
-
-**Step 1: Install this connector**
 ```bash
-# Install from ClawHub
-npx clawhub install ekybot-connector
-
-# Preview what would change (recommended first step)
-npm run preview
-
-# Register your OpenClaw workspace  
-npm run register
+cp ~/.openclaw/openclaw.json ~/.openclaw/openclaw.json.bak
+cp -r ~/.openclaw/managed/ ~/.openclaw/managed.bak/ 2>/dev/null || true
 ```
 
-**What happens during installation:**
-• Downloads connector components (see `package.json` for dependencies)
-• **No automatic changes** - preview mode shows what would happen
-• **Secure token storage** - API keys only in environment variables
-• **Telemetry disabled by default** - explicit opt-in required
+### Prerequisites
 
-**Step 2: Configure your AI agent team**
+The user needs:
+1. **Node.js ≥ 18** installed (`node --version`)
+2. **npm** installed (`npm --version`)
+4. An **Ekybot account** — sign up at https://www.ekybot.com
+5. A temporary **enrollment token** — see "Getting the enrollment token" below
+
+### Getting the enrollment token
+
+Guide the user step by step:
+
+1. Log in at https://www.ekybot.com
+2. Click on the **Agents** page in the sidebar
+3. Click **Companion** (or go directly to https://www.ekybot.com/companion)
+4. Click **"Generate enrollment token"**
+5. Copy the token (starts with `ekrt_`)
+
+⚠️ The token expires after a few minutes — generate it right before running setup.
+
+### Run setup
+
 ```bash
-# Personal setup (1-2 agents)
-scripts/setup_communication.sh --preset personal
+# Run the automated setup (interactive — will prompt for enrollment token)
+bash <SKILL_DIR>/scripts/setup.sh
 
-# Team setup (3+ agents)  
-scripts/setup_communication.sh --preset team
-
-# Enterprise (4+ agents + advanced features)
-scripts/setup_communication.sh --preset enterprise
+# Or non-interactive with token as env var
+EKYBOT_ENROLLMENT_TOKEN=ekrt_... bash <SKILL_DIR>/scripts/setup.sh
 ```
 
-**Step 3: Start remote monitoring**
+The script will:
+1. Copy the bundled runtime files to `~/.openclaw/ekybot-connector/`
+2. Install npm dependencies (production only — no linting)
+3. Prompt for (or read) the enrollment token
+4. Connect to Ekybot cloud and register the machine
+5. Run doctor checks to verify
+6. Install the background daemon (auto-detects OS)
+
+### ⚠️ Installation is NOT complete until the daemon is running
+
+After setup, **verify the daemon is actually running**:
+
 ```bash
-scripts/start_telemetry.sh --continuous
+ps aux | grep companion-daemon | grep -v grep
 ```
 
-**That's it!** Open [ekybot.com](https://ekybot.com) or download the mobile app.
+If no process is found, the daemon failed to start. Start it manually:
 
----
-
-## Technical Implementation
-
-### Workspace Registration
 ```bash
-# Connect OpenClaw to Ekybot cloud
-scripts/register_workspace.sh
+cd ~/.openclaw/ekybot-connector
+nohup node scripts/companion-daemon.js > ~/.openclaw/logs/ekybot-companion.log 2>&1 &
+mkdir -p ~/.openclaw/logs
+sleep 3 && tail -10 ~/.openclaw/logs/ekybot-companion.log
 ```
 
-### Health Monitoring  
+**On Linux**, install as a systemd service for auto-restart:
+
 ```bash
-# Continuous health monitoring
-scripts/health_monitor.sh --interval 300
+cd ~/.openclaw/ekybot-connector && npm run companion:install-service
 ```
 
-### Telemetry Streaming
+**On macOS**, install as a LaunchAgent:
+
 ```bash
-# Stream costs, usage, and agent activity
-scripts/start_telemetry.sh --continuous
+cd ~/.openclaw/ekybot-connector && npm run companion:install-launchd
 ```
 
-### Multi-Agent Setup
+### First live test
+
+⚠️ **Do NOT consider the installation successful until this test passes.**
+
+From the Ekybot app (web or mobile):
+1. Send `@YourAgent test` in any channel
+2. Verify: you get a **single reply** (not duplicated), and it persists after page reload
+3. If no reply within 30 seconds, check troubleshooting below
+
+### Verify
+
 ```bash
-# Automated multi-agent configuration
-scripts/setup_communication.sh --preset team
+cd ~/.openclaw/ekybot-connector
+npm run companion:doctor       # local state + API access
+npm run companion:api-check    # Ekybot API connectivity
 ```
 
----
+## Updating the connector
 
-## Perfect for These Use Cases
+When a new skill version is available, re-run the setup script — it preserves your `.env.ekybot_companion` config:
 
-**✅ OpenClaw dashboard remote access**  
-**✅ Multi-agent dashboard management**  
-**✅ AI agent monitoring from mobile**  
-**✅ Remote AI agent control and orchestration**  
-**✅ OpenClaw cost tracking and optimization**  
-**✅ AI agent team collaboration**  
-**✅ Enterprise OpenClaw deployment**  
-**✅ Multi-agent chat interface**  
-**✅ Real-time AI spend monitoring**  
-**✅ Agent orchestration platform**  
+```bash
+bash <SKILL_DIR>/scripts/setup.sh
+```
 
-*Basically: if you use OpenClaw agents and want to manage them like a professional operation (not just a hobby), you need this.*
+Then restart the daemon:
 
----
+```bash
+# Linux systemd:
+sudo systemctl restart ekybot-companion
 
-## Open Source & Transparency
+# macOS LaunchAgent:
+launchctl kickstart -k gui/$(id -u)/com.ekybot.companion
 
-**✅ Fully open source connector:**
-- **Complete source code** available on [GitHub](https://github.com/regiomag/ekybot-connector)
-- **MIT License** - use in any project, commercial or personal
-- **Community contributions** welcome
-- **Security auditable** - inspect every line of code
+# Manual process:
+pkill -f companion-daemon
+cd ~/.openclaw/ekybot-connector
+nohup node scripts/companion-daemon.js > ~/.openclaw/logs/ekybot-companion.log 2>&1 &
+```
 
-**What's open source:**
-- 🔓 **Connector logic** - All bridge/integration code
-- 🔓 **API client** - HTTP/WebSocket communication  
-- 🔓 **Configuration management** - OpenClaw integration
-- 🔓 **Telemetry collection** - Data streaming code
-- 🔓 **CLI tools** - Setup, management scripts
+## Post-install commands
 
-**What remains proprietary:**
-- 🔒 **Ekybot platform backend** - The hosted service
-- 🔒 **Mobile applications** - iOS/Android apps  
-- 🔒 **Advanced analytics** - Dashboard intelligence
+All commands run from `~/.openclaw/ekybot-connector/`:
 
-**Trust through transparency:** Every API call, every configuration change, every byte of telemetry is visible in the source code. No hidden behaviors, no black boxes.
+```bash
+npm run companion:doctor         # verify health
+npm run companion:api-check      # test API connectivity  
+npm run companion:memory-check   # verify project memory sync
+npm run companion:daemon         # run daemon interactively
+npm run companion:install-launchd # install macOS LaunchAgent
+npm run companion:install-service # install Linux systemd service
+npm run companion:reconcile      # force agent config sync
+npm run companion:disconnect     # unenroll machine
+npm run health                   # local checks
+npm run logs                     # inspect logs
+```
 
-### 🏆 Professional Quality Standards
+## Telemetry & Privacy
 
-**Code Quality:**
-- ✅ **100% test coverage** - Comprehensive test suite validates all functionality
-- ✅ **Automated CI/CD** - GitHub Actions with multi-Node.js version testing
-- ✅ **Security scanning** - Automated vulnerability detection
-- ✅ **Code formatting** - ESLint + Prettier for consistent, readable code
+The connector collects **minimal data** for the dashboard health view:
 
-**Documentation:**
-- 📚 **Complete docs** - SECURITY.md, CONTRIBUTING.md, detailed README
-- 🔍 **Preview mode** - `npm run preview` shows changes before applying
-- 🐛 **Issue templates** - Structured bug reports and feature requests
-- 📖 **Changelog** - Detailed version history and migration guides
+**Collected:** OS platform (darwin/linux), OS arch, OS release, hostname (machine name — displayed in dashboard), Node.js version, connector uptime, connector heap usage, agent count, active session count.
 
-**Security First:**
-- 🔒 **No credential storage** in configuration files
-- 🛡️ **Opt-in everything** - No automatic data collection
-- 🔍 **Security policy** - Responsible vulnerability disclosure
-- ✅ **Community reviewed** - Open source enables security audits
+**NOT collected:** CPU usage, disk usage, IP address, file contents, message contents, API keys, user activity.
 
----
+**Opt-out:** Set `EKYBOT_COMPANION_POLL_INTERVAL_MS=0` to disable all telemetry reporting. The companion daemon will still function for relay dispatch.
 
-## Get Started Now
+Full details in `_meta.json` → `telemetry` section.
 
-**This skill connects OpenClaw to Ekybot** — a complete remote command center for AI agents.
+### Memory Sync — What is uploaded
 
-### Next Steps:
-1. **[Install this connector skill](#quick-setup)**
-2. **[Visit ekybot.com](https://ekybot.com)** to see the full platform  
-3. **Download mobile apps** (iOS/Android) for remote control
-4. **Invite team members** if you work with others
-5. **Scale your AI agent operations** professionally
+The memory sync feature keeps your EkyBot dashboard in sync with local agent workspace files. Here is exactly what is sent and what is NOT sent:
 
-### Remember:
-**OpenClaw = Local Power**  
-**Ekybot = Remote Control**  
-**This Skill = The Bridge**
+**Uploaded to EkyBot cloud (full content):**
+- `MEMORY.md` — curated long-term memory (synced both ways)
+- `working-memory.md`, `facts.md`, `rules.md`, `history.md` — root-level and per-project memory files
+- `context-index.json` — auto-generated metadata (agent name, project ID, active sources, timestamps)
+- `memory/summaries/*.md` — last 3 session summaries
+- `memory/daily/*.md` — last 3 daily log files
 
-Transform your local OpenClaw agents into a remotely-managed AI team. No more SSH. No more "I hope it doesn't break while I'm out."
+**NEVER uploaded:**
+- `SOUL.md` — stays local (your agent personality is private)
+- `AGENTS.md`, `USER.md`, `TOOLS.md` — workspace config files stay local
+- Files outside the agent workspace (`~/.openclaw/managed/`, system files)
+- API keys, tokens, or credentials
+- Conversation history or raw prompts (only the curated memory files listed above)
 
-**Professional AI agent management starts here.**
+**Opt-out:** Set in your `.env.ekybot_companion`:
+```
+EKYBOT_COMPANION_MEMORY_SYNC=false
+```
+When disabled, the dashboard will show agent names and status but not workspace file contents.
 
----
+## Configuration
 
-**🔗 Links:** [Ekybot Platform](https://ekybot.com) | [Source Code](https://github.com/regiomag/ekybot-connector) | [Security Details](references/security.md) | [Technical Docs](references/api.md) | [Troubleshooting](references/troubleshooting.md)
+Config file: `~/.openclaw/ekybot-connector/.env.ekybot_companion`
 
-**📱 Apps:** iOS (coming soon) | Android (coming soon) | Web (live now)
+```bash
+EKYBOT_APP_URL="https://www.ekybot.com"
+EKYBOT_COMPANION_MACHINE_ID="cmm..."         # set by companion:connect
+EKYBOT_COMPANION_TOKEN="..."                  # set by companion:connect
+EKYBOT_COMPANION_POLL_INTERVAL_MS=30000       # relay poll interval
 
-**🔒 Security:** All data transmission is encrypted. Token-based authentication. Local processing priority. **Full source code available** for security review.
+# Budget guard (optional)
+EKYBOT_COMPANION_MAX_BUDGET_PER_SESSION_USD=5.00
+EKYBOT_COMPANION_BUDGET_EXCEEDED_ACTION=log   # or "block"
+```
 
-**💬 Support:** Having issues? The Ekybot platform includes built-in support chat with real humans.
+## Troubleshooting
+
+### npm install shows eslint/lint errors
+
+These are **code style warnings, not real errors**. The connector works fine. Fix:
+
+```bash
+cd ~/.openclaw/ekybot-connector
+npm install --production
+```
+
+The `--production` flag skips dev dependencies (eslint, prettier) that cause these warnings.
+
+### "setup-enrollment.js" not found
+
+This script does not exist. Use the correct enrollment command:
+
+```bash
+cd ~/.openclaw/ekybot-connector
+EKYBOT_ENROLLMENT_TOKEN=ekrt_... EKYBOT_APP_URL=https://www.ekybot.com node scripts/companion-connect.js
+```
+
+Or the full setup:
+
+```bash
+EKYBOT_ENROLLMENT_TOKEN=ekrt_... bash <SKILL_DIR>/scripts/setup.sh
+```
+
+### "Ekybot integration not configured" when running setup.js
+
+`setup.js` is NOT the enrollment script. Use `companion-connect.js` for enrollment:
+
+```bash
+cd ~/.openclaw/ekybot-connector
+EKYBOT_ENROLLMENT_TOKEN=ekrt_... node scripts/companion-connect.js
+```
+
+### Missing .env.ekybot_companion (credentials lost)
+
+If the `.env` file is missing, the daemon cannot start. Re-enroll:
+
+1. Generate a new token at https://www.ekybot.com/companion
+2. Run:
+```bash
+cd ~/.openclaw/ekybot-connector
+EKYBOT_ENROLLMENT_TOKEN=ekrt_... EKYBOT_APP_URL=https://www.ekybot.com node scripts/companion-connect.js
+```
+
+### "Not a git repository" when updating
+
+The connector is installed by copying bundled files (not via git clone). To update, re-run the setup script — it copies the latest runtime files over the existing installation while preserving your `.env.ekybot_companion` config.
+
+### Daemon killed by SIGTERM immediately
+
+Another process manager (systemd, supervisor, cron) may be conflicting. Check:
+
+```bash
+# Check for existing daemon processes
+ps aux | grep companion | grep -v grep
+
+# Check for systemd services
+systemctl list-units | grep -i ekybot
+systemctl list-units | grep -i companion
+
+# Check crontab
+crontab -l 2>/dev/null | grep -i ekybot
+```
+
+If a systemd service exists, restart it instead:
+```bash
+sudo systemctl restart ekybot-companion
+```
+
+### Agent replies appear twice (duplicate messages)
+
+Usually caused by running an outdated connector version. Update by re-running the setup script:
+```bash
+bash <SKILL_DIR>/scripts/setup.sh
+```
+Then restart the daemon. Also verify only **one** daemon instance is running:
+```bash
+ps aux | grep companion-daemon | grep -v grep
+```
+
+### Machine not visible in Ekybot dashboard
+
+Re-run enrollment with a fresh token:
+```bash
+cd ~/.openclaw/ekybot-connector
+EKYBOT_ENROLLMENT_TOKEN=ekrt_... node scripts/companion-connect.js
+```
+
+### No reply from agent after @mention
+
+1. Is the daemon running? `ps aux | grep companion-daemon | grep -v grep`
+2. Run doctor: `cd ~/.openclaw/ekybot-connector && npm run companion:doctor`
+3. Check logs: `tail -50 ~/.openclaw/logs/ekybot-companion.log`
+4. Is OpenClaw gateway running? `openclaw status`
+
+## References
+
+- Troubleshooting details: `references/troubleshooting.md`
+- API reference: `references/api.md`
+- Security model: `references/security.md`

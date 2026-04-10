@@ -1,26 +1,33 @@
 {
   "name": "ekybot-connector",
-  "version": "2.2.0",
-  "description": "Transform your local OpenClaw agents into a remote-controlled team. iOS/Android apps, web dashboard, multi-agent chat, real-time cost monitoring.",
+  "version": "6.0.1",
+  "description": "Bridge OpenClaw to Ekybot: remote agent control, @mention inter-agent routing, 4-layer memory system, multi-model agents, cron management, session monitoring, project tracking, budget guard, and Companion machine health — from web/mobile.",
   "dependencies": {
     "node-fetch": "^3.3.2",
     "ws": "^8.14.2",
-    "@ekybot/connector": "^1.0.0"
+    "dotenv": "^16.3.1",
+    "chalk": "^4.1.2"
   },
-  "devDependencies": {},
   "scripts": {
-    "install": "node scripts/register_workspace.js",
-    "start": "node scripts/start_telemetry.js --continuous",
-    "stop": "pkill -f ekybot-connector",
-    "health": "node scripts/health_check.js"
+    "start": "node scripts/start.js",
+    "stop": "node scripts/stop.js",
+    "health": "node scripts/health_check.sh"
   },
   "keywords": [
     "openclaw",
     "ai-agents",
     "remote-control",
+    "inter-agent-mentions",
     "mobile-dashboard",
     "cost-monitoring",
-    "multi-agent"
+    "multi-agent",
+    "budget-guard",
+    "project-memory",
+    "multi-model",
+    "cron-management",
+    "session-monitoring",
+    "project-tracking",
+    "memory-system"
   ],
   "license": "MIT",
   "repository": {

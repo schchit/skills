@@ -284,7 +284,6 @@ API_KEY = "ek_workspace_abc123..."
 WORKSPACE_ID = "ws_123"
 
 # Send telemetry
-def send_telemetry():
     url = f"{API_BASE}/workspaces/{WORKSPACE_ID}/telemetry"
     headers = {
         "X-API-Key": API_KEY,
