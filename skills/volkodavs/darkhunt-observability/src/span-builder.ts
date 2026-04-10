@@ -27,8 +27,11 @@ import {
   sanitizeToolResult,
   formatToolInput,
   cleanToolResult,
+  cleanGenerationOutput,
   cleanGenerationInput,
+  resolveUserDisplayId,
 } from './payload.js';
+import type { UserIdentity, ChannelIdentity } from './types.js';
 
 // ── Time helpers ───────────────────────────────────────────────────
 
@@ -106,7 +109,16 @@ export function buildAgentSpan(
     'openclaw.agent.id': buffered.agentId,
   };
 
-  if (buffered.accountId) attrs['user.id'] = buffered.accountId;
+  // User identity: prefer resolved identity over raw accountId
+  const agentUserId = resolveUserDisplayId(buffered.userIdentity) || buffered.accountId;
+  if (agentUserId) attrs['user.id'] = agentUserId;
+  applyIdentityAttrs(attrs, buffered.userIdentity, buffered.channelIdentity);
+
+  // Metadata — individual keyed attributes for Langfuse NUI display + filtering
+  applyLangfuseObservationMetadata(attrs, buffered.userIdentity, buffered.channelIdentity, buffered.agentId);
+  // Trace-level metadata (agent is the root span — sets filterable trace metadata)
+  applyLangfuseTraceMetadata(attrs, buffered.userIdentity, buffered.channelIdentity);
+
   if (buffered.runId) attrs['openclaw.run.id'] = buffered.runId;
   const agentSvcVersion = resource.attributes['service.version'];
   if (agentSvcVersion) attrs['service.version'] = String(agentSvcVersion);
@@ -154,8 +166,14 @@ export function buildGenerationSpan(
     'gen_ai.system': endData.provider || buffered.provider,
   };
 
+  // Raw model identifier (full ARN) for traceability
+  const rawModel = endData.rawModel || buffered.rawModel;
+  if (rawModel) attrs['gen_ai.request.model.raw'] = rawModel;
+
   if (buffered.sessionId) attrs['openclaw.session.id'] = buffered.sessionId;
-  if (buffered.accountId) attrs['user.id'] = buffered.accountId;
+
+  // No user.id on generation spans — these are agent-internal operations
+  // Human user identity is on the parent agent span only
 
   // Belt-and-suspenders: set service.version on span attrs too
   const svcVersion = resource.attributes['service.version'];
@@ -212,18 +230,22 @@ export function buildGenerationSpan(
   }
   if (buffered.attempt != null) attrs['openclaw.observation.attempt'] = buffered.attempt;
 
-  // Content (mode-dependent) — format as JSON message arrays for clean server-side parsing
-  const cleanedInput = cleanGenerationInput(buffered.input);
-  if (cleanedInput) {
-    attrs['openclaw.observation.input'] = JSON.stringify([{ role: 'user', content: cleanedInput }]);
+  // Content (mode-dependent) — structured message array for classification
+  const structuredInput = buildStructuredInput(buffered);
+  if (structuredInput) {
+    attrs['openclaw.observation.input'] = structuredInput;
   }
-  if (endData.output) {
-    attrs['openclaw.observation.output'] = JSON.stringify([{ role: 'assistant', content: endData.output }]);
+  const cleanedOutput = cleanGenerationOutput(endData.output);
+  if (cleanedOutput) {
+    attrs['openclaw.observation.output'] = JSON.stringify([{ role: 'assistant', content: cleanedOutput }]);
   }
   if (buffered.systemPrompt) {
     attrs['openclaw.observation.system_prompt'] = buffered.systemPrompt;
   }
   if (buffered.modelParameters) attrs['openclaw.observation.model.parameters'] = buffered.modelParameters;
+
+  // Metadata — individual keyed attributes for Langfuse NUI display + filtering
+  applyLangfuseObservationMetadata(attrs, buffered.userIdentity, buffered.channelIdentity, buffered.agentId);
 
   // Apply payload mode + size limits
   const finalAttrs = enforceSpanSizeLimit(applyPayloadMode(attrs, payloadMode));
@@ -250,12 +272,15 @@ export function buildGenerationSpan(
   });
 }
 
+export type ToolResultSource = 'history' | 'hook' | 'none';
+
 export function buildToolSpan(
   buffered: BufferedTool,
   endData: ToolEndData,
   resource: IResource,
   payloadMode: PayloadMode,
   toolResult?: string,
+  resultSource: ToolResultSource = 'none',
 ): ReadableSpan {
   const endTime = msToHrTime(endData.ts);
 
@@ -264,15 +289,20 @@ export function buildToolSpan(
     'gen_ai.tool.name': buffered.toolName,
     'gen_ai.tool.call.id': buffered.toolCallId,
     'openclaw.tool.success': endData.success,
+    'openclaw.tool.result_source': resultSource,
   };
 
   if (buffered.sessionId) attrs['openclaw.session.id'] = buffered.sessionId;
-  if (buffered.accountId) attrs['user.id'] = buffered.accountId;
+  // Tool spans are internal agent operations — no human user.id
+  // (inherits from parent agent span in the trace)
   if (buffered.model) attrs['gen_ai.request.model'] = buffered.model;
   if (buffered.attempt != null) attrs['openclaw.tool.attempt'] = buffered.attempt;
   if (buffered.meta) attrs['openclaw.tool.meta'] = buffered.meta;
   const toolSvcVersion = resource.attributes['service.version'];
   if (toolSvcVersion) attrs['service.version'] = String(toolSvcVersion);
+
+  // Identity metadata — same as generation/agent spans for consistent filtering
+  applyLangfuseObservationMetadata(attrs, buffered.userIdentity, buffered.channelIdentity, buffered.agentId);
 
   // Tool parameters (mode-dependent + safe-tool allowlist)
   const sanitized = sanitizeToolParams(buffered.toolName, buffered.parameters, payloadMode);
@@ -318,6 +348,249 @@ export function buildToolSpan(
   });
 }
 
+// ── Conversation event spans ──────────────────────────────────────
+
+export function buildConversationEventSpan(
+  role: string,
+  content: string,
+  index: number,
+  sessionId: string,
+  traceId: string,
+  spanId: string,
+  parentSpanId: string,
+  ts: number,
+  resource: IResource,
+): ReadableSpan {
+  const time = msToHrTime(ts);
+
+  const attrs: SpanAttributes = {
+    'openclaw.observation.type': 'event',
+    'openclaw.observation.level': 'DEFAULT',
+    'openclaw.conversation.role': role,
+    'openclaw.conversation.content': content,
+    'openclaw.conversation.index': index,
+    'openclaw.session.id': sessionId,
+  };
+
+  return createReadableSpan({
+    name: `conversation.${role}`,
+    traceId,
+    spanId,
+    parentSpanId,
+    startTime: time,
+    endTime: time, // zero-duration event
+    status: { code: SpanStatusCode.UNSET },
+    attributes: attrs,
+    resource,
+  });
+}
+
+// ── Discovery event spans ─────────────────────────────────────────
+
+/**
+ * Build a generic event span for hooks we suspect exist but haven't confirmed.
+ * Captures all event/context data as attributes for later analysis.
+ */
+export function buildDiscoveryEventSpan(
+  hookName: string,
+  evt: Record<string, unknown>,
+  ctx: Record<string, unknown>,
+  sessionId: string,
+  traceId: string,
+  spanId: string,
+  parentSpanId: string | undefined,
+  ts: number,
+  resource: IResource,
+): ReadableSpan {
+  const time = msToHrTime(ts);
+
+  const attrs: SpanAttributes = {
+    'openclaw.observation.type': 'event',
+    'openclaw.observation.level': 'DEFAULT',
+    'openclaw.hook.name': hookName,
+    'openclaw.session.id': sessionId,
+  };
+
+  // Capture event data as attributes (top-level scalars only, to avoid huge payloads)
+  for (const [k, v] of Object.entries(evt)) {
+    if (v == null) continue;
+    const key = `openclaw.hook.evt.${k}`;
+    if (typeof v === 'string') attrs[key] = v.slice(0, 1000);
+    else if (typeof v === 'number' || typeof v === 'boolean') attrs[key] = v;
+    else attrs[key] = JSON.stringify(v).slice(0, 500);
+  }
+
+  for (const [k, v] of Object.entries(ctx)) {
+    if (v == null) continue;
+    const key = `openclaw.hook.ctx.${k}`;
+    if (typeof v === 'string') attrs[key] = v.slice(0, 1000);
+    else if (typeof v === 'number' || typeof v === 'boolean') attrs[key] = v;
+    else attrs[key] = JSON.stringify(v).slice(0, 500);
+  }
+
+  // Derive status from error fields
+  const hasError = evt.error || ctx.error;
+  const status: SpanStatus = hasError
+    ? { code: SpanStatusCode.ERROR, message: String(evt.error ?? ctx.error) }
+    : { code: SpanStatusCode.UNSET };
+
+  if (hasError) attrs['openclaw.observation.level'] = 'ERROR';
+
+  return createReadableSpan({
+    name: hookName,
+    traceId,
+    spanId,
+    parentSpanId,
+    startTime: time,
+    endTime: time, // zero-duration event
+    status,
+    attributes: attrs,
+    resource,
+  });
+}
+
+// ── Generation input builder ─────────────────────────────────────
+
+/**
+ * Build the generation span input.
+ *
+ * Priority order:
+ * 1. cleanUserMessage from message_received hook — ground truth, pre-prompt
+ * 2. Regex-cleaned evt.prompt — strips System: prefixes, thread history, metadata
+ * 3. Raw evt.prompt truncated — last resort
+ */
+function buildStructuredInput(buffered: BufferedGeneration): string | undefined {
+  // Priority 1: clean user message from message_received (pre-prompt, no metadata)
+  if (buffered.cleanUserMessage) {
+    return JSON.stringify([{ role: 'user', content: deduplicateContent(buffered.cleanUserMessage) }]);
+  }
+
+  // Priority 2: regex-cleaned evt.prompt (strips System: prefix, thread history, etc.)
+  const cleaned = cleanGenerationInput(buffered.input);
+  if (cleaned) {
+    return JSON.stringify([{ role: 'user', content: cleaned }]);
+  }
+
+  // Priority 3: raw prompt truncated (last resort)
+  if (buffered.input) {
+    const truncated = buffered.input.length > 500
+      ? buffered.input.slice(0, 500) + '...'
+      : buffered.input;
+    return JSON.stringify([{ role: 'user', content: truncated }]);
+  }
+
+  return undefined;
+}
+
+// ── Identity attribute helpers ────────────────────────────────────
+
+/** Apply user and channel identity attributes to a span */
+function applyIdentityAttrs(
+  attrs: Record<string, string | number | boolean | string[]>,
+  user?: UserIdentity,
+  channel?: ChannelIdentity,
+): void {
+  if (user) {
+    if (user.fullName) attrs['openclaw.user.full_name'] = user.fullName;
+    if (user.email) attrs['openclaw.user.email'] = user.email;
+    if (user.slackUserId) attrs['openclaw.user.slack_id'] = user.slackUserId;
+    if (user.slackUsername) attrs['openclaw.user.slack_username'] = user.slackUsername;
+    if (user.displayName) attrs['openclaw.user.display_name'] = user.displayName;
+  }
+  if (channel) {
+    if (channel.name) attrs['openclaw.channel.name'] = channel.name;
+    if (channel.id) attrs['openclaw.channel.id'] = channel.id;
+    if (channel.provider) attrs['openclaw.channel.provider'] = channel.provider;
+  }
+}
+
+/**
+ * Set metadata on a span using multiple strategies for compatibility:
+ *
+ * 1. langfuse.observation.metadata.<key> — Langfuse OTLP convention (individual filterable keys)
+ * 2. langfuse.trace.metadata.<key> — Langfuse trace-level (only on root/agent span)
+ * 3. metadata — JSON string (some backends read this directly)
+ * 4. openclaw.observation.metadata — JSON string (Seth may map this)
+ *
+ * Seth NUI is NOT standard Langfuse — it may use a different mapping.
+ * Belt-and-suspenders: try all known conventions so at least one works.
+ */
+function applyLangfuseObservationMetadata(
+  attrs: Record<string, string | number | boolean | string[]>,
+  user?: UserIdentity,
+  channel?: ChannelIdentity,
+  agentId?: string,
+): void {
+  // Strategy 1: Langfuse individual keyed attributes (filterable)
+  const prefix = 'langfuse.observation.metadata';
+  if (user) {
+    if (user.fullName) attrs[`${prefix}.user_full_name`] = user.fullName.slice(0, 200);
+    if (user.email) attrs[`${prefix}.user_email`] = user.email.slice(0, 200);
+    if (user.slackUserId) attrs[`${prefix}.user_slack_id`] = user.slackUserId.slice(0, 200);
+    if (user.slackUsername) attrs[`${prefix}.user_slack_username`] = user.slackUsername.slice(0, 200);
+    if (user.displayName) attrs[`${prefix}.user_display_name`] = user.displayName.slice(0, 200);
+  }
+  if (channel) {
+    if (channel.name) attrs[`${prefix}.channel_name`] = channel.name.slice(0, 200);
+    if (channel.id) attrs[`${prefix}.channel_id`] = channel.id.slice(0, 200);
+    if (channel.provider) attrs[`${prefix}.channel_provider`] = channel.provider.slice(0, 200);
+  }
+  if (agentId) attrs[`${prefix}.agent_id`] = agentId.slice(0, 200);
+
+  // Strategy 2: JSON blob under common attribute names (for Seth / non-Langfuse backends)
+  const metaJson = buildMetadataJson(user, channel, agentId);
+  if (metaJson) {
+    attrs['metadata'] = metaJson;
+    attrs['openclaw.observation.metadata'] = metaJson;
+  }
+}
+
+function applyLangfuseTraceMetadata(
+  attrs: Record<string, string | number | boolean | string[]>,
+  user?: UserIdentity,
+  channel?: ChannelIdentity,
+): void {
+  const prefix = 'langfuse.trace.metadata';
+  if (user) {
+    if (user.fullName) attrs[`${prefix}.user_full_name`] = user.fullName.slice(0, 200);
+    if (user.email) attrs[`${prefix}.user_email`] = user.email.slice(0, 200);
+    if (user.slackUserId) attrs[`${prefix}.user_slack_id`] = user.slackUserId.slice(0, 200);
+    if (user.slackUsername) attrs[`${prefix}.user_slack_username`] = user.slackUsername.slice(0, 200);
+  }
+  if (channel) {
+    if (channel.name) attrs[`${prefix}.channel_name`] = channel.name.slice(0, 200);
+    if (channel.id) attrs[`${prefix}.channel_id`] = channel.id.slice(0, 200);
+    if (channel.provider) attrs[`${prefix}.channel_provider`] = channel.provider.slice(0, 200);
+  }
+}
+
+/** Build a JSON metadata string for backends that read metadata as a blob */
+function buildMetadataJson(user?: UserIdentity, channel?: ChannelIdentity, agentId?: string): string | undefined {
+  const meta: Record<string, string> = {};
+  if (agentId) meta['agent_id'] = agentId;
+  if (user) {
+    if (user.fullName) meta['user_full_name'] = user.fullName;
+    if (user.email) meta['user_email'] = user.email;
+    if (user.slackUserId) meta['user_slack_id'] = user.slackUserId;
+    if (user.slackUsername) meta['user_slack_username'] = user.slackUsername;
+  }
+  if (channel) {
+    if (channel.name) meta['channel_name'] = channel.name;
+    if (channel.id) meta['channel_id'] = channel.id;
+    if (channel.provider) meta['channel_provider'] = channel.provider;
+  }
+  return Object.keys(meta).length > 0 ? JSON.stringify(meta) : undefined;
+}
+
+/** Remove duplicated content — OpenClaw often sends "msg\n\nmsg" or "msg\n\n msg" */
+function deduplicateContent(content: string): string {
+  const parts = content.split(/\n\n\s*/);
+  if (parts.length === 2 && parts[0].trim() === parts[1].trim()) {
+    return parts[0].trim();
+  }
+  return content;
+}
+
 export function buildMessageSpan(
   data: MessageInData,
   traceId: string,
@@ -326,7 +599,8 @@ export function buildMessageSpan(
 ): ReadableSpan {
   const time = msToHrTime(data.ts);
 
-  const attrs: SpanAttributes = {
+  const userDisplayId = resolveUserDisplayId(data.userIdentity) || data.accountId;
+  const attrs: Record<string, string | number | boolean | string[]> = {
     'openclaw.observation.type': 'event',
     'openclaw.observation.level': 'DEFAULT',
     'openclaw.session.id': data.sessionId,
@@ -334,10 +608,11 @@ export function buildMessageSpan(
     'openclaw.message.from': data.from,
     'openclaw.message.content_length': data.contentLength,
   };
-  if (data.accountId) attrs['user.id'] = data.accountId;
+  if (userDisplayId) attrs['user.id'] = userDisplayId;
+  applyIdentityAttrs(attrs, data.userIdentity, data.channelIdentity);
 
   return createReadableSpan({
-    name: `message.in ${data.channel}`,
+    name: `message.in ${data.channelIdentity?.name || data.channel}`,
     traceId,
     spanId,
     startTime: time,

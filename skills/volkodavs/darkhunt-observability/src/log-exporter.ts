@@ -1,32 +1,32 @@
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
-import type { ReadableSpan } from '@opentelemetry/sdk-trace-base';
+import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-proto';
+import { LogRecord as SdkLogRecord } from '@opentelemetry/sdk-logs';
 import type { PluginConfig } from './types.js';
 
-const LOG_PREFIX = '[tracehub-telemetry]';
+const LOG_PREFIX = '[tracehub-logs]';
 
-export class TraceHubExporter {
-  private exporter: OTLPTraceExporter;
-  private batch: ReadableSpan[] = [];
+export class LogHubExporter {
+  private exporter: OTLPLogExporter;
+  private batch: SdkLogRecord[] = [];
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
   private maxSize: number;
   private delayMs: number;
   private debug: boolean;
-  private spansSent = 0;
+  private logsSent = 0;
   private exportErrors = 0;
 
   constructor(config: PluginConfig, debug = false) {
     this.debug = debug;
 
     if (this.debug) {
-      console.log(`${LOG_PREFIX} initializing exporter`);
-      console.log(`${LOG_PREFIX}   url: ${config.traces_endpoint}`);
+      console.log(`${LOG_PREFIX} initializing log exporter`);
+      console.log(`${LOG_PREFIX}   url: ${config.logs_endpoint}`);
       console.log(`${LOG_PREFIX}   timeout: ${config.export_timeout_ms}ms`);
       console.log(`${LOG_PREFIX}   headers: ${config.headers ? Object.keys(config.headers).join(', ') : 'none'}`);
       console.log(`${LOG_PREFIX}   batch: ${config.batch_max_size} max, ${config.batch_delay_ms}ms delay`);
     }
 
-    this.exporter = new OTLPTraceExporter({
-      url: config.traces_endpoint,
+    this.exporter = new OTLPLogExporter({
+      url: config.logs_endpoint,
       timeoutMillis: config.export_timeout_ms,
       headers: config.headers,
     });
@@ -35,12 +35,11 @@ export class TraceHubExporter {
     this.delayMs = config.batch_delay_ms;
   }
 
-  enqueue(spans: ReadableSpan[]): void {
-    this.batch.push(...spans);
+  enqueue(records: SdkLogRecord[]): void {
+    this.batch.push(...records);
 
     if (this.debug) {
-      const names = spans.map(s => s.name).join(', ');
-      console.log(`${LOG_PREFIX} enqueued ${spans.length} span(s): [${names}] (batch: ${this.batch.length}/${this.maxSize})`);
+      console.log(`${LOG_PREFIX} enqueued ${records.length} log record(s) (batch: ${this.batch.length}/${this.maxSize})`);
     }
 
     if (this.batch.length >= this.maxSize) {
@@ -65,7 +64,7 @@ export class TraceHubExporter {
     this.batch = [];
 
     if (this.debug) {
-      console.log(`${LOG_PREFIX} flushing ${toExport.length} span(s) to endpoint...`);
+      console.log(`${LOG_PREFIX} flushing ${toExport.length} log record(s) to endpoint...`);
     }
 
     this.exporter.export(toExport, (result) => {
@@ -76,15 +75,15 @@ export class TraceHubExporter {
           console.error(`${LOG_PREFIX} stack:`, result.error.stack);
         }
       } else {
-        this.spansSent += toExport.length;
-        console.log(`${LOG_PREFIX} export OK — ${toExport.length} span(s) sent (${this.spansSent} total)`);
+        this.logsSent += toExport.length;
+        console.log(`${LOG_PREFIX} export OK — ${toExport.length} log record(s) sent (${this.logsSent} total)`);
       }
     });
   }
 
-  getStats(): { spansSent: number; exportErrors: number; batchPending: number } {
+  getStats(): { logsSent: number; exportErrors: number; batchPending: number } {
     return {
-      spansSent: this.spansSent,
+      logsSent: this.logsSent,
       exportErrors: this.exportErrors,
       batchPending: this.batch.length,
     };

@@ -21,16 +21,64 @@ Trace (traceId = SHA-256(sessionId)[:16])
 
 ## Quick Start
 
+### Install from ClawHub
+
 ```bash
 # 1. Install the plugin
-openclaw plugins install darkhunt-observability
+clawhub install darkhunt-observability
 
-# 2. Run the setup wizard
-openclaw tracehub setup
+# 2. Run the bootstrap script to register it as a plugin
+cd ~/.openclaw/workspace/skills/darkhunt-observability
+bash setup-plugin.sh
 
-# 3. Restart the gateway to apply changes
+# 3. Restart the gateway
 openclaw gateway restart
+
+# 4. Run the setup wizard
+openclaw tracehub setup
 ```
+
+The bootstrap script (`setup-plugin.sh`) handles:
+- Installing npm dependencies
+- Adding the plugin to `plugins.load.paths` in `~/.openclaw/openclaw.json`
+- Creating a minimal plugin entry so OpenClaw loads it
+
+### Manual install
+
+If you prefer to set things up yourself:
+
+```bash
+# 1. Install
+clawhub install darkhunt-observability
+cd ~/.openclaw/workspace/skills/darkhunt-observability
+npm install
+
+# 2. Add to ~/.openclaw/openclaw.json:
+```
+
+```json
+"plugins": {
+  "load": {
+    "paths": ["~/.openclaw/workspace/skills"]
+  },
+  "entries": {
+    "darkhunt-observability": {
+      "enabled": true,
+      "config": {}
+    }
+  }
+}
+```
+
+```bash
+# 3. Restart and configure
+openclaw gateway restart
+openclaw tracehub setup
+```
+
+> **Why the extra steps?** `clawhub install` places packages in the skills directory. OpenClaw only loads plugins from paths listed in `plugins.load.paths`, so the bootstrap script (or manual config) bridges that gap.
+
+### Setup wizard
 
 The wizard walks you through:
 1. **Export target** -- Darkhunt Observability (production), local OTel collector, or custom endpoint
@@ -38,6 +86,10 @@ The wizard walks you through:
 3. **Payload mode** -- metadata, debug, or full (recommended)
 
 Configuration is saved automatically to `~/.openclaw/openclaw.json`. Re-run `openclaw tracehub setup` anytime to change settings.
+
+### Docker
+
+In Docker, `~/.openclaw/` is a volume mount — anything installed during `docker build` gets overwritten at runtime. Use `/opt/openclaw-plugins/` instead and add that path to `plugins.load.paths`.
 
 ## CLI Commands
 
@@ -116,6 +168,5 @@ No auth headers needed -- just point at the collector endpoints:
 ```bash
 npm install
 npm run build    # TypeScript -> dist/
-npm test         # 118 tests via vitest
+npm test         # Run tests via vitest
 ```
-# observability-plugins

@@ -2,14 +2,16 @@ import { validate } from './config.js';
 import { buildResource } from './resource.js';
 import { SpanBuffer } from './span-buffer.js';
 import { TraceHubExporter } from './exporter.js';
-import { registerHooks } from './hooks-adapter.js';
+import { registerHooks, registerDiscoveryHooks, resolveSessionKey } from './hooks-adapter.js';
 import { registerTracehubCli } from './cli.js';
+import { LogHubExporter } from './log-exporter.js';
+import { registerLogHooks } from './log-hooks.js';
 import type { OpenClawPluginApi } from './hooks-adapter.js';
 
 export default {
   id: 'darkhunt-observability',
   name: 'Darkhunt Observability',
-  description: 'Exports OTel trace spans to Trace Hub via OTLP/protobuf',
+  description: 'Exports OTel trace spans and logs to Trace Hub via OTLP/protobuf',
 
   configSchema: {
     jsonSchema: {
@@ -26,6 +28,8 @@ export default {
         batch_max_size: { type: 'number', default: 50 },
         export_timeout_ms: { type: 'number', default: 30000 },
         enabled: { type: 'boolean', default: true },
+        model_map: { type: 'object', additionalProperties: { type: 'string' }, description: 'Map Bedrock ARN patterns to friendly model names for pricing' },
+        model_pricing: { type: 'object', description: 'Override per-model pricing (per 1M tokens). Keys: model names, values: {input, output, cacheRead?, cacheWrite?}' },
       },
       required: [],
     },
@@ -39,6 +43,8 @@ export default {
       batch_delay_ms: { label: 'Batch Delay (ms)', advanced: true },
       batch_max_size: { label: 'Batch Max Size', advanced: true },
       export_timeout_ms: { label: 'Export Timeout (ms)', advanced: true },
+      model_map: { label: 'Model Map', advanced: true, help: 'Map Bedrock inference profile IDs or ARN substrings to model names (e.g. {"ekadx6q1kayx": "claude-sonnet-4-6"})' },
+      model_pricing: { label: 'Model Pricing', advanced: true, help: 'Override pricing per 1M tokens (e.g. {"claude-sonnet-4-6": {"input": 3.00, "output": 15.00}})' },
     },
   },
 
@@ -46,16 +52,6 @@ export default {
     'message_received', 'before_agent_start', 'agent_end',
     'llm_input', 'llm_output', 'before_tool_call', 'after_tool_call',
     'shutdown',
-    // Discovery: events we suspect exist but haven't confirmed
-    'agent_start', 'agent_error',
-    'tool_call', 'tool_result', 'tool_error',
-    'media_received', 'media_processed', 'image_received',
-    'message_sent', 'message_delivered', 'message_error',
-    'session_start', 'session_end', 'session_created',
-    'cron_start', 'cron_end', 'cron_trigger',
-    'memory_search', 'memory_result',
-    'subagent_start', 'subagent_end',
-    'error', 'warning',
   ],
 
   register(api: OpenClawPluginApi) {
@@ -90,6 +86,7 @@ export default {
       process.env.DEPLOYMENT_ENVIRONMENT ?? process.env.NODE_ENV,
       (rawConfig as any).workspace_id,
       (rawConfig as any).application_id,
+      rawConfig as Record<string, unknown>,
     );
 
     const exporter = new TraceHubExporter(config, debug);
@@ -102,7 +99,21 @@ export default {
       api.logger.info(`[tracehub-telemetry] Exporting to: ${config.traces_endpoint}`);
     }
 
-    registerHooks(api, buffer);
+    registerHooks(api, buffer, undefined, config.model_map, config.model_pricing);
+
+    // Discovery hooks disabled — session_start/session_end/message_sent arrive
+    // as empty shells after OTLP mapping (wrong sessionId, userId="node", no metadata).
+    // Re-enable when trace-hub can map their attributes into the schema.
+
+    // ── Log export (OTLP logs endpoint) ──────────────────────────
+    let logExporter: LogHubExporter | undefined;
+    if (config.logs_endpoint) {
+      logExporter = new LogHubExporter(config, debug);
+      registerLogHooks(api, logExporter, config.payload_mode, resource, config.model_map, config.model_pricing);
+      if (api.logger) {
+        api.logger.info(`[tracehub-logs] Log export enabled`);
+      }
+    }
 
     // Tap into runtime event streams for deeper visibility
     registerRuntimeEvents(api, buffer, debug);
@@ -119,6 +130,9 @@ export default {
       clearInterval(staleInterval);
       buffer.flushStale(0);
       await exporter.shutdown();
+      if (logExporter) {
+        await logExporter.shutdown();
+      }
     });
   },
 };
@@ -147,7 +161,7 @@ function registerRuntimeEvents(api: OpenClawPluginApi, buffer: SpanBuffer, debug
             runId: event.runId,
             stream: event.stream,
             data: event.data,
-            sessionKey: event.sessionKey ?? '',
+            sessionKey: resolveSessionKey(event.sessionKey ?? ''),
             ts: event.ts ?? Date.now(),
           });
         }
@@ -166,6 +180,14 @@ function registerRuntimeEvents(api: OpenClawPluginApi, buffer: SpanBuffer, debug
           const keys = Object.keys(event ?? {}).join(', ');
           log.info(`[tracehub:transcript] keys=${keys}`);
           log.info(`[tracehub:transcript] payload=${JSON.stringify(event)?.slice(0, 1500)}`);
+        }
+
+        // Emit transcript update as a discovery span with structural metadata
+        try {
+          const resolved = event ? { ...event, sessionKey: resolveSessionKey(event.sessionKey ?? '') } : {};
+          buffer.onTranscriptUpdate(resolved);
+        } catch (err: any) {
+          if (log) log.error(`[tracehub:transcript] Error processing update: ${err.message}`);
         }
       });
       if (log) log.info('[tracehub] Registered runtime.events.onSessionTranscriptUpdate callback');

@@ -1,7 +1,7 @@
 {
   "id": "darkhunt-observability",
   "name": "Darkhunt Observability",
-  "version": "0.1.0",
+  "version": "0.3.8",
   "main": "dist/index.js",
   "configSchema": {
     "type": "object",

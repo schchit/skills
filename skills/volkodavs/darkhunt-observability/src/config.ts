@@ -32,6 +32,13 @@ export function validate(raw: unknown): PluginConfig {
     export_timeout_ms: typeof obj.export_timeout_ms === 'number' ? obj.export_timeout_ms : 30000,
     enabled: typeof obj.enabled === 'boolean' ? obj.enabled : true,
     debug: typeof obj.debug === 'boolean' ? obj.debug : undefined,
+    model_map: typeof obj.model_map === 'object' && obj.model_map !== null
+      ? Object.fromEntries(
+          Object.entries(obj.model_map as Record<string, unknown>)
+            .filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
+        )
+      : undefined,
+    model_pricing: parseModelPricing(obj.model_pricing),
   };
 }
 
@@ -57,6 +64,25 @@ function buildHeaders(obj: Record<string, unknown>): Record<string, string> {
   return headers;
 }
 
+function parseModelPricing(
+  raw: unknown,
+): Record<string, { input: number; output: number; cacheRead?: number; cacheWrite?: number }> | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const result: Record<string, { input: number; output: number; cacheRead?: number; cacheWrite?: number }> = {};
+  for (const [key, val] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof val !== 'object' || val === null) continue;
+    const v = val as Record<string, unknown>;
+    if (typeof v.input !== 'number' || typeof v.output !== 'number') continue;
+    result[key] = {
+      input: v.input,
+      output: v.output,
+      ...(typeof v.cacheRead === 'number' ? { cacheRead: v.cacheRead } : {}),
+      ...(typeof v.cacheWrite === 'number' ? { cacheWrite: v.cacheWrite } : {}),
+    };
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
 /** Serialize config back to a plain object for writing to openclaw.json */
 export function serializeConfig(config: PluginConfig): Record<string, unknown> {
   const out: Record<string, unknown> = {
@@ -70,6 +96,12 @@ export function serializeConfig(config: PluginConfig): Record<string, unknown> {
 
   if (config.logs_endpoint) out.logs_endpoint = config.logs_endpoint;
   if (config.headers) out.headers = config.headers;
+  if (config.model_map && Object.keys(config.model_map).length > 0) {
+    out.model_map = config.model_map;
+  }
+  if (config.model_pricing && Object.keys(config.model_pricing).length > 0) {
+    out.model_pricing = config.model_pricing;
+  }
 
   return out;
 }
