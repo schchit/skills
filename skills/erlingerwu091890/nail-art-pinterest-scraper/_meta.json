@@ -3,9 +3,15 @@
   "slug": "nail-art-pinterest-scraper",
   "displayName": "Nail Art Pinterest Scraper",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775617343112,
-    "commit": "https://github.com/openclaw/skills/commit/2a015a19ef2945676c69fcc9ecfc93f5b3883c66"
+    "version": "1.1.0",
+    "publishedAt": 1775799344970,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775617343112,
+      "commit": "https://github.com/openclaw/skills/commit/2a015a19ef2945676c69fcc9ecfc93f5b3883c66"
+    }
+  ]
 }
