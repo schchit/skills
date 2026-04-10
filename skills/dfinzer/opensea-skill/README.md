@@ -4,30 +4,25 @@
 
 ## What is this?
 
-This is an [Agent Skill](https://skills.sh/docs) for AI coding assistants. Once installed, your agent can interact with the OpenSea API to query NFT data, execute marketplace operations, and swap ERC20 tokens using the [OpenSea CLI](https://github.com/ProjectOpenSea/opensea-cli), shell scripts, or the MCP server.
+This is an [Agent Skill](https://skills.sh/docs) for AI coding assistants. Once installed, your agent can interact with the OpenSea API to query NFT data, execute marketplace operations, and swap ERC20 tokens using the [OpenSea CLI](https://github.com/ProjectOpenSea/opensea-cli), shell scripts, or the [MCP server](#opensea-mcp-server).
 
 ## Prerequisites
 
-- `OPENSEA_API_KEY` environment variable — for CLI, SDK, and REST API scripts
-- `OPENSEA_MCP_TOKEN` environment variable — for the MCP server (separate from API key)
-- Node.js >= 18.0.0 — for `@opensea/cli`
-- `curl` for REST shell scripts
-- `jq` (recommended) for parsing JSON responses
+### Required
 
-Get both credentials at [opensea.io/settings/developer](https://opensea.io/settings/developer).
+- `OPENSEA_API_KEY` environment variable — for CLI, SDK, REST API scripts, and MCP server
+- Node.js >= 18.0.0 — for `@opensea/cli`
+- `curl` — for REST shell scripts
+- `jq` (recommended) — for parsing JSON responses
+
+Get your API key at [opensea.io/settings/developer](https://opensea.io/settings/developer). The same key works for the REST API, CLI, and MCP server.
+
+For write operations (swaps, Seaport fulfillment), you'll need a wallet that can sign transactions. Use whatever fits your security model — Privy, Fireblocks, a backend signing proxy, etc.
 
 ## Installing the Skill
 
-### Using npx
-
 ```bash
 npx skills add ProjectOpenSea/opensea-skill
-```
-
-### Using Claude Code
-
-```bash
-/skill install ProjectOpenSea/opensea-skill
 ```
 
 ### Manual Installation
@@ -99,7 +94,7 @@ An official MCP server provides direct LLM integration for token swaps and NFT o
     "opensea": {
       "url": "https://mcp.opensea.io/mcp",
       "headers": {
-        "Authorization": "Bearer YOUR_MCP_TOKEN"
+        "X-API-KEY": "OPENSEA_API_KEY"
       }
     }
   }
