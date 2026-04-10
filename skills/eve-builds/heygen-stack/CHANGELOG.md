@@ -1,8 +1,49 @@
 # Changelog
 
+## v1.3.0 (2026-04-10) — i18n Support
+
+### Added
+- **Language Detection** — Skills detect user's language from input and communicate in that language
+- **Language-aware voice selection** — Voice API calls filter by detected language; `voice_settings.locale` guidance added
+- **Non-English script generation** — Scripts and narration generated in the video language
+- **i18n eval suite** — Test scenarios across English, Japanese, Spanish, Korean with scoring rubric
+- **Japanese example prompt** in prompt-craft reference
+- **Language consistency criterion** (#11) in reviewer prompt
+
+### Changed
+- Mode Detection is now explicitly language-agnostic (semantic intent matching, not English keyword matching)
+- User-facing messages converted from hardcoded English strings to semantic descriptions the LLM adapts to user's language
+- Buddy voice construction pattern uses `{video_language}` instead of hardcoded "English"
+- Buddy sign-off lines converted to semantic descriptions instead of English idioms
+- Test video prompt (Phase 5) generates greeting in video language instead of hardcoded English
+
+### Documentation
+- Added `> Language note` callouts to motion-vocabulary.md and prompt-styles.md explaining English-only directives
+- Updated api-reference.md with `voice_settings.locale` guidance and language filter examples
+- All reference files document the content-language vs directive-language separation
+
+---
+
+## v1.2.7 (2026-04-09)
+
+### Bug Fixes
+- Synced version numbers across all files (SKILL.md frontmatter, User-Agent headers, plugin.json, marketplace.json) to match VERSION file
+- Fixed Quick Shot avatar_id rule in heygen-video-producer to use AVATAR file when available instead of always omitting
+- Completed Frame Check correction matrix with Aspect Ratio column and ratio-fix corrections (F, G) across root SKILL.md and frame-check.md
+- Fixed frame-check.md correction stacking matrix: removed stale 4-column header, corrected intro sentence (photo_avatar never gets background correction C)
+- Replaced macOS-incompatible `readlink -f` in heygen-video-producer preamble with POSIX-compatible path resolution
+
+### Architecture
+- Trimmed root SKILL.md from 399 to ~215 lines by extracting duplicated Script, Prompt Craft, and Generate content into the producer sub-skill where it belongs
+- Fixed stale path reference: `identity/SKILL.md` -> `heygen-avatar-designer/SKILL.md`
+- Registered buddy-to-avatar skill in marketplace.json
+
+### Documentation
+- Added buddy-to-avatar to README "What's Inside" section
+
 ## v1.1.0 (2026-04-06)
 
-### heygen-video-message
+### heygen-video-producer
 - Prompt-only Frame Check architecture (no external image generation, preserves face identity)
 - submit-video.sh wrapper enforces aspect ratio checks before every API call
 - Phase naming overhaul: action verbs replace numbered phases (Discovery, Script, Prompt Craft, Frame Check, Generate, Deliver)
@@ -12,7 +53,7 @@
 - Inline MP4 delivery (downloads video, sends as media attachment)
 - Hard gates at all user decision points
 
-### heygen-identity
+### heygen-avatar-designer
 - Voice Design endpoint (POST /v3/voices) with semantic search, seed pagination
 - Reference photo nudge on first-time avatar creation
 - Inline audio previews for voice selection
