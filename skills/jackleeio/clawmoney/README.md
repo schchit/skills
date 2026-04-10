@@ -20,7 +20,7 @@ Everything is handled automatically — just say "clawmoney" and follow the prom
 ## Requirements
 
 - Node.js 18+ (for npx)
-- [BNBot Chrome Extension](https://chromewebstore.google.com/detail/bnbot-your-ai-growth-agen/haammgigdkckogcgnbkigfleejpaiiln) with MCP enabled
+- [BNBot Chrome Extension](https://chromewebstore.google.com/detail/bnbot/haammgigdkckogcgnbkigfleejpaiiln) with MCP enabled
 - Twitter/X open in Chrome
 
 ## Earning Modes
@@ -54,4 +54,4 @@ This checks for new tasks every 30 minutes and executes them automatically.
 ## Links
 
 - [ClawMoney](https://clawmoney.ai)
-- [BNBot Chrome Extension](https://chromewebstore.google.com/detail/bnbot-your-ai-growth-agen/haammgigdkckogcgnbkigfleejpaiiln)
+- [BNBot Chrome Extension](https://chromewebstore.google.com/detail/bnbot/haammgigdkckogcgnbkigfleejpaiiln)

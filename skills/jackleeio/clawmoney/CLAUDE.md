@@ -21,8 +21,10 @@ npx clawhub publish /Users/jacklee/Projects/clawmoney-skill \
 
 ## 同步
 
-本项目的 SKILL.md 需与以下文件保持一致：
-1. `/Users/jacklee/Projects/clawmoney/.claude/skills/clawmoney/SKILL.md`（项目内部 skill）
-2. `/Users/jacklee/Projects/clawmoney/public/skill.md`（网站 clawmoney.ai/skill.md）
+修改 SKILL.md 后，**必须同步更新三个文件并发布**：
 
-三者 body 内容保持一致，仅 metadata 不同。
+1. **本文件** `clawmoney-skill/SKILL.md` → git push + `npx clawhub publish`
+2. **项目内部 skill** `/Users/jacklee/Projects/clawmoney-web/.claude/skills/clawmoney/SKILL.md` → git push
+3. **网站 skill** `/Users/jacklee/Projects/clawmoney-web/public/skill.md` → git push
+
+三者内容保持一致。每次更新都要 clawhub publish 新版本。
