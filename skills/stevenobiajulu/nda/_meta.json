@@ -1,11 +1,17 @@
 {
   "owner": "stevenobiajulu",
   "slug": "nda",
-  "displayName": "NDA",
+  "displayName": "Nda",
   "latest": {
-    "version": "0.2.0",
-    "publishedAt": 1772340353349,
-    "commit": "https://github.com/openclaw/skills/commit/01f3a90a128fc7d67a90226bb4311518c49a8b94"
+    "version": "0.2.2",
+    "publishedAt": 1775750415218,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.2.0",
+      "publishedAt": 1772340353349,
+      "commit": "https://github.com/openclaw/skills/commit/01f3a90a128fc7d67a90226bb4311518c49a8b94"
+    }
+  ]
 }
