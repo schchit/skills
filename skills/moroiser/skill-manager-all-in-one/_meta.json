@@ -3,11 +3,16 @@
   "slug": "skill-manager-all-in-one",
   "displayName": "Skill Manager All In One | 一站式技能管理器",
   "latest": {
-    "version": "4.0.0",
-    "publishedAt": 1775386586256,
-    "commit": "https://github.com/openclaw/skills/commit/c986baaed0d227e7304800d0c2e7692320b7a508"
+    "version": "4.4.3",
+    "publishedAt": 1775677002758,
+    "commit": null
   },
   "history": [
+    {
+      "version": "4.0.0",
+      "publishedAt": 1775386586256,
+      "commit": "https://github.com/openclaw/skills/commit/c986baaed0d227e7304800d0c2e7692320b7a508"
+    },
     {
       "version": "3.0.7",
       "publishedAt": 1775241669487,

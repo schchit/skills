@@ -8,7 +8,20 @@
 Verify all items in the "Skill creation/modification checklist" section of SKILL.md:
 逐项核对 SKILL.md 中"技能制作/修改清单"的全部项目。
 
-**B. File size check | 文件大小检查**
+**B. Security verification | 安全性检查**
+
+⚠️ **If the skill contains scripts (Python/Bash/etc.), manually inspect each script:**
+如果技能包含脚本，必须手动检查每个脚本：
+
+| 风险类型 | 检查要点 | 高危模式 |
+|---------|---------|---------|
+| **Shell 注入** | `os.system()`, `subprocess.call(..., shell=True)`, `eval()` 用于无过滤的用户输入 | `os.system(f"arecord ... {filepath}")` |
+| **Python 代码注入** | `exec()`/`eval()` 构建自用户/远程输入；`python3 -c` 内字符串插值 | `f"python3 -c '...{user_input}...'"` |
+| **路径注入** | 文件路径与无过滤的用户/远程输入直接拼接 | `subprocess.run(f"convert {filename}")` |
+| **日志/输出泄露** | API Key、Token、凭证出现在日志、报错、返回值中 | 凭证明文出现在错误信息中 |
+| **依赖不完整** | 代码 import 的包未出现在 `requirements.txt` / `package.json` 中 | 代码 import `av`，requirements.txt 没有 |
+
+**C. File size check | 文件大小检查**
 ```bash
 du -sh <skill-dir>
 ```
@@ -18,7 +31,7 @@ If the directory **exceeds 50MB**, the upload will fail.
 - After upload succeeds, move files back. Wait for user confirmation again.
 如果目录**超过 50MB**，上传会失败。立即报告用户，等待明确指示后再操作。
 
-**C. Draft changelog | 拟定 changelog**
+**D. Draft changelog | 拟定 changelog**
 - English first, Chinese after.
   英文在前,中文在后。
 - Formal release-note tone only.
@@ -67,6 +80,7 @@ Report the following to user. **Do NOT upload until user explicitly confirms.**
 | AI readability | 确认通过/需调整 |
 | Contextual coherence | 确认通过/需调整 |
 | Stability | 确认通过/需调整 |
+| **Code security** | 确认通过/需调整（Shell注入/Python代码注入/路径注入/依赖完整性） |
 | Full publish command | `clawhub publish ...` |
 
 **Restart rule | 重启规则：**
