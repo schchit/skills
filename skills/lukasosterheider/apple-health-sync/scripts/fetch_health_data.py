@@ -34,6 +34,32 @@ MAX_LIST_ITEMS = 512
 MAX_SERIALIZED_DAY_BYTES = 1_000_000
 DATE_KEY_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 SAFE_METRIC_KEY_PATTERN = re.compile(r"^[A-Za-z0-9_.:-]{1,64}$")
+SAFE_WORKOUT_TYPE_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 &'()/+-]{0,63}$")
+SAFE_UUID_PATTERN = re.compile(
+    r"^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+)
+SAFE_ISO_TIMESTAMP_PATTERN = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$"
+)
+SAFE_SOURCE_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 .&'()/+-]{0,63}$")
+SAFE_BUNDLE_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9.-]{2,127}$")
+SAFE_TIMEZONE_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9_./+-]{1,63}$")
+SAFE_UNIT_PATTERN = re.compile(r"^[A-Za-z%°][A-Za-z0-9%°/().*+-]{0,15}$")
+SAFE_SLEEP_STAGE_PATTERN = re.compile(r"^[a-z_]{1,32}$")
+SAFE_DEVICE_TEXT_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 .:&'()/+_,-]{0,127}$")
+SAFE_DEVICE_IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 .:&'()/+_,-]{0,127}$")
+WORKOUT_DEVICE_TEXT_FIELDS = {
+    "name",
+    "manufacturer",
+    "model",
+    "hardware_version",
+    "firmware_version",
+    "software_version",
+}
+WORKOUT_DEVICE_IDENTIFIER_FIELDS = {
+    "local_identifier",
+    "udi_device_identifier",
+}
 DROP_VALUE = object()
 
 
@@ -135,7 +161,67 @@ def decrypt_rows(
     return decrypted
 
 
-def sanitize_value(value: Any, depth: int, counter: List[int]) -> Any:
+def path_matches(path: Tuple[str, ...], pattern: Tuple[str, ...]) -> bool:
+    return len(path) == len(pattern) and all(
+        expected == "*" or actual == expected
+        for actual, expected in zip(path, pattern)
+    )
+
+
+def path_has_prefix(path: Tuple[str, ...], prefix: Tuple[str, ...]) -> bool:
+    return len(path) >= len(prefix) and all(
+        expected == "*" or actual == expected
+        for actual, expected in zip(path[:len(prefix)], prefix)
+    )
+
+
+def should_keep_string(path: Tuple[str, ...], value: str) -> bool:
+    if len(value.encode("utf-8")) > 128:
+        return False
+
+    if path == ("workouts", "*", "type"):
+        return bool(SAFE_WORKOUT_TYPE_PATTERN.fullmatch(value))
+    if path == ("workouts", "*", "id"):
+        return bool(SAFE_UUID_PATTERN.fullmatch(value))
+    if path in {("workouts", "*", "start"), ("workouts", "*", "end")}:
+        return bool(SAFE_ISO_TIMESTAMP_PATTERN.fullmatch(value))
+    if path == ("workouts", "*", "source"):
+        return bool(SAFE_SOURCE_PATTERN.fullmatch(value))
+    if path == ("workouts", "*", "source_bundle_id"):
+        return bool(SAFE_BUNDLE_ID_PATTERN.fullmatch(value))
+    if path == ("workouts", "*", "timezone"):
+        return bool(SAFE_TIMEZONE_PATTERN.fullmatch(value))
+    if path in {
+        ("sleep", "sessions", "*", "start"),
+        ("sleep", "sessions", "*", "end"),
+        ("sleep", "first_sleep_start"),
+        ("sleep", "last_sleep_end"),
+    }:
+        return bool(SAFE_ISO_TIMESTAMP_PATTERN.fullmatch(value))
+    if path == ("sleep", "sessions", "*", "stage"):
+        return bool(SAFE_SLEEP_STAGE_PATTERN.fullmatch(value))
+    if path == ("sleep", "sessions", "*", "timezone"):
+        return bool(SAFE_TIMEZONE_PATTERN.fullmatch(value))
+    if len(path) == 3 and path[0] in {"body", "heart"} and path[2] == "unit":
+        return bool(SAFE_UNIT_PATTERN.fullmatch(value))
+    if len(path) == 4 and path_matches(path, ("workouts", "*", "device", path[3])):
+        if path[3] in WORKOUT_DEVICE_TEXT_FIELDS:
+            return bool(SAFE_DEVICE_TEXT_PATTERN.fullmatch(value))
+        if path[3] in WORKOUT_DEVICE_IDENTIFIER_FIELDS:
+            return bool(SAFE_DEVICE_IDENTIFIER_PATTERN.fullmatch(value))
+        return False
+    if path_has_prefix(path, ("workouts", "*", "metadata")):
+        return bool(
+            SAFE_UUID_PATTERN.fullmatch(value)
+            or SAFE_ISO_TIMESTAMP_PATTERN.fullmatch(value)
+            or SAFE_TIMEZONE_PATTERN.fullmatch(value)
+            or SAFE_BUNDLE_ID_PATTERN.fullmatch(value)
+            or SAFE_SOURCE_PATTERN.fullmatch(value)
+        )
+    return False
+
+
+def sanitize_value(value: Any, depth: int, counter: List[int], path: Tuple[str, ...] = ()) -> Any:
     if depth > MAX_VALIDATION_DEPTH:
         return DROP_VALUE
 
@@ -154,12 +240,14 @@ def sanitize_value(value: Any, depth: int, counter: List[int]) -> Any:
             return DROP_VALUE
         return value
     if isinstance(value, str):
-        # Drop strings to prevent user-controlled prompt content from being persisted.
+        # Keep only tightly constrained string fields that are useful for analysis.
+        if should_keep_string(path, value):
+            return value
         return DROP_VALUE
     if isinstance(value, list):
         sanitized_items: List[Any] = []
         for item in value[:MAX_LIST_ITEMS]:
-            sanitized = sanitize_value(item, depth + 1, counter)
+            sanitized = sanitize_value(item, depth + 1, counter, path + ("*",))
             if sanitized is DROP_VALUE:
                 continue
             sanitized_items.append(sanitized)
@@ -175,7 +263,7 @@ def sanitize_value(value: Any, depth: int, counter: List[int]) -> Any:
             key_clean = key.strip()
             if not SAFE_METRIC_KEY_PATTERN.fullmatch(key_clean):
                 continue
-            sanitized = sanitize_value(child, depth + 1, counter)
+            sanitized = sanitize_value(child, depth + 1, counter, path + (key_clean,))
             if sanitized is DROP_VALUE:
                 continue
             sanitized_dict[key_clean] = sanitized
@@ -201,7 +289,7 @@ def sanitize_decrypted_payload(raw_payload: Dict[str, Any]) -> Tuple[Dict[str, A
         # Apply traversal limits per day so large historical payloads do not
         # exhaust the validator budget cumulatively across unrelated dates.
         counter = [0]
-        sanitized = sanitize_value(payload, depth=0, counter=counter)
+        sanitized = sanitize_value(payload, depth=0, counter=counter, path=())
         if sanitized is DROP_VALUE:
             metrics["dropped_days"] += 1
             continue
