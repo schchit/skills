@@ -3,11 +3,16 @@
   "slug": "clawpk",
   "displayName": "Clawpk",
   "latest": {
-    "version": "4.0.0",
-    "publishedAt": 1775054389001,
-    "commit": "https://github.com/openclaw/skills/commit/55624c204fe1ac0253c628a530692eb18aafee8d"
+    "version": "5.0.0",
+    "publishedAt": 1775456858546,
+    "commit": null
   },
   "history": [
+    {
+      "version": "4.0.0",
+      "publishedAt": 1775054389001,
+      "commit": "https://github.com/openclaw/skills/commit/55624c204fe1ac0253c628a530692eb18aafee8d"
+    },
     {
       "version": "3.2.0",
       "publishedAt": 1773792906174,
