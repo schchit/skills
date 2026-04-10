@@ -1,6 +1,6 @@
 ---
 name: palaia
-version: "2.6"
+version: "2.7.3"
 description: >
   Local, crash-safe persistent memory for OpenClaw agents.
   SQLite-backed by default. Semantic search, projects, scopes, auto-capture.
@@ -19,22 +19,21 @@ metadata:
     postInstall:
       - command: "palaia init"
         label: "Initialize palaia store"
-      - command: "npm install -g @byte5ai/palaia@latest"
-        label: "Install OpenClaw plugin (npm)"
+      - command: "openclaw plugins install @byte5ai/palaia"
+        label: "Install OpenClaw plugin"
     postUpdate:
-      - command: "python3 -m pip install --upgrade 'palaia[fastembed]' && (npm install -g @byte5ai/palaia@latest 2>/dev/null || true) && palaia doctor --fix && palaia warmup"
-        label: "Upgrade palaia with semantic search (pip + npm plugin) and run health checks"
+      - command: "python3 -m pip install --upgrade 'palaia[fastembed]' && openclaw plugins install @byte5ai/palaia && palaia doctor --fix && palaia warmup"
+        label: "Upgrade palaia with semantic search + plugin and run health checks"
     postUpdateMessage: >
-      palaia has been updated to v2.6. New: usage-data-driven optimization (task-as-post-it,
-      manual entry boost), auto-capture workspace fix for sub-agents, capture health check,
-      CLI/plugin version mismatch detection, process safety in curate.
-      Run `palaia doctor --fix` to upgrade.
+      palaia has been updated to v2.7.3. Fixes: ContextEngine compaction conflict
+      with OpenClaw, doctor phantom stale-task warnings, invisible entries with
+      empty scope. Run `palaia doctor --fix` to verify.
     plugin:
       slot: memory
       package: "@byte5ai/palaia"
 ---
 
-# palaia v2.6 — Agent Memory Skill
+# palaia v2.7 — Agent Memory Skill
 
 palaia is the memory system for OpenClaw agents. It gives you persistent, searchable, crash-safe memory across sessions. You don't need to understand how it works — just use the commands below.
 
@@ -75,22 +74,15 @@ Note: `palaia[fastembed]` already includes sqlite-vec for native SIMD vector sea
 After the CLI is installed, wire it into OpenClaw:
 
 ```bash
-npm install -g @byte5ai/palaia@latest
+openclaw plugins install @byte5ai/palaia
 ```
 
-Then activate in OpenClaw config (read existing values first, never overwrite arrays):
-```bash
-PALAIA_PATH="$(npm root -g)/@byte5ai/palaia"
-```
-
-Add to `openclaw.json`:
-```json
+Then activate the memory slot in OpenClaw config:
+```json5
+// openclaw.json
 {
-  "plugins": {
-    "load": { "paths": ["<PALAIA_PATH>"] },
-    "allow": ["..existing..", "palaia"],
-    "slots": { "memory": "palaia" },
-    "entries": { "palaia": { "enabled": true } }
+  plugins: {
+    slots: { memory: "palaia" }
   }
 }
 ```
@@ -135,7 +127,7 @@ pipx install "palaia[fastembed]" --force
 palaia doctor --fix
 
 # Step 4: Update OpenClaw plugin (if installed)
-npm install -g @byte5ai/palaia@latest
+openclaw plugins install @byte5ai/palaia
 ```
 
 After the manual update, `palaia upgrade` will be available for future updates.
@@ -451,6 +443,17 @@ palaia upgrade
 
 Auto-detects the install method (pip/uv/pipx/brew), preserves all installed extras (fastembed, mcp, sqlite-vec, curate), runs `palaia doctor --fix`, and upgrades the OpenClaw npm plugin if present. Always use this instead of manual pip commands.
 
+### `palaia ui` — Local memory explorer (NEW in v2.7)
+
+```bash
+pip install 'palaia[ui]'   # One-time: install FastAPI + uvicorn
+palaia ui                  # Opens browser at http://127.0.0.1:8384
+palaia ui --port 9000      # Custom port (auto-fallback if busy)
+palaia ui --no-browser     # Don't auto-open browser
+```
+
+Browse, search, create, edit, and delete entries in the browser. Manual entries are highlighted with a gold border (1.3× recall boost). Tasks are post-its: clicking ✓ deletes them. The health pill in the header shows doctor status with actionable warnings. Localhost only — no authentication, no network exposure.
+
 ### `palaia doctor` — Diagnostics and auto-fix
 
 ```bash
@@ -468,6 +471,15 @@ palaia gc                  # Tier rotation (HOT -> WARM -> COLD)
 palaia gc --dry-run         # Preview what would change
 palaia gc --aggressive      # Also clears COLD tier
 palaia gc --budget 200      # Keep max N entries
+```
+
+### `palaia prune` — Selective cleanup (NEW in v2.5)
+
+```bash
+palaia prune --agent moneypenny     # Remove auto-captured entries by agent
+palaia prune --tags auto-capture    # Remove all auto-captured entries
+palaia prune --dry-run              # Preview what would be removed
+palaia prune --protect-type process # Never delete process entries
 ```
 
 ### `palaia config` — Configuration
