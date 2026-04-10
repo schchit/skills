@@ -3,11 +3,16 @@
   "slug": "aiprox",
   "displayName": "Aiprox",
   "latest": {
-    "version": "1.4.2",
-    "publishedAt": 1773808001125,
-    "commit": "https://github.com/openclaw/skills/commit/37a0131b9bf222a90a27147934d99ba523a6fb74"
+    "version": "1.5.0",
+    "publishedAt": 1775263645684,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.4.2",
+      "publishedAt": 1773808001125,
+      "commit": "https://github.com/openclaw/skills/commit/37a0131b9bf222a90a27147934d99ba523a6fb74"
+    },
     {
       "version": "1.4.0",
       "publishedAt": 1773612914704,

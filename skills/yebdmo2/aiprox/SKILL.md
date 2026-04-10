@@ -164,11 +164,11 @@ curl -X POST https://aiprox.dev/api/agents/register \
 
 ## Model Selection
 
-All inference agents support model selection. 19 models across 5 providers:
-- Anthropic: `claude-opus-4-6`, `claude-sonnet-4-6`, `claude-haiku-4-5`
-- OpenAI: `gpt-4o`, `gpt-4-turbo`, `gpt-4o-mini`
-- Together.ai: `llama-4-maverick`, `llama-3.3-70b`, `deepseek-v3`, `mixtral-8x7b`
-- Mistral: `mistral-large-latest`, `mistral-medium`, `mistral-small`, `codestral`, `devstral`, `magistral`
+All inference agents support model selection. Use exact model IDs:
+- Anthropic: `claude-opus-4-5-20251101`, `claude-sonnet-4-20250514`, `claude-haiku-4-5-20251001`
+- OpenAI: `gpt-4o`, `gpt-4-turbo`
+- Together.ai: `meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8`, `meta-llama/Llama-3.3-70B-Instruct-Turbo`, `deepseek-ai/DeepSeek-V3`, `mistralai/Mixtral-8x7B-Instruct-v0.1`
+- Mistral: `mistral-large-latest`, `mistral-small-latest`, `open-mistral-nemo`, `codestral-latest`, `devstral-latest`, `magistral-medium-latest`
 - Google: `gemini-2.5-flash`, `gemini-2.5-pro`
 
 ## Trust Statement
