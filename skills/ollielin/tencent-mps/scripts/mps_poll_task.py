@@ -528,6 +528,82 @@ def auto_download_outputs(task_result, download_dir=".", verbose=False):
     return downloaded
 
 
+def auto_gen_compare(task_result, input_url, media_type="video", title=None, output_path=None):
+    """
+    任务完成后，自动生成对比 HTML 页面。
+
+    Args:
+        task_result: 轮询完成后的任务结果 dict
+        input_url:   原始输入 URL（或 COS 永久链接）
+        media_type:  媒体类型 'video' 或 'image'
+        title:       对比页面标题（默认自动生成）
+        output_path: 输出 HTML 路径（默认自动生成到 evals/test_result/）
+
+    Returns:
+        str: 生成的 HTML 文件路径，失败返回 None
+    """
+    if not task_result:
+        return None
+
+    try:
+        from mps_gen_compare import generate_html, get_display_name
+    except ImportError:
+        print("⚠️  未找到 mps_gen_compare 模块，跳过对比页面生成", file=sys.stderr)
+        return None
+
+    # 提取输出文件
+    outputs = extract_output_files(task_result)
+    if not outputs:
+        print("⚠️  未找到输出文件，跳过对比页面生成", file=sys.stderr)
+        return None
+
+    # 取第一个输出文件的预签名 URL
+    out = outputs[0]
+    enhanced_url = out.get("signed_url", "")
+    if not enhanced_url and out.get("bucket") and out.get("key"):
+        enhanced_url = f"https://{out['bucket']}.cos.{out['region']}.myqcloud.com/{out['key'].lstrip('/')}"
+
+    if not enhanced_url:
+        print("⚠️  无法获取输出文件 URL，跳过对比页面生成", file=sys.stderr)
+        return None
+
+    # 构建对比数据
+    if not title:
+        type_label = "视频" if media_type == "video" else "图片"
+        title = f"{type_label}处理效果对比"
+
+    pairs = [{
+        'original': input_url,
+        'enhanced': enhanced_url,
+        'type': media_type,
+        'title': '',
+    }]
+
+    # 确定输出路径
+    if not output_path:
+        from datetime import datetime as _dt
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        result_dir = os.path.join(os.path.dirname(script_dir), "evals", "test_result")
+        os.makedirs(result_dir, exist_ok=True)
+        timestamp = _dt.now().strftime('%Y%m%d_%H%M%S')
+        output_path = os.path.join(result_dir, f"compare_{timestamp}.html")
+
+    # 生成 HTML
+    html = generate_html(pairs, title=title)
+    os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write(html)
+
+    orig_name = get_display_name(input_url)
+    enh_name = get_display_name(enhanced_url)
+    icon = "🎬" if media_type == "video" else "🖼️"
+    print(f"\n{icon} 对比页面已生成: {output_path}")
+    print(f"   原始: {orig_name}")
+    print(f"   增强: {enh_name}")
+
+    return output_path
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 命令行入口
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -591,32 +667,8 @@ if __name__ == '__main__':
         action='store_true',
         help='输出详细日志（包含完整API响应）'
     )
-    parser.add_argument(
-        '--dry-run',
-        action='store_true',
-        help='模拟执行，显示轮询参数但不实际执行'
-    )
 
     args = parser.parse_args()
-
-    # Dry-run 模式：仅显示操作摘要
-    if args.dry_run:
-        print("=" * 60)
-        print("=== 模拟执行（Dry-run）===")
-        print("=" * 60)
-        print("操作：轮询任务状态直到完成")
-        print(f"\n  TaskId: {args.task_id}")
-        print(f"  TaskType: {args.type}")
-        print(f"  MPS Region: {args.region}")
-        
-        # 设置默认值
-        interval = args.interval or (10 if args.type == 'video' else 5)
-        max_wait = args.max_wait or (1800 if args.type == 'video' else 300)
-        
-        print(f"  轮询间隔: {interval}秒")
-        print(f"  最长等待: {max_wait}秒")
-        print("\n不会实际轮询任务。移除 --dry-run 参数后执行实际操作。")
-        sys.exit(0)
 
     # 设置默认值
     interval = args.interval or (10 if args.type == 'video' else 5)

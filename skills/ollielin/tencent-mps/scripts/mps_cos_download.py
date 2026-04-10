@@ -6,15 +6,15 @@
   使用腾讯云 COS Python SDK 从 COS Bucket 下载文件到本地。
 
 用法：
-  # 最简用法（使用环境变量中的 bucket 和 region）
-  python mps_cos_download.py --cos-key input/video.mp4 --local-file ./downloaded/video.mp4
+  # 最简用法（local-file 省略时自动使用 ./<cos-input-key 文件名>）
+  python mps_cos_download.py --cos-input-key output/result.mp4
+
+  # 手动指定 local-file
+  python mps_cos_download.py --cos-input-key output/result.mp4 --local-file ./result.mp4
 
   # 指定 bucket 和 region（覆盖环境变量）
-  python mps_cos_download.py --cos-key input/video.mp4 --local-file ./video.mp4 \\
+  python mps_cos_download.py --cos-input-key output/result.mp4 --local-file ./result.mp4 \\
       --bucket mybucket-125xxx --region ap-guangzhou
-
-  # 使用环境变量中的默认 bucket，只指定 cos-key
-  python mps_cos_download.py --cos-key output/result.mp4 --local-file ./result.mp4
 
 环境变量：
   TENCENTCLOUD_SECRET_ID   - 腾讯云 SecretId
@@ -50,24 +50,28 @@ def parse_args():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例：
-  # 下载文件到本地（使用环境变量中的 bucket）
-  python mps_cos_download.py --cos-key input/video.mp4 --local-file ./video.mp4
+  # 最简用法：省略 --local-file，自动保存为 ./<文件名>
+  python mps_cos_download.py --cos-input-key output/result.mp4
+  # 等价于：--local-file ./result.mp4
+
+  # 手动指定 local-file
+  python mps_cos_download.py --cos-input-key output/result.mp4 --local-file ./result.mp4
 
   # 指定 bucket 和 region
-  python mps_cos_download.py --cos-key input/video.mp4 --local-file ./video.mp4 \\
+  python mps_cos_download.py --cos-input-key output/result.mp4 --local-file ./result.mp4 \\
       --bucket mybucket-125xxx --region ap-guangzhou
         """
     )
     
     parser.add_argument(
-        "--cos-key", "-k",
+        "--cos-input-key", "-k",
         required=True,
         help="COS 对象键（Key），如 input/video.mp4（必填）"
     )
     parser.add_argument(
         "--local-file", "-f",
-        required=True,
-        help="本地保存路径（必填）"
+        default=None,
+        help="本地保存路径（默认：./<cos-input-key 文件名>）"
     )
     parser.add_argument(
         "--bucket", "-b",
@@ -93,11 +97,6 @@ def parse_args():
         "--verbose", "-v",
         action="store_true",
         help="显示详细日志"
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="模拟执行，不实际下载文件"
     )
     
     return parser.parse_args()
@@ -203,31 +202,18 @@ def main():
     if not bucket:
         print("错误：缺少 COS Bucket 配置。请设置 TENCENTCLOUD_COS_BUCKET 环境变量，或使用 --bucket 参数。", file=sys.stderr)
         sys.exit(1)
-    
-    # Dry-run 模式：仅显示操作摘要
-    if args.dry_run:
-        print("=== 模拟执行（Dry-run）===\n")
-        print("操作：从 COS 下载文件")
-        print(f"  COS Bucket: {bucket}")
-        print(f"  COS Region: {region}")
-        print(f"  COS Key: {args.cos_key}")
-        print(f"  完整 URL: https://{bucket}.cos.{region}.myqcloud.com/{args.cos_key.lstrip('/')}")
-        print(f"  本地保存路径: {args.local_file}")
-        
-        # 检查本地目录是否可写
-        local_dir = os.path.dirname(os.path.abspath(args.local_file))
-        if local_dir and not os.path.exists(local_dir):
-            print(f"  本地目录: {local_dir}（不存在，下载时会自动创建）")
-        elif local_dir:
-            print(f"  本地目录: {local_dir}（存在）")
-        
-        print("\n不会实际下载文件。移除 --dry-run 参数后执行实际操作。")
-        return 0
-    
+
+    # 若未指定 local-file，默认保存到当前目录下的同名文件
+    local_file = args.local_file
+    if not local_file:
+        local_file = "./" + os.path.basename(args.cos_input_key)
+        if args.verbose:
+            print(f"未指定 --local-file，自动使用默认值: {local_file}")
+
     # 执行下载
     result = download_file(
-        cos_key=args.cos_key,
-        local_file=args.local_file,
+        cos_key=args.cos_input_key,
+        local_file=local_file,
         bucket=bucket,
         region=region,
         secret_id=secret_id,

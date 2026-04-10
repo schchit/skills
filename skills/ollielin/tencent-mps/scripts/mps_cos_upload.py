@@ -6,15 +6,15 @@
   使用腾讯云 COS Python SDK 将本地文件上传到 COS Bucket。
 
 用法：
-  # 最简用法（使用环境变量中的 bucket 和 region）
-  python mps_cos_upload.py --local-file /path/to/local/file.mp4 --cos-key input/video.mp4
+  # 最简用法（cos-input-key 省略时自动使用 input/<文件名>）
+  python mps_cos_upload.py --local-file /path/to/local/file.mp4
+
+  # 手动指定 cos-input-key
+  python mps_cos_upload.py --local-file /path/to/local/file.mp4 --cos-input-key input/video.mp4
 
   # 指定 bucket 和 region（覆盖环境变量）
-  python mps_cos_upload.py --local-file /path/to/file.mp4 --cos-key input/video.mp4 \
+  python mps_cos_upload.py --local-file /path/to/file.mp4 --cos-input-key input/video.mp4 \
       --bucket mybucket-125xxx --region ap-guangzhou
-
-  # 使用环境变量中的默认 bucket，只指定 cos-key
-  python mps_cos_upload.py --local-file ./test.mp4 --cos-key input/test.mp4
 
 环境变量：
   TENCENTCLOUD_SECRET_ID   - 腾讯云 SecretId
@@ -50,11 +50,14 @@ def parse_args():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例：
-  # 上传文件到 COS（使用环境变量中的 bucket）
-  python mps_cos_upload.py --local-file ./video.mp4 --cos-key input/video.mp4
+  # 最简用法（cos-input-key 省略，自动使用 input/<文件名>）
+  python mps_cos_upload.py --local-file ./video.mp4
+
+  # 手动指定 cos-input-key
+  python mps_cos_upload.py --local-file ./video.mp4 --cos-input-key input/video.mp4
 
   # 指定 bucket 和 region
-  python mps_cos_upload.py --local-file ./video.mp4 --cos-key input/video.mp4 \\
+  python mps_cos_upload.py --local-file ./video.mp4 --cos-input-key input/video.mp4 \\
       --bucket mybucket-125xxx --region ap-guangzhou
         """
     )
@@ -65,9 +68,9 @@ def parse_args():
         help="本地文件路径（必填）"
     )
     parser.add_argument(
-        "--cos-key", "-k",
-        required=True,
-        help="COS 对象键（Key），如 input/video.mp4（必填）"
+        "--cos-input-key", "-k",
+        default=None,
+        help="COS 对象键（Key），如 input/video.mp4（默认：/input/<本地文件名>）"
     )
     parser.add_argument(
         "--bucket", "-b",
@@ -93,11 +96,6 @@ def parse_args():
         "--verbose", "-v",
         action="store_true",
         help="显示详细日志"
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="模拟执行，不实际上传文件"
     )
     
     return parser.parse_args()
@@ -221,31 +219,18 @@ def main():
     if not bucket:
         print("错误：缺少 COS Bucket 配置。请设置 TENCENTCLOUD_COS_BUCKET 环境变量，或使用 --bucket 参数。", file=sys.stderr)
         sys.exit(1)
-    
-    # Dry-run 模式：仅显示操作摘要
-    if args.dry_run:
-        print("=== 模拟执行（Dry-run）===\n")
-        print("操作：上传文件到 COS")
-        print(f"  本地文件: {args.local_file}")
-        
-        # 检查文件是否存在并获取大小
-        if os.path.isfile(args.local_file):
-            file_size = os.path.getsize(args.local_file)
-            print(f"  文件大小: {file_size / 1024 / 1024:.2f} MB")
-        else:
-            print(f"  文件状态: 不存在（上传前会失败）")
-        
-        print(f"  目标 Bucket: {bucket}")
-        print(f"  目标 Region: {region}")
-        print(f"  COS Key: {args.cos_key}")
-        print(f"  完整 URL: https://{bucket}.cos.{region}.myqcloud.com/{args.cos_key.lstrip('/')}")
-        print("\n不会实际上传文件。移除 --dry-run 参数后执行实际操作。")
-        return 0
-    
+
+    # 若未指定 cos-key，默认使用 /input/<本地文件名>
+    cos_key = args.cos_input_key
+    if not cos_key:
+        cos_key = "input/" + os.path.basename(args.local_file)
+        if args.verbose:
+            print(f"未指定 --cos-input-key，自动使用默认值: {cos_key}")
+
     # 执行上传
     result = upload_file(
         local_file=args.local_file,
-        cos_key=args.cos_key,
+        cos_key=cos_key,
         bucket=bucket,
         region=region,
         secret_id=secret_id,

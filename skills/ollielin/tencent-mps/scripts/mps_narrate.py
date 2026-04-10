@@ -343,6 +343,7 @@ def process_media(args):
         task_id = result.get('TaskId', 'N/A')
         print("✅ AI 解说二创任务提交成功！")
         print(f"   TaskId: {task_id}")
+        print(f"\n## TaskId: {task_id}")
         print(f"   RequestId: {result.get('RequestId', 'N/A')}")
         print(f"   场景: {args.scene} ({PRESET_SCENES[args.scene]['desc']})")
         print(f"   输出数量: {args.output_count}")

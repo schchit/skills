@@ -12,7 +12,7 @@
 核心参数说明：
   --mode   : "video"（理解视频画面+音频）或 "audio"（仅音频，视频会自动提取音频）
   --prompt : 大模型提示词，决定理解侧重点和输出格式（必填，建议明确描述分析目标）
-  --extend-url : 第二段音视频 URL，用于对比分析（最多支持 2 个文件）
+  --extend-url : 第二段音视频 URL，用于对比分析（最多 1 条扩展 URL，即总共 2 个文件参与对比）
 
 用法：
   # 基础：视频内容理解
@@ -461,7 +461,9 @@ def main():
             extend_urls=args.extend_urls,
             region=args.region,
         )
-        print(f"✅ 任务已提交，TaskId: {task_id}")
+        print("✅ 音视频理解任务提交成功！")
+        print(f"   TaskId: {task_id}")
+        print(f"\n## TaskId: {task_id}")
         if args.verbose:
             print(f"   轮询间隔: {POLL_INTERVAL}秒  最大等待: {POLL_TIMEOUT}秒")
     except TencentCloudSDKException as e:

@@ -302,8 +302,6 @@ def main():
                         help="输出完整 JSON 响应")
     parser.add_argument("--json", action="store_true",
                         help="仅输出原始 JSON，不打印格式化摘要")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="模拟执行，不实际查询任务")
 
     args = parser.parse_args()
 
@@ -312,17 +310,6 @@ def main():
     print("=" * 60)
     print(f"TaskId: {args.task_id}")
     print("-" * 60)
-
-    # Dry-run 模式：仅显示操作摘要
-    if args.dry_run:
-        region = args.region or os.environ.get("TENCENTCLOUD_API_REGION", "ap-guangzhou")
-        print("\n=== 模拟执行（Dry-run）===\n")
-        print("操作：查询图片处理任务详情")
-        print(f"  TaskId: {args.task_id}")
-        print(f"  MPS Region: {region}")
-        print(f"  API: DescribeImageTaskDetail")
-        print("\n不会实际查询任务。移除 --dry-run 参数后执行实际操作。")
-        return
 
     query_task(args)
 

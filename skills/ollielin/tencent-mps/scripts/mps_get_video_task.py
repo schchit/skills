@@ -93,7 +93,7 @@ TASK_TYPE_MAP = {
     "Segment": "分镜拆条",
     "Tag": "标签",
     "VideoComprehension": "视频理解",
-    "VideoRemake": "视频二创",
+    "VideoRemake": "视频二创/去重",
     "Face": "人脸识别",
     "Asr": "语音识别",
     "AsrFullText": "语音全文识别",
@@ -297,6 +297,7 @@ def print_ai_analysis_results(result_set):
             "Description": "DescriptionTask",
             "Dubbing": "DubbingTask",
             "VideoRemake": "VideoRemakeTask",
+            "VRemake": "VideoRemakeTask",   # API 实际返回的缩写形式
             "VideoComprehension": "VideoComprehensionTask",
             "Cutout": "CutoutTask",
             "Reel": "ReelTask",
@@ -305,6 +306,8 @@ def print_ai_analysis_results(result_set):
             "Segment": "SegmentTask",
         }
         task_key = task_key_map.get(task_type, "")
+        # 对 VRemake 类型，统一当作 VideoRemake 处理
+        normalized_type = "VideoRemake" if task_type == "VRemake" else task_type
         task_detail = item.get(task_key, {}) if task_key else None
 
         if task_detail:
@@ -361,19 +364,21 @@ def print_ai_analysis_results(result_set):
                         conf = hl.get("Confidence", 0)
                         print(f"         - {start}s - {end}s (置信度: {conf * 100:.1f}%)")
 
-                # 通用：输出文件路径（VideoRemake / Reel / Dubbing 等有文件输出的 AI 分析任务）
-                out_obj_path = output.get("OutputObjectPath", "")
-                out_storage = output.get("OutputStorage", {}) or {}
-                if out_obj_path:
-                    out_type = out_storage.get("Type", "")
-                    if out_type == "COS":
-                        cos_out = out_storage.get("CosOutputStorage", {}) or {}
-                        bucket = cos_out.get("Bucket", "")
-                        region = cos_out.get("Region", "")
-                        print(f"       输出路径: COS - {bucket}:{out_obj_path} (region: {region})")
-                        _try_print_cos_presigned_url(bucket, region, out_obj_path)
-                    else:
-                        print(f"       输出路径: {out_obj_path}")
+                # VideoRemake 输出视频路径（视频去重 / 视频二创）
+                if normalized_type == "VideoRemake":
+                    out_path = output.get("Path", "")
+                    if out_path:
+                        confidence = output.get("Confidence", None)
+                        conf_str = f" (置信度: {confidence})" if confidence is not None else ""
+                        print(f"       输出路径: {out_path}{conf_str}")
+                        out_storage = output.get("OutputStorage", {}) or {}
+                        out_type = out_storage.get("Type", "")
+                        if out_type == "COS":
+                            cos_out = out_storage.get("CosOutputStorage", {}) or {}
+                            bucket = cos_out.get("Bucket", "")
+                            region = cos_out.get("Region", "")
+                            if bucket and region:
+                                _try_print_cos_presigned_url(bucket, region, out_path)
         else:
             print(f"   [{i}] AI分析-{task_type}: 无详情")
 
@@ -915,7 +920,7 @@ def _print_schedule_subtask_error(task, activity_type, index):
         "Segment": "分镜拆条",
         "Tag": "标签",
         "VideoComprehension": "视频理解",
-        "VideoRemake": "视频二创",
+        "VideoRemake": "视频二创/去重",
         "Face": "人脸识别",
         "Asr": "语音识别",
         "AsrFullText": "语音全文识别",
@@ -1073,7 +1078,7 @@ def _print_unknown_activity_type(activity_res, activity_type, index):
         ("SegmentTask", "分镜拆条"),
         ("TagTask", "标签"),
         ("VideoComprehensionTask", "视频理解"),
-        ("VideoRemakeTask", "视频二创"),
+        ("VideoRemakeTask", "视频二创/去重"),
         ("FaceTask", "人脸识别"),
         ("AsrTask", "语音识别"),
         ("AsrFullTextTask", "语音全文识别"),
@@ -1396,8 +1401,6 @@ def main():
                         help="输出完整 JSON 响应")
     parser.add_argument("--json", action="store_true",
                         help="仅输出原始 JSON，不打印格式化摘要")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="模拟执行，不实际查询任务")
 
     args = parser.parse_args()
 
@@ -1406,17 +1409,6 @@ def main():
     print("=" * 60)
     print(f"TaskId: {args.task_id}")
     print("-" * 60)
-
-    # Dry-run 模式：仅显示操作摘要
-    if args.dry_run:
-        region = args.region or os.environ.get("TENCENTCLOUD_API_REGION", "ap-guangzhou")
-        print("\n=== 模拟执行（Dry-run）===\n")
-        print("操作：查询媒体处理任务详情")
-        print(f"  TaskId: {args.task_id}")
-        print(f"  MPS Region: {region}")
-        print(f"  API: DescribeMediaTask")
-        print("\n不会实际查询任务。移除 --dry-run 参数后执行实际操作。")
-        return
 
     query_task(args)
 

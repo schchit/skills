@@ -1,6 +1,6 @@
 # 转码参数与示例 — `mps_transcode.py`
 
-**功能**：视频转码、压缩、格式转换，支持 H264/H265/H266/AV1/VP9 等编码格式。
+**功能**：视频转码、压缩、格式转换，支持 H264/H265/H266/AV1/VP9 等视频编码格式，以及 MP3/M4A 纯音频格式输出。
 
 ## 参数说明
 
@@ -34,6 +34,17 @@
 | `--region` | MPS 服务区域（优先读取 `TENCENTCLOUD_API_REGION` 环境变量，默认 `ap-guangzhou`）|
 | `--dry-run` | 只打印参数，不调用 API |
 
+## 强制规则
+
+- **默认行为**：未指定任何编码参数时，脚本使用默认模板（H265 编码，MP4 封装），无需追问，直接执行
+- **纯音频提取**：用户说"提取音频"、"转为 MP3/M4A" → 使用 `--container mp3` 或 `--container m4a`，不需要指定视频编码参数
+- **压缩场景选择**：
+  - 用户说"极致压缩"、"最大压缩"、"带宽优先" → `--compress-type ultra_compress`
+  - 用户说"平衡压缩"、"综合最优" → `--compress-type standard_compress`
+  - 用户说"码率优先"、"控制码率" → `--compress-type high_compress`
+  - 用户说"画质优先"、"存档" → `--compress-type low_compress`
+- **流媒体场景**：用户说"HLS 切片"、"流媒体播放" → 使用 `--container hls`
+
 ## 示例命令
 
 ```bash
@@ -62,6 +73,12 @@ python scripts/mps_transcode.py --url https://example.com/video.mp4 --compress-t
 
 # 画质优先（low_compress）：保证画质的前提下适度压缩，适合存档
 python scripts/mps_transcode.py --url https://example.com/video.mp4 --compress-type low_compress
+
+# 提取音频（转为 MP3）
+python scripts/mps_transcode.py --url https://example.com/video.mp4 --container mp3
+
+# 提取音频（转为 M4A，高质量）
+python scripts/mps_transcode.py --url https://example.com/video.mp4 --container m4a --audio-bitrate 192
 
 # 异步提交后查询任务状态
 python scripts/mps_transcode.py --url https://example.com/video.mp4 --no-wait

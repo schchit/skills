@@ -1085,9 +1085,10 @@ def run(args):
         task_id = result.get("TaskId", "N/A")
         request_id = result.get("RequestId", "N/A")
 
-        print(f"✅ AIGC 生视频任务创建成功！")
+        print(f"✅ AIGC 生视频任务提交成功！")
         print(f"   TaskId: {task_id}")
         print(f"   RequestId: {request_id}")
+        print(f"\n## TaskId: {task_id}")
 
         if args.no_wait:
             print(f"\n提示：使用以下命令查询任务结果：")

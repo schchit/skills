@@ -226,9 +226,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--check-only", action="store_true", help="仅检查当前环境变量状态，不加载"
     )
-    parser.add_argument(
-        "--dry-run", action="store_true", help="模拟执行，显示将要执行的操作但不实际加载环境变量"
-    )
     args = parser.parse_args()
 
     if args.check_only:
@@ -241,26 +238,6 @@ if __name__ == "__main__":
             else:
                 status = "❌ 未设置"
             print(f"  {var}: {status}")
-        sys.exit(0)
-
-    # Dry-run 模式：仅显示操作摘要
-    if args.dry_run:
-        print("=== 模拟执行（Dry-run）===\n")
-        print("操作：扫描并加载腾讯云 MPS 环境变量")
-        print("\n将要扫描的环境变量文件：")
-        for filepath in _ENV_FILES:
-            print(f"  - {filepath}")
-        
-        print("\n将要查找的环境变量：")
-        for var in sorted(_TARGET_VARS):
-            val = os.environ.get(var, "")
-            if val:
-                display = val[:4] + "****" if len(val) > 4 else "****"
-                print(f"  - {var}: ✅ 已设置 ({display})")
-            else:
-                print(f"  - {var}: ❌ 未设置（将尝试加载）")
-        
-        print("\n不会实际加载环境变量。移除 --dry-run 参数后执行实际操作。")
         sys.exit(0)
 
     print("=== 扫描环境变量文件 ===", flush=True)

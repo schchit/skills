@@ -609,8 +609,6 @@ def parse_args():
                          help="输出 HTML 文件路径（默认: evals/test_result/compare_<时间戳>.html）")
     general.add_argument("--type", type=str, choices=["video", "image"],
                          help="强制指定媒体类型（默认自动检测）")
-    general.add_argument("--dry-run", action="store_true",
-                         help="模拟执行，显示将要生成的对比页面信息但不实际生成")
 
     return parser.parse_args()
 
@@ -636,38 +634,6 @@ def load_pairs_from_config(config_path):
 
 def main():
     args = parse_args()
-
-    # Dry-run 模式：仅显示操作摘要
-    if args.dry_run:
-        print("=" * 60)
-        print("=== 模拟执行（Dry-run）===")
-        print("=" * 60)
-        print("操作：生成媒体对比 HTML 页面")
-        print(f"\n  页面标题: {args.title}")
-        print(f"  媒体类型: {args.type if args.type else '自动检测'}")
-        
-        if args.config:
-            print(f"  配置文件: {args.config}")
-        elif args.pairs:
-            print(f"  对比组数: {len(args.pairs)} 组")
-            for i, pair_str in enumerate(args.pairs, 1):
-                print(f"    [{i}] {pair_str}")
-        elif args.original and args.enhanced:
-            print(f"  对比组: 1 组")
-            print(f"    [1] {args.original} ↔ {args.enhanced}")
-        
-        if args.output:
-            print(f"  输出路径: {args.output}")
-        else:
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            result_dir = os.path.join(os.path.dirname(script_dir), "evals", "test_result")
-            print(f"  输出路径: {result_dir}/compare_<时间戳>.html")
-        
-        if args.labels:
-            print(f"  标签: {args.labels[0]} ↔ {args.labels[1]}")
-        
-        print("\n不会实际生成 HTML 文件。移除 --dry-run 参数后执行实际操作。")
-        sys.exit(0)
 
     pairs = []
     title = args.title

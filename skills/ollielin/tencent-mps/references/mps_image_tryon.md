@@ -1,10 +1,6 @@
-# 图片换装参数与示例
+# 图片换装参数与示例 — `mps_image_tryon.py`
 
-覆盖脚本：`mps_image_tryon.py`
-
-## 功能说明
-
-基于**模特图**与**服装图**，调用 MPS `ProcessImage` 接口发起 AI 换装任务，
+**功能**：基于**模特图**与**服装图**，调用 MPS `ProcessImage` 接口发起 AI 换装任务，
 通过 `DescribeImageTaskDetail` 轮询等待结果，最终返回输出 COS 路径。
 
 适用场景：电商服饰试穿、商品展示图生成、广告创意素材生成、服装效果预览等。

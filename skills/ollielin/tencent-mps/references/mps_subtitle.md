@@ -36,6 +36,15 @@
 | `--notify-url` | 任务完成回调 URL（可选）|
 | `--dry-run` | 只打印参数，不调用 API |
 
+## 强制规则
+
+- **`--process-type` 选择规则**：
+  - 用户说"语音识别"、"识别说话内容"、"转文字"、"ASR" → 使用 `--process-type asr`（默认，可省略）
+  - 用户说"OCR"、"识别画面文字"、"硬字幕识别"、"提取画面中的文字" → 使用 `--process-type ocr`，并根据语言设置 `--src-lang`（中英 `zh_en`，多语种 `multi`）
+  - 用户说"翻译"、"字幕翻译"、"翻译成xx语言" → 使用 `--process-type translate`（或在 `asr`/`ocr` 基础上加 `--translate <目标语言>`）
+- **`--src-lang` 规则**：OCR 模式下默认 `zh_en`；ASR 模式下若用户未指明语言，默认 `zh`
+- **`--translate` 规则**：支持多目标语言用 `/` 分隔，如 `--translate en/ja`；翻译时字幕类型默认为双语（`--subtitle-type 2`）
+
 ## 示例命令
 
 ```bash

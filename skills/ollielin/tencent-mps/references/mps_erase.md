@@ -43,7 +43,6 @@
 | `--verbose` / `-v` | 输出详细信息 |
 | `--region` | MPS 服务区域（优先读取 `TENCENTCLOUD_API_REGION` 环境变量，默认 `ap-guangzhou`）|
 | `--notify-url` | 任务完成回调 URL（可选）|
-| `--task-id` | 查询已有任务结果（跳过创建）|
 | `--dry-run` | 只打印参数，不调用 API |
 
 ## 区域预设（--position）说明
@@ -59,11 +58,15 @@
 
 ## 强制规则
 
-- **去字幕场景必须显式加 `--template 101`**，禁止省略（即使它是默认值，也必须在命令中写出）
+> ⚠️ **优先级说明**：以下规则按优先级从高到低排列，遇到多条规则同时匹配时，**优先使用编号更靠前的规则**。
+
+- **【最高优先 - 判断入口】先判断用户是否同时需要"去字幕" AND "提取字幕文本/OCR/识别字幕"**：
+  - ✅ 是 → **必须且只能用 `--template 102`**，命令中**绝对禁止**出现 `--template 101` 或 `--ocr` 参数（`--template 102` 已内置 OCR 功能，无需额外加 `--ocr`）
+  - ✅ 否（只去字幕，不提取文本）→ 使用 `--template 101`，禁止省略
+- **去字幕场景（仅去字幕，不提取文本）必须显式加 `--template 101`**，禁止省略（即使它是默认值，也必须在命令中写出）
 - **人脸模糊场景必须加 `--template 301`**
 - **人脸 + 车牌模糊场景必须加 `--template 302`**
 - **去水印高级版必须加 `--template 201`**
-- 用户提到"去字幕"、"去掉字幕"、"删除字幕"、"字幕擦除"等关键词时，均属于去字幕场景，必须加 `--template 101`
 
 ## 示例命令
 
@@ -98,11 +101,11 @@ python scripts/mps_erase.py --url https://example.com/video.mp4 --area 0,0,1,0.2
 # 多区域擦除（顶部 + 底部都有字幕）
 python scripts/mps_erase.py --url https://example.com/video.mp4 --area 0,0,1,0.15 --area 0,0.75,1,1
 
-# 去字幕 + OCR 提取 + 翻译为英文
-python scripts/mps_erase.py --url https://example.com/video.mp4 --ocr --translate en
+# 去字幕 + OCR 提取 + 翻译为英文（必须用 --template 102）
+python scripts/mps_erase.py --url https://example.com/video.mp4 --template 102 --translate en
 
-# 查询已有任务结果（使用 --task-id，无需输入源）
-python scripts/mps_erase.py --task-id 2600011633-WorkflowTask-xxxxx --verbose
+# 查询已有任务结果
+python scripts/mps_get_video_task.py --task-id 2600011633-WorkflowTask-xxxxx --verbose
 
 # 查询任务并下载结果到本地
-python scripts/mps_erase.py --task-id 2600011633-WorkflowTask-xxxxx --download-dir ./output/
+python scripts/mps_get_video_task.py --task-id 2600011633-WorkflowTask-xxxxx --download-dir ./output/

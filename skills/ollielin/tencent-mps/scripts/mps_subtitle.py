@@ -632,6 +632,7 @@ def process_media(args):
         task_id = result.get('TaskId', 'N/A')
         print("✅ 智能字幕任务提交成功！")
         print(f"   TaskId: {task_id}")
+        print(f"\n## TaskId: {task_id}")
         print(f"   RequestId: {result.get('RequestId', 'N/A')}")
 
         if args.template and not has_custom_params(args):

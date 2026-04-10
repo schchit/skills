@@ -1,10 +1,6 @@
-# 图片背景融合/生成参数与示例
+# 图片背景融合/生成参数与示例 — `mps_image_bg_fusion.py`
 
-覆盖脚本：`mps_image_bg_fusion.py`
-
-## 功能说明
-
-基于**主图（前景/商品/主体图）**与**背景图**，调用 MPS `ProcessImage` 接口发起 AI 背景融合任务，
+**功能**：基于**主图（前景/商品/主体图）**与**背景图**，调用 MPS `ProcessImage` 接口发起 AI 背景融合任务，
 或仅传入主图 + Prompt 描述，自动生成全新背景（背景生成模式）。
 通过 `DescribeImageTaskDetail` 轮询等待结果，最终返回输出 COS 路径。
 

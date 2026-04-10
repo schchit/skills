@@ -1,59 +1,35 @@
 #!/usr/bin/env python3
 """
-腾讯云 MPS 视频二次创作脚本
+腾讯云 MPS 视频去重脚本
 
 功能：
-  调用 MPS VideoRemake 能力，对视频进行二次创作处理（换脸/换人/视频交错等）。
-  通过 ExtendedParameter 的 vremake 参数控制创作模式。
+  调用 MPS VideoRemake 能力，通过修改视频画面规避平台重复内容检测。
+  底层使用 AiAnalysisTask.Definition=29（视频去重预设模板）。
 
   API 文档：https://cloud.tencent.com/document/product/862/124394
-  接口：ProcessMedia → AiAnalysisTask.Definition=29（视频二次创作模板）
 
-  ⚠️  视频去重（画中画/视频扩展/垂直填充/水平填充）请使用 mps_dedupe.py。
-
-支持的创作模式（--mode）：
-  AB               视频交错：AB 视频交错模式
-  SwapFace         换脸：视频人脸替换（需提供 --src-faces 和 --dst-faces）
-  SwapCharacter    换人：视频人物替换（需提供 --src-character 和 --dst-character）
+支持的去重模式（--mode，默认 PicInPic）：
+  PicInPic         画中画：将原视频缩小嵌入新背景
+  BackgroundExtend 视频扩展：在场景切换处插入扩展画面
+  VerticalExtend   垂直填充：在视频上下方向添加填充内容
+  HorizontalExtend 水平填充：在视频左右方向添加填充内容
 
 用法：
-  # 换脸模式（默认自动等待完成）
-  python scripts/mps_vremake.py \\
-      --url https://example.com/video.mp4 \\
-      --mode SwapFace \\
-      --src-faces https://example.com/src.png \\
-      --dst-faces https://example.com/dst.png
+  # 最简用法（默认 PicInPic 模式，自动等待完成）
+  python scripts/mps_dedupe.py --url https://example.com/video.mp4
 
-  # 换人模式
-  python scripts/mps_vremake.py \\
-      --url https://example.com/video.mp4 \\
-      --mode SwapCharacter \\
-      --src-character https://example.com/src_person.png \\
-      --dst-character https://example.com/dst_person.png
+  # 指定去重模式
+  python scripts/mps_dedupe.py --url https://example.com/video.mp4 \\
+      --mode VerticalExtend
 
-  # 视频交错（AB 模式）
-  python scripts/mps_vremake.py \\
-      --url https://example.com/video.mp4 \\
-      --mode AB
+  # COS 输入（推荐）
+  python scripts/mps_dedupe.py --cos-input-key /input/video.mp4
 
   # 异步提交（不等待）
-  python scripts/mps_vremake.py \\
-      --url https://example.com/video.mp4 \\
-      --mode SwapFace \\
-      --src-faces https://example.com/src.png \\
-      --dst-faces https://example.com/dst.png \\
-      --no-wait
-
-  # 查询已有任务结果
-  python scripts/mps_get_video_task.py --task-id 2600011633-WorkflowTask-xxxxx
+  python scripts/mps_dedupe.py --url https://example.com/video.mp4 --no-wait
 
   # dry-run 预览（含 ExtendedParameter）
-  python scripts/mps_vremake.py \\
-      --url https://example.com/video.mp4 \\
-      --mode SwapFace \\
-      --src-faces https://example.com/src.png \\
-      --dst-faces https://example.com/dst.png \\
-      --dry-run
+  python scripts/mps_dedupe.py --url https://example.com/video.mp4 --dry-run
 """
 
 import sys
@@ -94,20 +70,21 @@ except ImportError:
 # 配置
 # ─────────────────────────────────────────────
 DEFAULT_REGION     = os.environ.get("TENCENTCLOUD_API_REGION", "ap-guangzhou")
-DEFAULT_DEFINITION = 29    # 视频二次创作模板 ID（官方）
+DEFAULT_DEFINITION = 29    # 视频去重预设模板 ID
+DEFAULT_MODE       = "PicInPic"
 POLL_INTERVAL      = 15    # 轮询间隔（秒）
 POLL_TIMEOUT       = 3600  # 最大等待时间（秒）
 
 VALID_MODES = [
-    "AB", "SwapFace", "SwapCharacter",
+    "PicInPic", "BackgroundExtend", "VerticalExtend", "HorizontalExtend",
 ]
 
 MODE_CN = {
-    "AB":               "视频交错",
-    "SwapFace":         "换脸",
-    "SwapCharacter":    "换人",
+    "PicInPic":         "画中画",
+    "BackgroundExtend": "视频扩展",
+    "VerticalExtend":   "垂直填充",
+    "HorizontalExtend": "水平填充",
 }
-
 
 # ─────────────────────────────────────────────
 # SDK 客户端
@@ -120,7 +97,6 @@ def get_client(region: str = DEFAULT_REGION):
         print("错误: 请设置 TENCENTCLOUD_SECRET_ID 和 TENCENTCLOUD_SECRET_KEY", file=sys.stderr)
         sys.exit(1)
     return mps_client.MpsClient(credential.Credential(secret_id, secret_key), region)
-
 
 # ─────────────────────────────────────────────
 # COS 输出辅助函数
@@ -162,79 +138,19 @@ def build_output_storage(args):
 # 构建 ExtendedParameter
 # ─────────────────────────────────────────────
 
-def build_extended_parameter(args) -> str:
+def build_extended_parameter(mode: str) -> str:
     """
     构建 AiAnalysisTask.ExtendedParameter 的 JSON 字符串。
-
-    结构示例：
-      {"vremake": {"mode": "SwapFace", "swapFace": {"srcFaces": [...], "dstFaces": [...]}}}
+    参考：https://cloud.tencent.com/document/product/862/124394
     """
-    mode = args.mode
-    vremake: dict = {"mode": mode}
-
-    if mode == "AB":
-        ext_params: dict = {}
-        if args.llm_video_prompt:
-            ext_params["llmVideoPrompt"] = args.llm_video_prompt
-        elif args.llm_prompt:
-            ext_params["llmPrompt"] = args.llm_prompt
-        if args.random_flip is not None:
-            ext_params["randomFlip"] = args.random_flip
-        if args.random_cut:
-            ext_params["randomCut"] = True
-        if args.random_speed:
-            ext_params["randomSpeed"] = True
-        if args.ext_mode is not None:
-            ext_params["extMode"] = args.ext_mode
-        if ext_params:
-            vremake["AB"] = ext_params
-
-    elif mode == "SwapFace":
-        if not args.src_faces or not args.dst_faces:
-            print("错误: SwapFace 模式需要提供 --src-faces 和 --dst-faces", file=sys.stderr)
-            sys.exit(1)
-        if len(args.src_faces) != len(args.dst_faces):
-            print("错误: --src-faces 和 --dst-faces 数量必须一致", file=sys.stderr)
-            sys.exit(1)
-        vremake["swapFace"] = {
-            "srcFaces": args.src_faces,
-            "dstFaces": args.dst_faces,
-        }
-
-    elif mode == "SwapCharacter":
-        if not args.src_character or not args.dst_character:
-            print("错误: SwapCharacter 模式需要提供 --src-character 和 --dst-character", file=sys.stderr)
-            sys.exit(1)
-        vremake["swapCharacter"] = {
-            "srcCharacter": args.src_character,
-            "character":    args.dst_character,
-        }
-
-    # 支持 --custom-json 合并
-    if args.custom_json:
-        try:
-            custom = json.loads(args.custom_json)
-            # 若 custom 包含 vremake 字段，深度合并
-            if "vremake" in custom:
-                for k, v in custom["vremake"].items():
-                    if k != "mode":
-                        vremake[k] = v
-            else:
-                # 直接合并到 vremake
-                vremake.update(custom)
-        except json.JSONDecodeError as e:
-            print(f"错误: --custom-json 格式错误: {e}", file=sys.stderr)
-            sys.exit(1)
-
-    return json.dumps({"vremake": vremake}, ensure_ascii=False)
-
+    return json.dumps({"vremake": {"mode": mode}}, ensure_ascii=False)
 
 # ─────────────────────────────────────────────
 # 创建任务
 # ─────────────────────────────────────────────
 
 def create_task(client, args) -> str:
-    """提交视频二次创作任务，返回 TaskId。"""
+    """提交视频去重任务，返回 TaskId。"""
     req = models.ProcessMediaRequest()
 
     # 输入源
@@ -245,7 +161,6 @@ def create_task(client, args) -> str:
         url_input.Url = args.url
         input_info.UrlInputInfo = url_input
     elif args.cos_input_key:
-        # 新版 COS 路径输入（--cos-input-bucket + --cos-input-region + --cos-input-key）
         input_info.Type = "COS"
         cos_input = models.CosInputInfo()
         bucket = args.cos_input_bucket or os.environ.get("TENCENTCLOUD_COS_BUCKET", "")
@@ -255,7 +170,6 @@ def create_task(client, args) -> str:
             sys.exit(1)
         cos_input.Bucket = bucket
         cos_input.Region = cos_region
-        # 确保 key 以 / 开头
         cos_input.Object = args.cos_input_key if args.cos_input_key.startswith("/") else f"/{args.cos_input_key}"
         input_info.CosInputInfo = cos_input
     else:
@@ -274,17 +188,16 @@ def create_task(client, args) -> str:
         cos_out.Region = output_storage["CosOutputStorage"]["Region"]
         out_storage_obj.CosOutputStorage = cos_out
         req.OutputStorage = out_storage_obj
-    req.OutputDir = getattr(args, "output_cos_dir", None) or "/output/vremake/"
+    req.OutputDir = getattr(args, "output_cos_dir", None) or "/output/dedupe/"
 
     # AiAnalysisTask
     ai_task = models.AiAnalysisTaskInput()
     ai_task.Definition = args.definition
-    ai_task.ExtendedParameter = build_extended_parameter(args)
+    ai_task.ExtendedParameter = build_extended_parameter(args.mode)
     req.AiAnalysisTask = ai_task
 
     resp = client.ProcessMedia(req)
     return resp.TaskId
-
 
 # ─────────────────────────────────────────────
 # 查询任务
@@ -295,7 +208,6 @@ def query_task(client, task_id: str) -> dict:
     req.TaskId = task_id
     resp = client.DescribeTaskDetail(req)
     return json.loads(resp.to_json_string())
-
 
 def poll_task(client, task_id: str, timeout: int = POLL_TIMEOUT) -> dict:
     start = time.time()
@@ -314,7 +226,6 @@ def poll_task(client, task_id: str, timeout: int = POLL_TIMEOUT) -> dict:
         elapsed = int(time.time() - start)
         print(f"   [{elapsed}s] 状态: {status}，继续等待...")
         time.sleep(POLL_INTERVAL)
-
 
 # ─────────────────────────────────────────────
 # 结果解析
@@ -348,7 +259,6 @@ def extract_result(task_detail: dict) -> dict:
             break
     return out
 
-
 def print_result(result: dict, as_json: bool = False, output_dir: str = None):
     if as_json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -363,11 +273,10 @@ def print_result(result: dict, as_json: bool = False, output_dir: str = None):
             print(f"\n❌ 错误: [{err['code']}] {err['message']}")
         elif result.get("remake"):
             r = result["remake"]
-            print(f"\n✅ 二创完成（进度: {r['progress']}%）")
+            print(f"\n✅ 去重完成（进度: {r['progress']}%）")
             if r.get("output_object_path"):
                 out_path = r["output_object_path"]
                 print(f"   输出路径: {out_path}")
-                # 尝试生成预签名下载链接
                 out_storage = r.get("output_storage") or {}
                 out_type = out_storage.get("Type", "")
                 if out_type == "COS" and _COS_SDK_AVAILABLE:
@@ -395,12 +304,11 @@ def print_result(result: dict, as_json: bool = False, output_dir: str = None):
 
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
-        fname = f"vremake_{result['task_id'].replace('/', '_')}.json"
+        fname = f"dedupe_{result['task_id'].replace('/', '_')}.json"
         fpath = os.path.join(output_dir, fname)
         with open(fpath, "w", encoding="utf-8") as f:
             json.dump(result, f, ensure_ascii=False, indent=2)
-        print(f"结果已保存: {fpath}")   
-
+        print(f"结果已保存: {fpath}")
 
 # ─────────────────────────────────────────────
 # CLI 入口
@@ -408,7 +316,7 @@ def print_result(result: dict, as_json: bool = False, output_dir: str = None):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="腾讯云 MPS 视频二次创作（VideoRemake）",
+        description="腾讯云 MPS 视频去重（VideoRemake）",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
@@ -417,53 +325,38 @@ def main():
     input_grp = parser.add_mutually_exclusive_group()
     input_grp.add_argument("--local-file", help="本地文件路径，自动上传到 COS 后处理（需配置 TENCENTCLOUD_COS_BUCKET）")
     input_grp.add_argument("--url",        help="视频 URL（HTTP/HTTPS）")
-    
-    # COS 路径输入（新版，与 mps_transcode.py 等保持一致）
+
+    # COS 路径输入
     parser.add_argument("--cos-input-bucket", help="输入文件所在 COS Bucket 名称")
     parser.add_argument("--cos-input-region", help="输入文件所在 COS Region（如 ap-guangzhou）")
     parser.add_argument("--cos-input-key",    help="输入文件的 COS Key（如 /input/video.mp4）")
 
-    # 创作模式
+    # 去重模式（默认 PicInPic）
     parser.add_argument(
-        "--mode", choices=VALID_MODES,
-        help="创作模式（提交任务时必填）：" + " / ".join(f"{m}({MODE_CN[m]})" for m in VALID_MODES),
+        "--mode", choices=VALID_MODES, default=DEFAULT_MODE,
+        help=f"去重模式（默认 {DEFAULT_MODE}）：" + " / ".join(f"{m}({MODE_CN[m]})" for m in VALID_MODES),
     )
-
-    # 换脸/换人参数
-    parser.add_argument("--src-faces",      nargs="+", metavar="URL", help="[SwapFace] 原视频中人脸 URL 列表")
-    parser.add_argument("--dst-faces",      nargs="+", metavar="URL", help="[SwapFace] 目标人脸 URL 列表（与 --src-faces 一一对应）")
-    parser.add_argument("--src-character",  metavar="URL", help="[SwapCharacter] 原视频人物 URL（正面全身图）")
-    parser.add_argument("--dst-character",  metavar="URL", help="[SwapCharacter] 目标人物 URL（正面全身图）")
-
-    # AB 模式参数
-    parser.add_argument("--llm-prompt",       metavar="TEXT", help="大模型提示词（AB 模式）")
-    parser.add_argument("--llm-video-prompt", metavar="TEXT", help="大模型提示词（生成背景视频，优先于 --llm-prompt）")
-    parser.add_argument("--random-cut",       action="store_true", help="随机裁剪")
-    parser.add_argument("--random-speed",     action="store_true", help="随机加速")
-    parser.add_argument("--random-flip",      type=lambda x: x.lower() != "false",
-                        metavar="true/false", help="随机镜像（默认 true）")
-    parser.add_argument("--ext-mode",         type=int, choices=[1, 2, 3], help="扩展模式 1/2/3（AB）")
-    parser.add_argument("--custom-json",      metavar="JSON", help="自定义 vremake 扩展参数 JSON（与 --mode 合并）")
 
     # 任务参数
     parser.add_argument("--definition", type=int, default=DEFAULT_DEFINITION,
-                        help=f"AiAnalysisTask 模板 ID（默认 {DEFAULT_DEFINITION}，即视频二次创作模板）")
+                        help=f"AiAnalysisTask 模板 ID（默认 {DEFAULT_DEFINITION}）")
     parser.add_argument("--region", default=DEFAULT_REGION,
                         help=f"地域（默认 {DEFAULT_REGION}）")
 
     # 输出控制
     parser.add_argument("--output-bucket",  dest="output_bucket",  help="输出 COS Bucket 名称（默认取 TENCENTCLOUD_COS_BUCKET 环境变量）")
     parser.add_argument("--output-region",  dest="output_region",  help="输出 COS Bucket 区域（默认取 TENCENTCLOUD_COS_REGION 环境变量）")
-    parser.add_argument("--output-cos-dir", dest="output_cos_dir", help="COS 输出目录（默认 /output/vremake/），以 / 开头和结尾")
+    parser.add_argument("--output-cos-dir", dest="output_cos_dir", help="COS 输出目录（默认 /output/dedupe/），以 / 开头和结尾")
     parser.add_argument("--no-wait",    action="store_true", help="异步模式：只提交任务，不等待结果")
     parser.add_argument("--json",       action="store_true", dest="json_output", help="JSON 格式输出")
     parser.add_argument("--output-dir", help="将结果 JSON 保存到指定本地目录")
     parser.add_argument("--dry-run",    action="store_true", help="只打印参数预览（含 ExtendedParameter），不调用 API")
     parser.add_argument("--download-dir", type=str, default=None,
-                        help="任务完成后自动下载结果到指定目录（默认：不下载；指定路径后自动下载）")
+                        help="任务完成后自动下载结果到指定目录（默认：不下载）")
 
     args = parser.parse_args()
-    # --url 本地路径自动转换为本地上传模式
+
+    # --url 本地路径自动转换
     if getattr(args, 'url', None) and not getattr(args, 'local_file', None):
         _val = args.url
         if not _val.startswith('http://') and not _val.startswith('https://'):
@@ -507,8 +400,8 @@ def main():
         print(f"  definition = {args.definition}")
         print(f"  region     = {args.region}")
         print(f"  no-wait    = {args.no_wait}")
-        if args.mode and (args.url or args.cos_input_key):
-            ep = build_extended_parameter(args)
+        if args.url or args.cos_input_key:
+            ep = build_extended_parameter(args.mode)
             print(f"\n  ExtendedParameter =\n  {ep}")
         return
 
@@ -518,26 +411,23 @@ def main():
     has_input = bool(args.url) or bool(args.cos_input_key)
     if not has_input:
         parser.error("请提供 --url 或 --cos-input-key")
-    if not args.mode:
-        parser.error("提交任务时 --mode 为必填参数")
 
-    # 确定输入源显示
     if args.url:
         src = f"URL={args.url}"
     else:
         bucket = args.cos_input_bucket or os.environ.get("TENCENTCLOUD_COS_BUCKET", "")
         region = args.cos_input_region or os.environ.get("TENCENTCLOUD_COS_REGION", args.region)
         src = f"COS={bucket}/{region}{args.cos_input_key}"
-    
+
     mode_cn = MODE_CN.get(args.mode, args.mode)
-    print(f"🚀 提交视频二次创作任务")
+    print(f"🚀 提交视频去重任务")
     print(f"   输入  : {src}")
     print(f"   模式  : {args.mode}（{mode_cn}）")
     print(f"   模板  : {args.definition}  地域: {args.region}")
 
     try:
         task_id = create_task(client, args)
-        print("✅ 视频二次创作任务提交成功！")
+        print("✅ 视频去重任务提交成功！")
         print(f"   TaskId: {task_id}")
         print(f"\n## TaskId: {task_id}")
     except TencentCloudSDKException as e:
@@ -572,20 +462,17 @@ def main():
                 bucket = cos_out.get("Bucket", "")
                 region = cos_out.get("Region", "")
                 if bucket and region:
-                    import os as _os
-                    _os.makedirs(download_dir, exist_ok=True)
-                    filename = _os.path.basename(out_path.lstrip("/"))
-                    local_path = _os.path.join(download_dir, filename)
+                    os.makedirs(download_dir, exist_ok=True)
+                    filename = os.path.basename(out_path.lstrip("/"))
+                    local_path = os.path.join(download_dir, filename)
                     print(f"\n📥 下载输出视频到: {local_path}")
                     try:
-                        from qcloud_cos import CosConfig as _CosConfig, CosS3Client as _CosClient
-                        import os as _os2
-                        _sid = _os2.environ.get("TENCENTCLOUD_SECRET_ID", "")
-                        _skey = _os2.environ.get("TENCENTCLOUD_SECRET_KEY", "")
-                        _cfg = _CosConfig(Region=region, SecretId=_sid, SecretKey=_skey)
-                        _client = _CosClient(_cfg)
-                        _client.download_file(Bucket=bucket, Key=out_path.lstrip("/"), DestFilePath=local_path)
-                        size = _os.path.getsize(local_path)
+                        secret_id = os.environ.get("TENCENTCLOUD_SECRET_ID", "")
+                        secret_key = os.environ.get("TENCENTCLOUD_SECRET_KEY", "")
+                        cos_config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key)
+                        cos_client = CosS3Client(cos_config)
+                        cos_client.download_file(Bucket=bucket, Key=out_path.lstrip("/"), DestFilePath=local_path)
+                        size = os.path.getsize(local_path)
                         print(f"   ✅ 下载成功 ({size / 1024 / 1024:.2f} MB): {local_path}")
                     except Exception as e:
                         print(f"   ❌ 下载失败: {e}")
@@ -594,7 +481,6 @@ def main():
     except TencentCloudSDKException as e:
         print(f"❌ 查询失败: {e}", file=sys.stderr)
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

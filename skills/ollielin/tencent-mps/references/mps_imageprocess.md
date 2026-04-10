@@ -43,7 +43,7 @@
 | `--resize-long-side` | 目标长边（像素）|
 | `--resize-short-side` | 目标短边（像素）|
 | `--definition` | 图片处理模板 ID |
-| `--schedule-id` | 编排场景 ID：`30000`（文字水印擦除）/ `30010`（图片扩展）/ `30100`（换装）|
+| `--schedule-id` | 编排场景 ID：`30000`（文字水印擦除）/ `30010`（图片扩展）。**换装请用 `mps_image_tryon.py`**|
 | `--resource-id` | 资源 ID（高级选项，特定场景使用）|
 | `--output-bucket` | 输出 COS Bucket 名称（默认取 `TENCENTCLOUD_COS_BUCKET` 环境变量）|
 | `--output-region` | 输出 COS Bucket 区域（默认取 `TENCENTCLOUD_COS_REGION` 环境变量）|
@@ -56,6 +56,15 @@
 | `--verbose` / `-v` | 输出详细信息 |
 | `--region` | MPS 服务区域（优先读取 `TENCENTCLOUD_API_REGION` 环境变量，默认 `ap-guangzhou`）|
 | `--dry-run` | 只打印参数，不调用 API |
+
+## 强制规则
+
+- **超分辨率选择规则**：
+  - 用户说"放大到 4K"、"超高清"、"放大 3 倍及以上"、"高清修复" → 优先使用 `--advanced-sr`（高级超分），可配合 `--sr-width`/`--sr-height` 或 `--sr-long-side` 指定目标尺寸
+  - 用户说"2 倍放大"、"超分"、"提升分辨率"（未指定倍数或目标尺寸）→ 使用 `--super-resolution`（普通 2 倍超分）
+  - **两种超分互斥**，不可同时使用 `--super-resolution` 和 `--advanced-sr`
+- **擦除职责边界**：图片中的文字/水印/图标擦除用 `--erase-detect` 或 `--erase-area`；**视频**擦除请用 `mps_erase.py`，不要混用
+- **换装场景禁止用此脚本**：图片换装必须使用 `mps_image_tryon.py`，`mps_imageprocess.py` 不支持换装功能（即使使用 `--schedule-id 30100/30101` 也不正确）
 
 ## 示例命令
 

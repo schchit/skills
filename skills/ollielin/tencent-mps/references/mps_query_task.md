@@ -1,6 +1,4 @@
-# 查询任务参数与示例
-
-覆盖脚本：`mps_get_video_task.py`、`mps_get_image_task.py`
+# 查询任务参数与示例 — `mps_get_video_task.py` / `mps_get_image_task.py`
 
 ## 查询音视频任务 — `mps_get_video_task.py`
 
@@ -61,3 +59,9 @@ python scripts/mps_get_image_task.py --task-id 1234567890-ImageTask-80108cc33801
 # 指定地域
 python scripts/mps_get_image_task.py --task-id 1234567890-ImageTask-80108cc3380155d98b2e3573a48a --region ap-beijing
 ```
+
+## 强制规则
+
+1. **任务类型未知时必须追问**：用户只说"查询任务 xxx"而未说明任务类型时，**必须先询问**任务类型（音视频/图片/AIGC生图/AIGC生视频），不得猜测直接调用。
+2. **AIGC 任务不得用此脚本查询**：AIGC 生图/生视频任务有独立查询方式（`mps_aigc_image.py --task-id` / `mps_aigc_video.py --task-id`），**不得**用 `mps_get_video_task.py` 或 `mps_get_image_task.py` 查询。
+3. **TaskId 含 WorkflowTask 不代表任务类型**：音视频处理和图片处理任务的 ID 都可能含 `WorkflowTask`，**不能**以此判断类型，仍需询问用户。

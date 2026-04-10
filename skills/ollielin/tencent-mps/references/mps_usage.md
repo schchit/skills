@@ -42,3 +42,9 @@ python scripts/mps_usage.py --region ap-guangzhou ap-hongkong
 # JSON 格式输出
 python scripts/mps_usage.py --days 7 --all-types --json
 ```
+
+## 强制规则
+
+1. **默认行为**：用户说"查询用量"而未指定类型时，默认使用 `--type Transcode`（转码），不得询问用户；若用户明确说"查询所有类型"，使用 `--all-types`。
+2. **日期范围**：用户未指定日期时，默认 `--days 7`（最近 7 天），不得询问用户。
+3. **音视频理解用量**：音视频理解（`mps_av_understand.py`）的用量属于 `AIAnalysis` 类型，查询时使用 `--type AIAnalysis`。

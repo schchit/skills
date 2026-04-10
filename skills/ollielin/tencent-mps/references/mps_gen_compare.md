@@ -91,7 +91,7 @@ python scripts/mps_gen_compare.py \
 
 ## 强制规则
 
-1. **URL 来源**：`--original` 使用用户提供给处理脚本的原始输入 URL；`--enhanced` 使用处理脚本输出的预签名下载链接
+1. **URL 来源**：`--original` 使用用户提供给处理脚本的原始输入 URL；`--enhanced` 使用处理脚本输出的结果 URL（预签名下载链接或普通 COS URL 均可）
 2. **标题和标签**：根据处理类型设置有意义的 `--title` 和 `--labels`，不要使用默认值
 3. **图片类型**：当对比的是图片（来自 `mps_imageprocess.py`、`mps_image_tryon.py`、`mps_image_bg_fusion.py`），建议显式指定 `--type image`
 4. **生成后展示**：HTML 生成后，使用 `web_preview` 工具打开页面展示给用户
@@ -107,6 +107,9 @@ python scripts/mps_gen_compare.py \
 | `mps_erase.py` | 去字幕 / 去水印 / 人脸模糊 | `"原片" "擦除后"` |
 | `mps_transcode.py` | 转码 / 压缩 / 格式转换 | `"原片" "转码后"` |
 | `mps_imageprocess.py` | 图片超分 / 美颜 / 降噪 | `"原图" "处理后"` |
-| `mps_vremake.py` | 换脸 / 换人 / 画中画 / 视频扩展 | `"原片" "二创后"` |
+| `mps_dedupe.py` | 视频去重 / 画中画 / 视频扩展 / 垂直填充 / 水平填充 | `"原片" "去重后"` |
+| `mps_vremake.py` | 换脸 / 换人 / 视频交错 | `"原片" "二创后"` |
+| `mps_narrate.py` | AI 解说 / 短剧解说 / 解说二创 | `"原片" "解说版"` |
+| `mps_highlight.py` | 精彩集锦 / 高光提取 / 足球集锦 / 篮球集锦 / VLOG 集锦 | `"原片" "集锦"` |
 | `mps_image_tryon.py` | 图片换装 / AI试衣 | `"原图" "换装后"` |
 | `mps_image_bg_fusion.py` | 背景融合 / 背景替换 | `"原图" "换背景后"` |

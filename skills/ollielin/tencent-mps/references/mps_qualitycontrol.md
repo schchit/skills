@@ -21,7 +21,6 @@
 | `--cos-input-bucket` | 输入文件所在 COS Bucket 名称（默认使用环境变量）|
 | `--cos-input-region` | 输入文件所在 COS Region（如 `ap-guangzhou`）|
 | `--definition` | 质检模板 ID（默认 `60`）。`50`：音频质检；`60`：格式质检（画面模糊/花屏等）；`70`：内容质检（播放兼容性）|
-| `--task-id` | 查询已有任务的结果 |
 | `--no-wait` | 仅提交任务，不等待结果（返回 TaskId 后退出）|
 | `--json` | 以 JSON 格式输出结果 |
 | `--output-bucket` | 输出 COS Bucket 名称（默认从环境变量读取）|
@@ -33,10 +32,11 @@
 
 ## 强制规则
 
-- `--definition` 建议明确指定，避免歧义（默认 `60`）：
-  - 音频质检：`--definition 50`
-  - 画面质检（默认）：`--definition 60`
-  - 播放兼容性：`--definition 70`
+- **必须根据用户描述的场景选择对应模板**，不得随意使用默认值：
+  - 用户说"音频质检"、"噪音检测"、"静音检测"、"音频事件" → **必须用 `--definition 50`**
+  - 用户说"画质检测"、"模糊"、"花屏"、"画面受损"、"视频质量" → **必须用 `--definition 60`**（默认）
+  - 用户说"播放兼容性"、"卡顿"、"播放异常"、"播放失败" → **必须用 `--definition 70`**
+- 若用户描述模糊、无法判断场景，才使用默认值 `60`，并向用户说明
 
 ## 示例命令
 
@@ -60,7 +60,7 @@ python scripts/mps_qualitycontrol.py --cos-input-key /input/video.mp4
 python scripts/mps_qualitycontrol.py --url https://example.com/video.mp4 --no-wait
 
 # 查询已有任务结果（JSON 格式）
-python scripts/mps_qualitycontrol.py --task-id 2600011633-WorkflowTask-xxxxx --json
+python scripts/mps_get_video_task.py --task-id 2600011633-WorkflowTask-xxxxx
 
 # dry-run 预览
 python scripts/mps_qualitycontrol.py --url https://example.com/video.mp4 --definition 70 --dry-run

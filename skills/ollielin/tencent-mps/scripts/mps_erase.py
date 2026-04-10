@@ -619,37 +619,6 @@ def get_erase_summary(args):
     return items
 
 
-def query_task_result(args, client):
-    """查询已有任务结果。"""
-    task_id = args.task_id
-    print(f"查询任务结果: {task_id}")
-    
-    try:
-        req = models.DescribeTaskDetailRequest()
-        req.TaskId = task_id
-        resp = client.DescribeTaskDetail(req)
-        result = json.loads(resp.to_json_string())
-        
-        status = result.get('Status', 'UNKNOWN')
-        print(f"任务状态: {status}")
-        
-        if args.verbose:
-            print("\n完整响应：")
-            print(json.dumps(result, ensure_ascii=False, indent=2))
-        
-        # 自动下载结果
-        if status == 'FINISH' and _POLL_AVAILABLE:
-            download_dir = getattr(args, 'download_dir', None)
-            if download_dir:
-                auto_download_outputs(result, download_dir=download_dir)
-        
-        return result
-        
-    except TencentCloudSDKException as e:
-        print(f"❌ 查询失败: {e}", file=sys.stderr)
-        sys.exit(1)
-
-
 def process_media(args):
     """发起去字幕任务或查询已有任务。"""
     region = args.region or os.environ.get("TENCENTCLOUD_API_REGION", "ap-guangzhou")
@@ -657,10 +626,6 @@ def process_media(args):
     # 1. 获取凭证和客户端
     cred = get_credentials()
     client = create_mps_client(cred, region)
-
-    # 如果指定了 --task-id，查询已有任务结果
-    if getattr(args, 'task_id', None):
-        return query_task_result(args, client)
 
     # 2. 构建请求
     params = build_request_params(args)
@@ -689,6 +654,7 @@ def process_media(args):
         task_id = result.get('TaskId', 'N/A')
         print("✅ 去字幕任务提交成功！")
         print(f"   TaskId: {task_id}")
+        print(f"\n## TaskId: {task_id}")
         print(f"   RequestId: {result.get('RequestId', 'N/A')}")
 
         template_id = get_template_id(args)
@@ -929,7 +895,6 @@ def main():
     other_group = parser.add_argument_group("其他配置")
     other_group.add_argument("--region", type=str, help="MPS 服务区域（默认 ap-guangzhou）")
     other_group.add_argument("--notify-url", type=str, help="任务完成回调 URL")
-    other_group.add_argument("--task-id", type=str, help="查询已有任务结果（跳过创建）")
     other_group.add_argument("--no-wait", action="store_true",
                              help="仅提交任务，不等待结果（默认会自动轮询直到完成）")
     other_group.add_argument("--poll-interval", type=int, default=10,
@@ -970,13 +935,12 @@ def main():
         args.cos_input_bucket = upload_result["Bucket"]
         args.cos_input_region = upload_result["Region"]
 
-    # 1. 输入源检查（--task-id 查询模式不需要输入源）
-    if not getattr(args, 'task_id', None):
-        has_url = bool(args.url)
-        has_cos_path = bool(getattr(args, 'cos_input_key', None))
-        
-        if not has_url and not has_cos_path:
-            parser.error("请指定输入源：--url 或 --cos-input-key（配合 --cos-input-bucket/--cos-input-region 或环境变量）")
+    # 1. 输入源检查
+    has_url = bool(args.url)
+    has_cos_path = bool(getattr(args, 'cos_input_key', None))
+    
+    if not has_url and not has_cos_path:
+        parser.error("请指定输入源：--url 或 --cos-input-key（配合 --cos-input-bucket/--cos-input-region 或环境变量）")
 
     # 2. 非去字幕模板不支持擦除方式/模型/区域/OCR等参数
     if not is_subtitle_template(args):

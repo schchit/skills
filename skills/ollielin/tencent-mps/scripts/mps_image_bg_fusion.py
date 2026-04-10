@@ -413,10 +413,6 @@ def parse_args():
         "--secret-key",
         help="腾讯云 SecretKey（不传则读取环境变量 TENCENTCLOUD_SECRET_KEY）",
     )
-    auth_group.add_argument(
-        "--dry-run", action="store_true",
-        help="模拟执行，显示任务参数但不实际提交",
-    )
 
     args = parser.parse_args()
 
@@ -440,66 +436,6 @@ def main():
     if args.secret_key:
         os.environ["TENCENTCLOUD_SECRET_KEY"] = args.secret_key
 
-    # Dry-run 模式：仅显示操作摘要
-    if args.dry_run:
-        region = args.region
-        print("=" * 60)
-        print("=== 模拟执行（Dry-run）===")
-        print("=" * 60)
-        
-        # 判断模式
-        has_bg = bool(args.bg_url or args.bg_cos_key)
-        mode = "背景融合" if has_bg else "背景生成"
-        
-        print(f"操作：提交{mode}任务")
-        print(f"\n  ScheduleId: {30060}")
-        print(f"  MPS Region: {region}")
-        
-        # 打印主图来源
-        print(f"\n  主图:")
-        if args.subject_url:
-            print(f"    URL: {args.subject_url}")
-        else:
-            bucket = args.subject_cos_bucket or os.environ.get("TENCENTCLOUD_COS_BUCKET", "N/A")
-            print(f"    COS: {bucket}:{args.subject_cos_key}")
-        
-        # 打印背景图来源
-        if has_bg:
-            print(f"  背景图:")
-            if args.bg_url:
-                print(f"    URL: {args.bg_url}")
-            else:
-                bucket = args.bg_cos_bucket or os.environ.get("TENCENTCLOUD_COS_BUCKET", "N/A")
-                print(f"    COS: {bucket}:{args.bg_cos_key}")
-        
-        # 打印 Prompt
-        if args.prompt:
-            print(f"  Prompt:")
-            for p in args.prompt:
-                print(f"    {p}")
-        
-        # 打印输出配置
-        print(f"\n  输出配置:")
-        bucket = args.output_bucket or os.environ.get("TENCENTCLOUD_COS_BUCKET", "N/A")
-        region_out = args.output_region or os.environ.get("TENCENTCLOUD_COS_REGION", "N/A")
-        print(f"    Bucket: {bucket}")
-        print(f"    Region: {region_out}")
-        print(f"    路径前缀: /output/bgfusion/")
-        print(f"    格式: {args.format}")
-        print(f"    尺寸: {args.image_size}")
-        print(f"    质量: {args.quality}")
-        
-        if args.random_seed:
-            print(f"  随机种子: {args.random_seed}")
-        
-        print(f"\n  任务控制:")
-        print(f"    等待结果: {'否' if args.no_wait else '是'}")
-        print(f"    轮询间隔: {args.poll_interval}秒")
-        print(f"    最长等待: {args.timeout}秒")
-        
-        print("\n不会实际提交任务。移除 --dry-run 参数后执行实际操作。")
-        return
-
     cred = get_credentials()
     region = args.region
     client = create_mps_client(cred, region)
@@ -510,25 +446,25 @@ def main():
     has_bg = bool(args.bg_url or args.bg_cos_key)
     mode = "背景融合" if has_bg else "背景生成"
 
-    print(f"🚀 提交{mode}任务...", file=sys.stderr)
+    print(f"🚀 提交{mode}任务...")
     # 打印主图来源
     if args.subject_url:
-        print(f"   主图: {args.subject_url}", file=sys.stderr)
+        print(f"   主图: {args.subject_url}")
     else:
         bucket = args.subject_cos_bucket or get_cos_bucket()
-        print(f"   主图: COS - {bucket}:{args.subject_cos_key}", file=sys.stderr)
+        print(f"   主图: COS - {bucket}:{args.subject_cos_key}")
     # 打印背景图来源
     if has_bg:
         if args.bg_url:
-            print(f"   背景图: {args.bg_url}", file=sys.stderr)
+            print(f"   背景图: {args.bg_url}")
         else:
             bucket = args.bg_cos_bucket or get_cos_bucket()
-            print(f"   背景图: COS - {bucket}:{args.bg_cos_key}", file=sys.stderr)
+            print(f"   背景图: COS - {bucket}:{args.bg_cos_key}")
     # 打印 Prompt
     if args.prompt:
         for p in args.prompt:
-            print(f"   Prompt: {p}", file=sys.stderr)
-    print(f"   模式: {mode}（ScheduleId={SCHEDULE_ID}）", file=sys.stderr)
+            print(f"   Prompt: {p}")
+    print(f"   模式: {mode}（ScheduleId={SCHEDULE_ID}）")
 
     try:
         submit_result = submit_process_image(client, payload)
@@ -537,7 +473,10 @@ def main():
         sys.exit(1)
 
     task_id = submit_result.get("TaskId", "N/A")
-    print(f"✅ 任务已提交，TaskId: {task_id}", file=sys.stderr)
+    print(f"✅ {mode}任务提交成功！")
+    print(f"   TaskId: {task_id}")
+    print(f"   RequestId: {submit_result.get('RequestId', 'N/A')}")
+    print(f"\n## TaskId: {task_id}")
 
     if args.no_wait:
         print(json.dumps({"TaskId": task_id, "RequestId": submit_result.get("RequestId")},

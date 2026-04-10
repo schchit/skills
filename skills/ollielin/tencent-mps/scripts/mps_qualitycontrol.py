@@ -45,7 +45,7 @@ COS 存储约定：
   python scripts/mps_qualitycontrol.py --url https://example.com/video.mp4 --no-wait
 
   # 查询已有任务结果
-  python scripts/mps_qualitycontrol.py --task-id 2600011633-WorkflowTask-xxxxx
+  python scripts/mps_get_video_task.py --task-id 2600011633-WorkflowTask-xxxxx
 
   # JSON 格式输出
   python scripts/mps_qualitycontrol.py --url https://example.com/video.mp4 --json
@@ -57,8 +57,8 @@ COS 存储约定：
   python scripts/mps_qualitycontrol.py --url https://example.com/video.mp4 --region ap-guangzhou
 
 参数规范：
-  所有命令行参数必须使用连字符形式（--task-id、--no-wait、--dry-run 等），
-  不能使用下划线形式（--task_id、--no_wait 等）。
+  所有命令行参数必须使用连字符形式（--no-wait、--dry-run 等），
+  不能使用下划线形式（--no_wait、--dry_run 等）。
 """
 
 import sys
@@ -421,7 +421,6 @@ def main():
     input_group = parser.add_mutually_exclusive_group()
     input_group.add_argument("--local-file", help="本地文件路径，自动上传到 COS 后处理（需配置 TENCENTCLOUD_COS_BUCKET）")
     input_group.add_argument("--url",        help="音视频 URL（HTTP/HTTPS）")
-    input_group.add_argument("--task-id",    help="直接查询已有任务结果（跳过创建）")
     
     # COS 路径输入（新版，与 mps_transcode.py 等保持一致）
     parser.add_argument("--cos-input-bucket", type=str,
@@ -452,11 +451,10 @@ def main():
 
 
     # 在 parse_args 之前检测下划线形式的参数，严格拒绝不规范用法。
-    # 原因：Python argparse 将 --task-id 内部转换为 task_id，外部调用必须使用连字符形式；
-    #       下划线形式（--task_id）不被 argparse 识别，会作为未知参数静默忽略，
+    # 原因：Python argparse 将 --no-wait 内部转换为 no_wait，外部调用必须使用连字符形式；
+    #       下划线形式（--no_wait）不被 argparse 识别，会作为未知参数静默忽略，
     #       导致逻辑错误且难以排查，因此在此提前拦截并给出明确提示。
     _underscore_map = {
-        "--task-id":     "--task-id",
         "--output-dir":  "--output-dir",
         "--notify-url":  "--notify-url",
         "--no-wait":     "--no-wait",
@@ -507,8 +505,8 @@ def main():
     has_url = bool(args.url)
     has_cos_path = bool(getattr(args, 'cos_input_key', None))
     
-    if not args.task_id and not has_url and not has_cos_path:
-        parser.error("请指定 --url、--cos-input-key（配合 --cos-input-bucket/--cos-input-region 或环境变量）或 --task-id")
+    if not has_url and not has_cos_path:
+        parser.error("请指定 --url 或 --cos-input-key（配合 --cos-input-bucket/--cos-input-region 或环境变量）")
 
     # 占位符检测
     if args.url and is_placeholder(args.url):
@@ -520,9 +518,7 @@ def main():
     # dry-run
     if args.dry_run:
         print("🔍 dry-run 模式，参数如下：")
-        if args.task_id:
-            print(f"  TaskId:     {args.task_id}")
-        elif args.url:
+        if args.url:
             print(f"  输入:       URL={args.url}")
         else:
             bucket_d = getattr(args, 'cos_input_bucket', None) or os.environ.get("TENCENTCLOUD_COS_BUCKET", "未设置")
@@ -534,16 +530,6 @@ def main():
 
     cred   = get_credentials()
     client = mps_client.MpsClient(cred, args.region)
-
-    # 仅查询已有任务
-    if args.task_id:
-        print(f"🔍 查询任务结果: {args.task_id}")
-        result = get_task_result(client, args.task_id)
-        if args.json_output:
-            print(json.dumps(result, ensure_ascii=False, indent=2))
-        else:
-            print(format_result(result))
-        return
 
     # 提交新任务
     input_info = build_input_info(
@@ -587,11 +573,13 @@ def main():
         print(f"❌ 提交任务失败: {e}", file=sys.stderr)
         sys.exit(1)
 
-    print(f"✅ 任务已提交: {task_id}")
+    print("✅ 媒体质检任务提交成功！")
+    print(f"   TaskId: {task_id}")
+    print(f"\n## TaskId: {task_id}")
 
     if args.no_wait:
         print("ℹ️  异步模式，使用以下命令查询结果：")
-        print(f"   python scripts/mps_qualitycontrol.py --task-id {task_id}")
+        print(f"   python scripts/mps_get_video_task.py --task-id {task_id}")
         return
 
     try:

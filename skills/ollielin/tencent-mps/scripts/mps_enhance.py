@@ -97,7 +97,7 @@ try:
 except ImportError:
     _LOAD_ENV_AVAILABLE = False
 try:
-    from mps_poll_task import poll_video_task, auto_upload_local_file, auto_download_outputs
+    from mps_poll_task import poll_video_task, auto_upload_local_file, auto_download_outputs, auto_gen_compare
     _POLL_AVAILABLE = True
 except ImportError:
     _POLL_AVAILABLE = False
@@ -698,6 +698,20 @@ def get_enhance_summary(args):
     return items
 
 
+def _get_input_url(args):
+    """从参数中获取输入源的 URL（用于对比页面）。"""
+    if getattr(args, 'url', None):
+        return args.url
+    # COS 路径 → 构造永久 URL
+    cos_key = getattr(args, 'cos_input_key', None)
+    if cos_key:
+        bucket = getattr(args, 'cos_input_bucket', None) or get_cos_bucket()
+        region = getattr(args, 'cos_input_region', None) or get_cos_region()
+        if bucket:
+            return f"https://{bucket}.cos.{region}.myqcloud.com/{cos_key.lstrip('/')}"
+    return ""
+
+
 def process_media(args):
     """发起视频增强任务。"""
     region = args.region or os.environ.get("TENCENTCLOUD_API_REGION", "ap-guangzhou")
@@ -733,6 +747,7 @@ def process_media(args):
         task_id = result.get('TaskId', 'N/A')
         print("✅ 视频增强任务提交成功！")
         print(f"   TaskId: {task_id}")
+        print(f"\n## TaskId: {task_id}")
         print(f"   RequestId: {result.get('RequestId', 'N/A')}")
 
         if args.template:
@@ -773,6 +788,13 @@ def process_media(args):
             download_dir = getattr(args, 'download_dir', None)
             if download_dir and task_result and _POLL_AVAILABLE:
                 auto_download_outputs(task_result, download_dir=download_dir)
+            # 自动生成对比页面
+            compare_opt = getattr(args, 'compare', None)
+            if compare_opt and task_result and _POLL_AVAILABLE:
+                input_url = _get_input_url(args)
+                compare_path = None if compare_opt == "auto" else compare_opt
+                auto_gen_compare(task_result, input_url, media_type="video",
+                                 title="视频增强效果对比", output_path=compare_path)
         else:
             print(f"\n提示：任务在后台处理中，可使用以下命令查询进度：")
             print(f"  python scripts/mps_get_video_task.py --task-id {task_id}")
@@ -982,6 +1004,8 @@ def main():
     other_group.add_argument("--dry-run", action="store_true", help="仅打印请求参数，不实际调用 API")
     other_group.add_argument("--download-dir", type=str, default=None,
                              help="任务完成后自动下载结果到指定目录（默认：不下载；指定路径后自动下载）")
+    other_group.add_argument("--compare", nargs="?", const="auto", default=None, metavar="OUTPUT",
+                             help="任务完成后自动生成对比 HTML 页面（可选指定输出路径，默认自动生成）")
 
     args = parser.parse_args()
     # --url 本地路径自动转换为本地上传模式
