@@ -20,14 +20,15 @@ Skill Guard detects all of the above and more.
 
 ## How It Works
 
-Skill Guard follows a strict **4-phase workflow** for every Skill scan:
+Skill Guard follows a strict **5-phase workflow** for every Skill scan:
 
 | Phase | Description |
 |-------|-------------|
-| **1. Enumerate** | Recursively lists all files in the target Skill |
-| **2. Analyze** | Reads every file and checks against a comprehensive threat checklist |
-| **3. Classify** | Rates each finding as CRITICAL, WARNING, or INFO |
-| **4. Report** | Presents a bilingual (EN/CN) security report to the user |
+| **1. Enumerate & Provenance** | Recursively lists all files, checks structural sanity, reviews YAML frontmatter scope |
+| **2. Analyze** | Pattern-based threat scan (A–O categories) + behavioral intent analysis |
+| **3. Classify** | Rates findings as CRITICAL/WARNING/INFO with attack chain escalation |
+| **4. Report** | Presents a bilingual (EN/CN) security report with scope match and chain detection |
+| **5. Post-Scan Vigilance** | Monitors runtime behavior, instruction drift, and delayed payloads |
 
 ### Severity Levels
 
@@ -39,7 +40,7 @@ Skill Guard follows a strict **4-phase workflow** for every Skill scan:
 
 ## Threat Coverage
 
-Skill Guard scans for **8 categories** of threats:
+Skill Guard scans for **15 categories** of threats:
 
 1. **Prompt Injection & Instruction Override** — system prompt hijacking, role-play injection, identity manipulation
 2. **Data Exfiltration** — HTTP POST to external URLs, webhook abuse, DNS tunneling
@@ -49,6 +50,15 @@ Skill Guard scans for **8 categories** of threats:
 6. **Social Engineering** — secrecy instructions, fake errors, urgency pressure, impersonation
 7. **Obfuscation Techniques** — base64/hex encoding, string concatenation, zero-width chars, homoglyphs
 8. **Supply Chain Manipulation** — typosquatted packages, git hooks, malicious postinstall scripts
+9. **Reverse Shells & Network Reconnaissance** — reverse/bind shells, port scanning, network mapping
+10. **Time-Delayed & Conditional Attacks** — time-gated payloads, environment-conditional execution, multi-stage activation
+11. **Resource Exhaustion & Denial of Service** — fork bombs, disk filling, memory bombs, zip bombs
+12. **Clipboard & Pasteboard Hijacking** — clipboard injection/theft, crypto address swapping
+13. **Indirect Prompt Injection via Data Files** — hidden instructions in JSON/YAML/Markdown, HTML comments, Unicode tricks
+14. **MCP & Tool Abuse** — misuse of MCP tools, destructive operations, config tampering
+15. **Privilege Escalation** — sudo abuse, setuid manipulation, container escape, PATH hijacking
+
+Plus **behavioral intent analysis**: data flow tracing, attack chain detection, scope creep analysis, and capability gap checks.
 
 The full threat taxonomy with detection heuristics and code examples is in [`references/threat-patterns.md`](references/threat-patterns.md).
 
@@ -79,6 +89,9 @@ Skill Guard is designed to run **automatically** before any third-party Skill is
 Target / 目标: example-skill
 Files Scanned / 扫描文件数: 5
 Status / 状态: 🚫 BLOCKED
+
+Scope Match / 范围匹配: NO
+Attack Chains Detected / 攻击链检测: 1
 
 ────────────────────────────────────────────────────
 Findings / 发现:

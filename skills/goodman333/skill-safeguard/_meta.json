@@ -3,9 +3,15 @@
   "slug": "skill-safeguard",
   "displayName": "Skill Guard",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1772432829880,
-    "commit": "https://github.com/openclaw/skills/commit/7fb2dbeb845e3b4cdcc13eea74f29e2b96930825"
+    "version": "2.1.0",
+    "publishedAt": 1775618520835,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1772432829880,
+      "commit": "https://github.com/openclaw/skills/commit/7fb2dbeb845e3b4cdcc13eea74f29e2b96930825"
+    }
+  ]
 }
