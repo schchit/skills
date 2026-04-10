@@ -193,6 +193,25 @@ The most commonly used format with Embodied AI–specific categories.
 
 ---
 
+## ⭐ GitHub 热门开源（具身智能相关）
+
+> Include this section only when **`github_repos.md`** / **Recipe F** was executed. Place **above** Key Takeaways. **5–8** repos; verified `https://github.com/owner/repo` links only.
+
+**Snapshot**: [As of date/time; e.g. “metrics from live GitHub pages at briefing time”]
+
+| # | Repository | Category | Stars (if verified) | One-line role |
+|---|------------|----------|---------------------|---------------|
+| 1 | [`owner/repo`](https://github.com/owner/repo) | Policy / VLA | [e.g. 12.4k] | [≤20 words] |
+| 2 | [`owner/repo`](https://github.com/owner/repo) | Sim & Sim2Real | [see repo] | [≤20 words] |
+| 3 | [`owner/repo`](https://github.com/owner/repo) | Data / Teleop | … | … |
+| 4 | … | … | … | … |
+
+**Worth watching**: [1–2 sentences — e.g. emerging repo with high recent activity, or successor to an archived stack]
+
+**Note**: Rankings combine ecosystem role, recency, and stars (see `github_repos.md`); not a definitive global order.
+
+---
+
 ## 🎯 Key Takeaways
 
 1. [The biggest news of the day — 1 sentence]
@@ -275,6 +294,16 @@ Quick scan format for busy engineers and investors.
 
 • [Headline 8] — *[Company/Lab]* ([Publication])
 🔗 [URL]
+
+---
+
+## ⭐ GitHub 热门开源（可选）
+
+> Omit this entire section if the GitHub module was not run.
+
+• [`owner/repo`](https://github.com/owner/repo) — *[Category tag]* — [≤15 words]
+• [`owner/repo`](https://github.com/owner/repo) — *[Category tag]* — [≤15 words]
+• *(3–6 more as needed; 5–8 total)*
 
 ---
 
@@ -483,6 +512,18 @@ Comprehensive format with in-depth technical analysis and strategic implications
 
 📅 **Source**: [Publication Name] • [Publication Date]
 🔗 **Link**: [URL]
+
+---
+
+## ⭐ GitHub 热门开源（具身智能相关）
+
+> Optional; same table schema as **Standard Format**. Prefer **8–12** repos for weekly/monthly Deep briefings, still verified URLs only.
+
+| # | Repository | Category | Stars (if verified) | One-line role |
+|---|------------|----------|---------------------|---------------|
+| 1 | [`owner/repo`](https://github.com/owner/repo) | … | … | … |
+
+**Open-source momentum**: [2–4 bullets tying repos to themes above — e.g. sim stack consolidation, VLA training tooling, dataset releases]
 
 ---
 

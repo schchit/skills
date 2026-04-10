@@ -11,6 +11,7 @@ A step-by-step Standard Operating Procedure that connects all system files into 
 │
 ├── 📰 news_sources.md         — WHERE to find information
 ├── 🔍 search_queries.md       — HOW to search for information
+├── ⭐ github_repos.md         — GitHub hot repos module (embodied AI open source)
 ├── 📝 output_templates.md     — WHAT format to output
 └── 🧭 workflow.md             — WHEN and in what ORDER to do it (this file)
 ```
@@ -66,6 +67,16 @@ Execute the 5 queries in order:
 | QbitAI (量子位) | Scan for China ecosystem news | 2 min |
 
 **Output of this step**: Additional 5–10 URLs added to the raw list. Duplicates removed.
+
+---
+
+### Step 2b: GitHub Hot Repos (Optional, +5–10 min)
+
+**When**: User asked for GitHub / 开源仓库雷达, or weekly/monthly brief explicitly includes open-source momentum.
+
+**Use**: `search_queries.md` → **Recipe F** + `github_repos.md` (full G1–G5 procedure).
+
+**Output**: 5–8 verified `https://github.com/owner/repo` rows for **`output_templates.md`** → **⭐ GitHub 热门开源** (place before Key Takeaways).
 
 ---
 
@@ -225,7 +236,7 @@ Choose 2–3 themes for deeper analysis. Common monthly themes:
 | **Deployment Scoreboard** | Total units deployed across companies. New verticals entered. |
 | **Funding Landscape** | Total $ raised. Valuation trends. New entrants vs. follow-on rounds. |
 | **China vs. US** | Capability gap analysis. Policy divergence. Supply chain dynamics. |
-| **Open Source Momentum** | New open-source releases. Community adoption metrics. |
+| **Open Source Momentum** | New open-source releases. Community adoption metrics. Run **Recipe F** + `github_repos.md` for a **⭐ GitHub** leaderboard section. |
 
 #### Step 3: Generate Monthly Report (40 min)
 
@@ -256,12 +267,13 @@ Structure:
 - [ ] **Add** new company blogs for emerging players
 - [ ] **Verify** all URLs still work
 
-#### Step 2: Update `search_queries.md` (20 min)
+#### Step 2: Update `search_queries.md` + `github_repos.md` (20 min)
 - [ ] **Add** new company names that emerged this month
 - [ ] **Add** new technical terms (e.g., a new model architecture name)
 - [ ] **Retire** queries that consistently return noise
 - [ ] **Tune** queries that return too few or too many results
 - [ ] **Update** conference names with current year (e.g., "CoRL 2026" → "CoRL 2027")
+- [ ] **`github_repos.md`**: refresh anchor repos, Topic URLs, and Recipe F if GitHub search patterns drifted
 
 #### Step 3: Update `output_templates.md` (10 min)
 - [ ] **Add** new metadata fields if a new category of information has become important
@@ -329,7 +341,7 @@ Assess progress on key technical milestones:
 
 ### Step 4: System Overhaul (60 min)
 
-- [ ] Full review of all 4 system files
+- [ ] Full review of all reference files (including `github_repos.md`)
 - [ ] Archive outdated content
 - [ ] Restructure categories if the field has shifted
 - [ ] Write a "Quarterly State of Embodied AI" summary (1 page)

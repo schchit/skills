@@ -448,6 +448,41 @@ site:syncedreview.com ("robot" OR "embodied" OR "humanoid") after:[today - 7d]
 ("China robot" OR "Chinese humanoid") AND ("news" OR "launch" OR "funding") after:[today - 7d]
 ```
 
+### 10.5 GitHub — Embodied AI Repository Discovery
+
+> Use with **`github_repos.md`** for filtering, ranking, and output schema. Prefer fetching the linked GitHub page to verify description, archived status, and star count.
+
+#### 10.5.1 GitHub search — high stars (popularity proxy)
+```
+site:github.com ("robot" OR "humanoid" OR "manipulation" OR "VLA" OR "diffusion policy" OR "imitation learning" OR "sim2real" OR "embodied") stars:>500
+```
+
+#### 10.5.2 Vision-language-action & generalist policies
+```
+site:github.com ("vision-language-action" OR "VLA" OR "robot policy" OR "lerobot" OR "openvla") stars:>100
+```
+
+#### 10.5.3 Simulation stacks & benchmarks
+```
+site:github.com ("Isaac Lab" OR "IsaacGym" OR "mujoco" OR "robosuite" OR "mani_skill" OR "habitat-lab" OR "ORBIT") stars:>50
+```
+
+#### 10.5.4 Data, teleoperation, datasets
+```
+site:github.com ("robot dataset" OR "teleoperation" OR "robot learning dataset" OR "dexterous manipulation") stars:>50
+```
+
+#### 10.5.5 Recent activity (weak “trending” proxy via recency)
+```
+site:github.com ("embodied AI" OR "robot learning" OR "humanoid") pushed:>2026-01-01
+```
+(Adjust the date seasonally toward `[today - 90d]` when the year rolls forward.)
+
+#### 10.5.6 Chinese ecosystem repos (bilingual keywords)
+```
+site:github.com ("人形机器人" OR "具身智能" OR "quadruped" OR "Unitree" OR "mujoco") stars:>30
+```
+
 ---
 
 ## 11. Query Combination Recipes
@@ -492,6 +527,21 @@ Q2: ("dexterous hand" OR "robot hand" OR "tactile sensor") AND ("new" OR "breakt
 Q3: ("robot actuator" OR "harmonic drive" OR "quasi-direct-drive") after:[today - 30d]
 Q4: ("NVIDIA Jetson" OR "edge AI" OR "onboard compute") AND ("robot") after:[today - 7d]
 ```
+
+### ⭐ Recipe F: GitHub Hot Repos — Embodied AI (4–6 queries, ~10–15 min)
+
+**Goal**: Shortlist **5–8** canonical repos for the **⭐ GitHub 热门开源** section.
+
+```
+F1: site:github.com ("VLA" OR "vision language action" OR "diffusion policy" OR "robot policy") stars:>200
+F2: site:github.com ("Isaac Lab" OR "Isaac Sim" OR "mujoco" OR "robosuite" OR "habitat-lab") stars:>100
+F3: site:github.com ("lerobot" OR "openvla" OR "octo model" OR "RT-X" OR "cross-embodiment") stars:>50
+F4: site:github.com ("sim2real" OR "sim-to-real" OR "domain randomization") AND ("robot") stars:>100
+F5: site:github.com ("humanoid" OR "quadruped" OR "whole body") AND ("reinforcement learning" OR "learning") stars:>100
+F6 (optional): site:github.com ("具身智能" OR "人形机器人" OR "robot learning") stars:>50
+```
+
+After search: apply **`github_repos.md` → Relevance Filter & Rank**; verify each repo URL; do not report unverified star counts.
 
 ---
 
