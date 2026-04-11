@@ -1,7 +1,8 @@
 {
   "name": "clawdgo",
-  "version": "1.2.1",
-  "description": "ClawdGo 龙虾网安训练营：三层十二维度，W+A-H 训练模式，联网斗虾与可解释战报。v1.2.1 采用 local-first 会话态，不依赖 soul.md。",
+  "version": "1.3.2",
+  "buildDate": "2026-03-25",
+  "description": "ClawdGo 龙虾网安训练营）。",
   "category": "security-training",
   "license": "MIT-0",
   "author": "ClawdGo Team",
@@ -17,15 +18,15 @@
     "autonomousModes": [
       {
         "mode": "B self-train",
-        "description": "支持手动推进与 cron 定时推送。默认先给命令，duel/cron 子命令在明确指令下可代执行并回传真实结果。"
+        "description": "先选择前台/后台形态；前台默认配置 cron 自动逐场推送，后台批次训练后汇总。"
       },
       {
         "mode": "F arena",
         "description": "5 轮连续红蓝对抗，可由用户发送暂停/退出中断。"
       },
       {
-        "mode": "H duel auto",
-        "description": "支持 auto start/stop/tick 与 squad start 三龙虾编排。"
+        "mode": "H internal-test",
+        "description": "联网斗虾处于内测提示阶段，不执行任何 duel 子命令。"
       }
     ],
     "cronNote": "B/H 模式包含 cron 示例；执行失败必须返回真实错误，不得伪造成功。"
@@ -37,7 +38,9 @@
     "exam-mode",
     "teach-mode",
     "evolve-mode",
+    "scene-workshop-mode",
     "arena-mode",
+    "vaccine-mode",
     "chant-mode",
     "h-mode-duel",
     "arena-server-integration",
@@ -66,26 +69,30 @@
     "clawdgo train",
     "clawdgo self-train",
     "自主训练",
+    "B前台",
+    "B后台",
+    "B显式",
+    "B隐式",
+    "B观摩",
+    "B后台训练",
     "clawdgo exam",
     "clawdgo teach",
     "教教我",
     "clawdgo evolve",
+    "clawdgo workshop",
+    "场景工坊",
+    "场景扩库",
     "进化训练",
     "clawdgo arena",
     "对抗训练",
     "红蓝对抗",
+    "clawdgo vaccine",
+    "安全疫苗",
     "clawdgo duel",
-    "clawdgo duel squad start",
-    "clawdgo duel auto tick",
-    "clawdgo duel auto start",
-    "clawdgo duel auto stop",
-    "clawdgo duel feishu",
     "clawdgo h",
     "对抗竞技场",
     "斗虾",
     "双龙虾对战",
-    "飞书斗虾",
-    "三龙虾对战",
     "clawdgo chant",
     "安全口诀",
     "口诀",
