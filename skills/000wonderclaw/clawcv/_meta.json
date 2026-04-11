@@ -3,11 +3,16 @@
   "slug": "clawcv",
   "displayName": "ClawCV龙虾简历 - 全网最强大的AI求职Skills套装",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1774326884515,
-    "commit": "https://github.com/openclaw/skills/commit/a76afc8e8015ee15ac40a017975e368ca625c6e2"
+    "version": "1.1.0",
+    "publishedAt": 1775556109053,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1774326884515,
+      "commit": "https://github.com/openclaw/skills/commit/a76afc8e8015ee15ac40a017975e368ca625c6e2"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1774018324946,
