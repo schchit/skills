@@ -1,7 +1,7 @@
-"""Entry-point script for running yahoo-fantasy-baseball without pip install.
+"""Entry-point script for running yahoo-fantasy-baseball.
 
-On first run, automatically creates a local venv and installs dependencies.
-Works on macOS (Homebrew), Linux, and Windows without manual pip invocation.
+Dependencies must be installed explicitly via --setup before first use.
+This avoids silent network/install activity during normal execution.
 """
 
 import os
@@ -21,7 +21,7 @@ else:
 
 def _bootstrap_venv():
     """Create a local venv and install requirements."""
-    print("First run: installing dependencies...", file=sys.stderr)
+    print("Installing dependencies...", file=sys.stderr)
 
     # Create venv
     subprocess.check_call(
@@ -48,14 +48,24 @@ def _reexec_in_venv():
         os.execv(_VENV_PYTHON, [_VENV_PYTHON, __file__] + sys.argv[1:])
 
 
-# If we're not already running inside the venv, bootstrap and re-exec.
-if os.path.isfile(_VENV_PYTHON):
-    # Venv exists — if we're not in it, switch to it.
-    if os.path.abspath(sys.executable) != os.path.abspath(_VENV_PYTHON):
-        _reexec_in_venv()
-else:
-    # No venv yet — create it, then re-exec.
+# Handle --setup: explicitly install dependencies
+if "--setup" in sys.argv:
     _bootstrap_venv()
+    print("Setup complete. You can now run commands normally.", file=sys.stderr)
+    sys.exit(0)
+
+# Fail fast if dependencies are not installed
+if not os.path.isfile(_VENV_PYTHON):
+    print(
+        "Error: Dependencies not installed.\n"
+        "Run with --setup first:\n"
+        f"  python {os.path.basename(__file__)} --setup",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+# If we're not already running inside the venv, switch to it.
+if os.path.abspath(sys.executable) != os.path.abspath(_VENV_PYTHON):
     _reexec_in_venv()
 
 # At this point we're running inside the venv.

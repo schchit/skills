@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Yahoo Fantasy Baseball — roster management, standings, matchups, free agents,
-draft, transactions, injuries, daily roster optimization, and write operations
+draft, transactions, injuries, and daily roster optimization (read-only)
 via the Yahoo Fantasy Sports API (yahoo-fantasy-api).
 
 Usage:
@@ -20,13 +20,6 @@ Usage:
     python scripts/fantasy.py today [--format text|json|discord]
     python scripts/fantasy.py standouts [--date DATE] [--min-points N] [--count N] [--format text|json|discord]
     python scripts/fantasy.py optimize [--format text|json|discord]
-    python scripts/fantasy.py swap --player "Name" --to POS [--confirm]
-    python scripts/fantasy.py swap --auto [--confirm]
-    python scripts/fantasy.py move-to-il --player "Name" [--confirm]
-    python scripts/fantasy.py add --player "Name" [--confirm]
-    python scripts/fantasy.py drop --player "Name" [--confirm]
-    python scripts/fantasy.py add-drop --add "Name" --drop "Name" [--confirm]
-    python scripts/fantasy.py claim --player "Name" [--drop "Name"] [--faab N] [--confirm]
 """
 
 import argparse
@@ -83,76 +76,8 @@ def _get_league_and_team(args, config, need_team=True):
     return league, team_key, team_name
 
 
-def _resolve_player_on_roster(roster, name_query):
-    """Find a player on the roster by substring name match.
-
-    Returns the player dict, or exits with error if not found or ambiguous.
-    """
-    query_lower = name_query.lower()
-    matches = []
-    for p in roster:
-        pname = formatters._player_name(p).lower()
-        if query_lower in pname:
-            matches.append(p)
-
-    if len(matches) == 0:
-        print(f"Error: No player matching '{name_query}' found on roster.", file=sys.stderr)
-        sys.exit(1)
-    if len(matches) > 1:
-        # Check for exact match
-        exact = [p for p in matches if formatters._player_name(p).lower() == query_lower]
-        if len(exact) == 1:
-            return exact[0]
-        print(f"Error: Ambiguous player name '{name_query}'. Matches:", file=sys.stderr)
-        for p in matches:
-            print(f"  - {formatters._player_name(p)}", file=sys.stderr)
-        sys.exit(1)
-    return matches[0]
-
-
-def _resolve_free_agent(league, name_query):
-    """Find a free agent by name search.
-
-    Returns the player dict, or exits with error if not found or ambiguous.
-    """
-    # Use league.player_details() for name search
-    try:
-        results = league.player_details(name_query)
-    except Exception as e:
-        print(f"Error searching for player: {e}", file=sys.stderr)
-        sys.exit(1)
-
-    if not results:
-        print(f"Error: No player matching '{name_query}' found.", file=sys.stderr)
-        sys.exit(1)
-
-    # Filter to just free agents by checking ownership
-    query_lower = name_query.lower()
-    matches = []
-    for p in results:
-        pname = formatters._player_name(p).lower()
-        if query_lower in pname:
-            matches.append(p)
-
-    if not matches:
-        matches = results  # Use all results if substring filter found nothing
-
-    if len(matches) == 1:
-        return matches[0]
-
-    # Check for exact match
-    exact = [p for p in matches if formatters._player_name(p).lower() == query_lower]
-    if len(exact) == 1:
-        return exact[0]
-
-    print(f"Error: Multiple players match '{name_query}':", file=sys.stderr)
-    for p in matches[:10]:
-        print(f"  - {formatters._player_name(p)} (ID: {formatters._player_id(p)})", file=sys.stderr)
-    sys.exit(1)
-
-
 # ---------------------------------------------------------------------------
-# Subcommand handlers — Read operations
+# Subcommand handlers
 # ---------------------------------------------------------------------------
 
 def cmd_auth(args):
@@ -1302,16 +1227,90 @@ def _diff_lineup_moves(optimal, roster, teams_playing, opponents, sitting_player
             "reason": reason,
         })
 
-    # Sort: BN→active first, active→active next, active→BN last
-    def _sort_key(m):
-        if m["from_slot"] == "BN":
-            return (0, m["player"])
-        if m["to_slot"] == "BN":
-            return (2, m["player"])
-        return (1, m["player"])
-
-    moves.sort(key=_sort_key)
     return moves
+
+
+def _group_moves_into_swaps(moves):
+    """Group flat moves into swap groups by following slot chains.
+
+    Each group represents a single logical swap action: a bench player
+    enters an active slot, possibly triggering a chain of reshuffles,
+    ending with someone going to the bench.
+    """
+    # Build lookup: which move vacates each slot, which move fills each slot
+    slot_vacated_by = {}   # slot -> move (the move where someone LEAVES this slot)
+    slot_filled_by = {}    # slot -> move (the move where someone ENTERS this slot)
+
+    for m in moves:
+        if m["from_slot"] != "BN":
+            slot_vacated_by[m["from_slot"]] = m
+        if m["to_slot"] != "BN":
+            slot_filled_by[m["to_slot"]] = m
+
+    used = set()
+    groups = []
+
+    # Build chains starting from each BN → active anchor
+    for m in moves:
+        if m["from_slot"] == "BN" and id(m) not in used:
+            group = {"start": [m], "bench": [], "reshuffle": []}
+            used.add(id(m))
+            slots_involved = [m["to_slot"]]
+
+            # Follow the chain: who vacated the slot we're filling?
+            target_slot = m["to_slot"]
+            while target_slot in slot_vacated_by:
+                displaced = slot_vacated_by[target_slot]
+                if id(displaced) in used:
+                    break
+                used.add(id(displaced))
+                if displaced["to_slot"] == "BN":
+                    group["bench"].append(displaced)
+                else:
+                    group["reshuffle"].append(displaced)
+                    slots_involved.append(displaced["to_slot"])
+                    target_slot = displaced["to_slot"]
+                    continue
+                break
+
+            group["label"] = " / ".join(slots_involved) if len(slots_involved) > 1 else slots_involved[0]
+            groups.append(group)
+
+    # Handle orphan moves not part of any chain
+    for m in moves:
+        if id(m) not in used:
+            used.add(id(m))
+            if m["to_slot"] == "BN":
+                # Pure benching (no replacement)
+                groups.append({
+                    "label": m["from_slot"],
+                    "start": [],
+                    "bench": [m],
+                    "reshuffle": [],
+                })
+            elif m["from_slot"] == "BN":
+                # Pure promotion (empty slot)
+                groups.append({
+                    "label": m["to_slot"],
+                    "start": [m],
+                    "bench": [],
+                    "reshuffle": [],
+                })
+            else:
+                # Standalone reshuffle
+                groups.append({
+                    "label": f"{m['from_slot']} / {m['to_slot']}",
+                    "start": [],
+                    "bench": [],
+                    "reshuffle": [m],
+                })
+
+    # Tag each move with its swap_group_index for JSON consumers
+    for idx, group in enumerate(groups):
+        for m in group["start"] + group["reshuffle"] + group["bench"]:
+            m["swap_group"] = idx
+
+    return groups
 
 
 def cmd_optimize(args):
@@ -1457,6 +1456,7 @@ def cmd_optimize(args):
 
     optimal = _solve_optimal_lineup(moveable_batters, available_slots, unlocked_teams, sitting_ids)
     suggestions["moves"] = _diff_lineup_moves(optimal, roster, unlocked_teams, opponents, sitting_ids, locked_teams=locked_teams)
+    suggestions["swap_groups"] = _group_moves_into_swaps(suggestions["moves"])
 
     # 2. Pitcher rotation alerts
     for player in roster:
@@ -1520,305 +1520,6 @@ def cmd_optimize(args):
             })
 
     print(formatters.format_optimize(suggestions, fmt=args.format))
-
-
-# ---------------------------------------------------------------------------
-# Phase 4: Write operations
-# ---------------------------------------------------------------------------
-
-def cmd_swap(args):
-    """Change lineup positions (swap player to a new slot)."""
-    config = yahoo_api.load_config()
-    league, team_key, team_name = _get_league_and_team(args, config)
-    tm = yahoo_api.get_team(league, team_key)
-    today = date.today()
-
-    roster = yahoo_api.get_roster(tm, day=today)
-
-    if args.auto:
-        # Run optimize logic and execute all swap suggestions
-        import mlb_client
-
-        today_str = today.strftime("%Y-%m-%d")
-        unlocked_teams, locked_teams = mlb_client.teams_with_unlocked_games(today_str)
-        teams_playing = unlocked_teams | locked_teams
-        probable_pitchers = mlb_client.probable_pitchers_today(today_str)
-        opponents = mlb_client.game_opponents_today(today_str)
-        confirmed_lineups = mlb_client.confirmed_lineups_today(today_str)
-        sitting_ids, _, _ = _find_sitting_players(roster, confirmed_lineups, teams_playing)
-
-        IL_SLOTS = {"IL", "IL+", "DL", "DL+"}
-        BENCH_SLOTS = {"BN"}
-
-        changes = []
-        active_players = []
-        bench_players = []
-
-        for player in roster:
-            slot = formatters._player_selected_position(player).upper()
-            if slot in IL_SLOTS:
-                continue
-            if slot in BENCH_SLOTS:
-                bench_players.append(player)
-            elif slot not in ("", "NA"):
-                active_players.append(player)
-
-        used_bench = set()
-        for active_p in active_players:
-            active_team = mlb_client.normalize_team_abbr(formatters._player_team(active_p))
-            active_slot = formatters._player_selected_position(active_p)
-            active_pid = formatters._player_id(active_p)
-
-            # Skip locked players — game already started, can't move them
-            if active_team in locked_teams:
-                continue
-
-            if (active_team and active_team not in teams_playing) or active_pid in sitting_ids:
-                for bench_p in bench_players:
-                    bp_id = formatters._player_id(bench_p)
-                    if bp_id in used_bench or bp_id in sitting_ids:
-                        continue
-                    bench_team = mlb_client.normalize_team_abbr(formatters._player_team(bench_p))
-                    # Only swap in bench players whose games haven't started
-                    if bench_team and bench_team in unlocked_teams:
-                        bench_positions = formatters._player_position(bench_p).upper().split(",")
-                        if active_slot.upper() in bench_positions or "UTIL" in bench_positions:
-                            changes.append({
-                                "active": formatters._player_name(active_p),
-                                "active_id": formatters._player_id(active_p),
-                                "bench": formatters._player_name(bench_p),
-                                "bench_id": bp_id,
-                                "slot": active_slot,
-                            })
-                            used_bench.add(bp_id)
-                            break
-
-        if not changes:
-            print("No automatic swaps needed — lineup looks good.")
-            return
-
-        # Preview
-        for c in changes:
-            print(f"  {c['bench']} → {c['slot']}  (replaces {c['active']} → BN)")
-
-        if not args.confirm:
-            print(f"\n{len(changes)} swap(s) suggested. Add --confirm to execute.")
-            return
-
-        # Execute: build the full modified lineup
-        modified = []
-        swap_map = {}  # active_id -> bench change info
-        for c in changes:
-            swap_map[c["active_id"]] = c
-
-        for c in changes:
-            modified.append({"player_id": c["bench_id"], "selected_position": c["slot"]})
-            modified.append({"player_id": c["active_id"], "selected_position": "BN"})
-
-        try:
-            tm.change_positions(today, modified)
-            print(f"Executed {len(changes)} swap(s) successfully.")
-        except Exception as e:
-            print(f"Error executing swaps: {e}", file=sys.stderr)
-            sys.exit(1)
-        return
-
-    # Manual swap: --player and --to
-    if not args.player or not args.to:
-        print("Error: --player and --to are required (or use --auto).", file=sys.stderr)
-        sys.exit(1)
-
-    player = _resolve_player_on_roster(roster, args.player)
-    name = formatters._player_name(player)
-    pid = formatters._player_id(player)
-    current_slot = formatters._player_selected_position(player)
-    target_slot = args.to.upper()
-
-    details = {
-        "player": name,
-        "player_id": pid,
-        "current_slot": current_slot,
-        "new_slot": target_slot,
-    }
-
-    if not args.confirm:
-        print(formatters.format_preview("Swap Position", details, fmt=args.format))
-        return
-
-    try:
-        tm.change_positions(today, [{"player_id": pid, "selected_position": target_slot}])
-        print(f"Moved {name} to {target_slot}.")
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
-
-
-def cmd_move_to_il(args):
-    """Move an injured player to an IL slot."""
-    config = yahoo_api.load_config()
-    league, team_key, team_name = _get_league_and_team(args, config)
-    tm = yahoo_api.get_team(league, team_key)
-    today = date.today()
-
-    roster = yahoo_api.get_roster(tm, day=today)
-    player = _resolve_player_on_roster(roster, args.player)
-    name = formatters._player_name(player)
-    pid = formatters._player_id(player)
-    current_slot = formatters._player_selected_position(player)
-    status = formatters._player_status(player)
-
-    details = {
-        "player": name,
-        "player_id": pid,
-        "current_slot": current_slot,
-        "new_slot": "IL",
-        "status": status,
-    }
-
-    if not args.confirm:
-        print(formatters.format_preview("Move to IL", details, fmt=args.format))
-        return
-
-    try:
-        tm.change_positions(today, [{"player_id": pid, "selected_position": "IL"}])
-        print(f"Moved {name} to IL.")
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
-
-
-def cmd_add(args):
-    """Add a free agent to the roster."""
-    config = yahoo_api.load_config()
-    league, team_key, team_name = _get_league_and_team(args, config)
-    tm = yahoo_api.get_team(league, team_key)
-
-    player = _resolve_free_agent(league, args.player)
-    name = formatters._player_name(player)
-    pid = formatters._player_id(player)
-
-    details = {
-        "action": "Add free agent",
-        "player": name,
-        "player_id": pid,
-    }
-
-    if not args.confirm:
-        print(formatters.format_preview("Add Player", details, fmt=args.format))
-        return
-
-    try:
-        tm.add_player(pid)
-        print(f"Added {name} to your roster.")
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
-
-
-def cmd_drop(args):
-    """Drop a player from the roster."""
-    config = yahoo_api.load_config()
-    league, team_key, team_name = _get_league_and_team(args, config)
-    tm = yahoo_api.get_team(league, team_key)
-
-    roster = yahoo_api.get_roster(tm)
-    player = _resolve_player_on_roster(roster, args.player)
-    name = formatters._player_name(player)
-    pid = formatters._player_id(player)
-
-    details = {
-        "action": "Drop player",
-        "player": name,
-        "player_id": pid,
-    }
-
-    if not args.confirm:
-        print(formatters.format_preview("Drop Player", details, fmt=args.format))
-        return
-
-    try:
-        tm.drop_player(pid)
-        print(f"Dropped {name} from your roster.")
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
-
-
-def cmd_add_drop(args):
-    """Add a free agent and drop a roster player in one transaction."""
-    config = yahoo_api.load_config()
-    league, team_key, team_name = _get_league_and_team(args, config)
-    tm = yahoo_api.get_team(league, team_key)
-
-    add_player = _resolve_free_agent(league, args.add)
-    add_name = formatters._player_name(add_player)
-    add_pid = formatters._player_id(add_player)
-
-    roster = yahoo_api.get_roster(tm)
-    drop_player = _resolve_player_on_roster(roster, args.drop)
-    drop_name = formatters._player_name(drop_player)
-    drop_pid = formatters._player_id(drop_player)
-
-    details = {
-        "add_player": add_name,
-        "add_player_id": add_pid,
-        "drop_player": drop_name,
-        "drop_player_id": drop_pid,
-    }
-
-    if not args.confirm:
-        print(formatters.format_preview("Add/Drop", details, fmt=args.format))
-        return
-
-    try:
-        tm.add_and_drop_players(add_pid, drop_pid)
-        print(f"Added {add_name}, dropped {drop_name}.")
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
-
-
-def cmd_claim(args):
-    """Submit a waiver claim."""
-    config = yahoo_api.load_config()
-    league, team_key, team_name = _get_league_and_team(args, config)
-    tm = yahoo_api.get_team(league, team_key)
-
-    claim_player = _resolve_free_agent(league, args.player)
-    claim_name = formatters._player_name(claim_player)
-    claim_pid = formatters._player_id(claim_player)
-
-    details = {
-        "action": "Waiver claim",
-        "player": claim_name,
-        "player_id": claim_pid,
-    }
-    if args.faab is not None:
-        details["faab_bid"] = args.faab
-
-    drop_pid = None
-    if args.drop:
-        roster = yahoo_api.get_roster(tm)
-        drop_player = _resolve_player_on_roster(roster, args.drop)
-        drop_name = formatters._player_name(drop_player)
-        drop_pid = formatters._player_id(drop_player)
-        details["drop_player"] = drop_name
-        details["drop_player_id"] = drop_pid
-
-    if not args.confirm:
-        print(formatters.format_preview("Waiver Claim", details, fmt=args.format))
-        return
-
-    try:
-        if drop_pid:
-            tm.claim_and_drop_players(claim_pid, drop_pid, faab=args.faab)
-            print(f"Waiver claim submitted: {claim_name} (dropping {drop_name}).")
-        else:
-            tm.claim_player(claim_pid, faab=args.faab)
-            print(f"Waiver claim submitted: {claim_name}.")
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
 
 
 # ---------------------------------------------------------------------------
@@ -1948,47 +1649,6 @@ def main():
     optimize_parser = subparsers.add_parser("optimize", help="Roster optimization suggestions")
     _add_common_args(optimize_parser)
 
-    # swap (Phase 4)
-    swap_parser = subparsers.add_parser("swap", help="Change lineup positions")
-    _add_common_args(swap_parser)
-    swap_parser.add_argument("--player", help="Player name to move")
-    swap_parser.add_argument("--to", help="Target position slot (e.g., BN, SP, OF)")
-    swap_parser.add_argument("--auto", action="store_true", help="Auto-execute optimize suggestions")
-    swap_parser.add_argument("--confirm", action="store_true", help="Execute the change (without this, preview only)")
-
-    # move-to-il (Phase 4)
-    il_parser = subparsers.add_parser("move-to-il", help="Move injured player to IL slot")
-    _add_common_args(il_parser)
-    il_parser.add_argument("--player", required=True, help="Player name to move to IL")
-    il_parser.add_argument("--confirm", action="store_true", help="Execute the change")
-
-    # add (Phase 4)
-    add_parser = subparsers.add_parser("add", help="Add a free agent")
-    _add_common_args(add_parser)
-    add_parser.add_argument("--player", required=True, help="Player name to add")
-    add_parser.add_argument("--confirm", action="store_true", help="Execute the change")
-
-    # drop (Phase 4)
-    drop_parser = subparsers.add_parser("drop", help="Drop a player")
-    _add_common_args(drop_parser)
-    drop_parser.add_argument("--player", required=True, help="Player name to drop")
-    drop_parser.add_argument("--confirm", action="store_true", help="Execute the change")
-
-    # add-drop (Phase 4)
-    add_drop_parser = subparsers.add_parser("add-drop", help="Add one player, drop another")
-    _add_common_args(add_drop_parser)
-    add_drop_parser.add_argument("--add", required=True, help="Player name to add")
-    add_drop_parser.add_argument("--drop", required=True, help="Player name to drop")
-    add_drop_parser.add_argument("--confirm", action="store_true", help="Execute the change")
-
-    # claim (Phase 4)
-    claim_parser = subparsers.add_parser("claim", help="Submit a waiver claim")
-    _add_common_args(claim_parser)
-    claim_parser.add_argument("--player", required=True, help="Player name to claim")
-    claim_parser.add_argument("--drop", help="Player name to drop (optional)")
-    claim_parser.add_argument("--faab", type=int, help="FAAB bid amount")
-    claim_parser.add_argument("--confirm", action="store_true", help="Execute the change")
-
     args = parser.parse_args()
 
     commands = {
@@ -2010,12 +1670,6 @@ def main():
         "lineup-check": cmd_lineup_check,
         "standouts": cmd_standouts,
         "optimize": cmd_optimize,
-        "swap": cmd_swap,
-        "move-to-il": cmd_move_to_il,
-        "add": cmd_add,
-        "drop": cmd_drop,
-        "add-drop": cmd_add_drop,
-        "claim": cmd_claim,
     }
 
     handler = commands.get(args.command)

@@ -18,8 +18,19 @@ GAME_CODE = "mlb"
 
 
 def _ensure_cred_dir():
-    """Create credential directory if it doesn't exist."""
+    """Create credential directory if it doesn't exist (0700 on Unix)."""
     CRED_DIR.mkdir(parents=True, exist_ok=True)
+    if sys.platform != "win32":
+        os.chmod(CRED_DIR, 0o700)
+
+
+def _set_file_permissions(path):
+    """Set restrictive file permissions (0600) on Unix systems.
+
+    On Windows, file permissions are managed by the OS user-profile ACLs.
+    """
+    if sys.platform != "win32":
+        os.chmod(path, 0o600)
 
 
 def load_config():
@@ -35,6 +46,7 @@ def save_config(config):
     _ensure_cred_dir()
     with open(CONFIG_FILE, "w") as f:
         json.dump(config, f, indent=2)
+    _set_file_permissions(CONFIG_FILE)
 
 
 def _migrate_legacy_env():
@@ -76,6 +88,7 @@ def _migrate_legacy_env():
 
         with open(OAUTH_FILE, "w") as f:
             json.dump(oauth_data, f, indent=2)
+        _set_file_permissions(OAUTH_FILE)
         print(f"Migrated credentials from .env to {OAUTH_FILE}", file=sys.stderr)
 
 
@@ -110,9 +123,13 @@ def run_auth():
     }
     with open(OAUTH_FILE, "w") as f:
         json.dump(oauth_data, f, indent=2)
+    _set_file_permissions(OAUTH_FILE)
 
     print()
     print("Credentials saved. Starting Yahoo OAuth flow...")
+    print("Tip: Set YAHOO_CONSUMER_KEY and YAHOO_CONSUMER_SECRET as environment")
+    print("variables to skip interactive setup. Note: credentials are still written")
+    print("to oauth2.json for token management (file permissions set to 0600 on Unix).")
     print("A browser window will open for authorization.")
     print()
 
@@ -132,12 +149,34 @@ def run_auth():
 def _get_oauth():
     """Return an authenticated OAuth2 session.
 
-    Attempts auto-migration from legacy .env if oauth2.json doesn't exist.
+    Checks for YAHOO_CONSUMER_KEY / YAHOO_CONSUMER_SECRET env vars first,
+    then falls back to oauth2.json file. Attempts auto-migration from
+    legacy .env if oauth2.json doesn't exist.
     """
-    _migrate_legacy_env()
+    consumer_key = os.environ.get("YAHOO_CONSUMER_KEY")
+    consumer_secret = os.environ.get("YAHOO_CONSUMER_SECRET")
+
+    if consumer_key and consumer_secret:
+        # Env vars provided — write/update oauth2.json so yahoo_oauth can
+        # manage token refresh. Only update if consumer key/secret changed.
+        _ensure_cred_dir()
+        oauth_data = {}
+        if OAUTH_FILE.exists():
+            with open(OAUTH_FILE) as f:
+                oauth_data = json.load(f)
+        if (oauth_data.get("consumer_key") != consumer_key or
+                oauth_data.get("consumer_secret") != consumer_secret):
+            oauth_data["consumer_key"] = consumer_key
+            oauth_data["consumer_secret"] = consumer_secret
+            with open(OAUTH_FILE, "w") as f:
+                json.dump(oauth_data, f, indent=2)
+            _set_file_permissions(OAUTH_FILE)
+    else:
+        _migrate_legacy_env()
 
     if not OAUTH_FILE.exists():
-        print("Error: Not authenticated. Run 'auth' first.", file=sys.stderr)
+        print("Error: Not authenticated. Run 'auth' first or set", file=sys.stderr)
+        print("YAHOO_CONSUMER_KEY and YAHOO_CONSUMER_SECRET env vars.", file=sys.stderr)
         sys.exit(1)
 
     try:

@@ -980,25 +980,34 @@ def format_optimize(suggestions, fmt="text"):
     lines = ["Roster Optimization Suggestions"]
     lines.append("=" * 50)
 
-    # Lineup changes (position moves)
-    moves = suggestions.get("moves", [])
+    # Lineup changes (grouped swaps)
+    swap_groups = suggestions.get("swap_groups", [])
     lines.append("")
-    lines.append(f"  LINEUP CHANGES ({len(moves)} moves)")
-    if moves:
-        for m in moves:
-            opp_str = f" vs {m['opponent']}" if m.get("opponent") else ""
-            lines.append(f"    {m['player']}: {m['from_slot']} → {m['to_slot']}")
-            lines.append(f"      ({m['team']}{opp_str}, score: {m['score']})")
-            reason = m.get("reason", "")
-            if reason:
-                if "not in confirmed" in reason.lower():
-                    lines.append(f"      ⚠️  {reason}")
-                elif "already started" in reason.lower():
-                    lines.append(f"      🔒  {reason}")
-                elif "off today" in reason.lower():
-                    lines.append(f"      📅  {reason}")
-                else:
-                    lines.append(f"      💡  {reason}")
+    swap_label = "swap" if len(swap_groups) == 1 else "swaps"
+    lines.append(f"  LINEUP CHANGES ({len(swap_groups)} {swap_label})")
+    if swap_groups:
+        for i, group in enumerate(swap_groups, 1):
+            lines.append("")
+            lines.append(f"    Swap {i} — {group['label']}")
+            for m in group.get("start", []):
+                opp_str = f" vs {m['opponent']}" if m.get("opponent") else ""
+                slot_note = f" at {m['to_slot']}" if group.get("reshuffle") else ""
+                lines.append(f"      ▶ Start {m['player']}{slot_note} ({m['team']}{opp_str}, score: {m['score']})")
+            for m in group.get("reshuffle", []):
+                lines.append(f"      ↔ Move {m['player']} from {m['from_slot']} → {m['to_slot']}")
+            for m in group.get("bench", []):
+                opp_str = f" vs {m['opponent']}" if m.get("opponent") else ""
+                lines.append(f"      ▼ Bench {m['player']} ({m['team']}{opp_str}, score: {m['score']})")
+                reason = m.get("reason", "")
+                if reason:
+                    if "not in confirmed" in reason.lower():
+                        lines.append(f"        ⚠️  {reason}")
+                    elif "already started" in reason.lower():
+                        lines.append(f"        🔒  {reason}")
+                    elif "off today" in reason.lower():
+                        lines.append(f"        📅  {reason}")
+                    else:
+                        lines.append(f"        💡  {reason}")
     else:
         lines.append("    No lineup changes needed — lineup looks good.")
 
@@ -1023,7 +1032,7 @@ def format_optimize(suggestions, fmt="text"):
         lines.append("    No IL moves needed.")
 
     lines.append("")
-    total = len(moves) + len(pitcher_alerts) + len(il_moves)
+    total = len(swap_groups) + len(pitcher_alerts) + len(il_moves)
     lines.append(f"Total: {total} suggestion(s)")
 
     if fmt == "discord":
@@ -1191,27 +1200,6 @@ def format_standouts(top_performers, left_on_bench, date_str, categories=None,
             _format_player_line(p, i)
 
     lines.append("")
-
-    if fmt == "discord":
-        return "```\n" + "\n".join(lines) + "\n```"
-    return "\n".join(lines)
-
-
-# ---------------------------------------------------------------------------
-# Write operation previews
-# ---------------------------------------------------------------------------
-
-def format_preview(action, details, fmt="text"):
-    """Format a preview of a write operation (before --confirm)."""
-    if fmt == "json":
-        return json.dumps({"action": action, "preview": True, **details}, indent=2)
-
-    lines = [f"Preview: {action}"]
-    lines.append("-" * 50)
-    for key, val in details.items():
-        lines.append(f"  {key}: {val}")
-    lines.append("")
-    lines.append("Add --confirm to execute this change.")
 
     if fmt == "discord":
         return "```\n" + "\n".join(lines) + "\n```"

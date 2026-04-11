@@ -1,26 +1,29 @@
 ---
 name: yahoo-fantasy-baseball
 description: >
-  Manage your Yahoo Fantasy Baseball team: view roster, standings, matchups,
+  Query your Yahoo Fantasy Baseball league: view roster, standings, matchups,
   free agents, draft results, transactions, and injuries. Daily roster
-  optimization detects inactive players, suggests bench swaps, and manages IL
-  slots. Execute roster changes: swap positions, add/drop players, and submit
-  waiver claims. Use when the user asks about their fantasy baseball team,
-  who to start or sit, league standings, available free agents, roster moves,
-  or injury updates.
-metadata: {"openclaw":{"emoji":"⚾","requires":{"bins":["python3"]}}}
+  optimization detects inactive players and suggests bench swaps and IL moves.
+  Read-only — no roster modifications. Use when the user asks about their
+  fantasy baseball team, who to start or sit, league standings, available
+  free agents, or injury updates.
+metadata: {"openclaw":{"emoji":"⚾","requires":{"bins":["python3"],"env":["YAHOO_CONSUMER_KEY","YAHOO_CONSUMER_SECRET"]}}}
 ---
 
 # Yahoo Fantasy Baseball
 
-Manage your Yahoo Fantasy Baseball league: view data, optimize your daily lineup, and execute roster changes via the Yahoo Fantasy Sports API.
+Query your Yahoo Fantasy Baseball league: view data and optimize your daily lineup via the Yahoo Fantasy Sports API. Read-only — no roster modifications are made.
 
 ## Requirements
 
 - Python 3.10+
 - `yahoo_fantasy_api` — Yahoo Fantasy Sports API wrapper
 
-**Installation:** No manual `pip install` needed. On first run, `yahoo-fantasy-baseball.py` creates a local `.deps/` virtual environment inside the skill directory and installs dependencies from `requirements.txt`. Subsequent runs reuse the existing venv. To force a clean reinstall, delete the `.deps/` directory and run any command again.
+**Installation:** Before first use, run `--setup` to create a local `.deps/` virtual environment and install dependencies from `requirements.txt`. Subsequent runs reuse the existing venv. To force a clean reinstall, delete the `.deps/` directory and run `--setup` again.
+
+```bash
+python3 yahoo-fantasy-baseball.py --setup
+```
 
 ## Setup
 
@@ -71,12 +74,6 @@ python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fanta
 
 # Get optimization suggestions
 python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py optimize
-
-# Auto-swap inactive players for bench players
-python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py swap --auto --confirm
-
-# Add a free agent
-python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py add --player "Jake Burger" --confirm
 
 # League standings
 python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py standings
@@ -152,7 +149,7 @@ python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fanta
 ```
 
 Three analysis categories:
-1. **Lineup changes** — optimal batter assignment via constraint solver (position-aware, fills restrictive slots before UTIL). Outputs every individual position move needed (e.g., `Adames: BN → SS`, `Fitzgerald: SS → UTIL`, `Cronenworth: 1B → BN`). Also checks confirmed MLB batting lineups — players confirmed not in their team's lineup are treated as unavailable (score 0) and will be moved to bench. Players whose games have already started are locked in place (Yahoo locks roster slots at first pitch) and excluded from the solver.
+1. **Lineup changes** — optimal batter assignment via constraint solver (position-aware, fills restrictive slots before UTIL). Outputs grouped swap instructions showing who starts, who gets benched, and any intermediate position reshuffles needed (e.g., a UTIL player sliding to 1B to make room). Also checks confirmed MLB batting lineups — players confirmed not in their team's lineup are treated as unavailable (score 0) and will be moved to bench. Players whose games have already started are locked in place (Yahoo locks roster slots at first pitch) and excluded from the solver.
 2. **Pitcher rotation** — probable starters on bench, active pitchers on off days. Only alerts for games that haven't started yet.
 3. **IL management** — players with IL designations (IL, IL10, IL15, IL60) not in IL slots, cleared players still in IL. DTD players are excluded since Yahoo does not allow moving them to IL.
 
@@ -167,33 +164,6 @@ Each move includes team, opponent, and score context. Moves to BN may include a 
 - **Week 7+**: Zero weight — scoring is based entirely on current-season stats
 
 This prevents the optimizer from overreacting to small early-season slumps (e.g., benching a star who went 0-for-8 in the first series). The preseason ranks are fetched via one additional Yahoo API call (`sort=OR, status=T`) per optimize run.
-
-### Write Commands
-
-All write commands show a preview by default. Add `--confirm` to execute.
-
-```bash
-# Swap a player to a different position slot
-python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py swap --player "Aaron Judge" --to BN [--confirm]
-
-# Auto-execute all optimize swap suggestions
-python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py swap --auto [--confirm]
-
-# Move injured player to IL slot
-python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py move-to-il --player "Zack Wheeler" [--confirm]
-
-# Add a free agent
-python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py add --player "Jake Burger" [--confirm]
-
-# Drop a player
-python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py drop --player "Jake Burger" [--confirm]
-
-# Atomic add + drop
-python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py add-drop --add "Jake Burger" --drop "Luis Arraez" [--confirm]
-
-# Waiver claim (with optional FAAB bid and drop)
-python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fantasy-baseball.py claim --player "Jake Burger" [--drop "Luis Arraez"] [--faab 15] [--confirm]
-```
 
 ## Common Flags
 
@@ -210,7 +180,6 @@ python3 /home/claw/.openclaw/workspace/skills/yahoo-fantasy-baseball/yahoo-fanta
 | `--sort-type season\|lastweek\|lastmonth` | Sort period (used with --sort) |
 | `--stat-season YEAR` | Season year for stat columns (auto-detects: falls back to previous year if league hasn't started) |
 | `--since 3d\|1w\|24h\|2w` | Filter transactions by time window (h=hours, d=days, w=weeks, m=months) |
-| `--confirm` | Execute write operations (without this, preview only) |
 
 ### Sort Reference
 
@@ -304,15 +273,18 @@ Today — Team Name
 Roster Optimization Suggestions
 ==================================================
 
-  LINEUP CHANGES (3 moves)
-    Jake Burger: BN → 3B
-      (MIA vs ATL, score: 18.3)
-    Mookie Betts: SS → BN
-      (LAD, score: 12.0)
-      📅  team off today
-    Josh Smith: 3B → BN
-      (TEX vs SEA, score: 9.2)
-      ⚠️  not in confirmed MLB lineup
+  LINEUP CHANGES (2 swaps)
+
+    Swap 1 — 3B
+      ▶ Start Jake Burger (MIA vs ATL, score: 18.3)
+      ▼ Bench Josh Smith (TEX vs SEA, score: 9.2)
+        ⚠️  not in confirmed MLB lineup
+
+    Swap 2 — SS / UTIL
+      ▶ Start Willy Adames at SS (SF vs PHI, score: 35.0)
+      ↔ Move Mookie Betts from SS → UTIL
+      ▼ Bench Tyler Fitzgerald (SF, score: 12.0)
+        📅  team off today
 
   PITCHER ROTATION (1 alerts)
     Gerrit Cole (NYY) is a probable starter today but is on the bench.
@@ -320,7 +292,7 @@ Roster Optimization Suggestions
   IL MANAGEMENT (1 suggested)
     Move Zack Wheeler (IL-60) from SP slot to IL to free a roster spot.
 
-Total: 5 suggestion(s)
+Total: 4 suggestion(s)
 ```
 
 Players on teams whose games are already in progress or finished are locked and excluded from optimization — they will not appear in the move list.
@@ -380,8 +352,10 @@ All commands support `--format discord` which wraps text output in code blocks.
 
 ## Credential Storage
 
-Credentials are stored in `~/.openclaw/credentials/yahoo-fantasy/`:
-- `oauth2.json` — OAuth consumer key/secret and tokens (managed by yahoo_oauth)
+**Preferred: Environment variables.** Set `YAHOO_CONSUMER_KEY` and `YAHOO_CONSUMER_SECRET` via OpenClaw config or your shell environment. The skill will use these automatically — no need to run `auth`. Note: credentials are still written to `oauth2.json` on disk because the underlying `yahoo_oauth` library requires a file for token management. File permissions are set to 0600 on Unix.
+
+**Alternative: Interactive setup.** Run the `auth` command to enter credentials interactively. Tokens are stored in `~/.openclaw/credentials/yahoo-fantasy/`:
+- `oauth2.json` — OAuth consumer key/secret and tokens (managed by yahoo_oauth, file permissions set to 0600 on Unix)
 - `yahoo-fantasy.json` — Default league_id, team_id, season
 
 Legacy YFPY `.env` credentials are auto-migrated to `oauth2.json` on first use.
@@ -390,6 +364,5 @@ Legacy YFPY `.env` credentials are auto-migrated to `oauth2.json` on first use.
 
 - Data is sourced from the Yahoo Fantasy Sports API via the [yahoo-fantasy-api](https://github.com/spilchen/yahoo_fantasy_api) library.
 - MLB schedule and probable pitcher data comes from the [MLB Stats API](https://statsapi.mlb.com/) (stdlib only, no dependencies).
-- On first run, a local venv is created at `.deps/` and dependencies are installed automatically.
+- Run `--setup` to create a local venv at `.deps/` and install dependencies before first use.
 - Auto-detect identifies your team using `league.team_key()`. If detection fails, use `config --team <ID>` to set it manually.
-- Write operations always preview changes before executing. Use `--confirm` to apply changes.
