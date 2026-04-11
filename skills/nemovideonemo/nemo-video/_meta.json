@@ -3,11 +3,16 @@
   "slug": "nemo-video",
   "displayName": "Nemo Video",
   "latest": {
-    "version": "1.9.5",
-    "publishedAt": 1774839578940,
-    "commit": "https://github.com/openclaw/skills/commit/6e4ec2a3d00f5630101733806cc2f90e7d03d6ce"
+    "version": "2.0.0",
+    "publishedAt": 1775630191524,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.9.5",
+      "publishedAt": 1774839578940,
+      "commit": "https://github.com/openclaw/skills/commit/6e4ec2a3d00f5630101733806cc2f90e7d03d6ce"
+    },
     {
       "version": "1.9.2",
       "publishedAt": 1774147151743,
