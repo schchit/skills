@@ -49,7 +49,7 @@ curl -X POST https://disco.leap-labs.com/api/signup/verify \
 # → {"key": "disco_...", "credits": 10, "tier": "free_tier"}
 ```
 
-Or create a key at [disco.leap-labs.com/docs](https://disco.leap-labs.com/docs).
+Or create a key at [disco.leap-labs.com/developers](https://disco.leap-labs.com/developers).
 
 Run your first analysis:
 
@@ -163,13 +163,14 @@ Before running, exclude columns that would produce meaningless findings. Disco f
 await engine.discover(
     file="data.csv",           # path, Path, or pd.DataFrame
     target_column="outcome",   # column to predict/explain
-    analysis_depth=2,          # 2=default, higher=deeper (max: num_columns − 2)
-    visibility="public",       # "public" (free) or "private" (costs credits)
+    analysis_depth=2,          # 2=default, higher=deeper analysis, lower = faster and cheaper
+    visibility="public",       # "public" (always free, data and report is published) or "private" (costs credits)
     column_descriptions={      # improves pattern explanations and literature context
         "bmi": "Body mass index",
         "hdl": "HDL cholesterol in mg/dL",
     },
     excluded_columns=["id", "timestamp"],  # see "Preparing your data" above
+    use_llms=False,                        # Defaults to False. If True, runs are slower and more expensive, but you get smarter pre-processing, summary page, literature context and novelty assessment. Public runs always use LLMs.
     title="My dataset",
     description="...", # improves pattern explanations and literature context
 )
@@ -219,7 +220,7 @@ Disco is available as an MCP server — no local install required.
 
 Tools: `discovery_estimate`, `discovery_upload`, `discovery_analyze`, `discovery_status`, `discovery_get_results`, plus account management tools.
 
-→ [Full agent skill file](SKILL.md) · [MCP docs](docs/mcp.md)
+→ [Full agent skill file](SKILL.md)
 
 ---
 
@@ -227,21 +228,22 @@ Tools: `discovery_estimate`, `discovery_upload`, `discovery_analyze`, `discovery
 
 | | Cost |
 |---|---|
-| Public runs | Free — results and data are published|
-| Private runs | 1 credit per MB |
+| Public runs | Free — results and data are published |
+| Private runs | Credits vary by file size and configuration — use `engine.estimate()` |
 | Free tier | 10 credits/month, no card required |
 | Researcher | $49/month — 50 credits |
 | Team | $199/month — 200 credits |
-| Purchase more credits at $1 per credit |
+| Credits | $0.10 per credit |
 
 Estimate before running:
 
 ```python
 estimate = await engine.estimate(file_size_mb=10.5, num_columns=25, analysis_depth=2, visibility="private")
-# estimate["cost"]["credits"] → 21
-# estimate["cost"]["free_alternative"] → True
+# estimate["cost"]["credits"] → 55
 # estimate["account"]["sufficient"] → True/False
 ```
+
+Account management is fully programmatic — attach payment methods, subscribe to plans, and purchase credits via the SDK or REST API. See [Python SDK reference](docs/python-sdk.md#account-management) or [SKILL.md](SKILL.md#paying-for-credits-programmatic).
 
 ---
 
@@ -269,15 +271,31 @@ Disco expects a **flat table** — columns for features, rows for samples.
 
 ---
 
+## Compared to other tools
+
+| Goal | Tool |
+|---|---|
+| Summary statistics, data quality | ydata-profiling, sweetviz |
+| Predictive model | AutoML (auto-sklearn, TPOT, H2O) |
+| Quick correlations | pandas, seaborn |
+| Answer a specific question about data | ChatGPT, Claude |
+| **Find what you don't know to look for** | **Disco** |
+
+Disco isn't a replacement for EDA or AutoML — it finds the patterns those tools miss. We [tested 18 data analysis tools](https://www.leap-labs.com/research/the-patterns-that-agents-miss) on a dataset with known ground-truth patterns. Most confidently reported wrong results. Disco was the only one that found every pattern.
+
+---
+
 ## Links
 
 - [Dashboard](https://disco.leap-labs.com)
-- [API keys](https://disco.leap-labs.com/docs)
+- [API keys](https://disco.leap-labs.com/developers)
 - [Python SDK on PyPI](https://pypi.org/project/discovery-engine-api/)
 - [Python SDK reference](docs/python-sdk.md)
-- [Agent / MCP docs](docs/mcp.md)
+- [HTTP API reference](docs/http-api.md)
+- [Agent / MCP docs](SKILL.md)
 - [LLM-friendly reference](llms.txt)
 - [OpenAPI spec](https://disco.leap-labs.com/.well-known/openapi.json)
+- [OpenAPI spec (in-repo)](docs/openapi.json)
 - [Public reports gallery](https://disco.leap-labs.com/discover)
 
 ---

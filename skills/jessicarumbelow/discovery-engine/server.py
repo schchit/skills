@@ -9,9 +9,11 @@ It is synced automatically on every staging → main merge via .github/workflows
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
+from pathlib import Path
 
 import httpx
 from mcp.server.fastmcp import FastMCP
@@ -36,6 +38,26 @@ _OAUTH_SECRET = os.getenv("MCP_OAUTH_SECRET")
 _SERVER_URL = os.getenv("MCP_SERVER_URL", "")
 
 _VALID_VISIBILITY = {"public", "private"}
+
+# 8 MB chunks — bounded memory for multi-GB uploads (avoids the _ssl.c:2426
+# crash from passing the full file body to httpx as a single bytes object).
+_UPLOAD_CHUNK_SIZE = 8 * 1024 * 1024
+
+
+async def _stream_file_chunks(path: Path, chunk_size: int = _UPLOAD_CHUNK_SIZE):
+    """Yield file contents in fixed-size chunks for streaming uploads.
+
+    Reads via run_in_executor so the event loop isn't blocked on read syscalls.
+    Memory stays bounded to one chunk regardless of file size.
+    """
+    loop = asyncio.get_event_loop()
+    with path.open("rb") as f:
+        while True:
+            chunk = await loop.run_in_executor(None, f.read, chunk_size)
+            if not chunk:
+                break
+            yield chunk
+
 
 # ---------------------------------------------------------------------------
 # OAuth setup (only when MCP_OAUTH_SECRET is configured)
@@ -248,6 +270,7 @@ async def discovery_estimate(
     num_rows: int | None = None,
     analysis_depth: int = 2,
     visibility: str = "public",
+    use_llms: bool = False,
     api_key: str | None = None,
 ) -> str:
     """Estimate cost, time, and credit requirements before running an analysis.
@@ -262,6 +285,7 @@ async def discovery_estimate(
         num_rows: Number of rows (optional, improves time estimate).
         analysis_depth: Search depth (1=fast, higher=deeper). Default 1.
         visibility: "public" (free, results published) or "private" (costs credits).
+        use_llms: Slower and more expensive, but you get smarter pre-processing, summary page, literature context and pattern novelty assessment. Only applies to private runs — public runs always use LLMs. Default false.
         api_key: Disco API key (disco_...). Optional if DISCOVERY_API_KEY env var is set.
     """
     resolved_key = _resolve_api_key(api_key)
@@ -279,6 +303,7 @@ async def discovery_estimate(
         "num_columns": num_columns,
         "analysis_depth": analysis_depth,
         "visibility": visibility,
+        "use_llms": use_llms,
     }
     if num_rows is not None:
         payload["num_rows"] = num_rows
@@ -328,7 +353,6 @@ async def discovery_upload(
         api_key: Disco API key (disco_...). Optional if DISCOVERY_API_KEY env var is set.
     """
     import base64
-    from pathlib import Path
 
     resolved_key = _resolve_api_key(api_key)
     if not resolved_key:
@@ -367,7 +391,7 @@ async def discovery_upload(
         if not path.is_file():
             return json.dumps({"error": f"Not a file: {file_path}"})
 
-        file_bytes = path.read_bytes()
+        file_size = path.stat().st_size
         filename = path.name
         mime_type = _MIME_TYPES.get(path.suffix.lower(), "text/csv")
 
@@ -375,17 +399,23 @@ async def discovery_upload(
             "POST",
             "/api/data/upload/presign",
             api_key=resolved_key,
-            json_body={"fileName": filename, "contentType": mime_type, "fileSize": len(file_bytes)},
+            json_body={"fileName": filename, "contentType": mime_type, "fileSize": file_size},
         )
         if "error" in presign:
             return json.dumps(presign)
 
+        # Stream from disk rather than loading the whole file into memory.
+        # GCS XML API rejects chunked transfer encoding on PUT, so we must
+        # send an explicit Content-Length header alongside the streamed body.
         try:
             async with httpx.AsyncClient(timeout=1800.0) as upload_client:
                 upload_resp = await upload_client.put(
                     presign["uploadUrl"],
-                    content=file_bytes,
-                    headers={"Content-Type": mime_type},
+                    content=_stream_file_chunks(path),
+                    headers={
+                        "Content-Type": mime_type,
+                        "Content-Length": str(file_size),
+                    },
                 )
                 if upload_resp.status_code >= 400:
                     return json.dumps(
@@ -489,6 +519,7 @@ async def discovery_analyze(
     column_descriptions: str | dict | None = None,
     author: str | None = None,
     source_url: str | None = None,
+    use_llms: bool = False,
     api_key: str | None = None,
 ) -> str:
     """Run Disco on tabular data to find novel, statistically validated patterns.
@@ -506,7 +537,9 @@ async def discovery_analyze(
     visualization, or SQL queries.
 
     Public runs are free but results are published. Private runs cost credits.
-    Call discovery_estimate first to check cost.
+    Call discovery_estimate first to check cost. Private report URLs require
+    sign-in — tell the user to sign in at the dashboard with the same email
+    address used to create the account (email code, no password needed).
 
     Call discovery_upload first to upload your file, then pass the returned file_ref here.
 
@@ -521,6 +554,7 @@ async def discovery_analyze(
         column_descriptions: Optional JSON object mapping column names to descriptions. Significantly improves pattern explanations — always provide if column names are non-obvious (e.g. {"col_7": "patient age", "feat_a": "blood pressure"}).
         author: Optional author name for the report.
         source_url: Optional source URL for the dataset.
+        use_llms: Slower and more expensive, but you get smarter pre-processing, summary page, literature context and pattern novelty assessment. Only applies to private runs — public runs always use LLMs. Default false.
         api_key: Disco API key (disco_...). Optional if DISCOVERY_API_KEY env var is set.
     """
     resolved_key = _resolve_api_key(api_key)
@@ -564,6 +598,7 @@ async def discovery_analyze(
         "targetColumn": target_column,
         "analysisDepth": analysis_depth,
         "isPublic": visibility == "public",
+        "useLlms": use_llms,
     }
     if title:
         run_payload["title"] = title
@@ -765,6 +800,44 @@ async def discovery_signup_verify(email: str, code: str) -> str:
 
 
 @mcp.tool(annotations=ToolAnnotations(destructiveHint=False, idempotentHint=True))
+async def discovery_login(email: str) -> str:
+    """Get a new API key for an existing Disco account.
+
+    Sends a 6-digit verification code to the email address. Call
+    discovery_login_verify with the code to receive a new API key.
+    Use this when you need an API key for an account that already exists
+    (e.g. the key was lost or this is a new agent session).
+
+    Returns 404 if no account exists with this email — use discovery_signup instead.
+
+    Args:
+        email: Email address of the existing account.
+    """
+    result = await _dashboard_request("POST", "/api/login", json_body={"email": email})
+    return json.dumps(result, indent=2)
+
+
+@mcp.tool(annotations=ToolAnnotations(destructiveHint=False, idempotentHint=True))
+async def discovery_login_verify(email: str, code: str) -> str:
+    """Complete login and receive a new API key.
+
+    Call this after discovery_login returns {"status": "verification_required"}.
+    The user receives a 6-digit code by email — pass it here along with the
+    same email address. Returns a new API key on success.
+
+    Args:
+        email: Email address used in the discovery_login call.
+        code: 6-digit verification code from the email.
+    """
+    result = await _dashboard_request(
+        "POST",
+        "/api/login/verify",
+        json_body={"email": email, "code": code},
+    )
+    return json.dumps(result, indent=2)
+
+
+@mcp.tool(annotations=ToolAnnotations(destructiveHint=False, idempotentHint=True))
 async def discovery_add_payment_method(payment_method_id: str, api_key: str | None = None) -> str:
     """Attach a Stripe payment method to your Disco account.
 
@@ -799,12 +872,12 @@ async def discovery_add_payment_method(payment_method_id: str, api_key: str | No
 async def discovery_purchase_credits(packs: int = 1, api_key: str | None = None) -> str:
     """Purchase Disco credit packs using a stored payment method.
 
-    Credits cost $1.00 each, sold in packs of 20 ($20/pack). Credits are used
+    Credits cost $0.10 each, sold in packs of 100 ($10/pack). Credits are used
     for private analyses (public analyses are free). Requires a payment method
     on file — use discovery_add_payment_method first.
 
     Args:
-        packs: Number of 20-credit packs to purchase. Default 1.
+        packs: Number of 100-credit packs to purchase. Default 1.
         api_key: Disco API key (disco_...). Optional if DISCOVERY_API_KEY env var is set.
     """
     resolved_key = _resolve_api_key(api_key)
