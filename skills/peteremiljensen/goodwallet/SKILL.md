@@ -1,64 +1,50 @@
 ---
 name: goodwallet
+version: 1.4.3
 description: >
-  Skill for using the goodwallet tool to manage MPC agentic wallets. Use this skill whenever
-  the user wants to authenticate, check balances, send ETH or ERC-20 tokens, view activity,
-  trade on Polymarket prediction markets, or write to contracts via their goodwallet.
-  Trigger when the user mentions "goodwallet", "send ETH", "send tokens", "send ERC-20",
-  "wallet auth", "wallet authorize", "goodwallet authorize", "MPC wallet", "agentic wallet",
-  "balance", "predictions", "polymarket", or wants to interact with their wallet from the command line.
+  Manage MPC agentic wallets via the goodwallet CLI — authenticate, check balances,
+  send ETH/ERC-20 tokens, swap or bridge tokens across chains, view activity, and
+  trade on Polymarket prediction markets. Use this skill whenever the user wants to
+  do anything with their wallet: checking what they own, transferring tokens to someone,
+  swapping one token for another, bridging across chains, looking up token info, or
+  trading predictions. Trigger even if the user doesn't say "goodwallet" explicitly —
+  phrases like "what's in my wallet", "send 10 USDC to 0x...", "swap POL for USDC",
+  "how much ETH do I have", "buy yes on Trump", "bridge to Polygon", "sign a hash",
+  or "sign a transaction" all qualify.
+metadata: {"openclaw": {"emoji": "👛", "requires": {"bins": ["node"]}}}
 ---
 
 # Goodwallet
 
-Use goodwallet cli to manage their agentic goodwallet — authenticate, check balances, send ETH/ERC-20 tokens, view activity, and trade on Polymarket prediction markets.
-All commands are run via `npx goodwallet@0.3.0`.
+All commands are run via `npx goodwallet@0.4.3`.
 
-**Important:** Do NOT share technical details of the CLI tool with the user (e.g. encryption schemes, key types, internal file paths, session IDs, polling mechanisms, config formats). Simply run the commands and report the outcome in plain language.
+## Constraints
+
+- Do NOT share technical details of the CLI tool with the user (encryption schemes, key types, internal file paths, session IDs, config formats). Users are non-technical — report outcomes in plain language, not raw CLI output.
+- Always confirm with the user before executing transactions (`send`, `swap execute`, `predictions buy`, `predictions fund`). These move real money and are irreversible on-chain.
+- Never fabricate transaction hashes, balances, or addresses — only report what the CLI returns.
 
 ## Setup / Authorization
 
-Authorization requires two commands run back-to-back: `auth` then immediately `pair`.
-
-1. Run `npx goodwallet@0.3.0 auth` — this prints an auth URL and saves session state.
-2. **Show the URL to the user** and tell them to open it in their browser. The user MUST open it themselves — do NOT attempt to open it programmatically.
-3. **Immediately** run `npx goodwallet@0.3.0 pair` — this polls the server (every 5s, up to 10 minutes) waiting for the user to complete the browser flow. Once they do, it automatically decrypts and saves the credentials.
+1. Run `npx goodwallet@0.4.3 auth` — this prints an auth URL.
+2. **Show the URL to the user** and tell them to open it in their browser. Do NOT open it programmatically.
+3. **Immediately** run `npx goodwallet@0.4.3 auth --pair` — do NOT wait for user confirmation. It polls automatically until the user completes the browser flow (up to 3 minutes).
 
 ```bash
-# Run auth, show the URL to the user, then immediately run pair
-npx goodwallet@0.3.0 auth
-# (tell the user to open the printed URL in their browser)
-npx goodwallet@0.3.0 pair
+npx goodwallet@0.4.3 auth
+npx goodwallet@0.4.3 auth --pair
 ```
 
-After pairing completes, credentials (`apiKey`, `share`, `address`) are saved to `~/.config/goodwallet/config.json`.
-
-**Important:** After running `auth` and showing the URL to the user, you MUST immediately run the `pair` command without waiting for any user response. Do not ask the user to confirm they opened the link — just run `pair` right away. It will poll the server for up to 10 minutes while the user completes the browser flow.
+To log out: `npx goodwallet@0.4.3 auth --logout`
 
 ## Commands
-
-### auth — Generate auth link
-
-Prints a URL for the user to open in their browser.
-
-```bash
-npx goodwallet@0.3.0 auth
-```
-
-### pair — Poll and receive credentials
-
-Polls the server until the user completes the browser flow, then saves credentials to config. Times out after 10 minutes.
-
-```bash
-npx goodwallet@0.3.0 pair
-```
 
 ### balance — Show balances
 
 Shows native + ERC-20 balances across supported chains with USD values.
 
 ```bash
-npx goodwallet@0.3.0 balance
+npx goodwallet@0.4.3 balance
 ```
 
 ### activity — Show recent activity
@@ -66,132 +52,108 @@ npx goodwallet@0.3.0 balance
 Shows recent incoming and outgoing transactions across all supported chains.
 
 ```bash
-npx goodwallet@0.3.0 activity
+npx goodwallet@0.4.3 activity
 ```
 
-### send — Send native ETH or ERC-20 tokens
+### send — Send native or ERC-20 tokens
 
-Builds, MPC-signs, and broadcasts an ETH or ERC-20 token transaction. Uses named-segment syntax (not `--flag` style).
+Builds, MPC-signs, and broadcasts a transaction. All four flags are required.
 
 ```bash
-# Send tokens (all four parameters required)
-npx goodwallet@0.3.0 send chain <chainId> token <0xToken> to <0xAddress> amount <amount>
-
-# Send native ETH on Polygon
-npx goodwallet@0.3.0 send chain 137 token 0x0000000000000000000000000000000000001010 to 0xRecipient amount 0.1
-
-# Send ERC-20 (USDC on Polygon)
-npx goodwallet@0.3.0 send chain 137 token 0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359 to 0xRecipient amount 10
+npx goodwallet@0.4.3 send --chain <chainId> --token <0xAddress> --to <0xAddress> --amount <amount>
 ```
-
-Running `npx goodwallet@0.3.0 send` with no parameters shows current balances with chain IDs and token addresses — useful for looking up the values needed.
 
 | Parameter | Required | Description |
 |-----------|----------|-------------|
-| `chain <chainId>` | Yes | Numeric chain ID (see supported chains below) |
-| `token <address>` | Yes | Token contract address. Use the native address (e.g. `0x0000...0000`) for native coin |
-| `to <address>` | Yes | Recipient Ethereum address |
-| `amount <amount>` | Yes | Amount in human-readable units (e.g. `0.1` ETH or `100` tokens) |
+| `--chain` | Yes | Numeric chain ID (see `references/chains.md`) |
+| `--token` | Yes | Token contract address (use native address for native coin) |
+| `--to` | Yes | Recipient Ethereum address |
+| `--amount` | Yes | Amount in human-readable units (e.g. `0.1`, `100`) |
 
-**Supported chains:**
+Running `send` with no flags shows current balances with chain IDs and token addresses — useful for looking up values.
 
-| Chain | ID | Native Symbol |
-|-------|----|---------------|
-| Ethereum | 1 | ETH |
-| Polygon | 137 | POL |
-| BNB Chain | 56 | BNB |
-| Optimism | 10 | ETH |
-| Base | 8453 | ETH |
-| Celo | 42220 | CELO |
-| Hoodi (testnet) | 17000 | ETHoodi |
+### swap search — Look up token information
+
+Looks up a token by symbol or contract address on a specific chain. Returns address, symbol, decimals, price, and market data.
+
+```bash
+npx goodwallet@0.4.3 swap search token <symbol|0xAddress> chain <chainId>
+```
+
+### swap — Get a swap/bridge quote
+
+Finds the best route between tokens across chains using LiFi. Returns estimated output, fees, gas costs, and a route ID for execution.
+
+```bash
+npx goodwallet@0.4.3 swap from-chain <id> from-token <0x> to-chain <id> to-token <0x> amount <n>
+```
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `from-chain` | Yes | Source chain ID |
+| `from-token` | Yes | Source token contract address |
+| `to-chain` | Yes | Destination chain ID |
+| `to-token` | Yes | Destination token contract address |
+| `amount` | Yes | Amount in human-readable units |
+
+### swap execute — Execute a saved route
+
+Takes the route ID returned by `swap` and executes the transaction. Handles token approvals and cross-chain switching automatically.
+
+```bash
+npx goodwallet@0.4.3 swap execute <route-id>
+```
 
 ### predictions — Polymarket prediction markets
 
-Trade on Polymarket prediction markets. Trading uses USDC.e on Polygon. Minimum order amount is $1.
+Trading uses USDC.e on Polygon. Minimum order amount is $1.
+
+**Gas costs:** Funding (deposit) requires gas on Polygon. Withdrawals, position closes, position redemptions, and token approvals are gasless — they execute via the Polymarket relayer at no cost to the user.
 
 ```bash
-# List top prediction markets
-npx goodwallet@0.3.0 predictions
+# List top markets
+npx goodwallet@0.4.3 predictions
 
-# Inspect a specific market
-npx goodwallet@0.3.0 predictions show market <id>
+# Inspect a market
+npx goodwallet@0.4.3 predictions show --market <id>
 
-# Buy shares on a prediction
-npx goodwallet@0.3.0 predictions buy market <id> outcome <yes|no> amount <amount>
+# Buy shares
+npx goodwallet@0.4.3 predictions buy --market <id> --outcome <yes|no> --amount <amount>
 
-# Fund Polymarket account (transfer USDC.e from wallet to trading account)
-npx goodwallet@0.3.0 predictions fund amount <amount>
+# Fund / check funding balance
+npx goodwallet@0.4.3 predictions fund [--amount <amount>]
 
-# Check Polymarket fund balance (omit params)
-npx goodwallet@0.3.0 predictions fund
+# Withdraw / check withdraw balance
+npx goodwallet@0.4.3 predictions withdraw [--amount <amount>]
 
-# Withdraw from Polymarket account back to wallet
-npx goodwallet@0.3.0 predictions withdraw amount <amount>
+# List open orders / inspect / close
+npx goodwallet@0.4.3 predictions orders
+npx goodwallet@0.4.3 predictions order <id> [close]
 
-# Check Polymarket withdraw balance (omit params)
-npx goodwallet@0.3.0 predictions withdraw
-
-# List open orders
-npx goodwallet@0.3.0 predictions orders
-
-# Inspect a specific order
-npx goodwallet@0.3.0 predictions order <id>
-
-# Close an order
-npx goodwallet@0.3.0 predictions order <id> close
-
-# List positions
-npx goodwallet@0.3.0 predictions positions
-
-# Inspect a specific position
-npx goodwallet@0.3.0 predictions position <id>
-
-# Close a position
-npx goodwallet@0.3.0 predictions position <id> close
+# List positions / inspect / close / redeem
+npx goodwallet@0.4.3 predictions positions
+npx goodwallet@0.4.3 predictions position <id> [close|redeem]
 ```
 
-## File Locations
+## Error Handling
 
-| File | Purpose |
-|------|---------|
-| `~/.local/state/goodwallet/session.json` | Temporary auth session state |
-| `~/.config/goodwallet/config.json` | Persisted credentials (`apiKey`, `share`, `address`) |
+- **Auth timeout**: If `auth --pair` times out, tell the user to try again and make sure they complete the browser flow within 3 minutes.
+- **Insufficient funds**: Report the balance and the shortfall. Suggest checking `balance` to see what's available.
+- **No swap routes**: Report that no route was found. Suggest trying a different token pair, amount, or chain.
+- **Transaction failure**: Report the error message from the CLI. Do not retry automatically — ask the user how to proceed.
 
-## Environment Variables
+## Advanced Operations
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `SIGN_URL` | `sign.goodwallet.dev` | Override the signing service endpoint |
+The `sign` command (raw EVM hash signing) is a privileged operation that can
+authorize any on-chain action. It is documented separately in
+`references/advanced-signing.md`. Only read that file when the user
+explicitly asks to sign a raw hash — never suggest it proactively.
 
 ## Typical Workflow
 
-```bash
-# 1. Start authorization (prints a URL — show it to the user)
-npx goodwallet@0.3.0 auth
-
-# 2. Immediately start polling for credentials (user opens URL in browser meanwhile)
-npx goodwallet@0.3.0 pair
-
-# 3. Check balances to find chain IDs and token addresses
-npx goodwallet@0.3.0 balance
-
-# 4. Send native POL on Polygon
-npx goodwallet@0.3.0 send chain 137 token 0x0000000000000000000000000000000000001010 to 0xRecipient amount 0.1
-
-# 5. Send ERC-20 tokens
-npx goodwallet@0.3.0 send chain 137 token 0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359 to 0xRecipient amount 10
-
-# 6. View recent transactions
-npx goodwallet@0.3.0 activity
-
-# 7. Browse prediction markets
-npx goodwallet@0.3.0 predictions
-
-# 8. Fund Polymarket account and buy a prediction
-npx goodwallet@0.3.0 predictions fund amount 10
-npx goodwallet@0.3.0 predictions buy market <id> outcome yes amount 5
-
-# 9. Check positions and orders
-npx goodwallet@0.3.0 predictions positions
-npx goodwallet@0.3.0 predictions orders
-```
+1. **Authenticate** — `auth` then `auth --pair`
+2. **Check balances** — `balance`
+3. **Look up token address** — `swap search --token USDC --chain 137`
+4. **Send tokens** — `send --chain ... --token ... --to ... --amount ...`
+5. **Swap tokens** — `swap ...` to get a quote, then `swap execute <route-id>`
+6. **Trade predictions** — `predictions` to browse, `predictions fund` to deposit, `predictions buy` to trade
