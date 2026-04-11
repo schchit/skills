@@ -120,7 +120,56 @@ export class TopicCluster {
    */
   private extractKeywords(memories: Memory[]): string[] {
     const wordFreq = new Map<string, number>();
-    const stopWords = new Set([
+    const stopWords = this.getStopWords();
+
+    for (const memory of memories) {
+      const words = memory.content.toLowerCase()
+        .replace(/[^\w\s\u4e00-\u9fff]/g, ' ')
+        .split(/\s+/)
+        .filter(w => w.length > 1 && !stopWords.has(w));
+
+      for (const word of words) {
+        wordFreq.set(word, (wordFreq.get(word) || 0) + 1);
+      }
+    }
+
+    return Array.from(wordFreq.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([word]) => word);
+  }
+
+  /**
+   * Extract keywords from a single content string
+   * @param content - Content to extract keywords from
+   * @param topN - Number of top keywords to return (default: 5)
+   * @returns Array of top keywords
+   */
+  extractKeywordsFromContent(content: string, topN: number = 5): string[] {
+    const wordFreq = new Map<string, number>();
+    const stopWords = this.getStopWords();
+
+    const words = content.toLowerCase()
+      .replace(/[^\w\s\u4e00-\u9fff]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length > 1 && !stopWords.has(w));
+
+    for (const word of words) {
+      wordFreq.set(word, (wordFreq.get(word) || 0) + 1);
+    }
+
+    return Array.from(wordFreq.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, topN)
+      .map(([word]) => word);
+  }
+
+  /**
+   * Get stop words set
+   */
+  private getStopWords(): Set<string> {
+    return new Set([
+      // English stop words
       'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
       'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
       'should', 'may', 'might', 'must', 'shall', 'can', 'need', 'to', 'of',
@@ -131,23 +180,11 @@ export class TopicCluster {
       'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too',
       'very', 'just', 'and', 'but', 'if', 'or', 'because', 'until', 'while',
       'this', 'that', 'these', 'those', 'what', 'which', 'who', 'whom',
+      // Chinese stop words
+      '的', '了', '是', '在', '我', '有', '和', '就', '不', '人', '都', '一',
+      '一个', '上', '也', '很', '到', '说', '要', '去', '你', '会', '着', '没有',
+      '看', '好', '自己', '这', '那', '她', '他', '它', '们', '这个', '那个',
     ]);
-    
-    for (const memory of memories) {
-      const words = memory.content.toLowerCase()
-        .replace(/[^\w\s]/g, ' ')
-        .split(/\s+/)
-        .filter(w => w.length > 3 && !stopWords.has(w));
-      
-      for (const word of words) {
-        wordFreq.set(word, (wordFreq.get(word) || 0) + 1);
-      }
-    }
-    
-    return Array.from(wordFreq.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([word]) => word);
   }
   
   /**

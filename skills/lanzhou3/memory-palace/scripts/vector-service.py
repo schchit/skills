@@ -37,13 +37,39 @@ def get_db_path() -> str:
     return os.environ.get('VECTOR_DB_PATH', '/data/agent-memory-palace/data/vectors.db')
 
 
+def check_db_path_writable(db_path: str) -> None:
+    """Check if database path is writable, raise clear error if not."""
+    db_dir = os.path.dirname(db_path)
+    
+    # Ensure directory exists
+    os.makedirs(db_dir, exist_ok=True)
+    
+    # Check if directory exists and is writable
+    if os.path.exists(db_dir):
+        if not os.access(db_dir, os.W_OK):
+            raise PermissionError(
+                f"Database directory is not writable: {db_dir}\n"
+                f"Please check permissions or specify a different path with --db-path"
+            )
+    else:
+        # Try to create the directory
+        try:
+            os.makedirs(db_dir, exist_ok=True)
+        except PermissionError as e:
+            raise PermissionError(
+                f"Cannot create database directory: {db_dir}\n"
+                f"Error: {e}\n"
+                f"Please check permissions or specify a different path with --db-path"
+            )
+
+
 def init_db():
     """Initialize SQLite database for vector storage."""
     global db_conn, db_path
     db_path = get_db_path()
     
-    # Ensure directory exists
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    # Check if path is writable before proceeding
+    check_db_path_writable(db_path)
     
     db_conn = sqlite3.connect(db_path, check_same_thread=False)
     db_conn.execute('''
@@ -74,23 +100,35 @@ def get_model_cache_dir() -> str:
     return cache_dir
 
 
+def get_model_path() -> str:
+    """Get model path from environment or use local cached model."""
+    # Check environment variable first
+    model_path = os.environ.get('BGE_MODEL_PATH')
+    if model_path and os.path.exists(model_path):
+        return model_path
+    # Default local model path
+    local_model = os.path.expanduser('~/.openclaw/models/embedding/bge-small-zh-v1.5')
+    if os.path.exists(local_model):
+        return local_model
+    # Fallback to HuggingFace model name (requires network)
+    return 'BAAI/bge-small-zh-v1.5'
+
+
 def load_model():
     """Load the BGE model with custom cache directory."""
     global model
-    model_name = os.environ.get('BGE_MODEL', 'BAAI/bge-small-zh-v1.5')
     
-    # Get custom cache directory
-    cache_dir = get_model_cache_dir()
+    # Get model path (local or HuggingFace)
+    model_path = get_model_path()
     
-    # Use mirror if huggingface.co is unreachable
-    if 'HF_ENDPOINT' not in os.environ:
+    # Use mirror if huggingface.co is unreachable and model is not local
+    if not os.path.exists(model_path) and 'HF_ENDPOINT' not in os.environ:
         os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
     
-    print(f"Loading model: {model_name}", file=sys.stderr, flush=True)
-    print(f"Using cache directory: {cache_dir}", file=sys.stderr, flush=True)
+    print(f"Loading model: {model_path}", file=sys.stderr, flush=True)
     
-    # Load model with custom cache folder
-    model = SentenceTransformer(model_name, cache_folder=cache_dir)
+    # Load model (local path or HuggingFace name)
+    model = SentenceTransformer(model_path)
     print(f"Model loaded. Embedding dimension: {model.get_sentence_embedding_dimension()}", 
           file=sys.stderr, flush=True)
 
@@ -279,7 +317,12 @@ def main():
     parser = argparse.ArgumentParser(description='Vector Service for Memory Palace')
     parser.add_argument('--port', type=int, default=8765, help='Port to listen on')
     parser.add_argument('--host', default='127.0.0.1', help='Host to bind to')
+    parser.add_argument('--db-path', type=str, default=None, help='Custom database path for vector storage')
     args = parser.parse_args()
+    
+    # Set custom DB path if provided
+    if args.db_path:
+        os.environ['VECTOR_DB_PATH'] = args.db_path
     
     # Initialize
     print("Initializing vector service...", file=sys.stderr, flush=True)

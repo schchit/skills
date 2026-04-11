@@ -40,6 +40,41 @@ export interface ExperienceMeta {
   verifiedCount?: number;
   /** When last verified */
   lastVerifiedAt?: Date;
+  /** Effectiveness score (0-1), computed: Math.min(1, verifiedCount * 0.3 + usageCount * 0.1) */
+  effectivenessScore: number;
+  /** Number of times this experience was queried/used */
+  usageCount: number;
+  /** When last used/queried */
+  lastUsedAt?: Date;
+}
+
+/**
+ * Memory relation type
+ */
+export type RelationType = 'relates_to' | 'refines' | 'contradicts';
+
+/**
+ * A relation between two memories
+ */
+export interface MemoryRelation {
+  /** Relation type */
+  type: RelationType;
+  /** Target memory ID */
+  targetId: string;
+  /** Optional note about this relation */
+  note?: string;
+}
+
+/**
+ * Memory decay metrics for Ebbinghaus forgetting curve simulation
+ */
+export interface MemoryDecayMetrics {
+  /** Decay score (0-1), 1=fresh, 0=forgotten */
+  decayScore: number;
+  /** Number of times this memory has been accessed */
+  accessCount: number;
+  /** Last access timestamp */
+  lastAccessedAt?: Date;
 }
 
 /**
@@ -79,14 +114,29 @@ export interface Memory {
   /** Deletion timestamp (if soft-deleted) */
   deletedAt?: Date;
   
-  /** Last access timestamp */
-  lastAccessedAt?: Date;
-  
   /** Memory type (distinguishes different kinds of memories) */
   type?: MemoryType;
   
   /** Experience metadata (only for type='experience' memories) */
   experienceMeta?: ExperienceMeta;
+  
+  /** Relations to other memories (max 5) */
+  relations?: MemoryRelation[];
+  
+  /** Ebbinghaus forgetting curve metrics */
+  decay?: MemoryDecayMetrics;
+}
+
+/**
+ * Verified experience result with shortcut fields
+ */
+export interface VerifiedExperienceResult extends Memory {
+  /** Shortcut: verified status */
+  verified: boolean;
+  /** Shortcut: verification count */
+  verifiedCount: number;
+  /** Shortcut: last verification timestamp */
+  verifiedAt?: Date;
 }
 
 /**
@@ -116,6 +166,9 @@ export interface StoreParams {
   
   /** Experience metadata (only for type='experience') */
   experienceMeta?: ExperienceMeta;
+
+  /** Relations to other memories */
+  relations?: MemoryRelation[];
 }
 
 /**
@@ -142,6 +195,9 @@ export interface UpdateParams {
   
   /** Append to existing tags instead of replacing */
   appendTags?: boolean;
+  
+  /** Relations to other memories */
+  relations?: MemoryRelation[];
 }
 
 /**
@@ -165,6 +221,33 @@ export interface RecallOptions {
 }
 
 /**
+ * Parameters for getting a memory (object-style)
+ */
+export interface GetParams {
+  id: string;
+}
+
+/**
+ * Parameters for recalling memories (object-style)
+ */
+export interface RecallParams {
+  query: string;
+  location?: string;
+  tags?: string[];
+  topK?: number;
+  minImportance?: number;
+  includeArchived?: boolean;
+}
+
+/**
+ * Parameters for getting relevant experiences (object-style)
+ */
+export interface GetRelevantParams {
+  context: string;
+  limit?: number;
+}
+
+/**
  * Search result
  */
 export interface SearchResult {
@@ -176,6 +259,9 @@ export interface SearchResult {
   
   /** Match highlights */
   highlights?: string[];
+  
+  /** Whether this result is from fallback (text) search */
+  isFallback?: boolean;
 }
 
 /**
@@ -231,6 +317,12 @@ export interface Stats {
   
   /** Storage path */
   storagePath: string;
+  
+  /** Vector search status */
+  vectorSearch?: {
+    enabled: boolean;
+    provider?: string;
+  };
 }
 
 /**
