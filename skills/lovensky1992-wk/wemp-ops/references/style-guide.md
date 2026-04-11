@@ -1,5 +1,17 @@
 # 语言风格指南
 
+## Voice Dimensions（量化风格锚点）
+
+写作时以这些分数为锚点，确保风格一致。详见 `<WORKSPACE>/memory/style-runs/voice-dimensions.md`。
+
+| Dimension | Score | 说明 |
+|-----------|-------|------|
+| formal_casual | **4/10** | 口语化但有逻辑 |
+| technical_accessible | **6/10** | 技术用比喻，不回避深度 |
+| serious_playful | **5/10** | 中间偏正经，每 200 字 1 个微幽默 |
+| concise_elaborate | **5/10** | 2000-3000 字，每段 3-5 句 |
+| reserved_expressive | **7/10** | 有观点敢判断，承认局限 |
+
 ## 句式
 
 - 短句优先，单句 ≤25 字
@@ -89,6 +101,14 @@
 - "应运而生"、"如火如荼"等四字成语堆砌
 - "想象一下…"式假设修辞（换成真实案例）
 - "令人兴奋的是"等情感注入过度
+
+## 写作 Anti-Pattern 检查
+
+定稿后必须过一遍 `~/.openclaw/workspace/references/writing-anti-patterns.md`：
+- 🔴 绝对禁止项：命中任何一条必须改（"不是X而是Y"、破折号滥用、三段式凑数等）
+- 🟡 警惕区：偶尔可以，频繁出现就改
+- 🟢 正面特征：确认有"我"的声音、具体场景、节奏变化
+- 10 秒快扫：开头/破折号/此外然而/三段式/AI味
 
 ## 文章只输出正文
 
