@@ -1,11 +1,17 @@
 {
   "owner": "wscats",
   "slug": "university-applications",
-  "displayName": "University Applications",
+  "displayName": "命理大师",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773475418437,
-    "commit": "https://github.com/openclaw/skills/commit/731565b3da2ba3bac450fe90e2d1d7c64465898e"
+    "version": "1.0.4",
+    "publishedAt": 1775401532600,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773475418437,
+      "commit": "https://github.com/openclaw/skills/commit/731565b3da2ba3bac450fe90e2d1d7c64465898e"
+    }
+  ]
 }
