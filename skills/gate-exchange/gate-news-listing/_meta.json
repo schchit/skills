@@ -3,11 +3,16 @@
   "slug": "gate-news-listing",
   "displayName": "gate-news-listing",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1775184904112,
-    "commit": "https://github.com/openclaw/skills/commit/ad73f187d36fb1a06aacb45700511b425d6de834"
+    "version": "1.0.5",
+    "publishedAt": 1775558171506,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1775184904112,
+      "commit": "https://github.com/openclaw/skills/commit/ad73f187d36fb1a06aacb45700511b425d6de834"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1773365371342,
