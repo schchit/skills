@@ -1,135 +1,35 @@
----
-name: todo
-description: |
-  Manage todo lists in PostgreSQL. Per-agent lists, optional categories, priorities, due dates.
-  Triggers: "todo", "add task", "mark done", "what's due", "my tasks", "due soon", "overdue"
-  Required env vars: TODO_DB_HOST, TODO_DB_NAME, TODO_DB_USER, TODO_DB_PASSWORD (optional: TODO_DB_PORT, TODO_DB_SSLMODE)
-metadata:
-  env:
-    - name: TODO_DB_HOST
-      required: true
-      description: PostgreSQL host (e.g. 127.0.0.1)
-    - name: TODO_DB_PORT
-      required: false
-      description: PostgreSQL port (default: 5432)
-    - name: TODO_DB_NAME
-      required: true
-      description: PostgreSQL database name
-    - name: TODO_DB_USER
-      required: true
-      description: PostgreSQL user (use a dedicated user with minimal privileges)
-    - name: TODO_DB_PASSWORD
-      required: true
-      description: PostgreSQL password
-    - name: TODO_DB_SSLMODE
-      required: false
-      description: PostgreSQL SSL mode (e.g. require, disable)
----
+# Claw-List
 
-# ClawList — Todo Skill
+Manage todo lists via a central API. Trigger on: "the list", "show me the list", "todo", "add task", "add to my list", "mark done", "mark complete", "what's due", "my tasks", "create a list".
 
-Todo lists in PostgreSQL with per-agent ownership, categories, priorities, and due dates.
+## Config
 
-## Prerequisites
+Check env vars first: `CLAW_LIST_AGENT_ID`, `CLAW_LIST_URL` (set via openclaw.json skills.entries for multi-agent setups).
 
-- Python 3.7+
-- `psycopg2-binary` (`pip install psycopg2-binary`)
-- PostgreSQL database (accessible from the agent host)
+If env vars not set: read `~/.openclaw/skills/claw-list/claw-list.conf` and extract `AGENT_ID`, `DISPLAY_NAME`, `CLAW_LIST_URL`, `REGISTERED`.
 
-## First-Time Setup
+If conf file doesn't exist (first run):
+1. Generate UUID: `cat /proc/sys/kernel/random/uuid` — fallback: `python3 -c 'import uuid; print(uuid.uuid4())'`
+2. Ask user for `DISPLAY_NAME` and `CLAW_LIST_URL` (e.g. `https://claw-list.internal/api` or `http://host:8100`)
+3. Write conf file with those values and `REGISTERED=false`
 
-1. Copy `.env.example` to `.env` and fill in your PostgreSQL credentials
-2. Run `setup` command to create tables
-3. Done — start adding todos
+If `REGISTERED=false`: call `POST {CLAW_LIST_URL}/admin/agents` with body `{"agent_id":"{AGENT_ID}","display_name":"{DISPLAY_NAME}","scope":"own"}` — no `X-Agent-Id` header. On 201 or 409 write `REGISTERED=true` to conf. On any other status: tell user the API is unreachable and stop.
 
-## Quick Reference
+## API
 
-All operations via `scripts/todo_cli.py <command> [options]`.
+All requests require header `X-Agent-Id: {AGENT_ID}`. Base URL from `CLAW_LIST_URL`.
 
-| Command | Purpose |
-|---|---|
-| `setup` | Create DB tables (run once) |
-| `add` | Add a todo (`--title`, `--list`, `--category`, `--priority`, `--due`) |
-| `list` | List todos (`--agent`, `--list`, `--category`, `--priority`, `--completed`, `--all`, `--all-agents`) |
-| `complete` / `uncomplete` | Toggle completion (`<id> --agent`) |
-| `edit` | Update a todo (`<id> --title/--due/--priority/--category --agent`) |
-| `transfer` | Move a todo to another agent (`<id> --from-agent X --to-agent Y --to-list Z`) |
-| `delete` | Delete a todo (`<id> --agent`) |
-| `archive` | Archive completed todos (`--agent`, optional `--list`) |
-| `due-soon` | Todos due within N days (`--agent --days 7`) |
-| `overdue` | Overdue todos (`--agent`) |
-| `lists` | Show all lists for agent |
-| `create-list` / `delete-list` | Manage lists |
-| `categories` / `create-category` | Manage categories within a list |
-| `migrate-check` | Scan workspace for existing task files (THELIST.md etc.) |
-| `migrate` | Import from a task file (`--file --list --agent --action import-keep\|import-delete`) |
+Lists: `GET /lists` · `POST /lists {"name":"..."}` · `DELETE /lists/{id}`
 
-## Output Modes
+Items: `GET /lists/{id}/items` · `POST /lists/{id}/items` · `PUT /items/{id}` · `DELETE /items/{id}`
 
-- **Default**: Human-readable with status icons, priorities, due date indicators
-- `--compact`: Single-line per todo, minimal tokens (e.g., `3 | Buy milk | high | due: 2026-03-20`)
-- `--json`: JSON array for programmatic use
+Item fields: `title` (required on create), `notes`, `priority` (1–5), `due_date`, `category`, `done`.
 
-## Cross-Agent Access
+Full reference: `~/.openclaw/skills/claw-list/docs/api.md`
 
-Use `--request-from <agent>` to query another agent's list. All cross-agent access is logged to `todo_access_log`. There is no enforcement policy — any agent can read or receive transfers from any other agent's lists on the same database. If running multiple agents on a shared DB, be aware that todo content is visible across all agents.
+## Behaviour
 
-## Migrate Warning
-
-The `migrate --action import-delete` option **permanently deletes the source file** after importing. Back up any files you care about before using this option. Use `import-keep` to import without deleting.
-
-## Detailed Reference
-
-For full command syntax, examples, and schema: see [references/cli.md](references/cli.md)
-
-## How to Use This Skill
-
-### Agent Identity
-
-The `--agent` flag identifies who owns the todos. Use your agent's identity name
-(check your agent config or the `identity.name` field). Examples: `researcher`,
-`jobhunter`, `assistant`. When unsure, ask the user which agent they want to use.
-
-### Natural Language → Command Mapping
-
-Parse user intent and map to commands:
-
-| User says | Command |
-|---|---|
-| "Add todo: X" / "Remind me to X" | `add --title "X" --agent <name>` |
-| "Add X to my Y list" | `add --title "X" --list "Y" --agent <name>` |
-| "Show my todos" / "What's on my list?" | `list --agent <name>` |
-| "Show all todos across agents" | `list --all-agents` |
-| "Show my high priority tasks" | `list --agent <name> --priority high` |
-| "What's due this week?" | `due-soon --agent <name> --days 7` |
-| "Anything overdue?" | `overdue --agent <name>` |
-| "Mark X as done" / "Complete X" | `complete <id> --agent <name>` |
-| "Transfer X to agent Y" | `transfer <id> --from-agent <name> --to-agent Y` |
-| "Delete X" / "Remove X" | `delete <id> --agent <name>` |
-| "Change due date on X to Y" | `edit <id> --due "Y" --agent <name>` |
-| "Archive completed items" | `archive --agent <name>` |
-
-### Finding Todo IDs
-
-Most commands need a todo ID. When the user refers to a todo by title (e.g., "mark
-'buy milk' as done"), run `list` first to find the matching ID, then run the action.
-
-### Responding to the User
-
-- After `add`: confirm with the ID and any parsed details (priority, due date, list)
-- After `list`: present the formatted output; for compact/json, summarize key items
-- After `complete`/`delete`: confirm what was done
-- For `overdue`/`due-soon`: highlight urgent items proactively
-
-### First-Time Setup Flow
-
-1. Run `setup` to create tables
-2. Run `migrate-check` to scan for existing task files (THELIST.md, todo.txt, etc.)
-3. If files found, ask the user what to do: import, keep, or both
-4. Start normal operations
-
-### Choosing Output Mode
-
-- **Default** (no flags): for direct user display
-- `--compact`: when listing many items or in token-constrained contexts
-- `--json`: when another agent/script needs to parse results
+- Re-read conf at the start of every session — never assume values from a previous session.
+- Present results cleanly; never expose `AGENT_ID` or raw JSON to the user.
+- Store conversation context in `notes` when the user says "put that in the notes".
+- On 403: tell the user they don't have permission, don't retry.

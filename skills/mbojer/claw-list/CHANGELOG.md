@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.0.0 (2026-04-07)
+
+### Breaking Change
+- Complete architecture rewrite: standalone Python CLI replaced with HTTP API skill
+- Agents no longer connect directly to PostgreSQL — all operations go through the Claw-List API
+- Old env vars (`TODO_DB_*`) obsolete; replaced by `claw-list.conf` with AGENT_ID, DISPLAY_NAME, CLAW_LIST_URL
+- `scripts/` and `references/` directories removed
+
+### New Features
+- Central shared service: multiple agents share lists with scope-based access control
+- Scope `own` (default): read/write own lists only; `all`: read all, write own
+- Agent self-registration on first use; `install.sh` for interactive setup
+- Full server stack in `server/` — deploy your own instance with Docker Compose
+- Web UI for human oversight; works with and without Caddy
+- Full API reference in `docs/api.md`
+
 ## 1.2.2 (2026-03-28)
 
 ### Documentation
