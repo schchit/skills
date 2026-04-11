@@ -8,7 +8,6 @@ const DEFAULT_N = 1;
 
 // Seedream models only support 2K/4K
 const MODEL_RESOLUTIONS = {
-  'seedream-4.5': ['2K', '4K'],
   'seedream-5.0-lite': ['2K', '4K'],
   'nano-banana-pro': ['1K', '2K', '4K'],
   'nano-banana-2': ['1K', '2K', '4K'],
@@ -30,7 +29,30 @@ function validateParams({ model, resolution, n, referenceImages }) {
   }
 }
 
-function buildImageResult({ runId, taskId, status, model, resolution, n, images = null, raw = null, error = null }) {
+async function uploadReferenceImages(client, referenceImages, timeoutSec) {
+  if (!referenceImages || referenceImages.length === 0) return [];
+  const uploadedKeys = [];
+  for (const filePath of referenceImages) {
+    const key = await client.uploadImageFile(filePath, {
+      prefix: 'open-skills/reference-images',
+      timeoutSec,
+    });
+    uploadedKeys.push(key);
+  }
+  return uploadedKeys;
+}
+
+function buildImageResult({
+  runId,
+  taskId,
+  status,
+  model,
+  resolution,
+  n,
+  images = null,
+  raw = null,
+  error = null,
+}) {
   return {
     run_id: runId,
     task_id: taskId ? String(taskId) : null,
@@ -161,10 +183,19 @@ async function runGenerateImage({
 }) {
   validateParams({ model, resolution, n, referenceImages });
 
+  const imageObjectKeys = await uploadReferenceImages(client, referenceImages, timeoutSec);
+
   const artifacts = artifactsForRun(skillDir, runId);
   artifacts.ensure();
 
-  const submit = await client.submitImageTask({ prompt, model, resolution, n, aspectRatio, referenceImages });
+  const submit = await client.submitImageTask({
+    prompt,
+    model,
+    resolution,
+    n,
+    aspectRatio,
+    ...(imageObjectKeys.length > 0 ? { referenceImages: imageObjectKeys } : {}),
+  });
   const taskId = submit.task_id;
   if (!taskId) {
     throw new Error(`Missing task_id: ${JSON.stringify(submit)}`);

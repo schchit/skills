@@ -1,13 +1,18 @@
 {
   "owner": "newt0n",
   "slug": "creatok-generate-image",
-  "displayName": "Creatok Generate Image",
+  "displayName": "CreatOK Generate Image",
   "latest": {
-    "version": "0.1.1",
-    "publishedAt": 1774800053017,
-    "commit": "https://github.com/openclaw/skills/commit/0d8fdae79d0e41e47a7255fb8a4e58a12f24685d"
+    "version": "0.1.2",
+    "publishedAt": 1775380386986,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.1.1",
+      "publishedAt": 1774800053017,
+      "commit": "https://github.com/openclaw/skills/commit/0d8fdae79d0e41e47a7255fb8a4e58a12f24685d"
+    },
     {
       "version": "0.1.0",
       "publishedAt": 1773586172428,
