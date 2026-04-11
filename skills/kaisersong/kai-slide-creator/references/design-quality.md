@@ -91,6 +91,22 @@ Single-stat, quote, or breathing-room slides → title/stat element should be �
 
 ---
 
+## 4.5 Title Fit Guardrail
+
+**A slide title wrapping to 4+ lines is a layout failure, not a typography style.**
+
+Fix it in this order:
+
+1. Rewrite the title to the shortest defensible judgment
+2. Widen the title measure for that language or layout
+3. Change the layout so the title has more horizontal room
+
+Do **not** solve this by globally forcing tiny heading boxes such as `max-width: 10ch` or `14ch` for Chinese / mixed technical titles. That reliably turns reasonable titles into 5-6 line stacks.
+
+**Hard rule:** if a heading wraps beyond 3 lines on desktop, regenerate the title or layout before shipping.
+
+---
+
 ## 5. Content-Tone Color Calibration
 
 When no specific color is given, match the accent color to the content's emotional register:
@@ -137,6 +153,42 @@ These patterns make slides look instantly AI-generated:
 
 ---
 
+## 8. Nested Grid Fit
+
+The most common overflow bug in technical decks is packing too many dense cards into a half-width column.
+
+**Never put a 5-step state chain or API matrix inside a 50/50 column unless each item is extremely short.**
+
+If a state sequence needs 5 items:
+- use a full-width slide
+- or reflow into `3 + 2`
+- or turn it into a diagram instead of five verbose cards
+
+If any card needs more than 2 short lines to stay readable, the grid is too dense for the container.
+
+---
+
+## 7.5 Visual Hard Rules (from Impeccable Anti-Patterns)
+
+These are structural, auto-detectable violations. Scan the assembled HTML for each before writing.
+
+| Rule | Detection | Fix |
+|------|-----------|-----|
+| letter-spacing > 0.05em on body | `letter-spacing:\s*(?:0\.[1-9][0-9]*\|[1-9])` on non-title elements | Reduce to ≤0.05em |
+| Pure black background | `#000` or `#000000` as background | Use `#111` or `#18181B` |
+| Bounce/elastic easing | `ease.*back\|bounce` in CSS | Use `cubic-bezier(0.16, 1, 0.3, 1)` |
+| Nested cards | `.card` / `.glass-card` inside same class container | Flatten hierarchy |
+| Cramped padding | `padding: 0.[1-5]rem` on cards/containers | Increase to ≥0.75rem |
+| Gray text on colored bg | `color: #[89]99` on non-white background | Darken text or lighten background |
+| Centered text everywhere | `text-align: center` on `.bullet-list` / `.body-text` | Left-align; center only titles/quotes |
+| Monospace as body font | `font-family.*monospace` outside `<pre>`/`<code>` | Use system-ui |
+| All-caps body text | `text-transform: uppercase` on paragraphs/lists | Remove; all-caps only for labels/chips |
+| Inconsistent alignment | Same slide has both left + center text-align on body elements | Unify alignment |
+| Gradient text without fallback | `-webkit-background-clip: text` without preceding `color:` | Add `color: var(--accent)` fallback |
+| U+FE0F variant selectors | Any `\uFE0F` byte in HTML | Remove; use base emoji |
+
+> See `references/impeccable-anti-patterns.md` for full detection patterns, rationale, and fix guidance.
+
 ## Pre-Output Self-Check
 
 Run this before writing the final HTML:
@@ -147,8 +199,23 @@ Run this before writing the final HTML:
 □ Is the accent color used on more than 3 distinct element types simultaneously?
 □ Are there 3+ consecutive bullet-list slides without a layout break?
 □ Does any title/heading sound like a template ("Overview", "Summary", "Conclusion")?
+□ Does any title wrap to 4+ lines on desktop? If yes, shorten it or widen the measure.
+□ Did you pack a 5-step state chain or long API list inside a half-width card?
 □ If you told someone "an AI made this" — would they immediately believe it?
   If yes — find the most generic slide and redesign it before writing.
 ```
 
 Do not skip this check. It takes 30 seconds and prevents the most visible quality failures.
+
+---
+
+## L1 Content Quality Check
+
+For content-level checkpoints (perspective, logic, pacing, clarity), see [review-checklist.md](review-checklist.md).
+
+**L0 (Visual)**: This file — density, color, typography, layout
+**L1 (Content)**: review-checklist.md — perspective flip, conclusion first, cognitive load, jargon translation
+
+**When to apply:**
+- L0: Always, before writing HTML
+- L1: Polish mode after generation, or via `--review` command
