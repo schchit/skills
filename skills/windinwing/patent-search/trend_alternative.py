@@ -10,25 +10,8 @@ import sys
 from collections import Counter
 from datetime import datetime
 
-def load_token_from_config():
-    """从OpenClaw配置文件加载Token"""
-    config_path = "/Users/xiaoxiao/.openclaw/openclaw.json"
-    
-    try:
-        with open(config_path, 'r') as f:
-            config = json.load(f)
-        
-        # 提取Token
-        token = config.get("skills", {}).get("entries", {}).get("patent-search", {}).get("apiKey")
-        
-        if token and token != "__OPENCLAW_REDACTED__":
-            return token
-        else:
-            return None
-            
-    except Exception as e:
-        print(f"❌ 读取配置文件失败: {e}")
-        return None
+from patent_token import get_patent_api_token
+
 
 def search_patents(query, token, page=1, page_size=100):
     """搜索专利"""
@@ -247,13 +230,13 @@ def main():
     print("=" * 60)
     
     # 加载Token
-    token = load_token_from_config()
+    token = get_patent_api_token()
     
     if not token:
         print("❌ 未找到有效的Token配置")
         return
     
-    print(f"✅ 使用配置的Token: {token[:8]}...{token[-8:]}")
+    print("✅ 已获取 API Token（不在此输出具体内容）")
     print(f"🔍 分析对象: 锂电池")
     print(f"📊 分析方法: 样本统计分析")
     print(f"📈 样本大小: 500条专利")

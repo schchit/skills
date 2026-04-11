@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
-调试API返回的数据结构
+调试 API 返回的数据结构（仅本地使用）。
+
+打印内容已对鉴权参数脱敏；请勿将完整调试日志粘贴到公开渠道。
 """
 
 import sys
@@ -16,6 +18,15 @@ try:
 except ImportError as e:
     print(f"❌ 无法导入patent_api模块: {e}")
     sys.exit(1)
+
+
+def _params_for_logging(params: dict) -> dict:
+    """请求日志用副本，脱敏 token 等敏感 query 字段。"""
+    out = dict(params)
+    if out.get("t"):
+        out["t"] = "<redacted>"
+    return out
+
 
 def debug_api_response():
     """调试API返回的数据结构"""
@@ -40,8 +51,8 @@ def debug_api_response():
         
         url = f"{api.base_url}/s"
         print(f"📡 请求URL: {url}")
-        print(f"🔑 使用Token: {api.token[:8]}...{api.token[-8:]}")
-        print(f"📋 请求参数: {json.dumps(params, ensure_ascii=False)}")
+        print("🔑 已加载 Token（不在日志中输出明文）")
+        print(f"📋 请求参数: {json.dumps(_params_for_logging(params), ensure_ascii=False)}")
         print("-" * 60)
         
         # 发送请求

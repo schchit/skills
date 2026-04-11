@@ -1,59 +1,71 @@
 #!/usr/bin/env python3
 """
-检查OpenClaw环境变量设置
+检查 OpenClaw / 专利技能相关环境变量是否已配置（不打印任何密钥或敏感值）。
 """
 
-import os
 import json
+import os
 
-print("🔍 检查环境变量")
+
+def _is_set(name: str) -> bool:
+    return bool((os.environ.get(name) or "").strip())
+
+
+def _redacted_summary(name: str) -> str:
+    """仅说明是否设置；元数据类变量只显示键名列表，不输出内容。"""
+    if name not in os.environ:
+        return "未设置"
+    raw = os.environ[name]
+    if not raw.strip():
+        return "已设置（空）"
+    if name.startswith("PATENT_") and name != "PATENT_API_TOKEN":
+        return f"已设置（值已省略，长度 {len(raw)}）"
+    if name in ("OPENCLAW_SKILL_METADATA", "OPENCLAW_SKILL_CONFIG"):
+        try:
+            data = json.loads(raw)
+            if isinstance(data, dict):
+                return f"已设置（JSON 对象，键: {', '.join(sorted(data.keys())[:12])}…）"
+            return "已设置（JSON，内容已省略）"
+        except json.JSONDecodeError:
+            return "已设置（非 JSON，内容已省略）"
+    if name == "PATENT_API_TOKEN":
+        return "已设置（值已省略）"
+    return "已设置（值已省略）"
+
+
+print("检查环境变量（不输出密钥内容）")
 print("=" * 60)
 
-# 检查所有以PATENT开头的环境变量
-for key, value in os.environ.items():
-    if key.startswith('PATENT_'):
-        print(f"{key}: {value[:20]}...{value[-20:] if len(value) > 40 else ''} (长度: {len(value)})")
+patent_keys = sorted(k for k in os.environ if k.startswith("PATENT_"))
+print(f"以 PATENT_ 开头的变量数量: {len(patent_keys)}")
+for k in patent_keys:
+    print(f"  - {k}: {_redacted_summary(k)}")
 
-# 检查OpenClaw相关的环境变量
 openclaw_vars = [
-    'PATENT_API_TOKEN',
-    'OPENCLAW_SKILL_NAME',
-    'OPENCLAW_SKILL_METADATA',
-    'OPENCLAW_SKILL_CONFIG'
+    "PATENT_API_TOKEN",
+    "OPENCLAW_SKILL_NAME",
+    "OPENCLAW_SKILL_METADATA",
+    "OPENCLAW_SKILL_CONFIG",
 ]
 
-print(f"\n🔧 检查特定变量:")
+print("\n特定变量:")
 for var in openclaw_vars:
-    if var in os.environ:
-        print(f"✅ {var}: 已设置")
-        if var == 'OPENCLAW_SKILL_METADATA' or var == 'OPENCLAW_SKILL_CONFIG':
-            try:
-                data = json.loads(os.environ[var])
-                print(f"   内容: {json.dumps(data, ensure_ascii=False)[:200]}...")
-            except:
-                print(f"   内容: {os.environ[var][:200]}...")
-        else:
-            print(f"   内容: {os.environ[var][:50]}...")
-    else:
-        print(f"❌ {var}: 未设置")
+    mark = "是" if _is_set(var) else "否"
+    print(f"  {var}: 已配置={mark}  {_redacted_summary(var)}")
 
-# 检查当前工作目录
-print(f"\n📁 工作目录: {os.getcwd()}")
-print(f"📁 脚本目录: {os.path.dirname(os.path.abspath(__file__))}")
+print(f"\n工作目录: {os.getcwd()}")
+print(f"脚本目录: {os.path.dirname(os.path.abspath(__file__))}")
 
-# 检查配置文件是否存在
-config_files = ['config.json', '.env', 'config.example.json']
-print(f"\n📄 配置文件检查:")
+config_files = ["config.json", ".env", "config.example.json"]
+print("\n配置文件是否存在:")
 for config_file in config_files:
-    if os.path.exists(config_file):
-        print(f"✅ {config_file}: 存在")
-        if config_file == 'config.json':
-            try:
-                with open(config_file, 'r') as f:
-                    config = json.load(f)
-                    if 'token' in config:
-                        print(f"   包含token: {config['token'][:20]}...")
-            except:
-                print(f"   无法读取或解析")
-    else:
-        print(f"❌ {config_file}: 不存在")
+    exists = os.path.exists(config_file)
+    print(f"  {config_file}: {'是' if exists else '否'}")
+    if exists and config_file == "config.json":
+        try:
+            with open(config_file, "r", encoding="utf-8") as f:
+                config = json.load(f)
+            has_token = bool((config.get("token") or "").strip())
+            print(f"    config.json 内含非空 token 字段: {'是' if has_token else '否'}")
+        except (OSError, json.JSONDecodeError):
+            print("    config.json: 无法解析")

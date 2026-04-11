@@ -3,9 +3,15 @@
   "slug": "patent-search",
   "displayName": "patent-search",
   "latest": {
-    "version": "1.0.7",
-    "publishedAt": 1773785196968,
-    "commit": "https://github.com/openclaw/skills/commit/7c89acf067e8052a9e2f5df9484a297ee8b0a1fc"
+    "version": "1.0.9",
+    "publishedAt": 1775674803025,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.7",
+      "publishedAt": 1773785196968,
+      "commit": "https://github.com/openclaw/skills/commit/7c89acf067e8052a9e2f5df9484a297ee8b0a1fc"
+    }
+  ]
 }

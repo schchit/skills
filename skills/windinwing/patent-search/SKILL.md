@@ -1,486 +1,352 @@
-dd
-
-
-
----
-name: patent-search
-description: 使用9235.net专利检索API进行专利搜索、查看详情、下载和分析。支持专利搜索、详情查看、权利要求、说明书、法律信息、引用分析、相似专利、企业画像、文件下载、统计分析、著作权搜索、商标搜索等功能。
-metadata:
-  {
-    "openclaw":
-      {
-        "emoji": "📜",
-        "primaryEnv": "PATENT_API_TOKEN",
-        "requires": { "bins": ["python3"] },
-        "install":
-          [
-            {
-              "id": "pip",
-              "kind": "pip",
-              "package": "requests",
-              "label": "安装requests库",
-            },
-          ],
-      },
-  }
----
-
-# 专利检索技能
-
-使用9235.net专利检索API进行专利搜索、查看详情、下载和分析。
-
-## 功能概述
-
-- **专利搜索**: 根据关键词、申请人、发明人、IPC分类等条件搜索专利
-- **专利详情**: 查看专利的完整信息，包括摘要、申请人、发明人、法律状态等
-- **权利要求**: 查看专利的权利要求书
-- **说明书**: 查看专利的说明书全文
-- **法律信息**: 查看专利的法律事务信息
-- **引用分析**: 查看专利的引用和被引用情况
-- **相似专利**: 查找相似专利
-- **企业画像**: 分析企业的专利布局和竞争力
-- **文件下载**: 下载专利PDF全文和摘要附图
-- **统计分析**: 专利维度统计分析
-- **著作权搜索**: 软件著作权和作品著作权搜索
-- **商标搜索**: 商标信息搜索
-
-## 安装
-
-### 自动安装
-```bash
-# 进入技能目录
-cd /path/to/patent-search
-
-# 运行安装脚本
-python3 setup.py
-```
-
-### 手动安装
-```bash
-# 1. 安装依赖
-pip3 install requests --break-system-packages
-
-# 2. 设置文件权限
-chmod +x patent_api.py main.py setup.py
-
-# 3. 创建配置文件
-cp config.example.json config.json
-# 编辑config.json，设置您的API token
-```
-
-## 配置
-
-### 配置文件
-在技能目录下创建 `config.json` 文件（或复制 `config.example.json`）：
-
-```json
-{
-  "api_base_url": "https://www.9235.net/api",
-  "token": "YOUR_API_TOKEN_HERE",
-  "default_data_scope": "cn",
-  "default_page_size": 10,
-  "max_records": 1000,
-  "timeout_seconds": 30,
-  "download_dir": "./downloads",
-  "enable_cache": false,
-  "cache_ttl_seconds": 3600,
-  "retry_times": 3,
-  "retry_delay_seconds": 1
-}
-```
-
-### 环境变量配置
-```bash
-export PATENT_API_TOKEN="your_token_here"
-export PATENT_API_BASE_URL="https://www.9235.net/api"
-export PATENT_DEFAULT_SCOPE="cn"
-export PATENT_DOWNLOAD_DIR="./downloads"
-```
-
-### 获取API Token
-1. 访问 https://www.9235.net/api/open
-2. 申请API访问权限
-3. 获取token后填入配置文件
-
-## 使用方法
-
-### 运行模式
-
-**交互模式:**
-```bash
-python3 main.py
-# 然后输入命令，如: search 无人机
-```
-
-**命令行模式:**
-```bash
-python3 main.py <命令> <参数>
-```
-
-### 1. 搜索专利
-
-**基本搜索:**
-```bash
-/search 无人机
-/search 石墨烯
-/search "新能源汽车"
-```
-
-**高级搜索:**
-```bash
-/search agency:北京博思佳知识产权代理有限公司
-/search documentYear:[2020 TO 2024] AND 锂电池
-/search applicant:"清华大学" AND 人工智能
-/search 无人机 AND type:发明授权 AND legalStatus:有效专利
-```
-
-**带选项搜索:**
-```bash
-/search 无人机 --page 2 --page-size 20
-/search 无人机 --sort applicationDate
-/search 无人机 --sort !documentDate  # 降序
-/search 无人机 --scope all  # 全球搜索
-/search 无人机 --details  # 显示详细信息
-```
-
-### 2. 查看专利详情
-
-```bash
-/patent CN110382353B
-```
-
-### 3. 查看权利要求
-
-```bash
-/claims CN110382353B
-```
-
-### 4. 查看说明书
-
-```bash
-/desc CN110382353B
-```
-
-### 5. 查看法律信息
-
-```bash
-/law CN110382353B
-```
-
-### 6. 查看引用分析
-
-```bash
-/citing CN110382353B
-```
-
-### 7. 查看相似专利
-
-```bash
-/similar CN110382353B
-```
-
-### 8. 企业画像分析
-
-```bash
-/company 深圳市大疆创新科技有限公司
-/company 华为技术有限公司
-```
-
-### 9. 著作权搜索
-
-**软件著作权:**
-```bash
-/copyright 档案管理系统 --type software
-/copyright owner:阿里巴巴 --type software --field owner
-```
-
-**作品著作权:**
-```bash
-/copyright 美术作品 --type works
-/copyright author:张三 --type works --field author
-```
-
-### 10. 商标搜索
-
-**商标列表:**
-```bash
-/trademark 华为
-/trademark 阿里巴巴 --page 2 --page-size 20
-```
-
-**商标详情:**
-```bash
-/trademark --detail --trademark-id "2020163926c8006d56dba63557fbefe8213a3aaa"
-```
-
-### 11. 统计分析
-
-```bash
-/analysis 人工智能 --dimension ipc
-/analysis 锂电池 --dimension applicant --scope all
-/analysis documentYear:[2020 TO 2024] AND 5G --dimension province
-```
-
-### 12. 下载文件
-
-```bash
-/download CN110382353B --type pdf
-/download CN110382353B --type image
-/download CN110382353B --type all --output ./my_downloads/
-```
-
-### 13. 帮助信息
-
-```bash
-/help
-```
-
-## 检索式语法参考
-
-### 字段限定
-- `title:无人机` - 标题包含无人机
-- `applicant:"清华大学"` - 申请人为清华大学
-- `inventor:王勇` - 发明人包含王勇
-- `agency:北京博思佳知识产权代理有限公司` - 代理机构
-- `ipc:G01C` - IPC分类号
-- `mainIpc:H04N` - 主分类号
-- `province:广东省` - 省份
-- `city:深圳市` - 城市
-
-### 时间范围
-- `applicationYear:[2020 TO 2024]` - 申请年份范围
-- `documentYear:[2019 TO 2023]` - 公开年份范围
-- `applicationDate:[2020-01-01 TO 2024-12-31]` - 申请日期范围
-
-### 逻辑运算
-- `AND` - 与关系 (默认，空格表示AND)
-- `OR` - 或关系
-- `NOT` - 非关系
-- `()` - 括号分组
-
-### 专利类型
-- `type:发明公开`
-- `type:发明授权`
-- `type:实用新型`
-- `type:外观设计`
-- `type:PCT发明专利`
-- `type:PCT实用新型`
-
-### 法律状态
-- `legalStatus:有效专利`
-- `legalStatus:失效专利`
-- `legalStatus:实质审查`
-- `legalStatus:公开`
-
-### 国家/地区
-- `countryCode:CN` - 中国
-- `countryCode:US` - 美国
-- `countryCode:JP` - 日本
-- `countryCode:EP` - 欧洲
-
-### 精确匹配
-- 使用双引号: `"无人机控制系统"`
-- 避免分词: `"新能源汽车电池"`
-
-### 通配符
-- `*`: 多个字符通配符
-- `?`: 单个字符通配符
-- 示例: `comput*` 匹配 computer, computing 等
-
-## 完整示例
-
-### 1. 技术领域搜索
-```bash
-# 搜索无人机相关专利
-/search 无人机
-
-# 搜索大疆公司的无人机专利
-/search 无人机 AND applicant:"深圳市大疆创新科技有限公司"
-
-# 搜索2020-2024年的锂电池专利，按申请时间降序
-/search documentYear:[2020 TO 2024] AND 锂电池 --sort !applicationDate
-
-# 搜索清华大学的AI专利，显示详细信息
-/search applicant:"清华大学" AND 人工智能 --details
-```
-
-### 2. 企业分析
-```bash
-# 华为公司专利分析
-/company 华为技术有限公司
-
-# 阿里巴巴集团专利布局
-/company 阿里巴巴集团控股有限公司
-
-# 分析大疆公司的技术领域
-/analysis applicant:"深圳市大疆创新科技有限公司" --dimension ipc
-```
-
-### 3. 专利分析
-```bash
-# 查看专利详情
-/patent CN110382353B
-
-# 查看专利权利要求
-/claims CN110382353B
-
-# 查看专利法律状态变化
-/law CN110382353B
-
-# 查找相似专利
-/similar CN110382353B
-
-# 分析专利引用关系
-/citing CN110382353B
-```
-
-### 4. 统计分析
-```bash
-# 分析人工智能技术的IPC分类分布
-/analysis 人工智能 --dimension ipc
-
-# 分析锂电池技术的申请人分布
-/analysis 锂电池 --dimension applicant
-
-# 分析5G技术的省份分布
-/analysis 5G --dimension province
-
-# 分析新能源汽车的申请趋势
-/analysis 新能源汽车 --dimension applicationYear
-```
-
-### 5. 文件操作
-```bash
-# 下载专利PDF
-/download CN110382353B --type pdf
-
-# 下载专利图片
-/download CN110382353B --type image
-
-# 下载所有文件到指定目录
-/download CN110382353B --type all --output ./patent_files/
-```
-
-### 6. 著作权和商标
-```bash
-# 搜索软件著作权
-/copyright 管理系统 --type software
-
-# 搜索作品著作权
-/copyright 美术作品 --type works
-
-# 搜索商标
-/trademark 华为
-
-# 查看商标详情
-/trademark --detail --trademark-id "商标ID"
-```
-
-### 7. 复杂检索式
-```bash
-# 组合条件搜索
-/search (无人机 OR 无人车) AND (雷达 OR 传感器) AND applicationYear:[2020 TO 2024]
-
-# 排除特定分类
-/search 石墨烯 AND NOT mainIpc:H
-
-# 多条件筛选
-/search 电池 AND type:发明授权 AND legalStatus:有效专利 AND province:广东省
-```
-
-## 重要注意事项
-
-### API限制
-1. **记录限制**: 每次搜索最多返回1000条记录
-2. **分页限制**: 最大100页，每页最多50条
-3. **ID有效期**: 专利ID有效期为60分钟
-4. **访问限制**: 直接访问详情接口每天前200个免费
-5. **频率限制**: 注意API调用频率，避免被封禁
-
-### 使用建议
-1. **合理分页**: 使用--page和--page-size参数控制数据量
-2. **精确检索**: 使用字段限定提高检索精度
-3. **时间范围**: 使用时间范围缩小检索结果
-4. **保存ID**: 及时使用搜索得到的专利ID
-5. **错误处理**: 注意错误代码，合理重试
-
-### 排序选项
-- `relation`: 相关度排序 (默认)
-- `applicationDate`: 申请时间排序
-- `!applicationDate`: 申请时间降序
-- `documentDate`: 公开时间排序  
-- `!documentDate`: 公开时间降序
-- `rank`: 专利评级排序
-
-### 常见问题
-1. **Q: 为什么搜索不到结果？**
-   A: 检查检索式语法，尝试简化关键词
-
-2. **Q: 为什么无法查看专利详情？**
-   A: 专利ID可能已过期，重新搜索获取新ID
-
-3. **Q: 为什么下载失败？**
-   A: 检查网络连接，确认专利有PDF文件
-
-4. **Q: 如何提高搜索精度？**
-   A: 使用字段限定、时间范围、逻辑运算
-
-5. **Q: 如何获取API token？**
-   A: 访问 https://www.9235.net/api/open 申请
-
-## 错误代码处理
-
-### 常见错误代码
-- `200`: 响应成功
-- `201`: token为空 - 检查配置文件或环境变量
-- `202`: 非法token - token无效或过期，重新申请
-- `203`: 响应异常 - API服务器错误，稍后重试
-- `204`: ip被拒绝访问 - 检查IP白名单
-- `205`: 参数值为空 - 检查请求参数
-- `206`: 没有找到对应数据 - 调整检索条件
-- `207`: 该接口当天访问次数已经用尽 - 次日再试或升级套餐
-- `208`: 没有访问权限 - 检查API权限
-- `209`: 版本号为空 - 内部错误，联系技术支持
-- `210`: 参数错误 - 检查参数格式
-- `211`: 该等级接口当年专利总数量已经用尽 - 升级套餐或次年使用
-- `212`: 分析维度为空 - 指定分析维度
-- `213`: 分析维度不存在 - 检查维度名称
-- `214`: TOKEN类型错误 - 检查token类型
-- `215`: 异常访问，被终止 - 遵守API规范，通过搜索接口获取ID
-
-### 错误处理建议
-1. **检查配置**: 确认token和API地址正确
-2. **验证网络**: 检查网络连接是否正常
-3. **简化请求**: 减少请求数据量，使用分页
-4. **查看日志**: 查看详细错误信息
-5. **联系支持**: 访问 https://www.9235.net 获取技术支持
-
-## 高级功能
-
-### 批量处理
-```
-/search 锂电池 --save-to-file patents.json
-```
-
-### 统计分析
-```
-/search 新能源汽车 --stats
-```
-
-### 导出结果
-```
-/search 5G通信 --export csv
-```
-
-## 更新日志
-
-- v1.0.0: 初始版本，支持基本搜索和详情查看
-- v1.1.0: 增加企业画像、引用分析、相似专利功能
-- v1.2.0: 增加文件下载、批量处理功能
-
-## 技术支持
-
-如有问题，请参考：
-- API文档: https://www.9235.net/api/interface.html
-- 检索帮助: https://www.9235.net/help/index.html
-- 申请token: https://www.9235.net/api/open
+# Registry disclosure: a 9235.net Patent API credential is required (not optional / not "no env vars").
+# Provide via environment variable PATENT_API_TOKEN and/or OpenClaw config key skills.entries.patent-search.apiKey - see COMPLIANCE.md.
+credentials_required: true
+credential_env_vars:
+  - PATENT_API_TOKEN
+openclaw_skill_api_key: "skills.entries.patent-search.apiKey"
+
+locales:
+  en:
+    title: "Patent Search Skill"
+    description: "Search, view and analyze patents in OpenClaw (global databases). Requires a 9235.net API token: set PATENT_API_TOKEN or OpenClaw skills.entries.patent-search.apiKey."
+    long_description: |
+      # Patent Search Skill
+      
+      The Patent Search Skill enables you to search, view, and analyze patent information from global databases directly within OpenClaw. Whether you're conducting technology research, competitor analysis, or investment due diligence, this skill provides comprehensive patent intelligence at your fingertips.
+      
+      ## Key Features
+      
+      ### 🔍 Intelligent Patent Search
+      - Natural language understanding - search like you're talking to a colleague
+      - Advanced Boolean search syntax for precise results
+      - Real-time search suggestions and auto-completion
+      - Global coverage including CN, US, EP, JP, and WO patents
+      
+      ### 📊 Comprehensive Analysis
+      - Multi-dimensional statistical analysis (applicant, IPC, timeline, legal status)
+      - Visual trend charts and heat maps
+      - Competitive intelligence and technology landscape mapping
+      - Citation network analysis and similarity detection
+      
+      ### 🏢 Business Intelligence
+      - Company patent portfolio analysis
+      - Technology strength assessment
+      - Innovation trend tracking
+      - Risk assessment and opportunity identification
+      
+      ### 🎯 User Experience
+      - Clean, intuitive interface with responsive design
+      - Progressive disclosure - show details only when needed
+      - Personalized search history and recommendations
+      
+      ## Use Cases
+      
+      ### For Researchers & Engineers
+      - Technology landscape analysis
+      - Prior art search for innovation
+      - Technical solution reference
+      - Patentability assessment
+      
+      ### For Business Professionals
+      - Competitor technology monitoring
+      - Investment due diligence
+      - M&A technology assessment
+      - Market entry strategy
+      
+      ### For Legal Professionals
+      - Freedom-to-operate analysis
+      - Patent infringement risk assessment
+      - Portfolio management
+      - Litigation support
+      
+      ## Getting Started
+      
+      1. **Install the skill**: `openclaw skills install patent-search`
+      2. **Configure API Token**: Apply at https://www.9235.net/api/open
+      3. **Start searching**: `patent search "your technology"`
+      4. **Explore features**: Try analysis, company profiles, and more
+      
+      ## Examples
+      
+      ### Basic Search
+      ```bash
+      # Search by keyword
+      patent search "drone"
+      patent search "graphene"
+      patent search "new energy vehicle"
+      
+      # Search with options
+      patent search "drone" --page 2 --page-size 20
+      patent search "drone" --sort applicationDate
+      patent search "drone" --sort !documentDate  # descending order
+      patent search "drone" --scope all  # global search
+      patent search "drone" --details  # show detailed information
+      ```
+      
+      ### Advanced Search
+      ```bash
+      # Field-specific search
+      patent search "agency:Beijing Bosijia Intellectual Property Agency Co., Ltd."
+      patent search "documentYear:[2020 TO 2024] AND lithium battery"
+      patent search 'applicant:"Tsinghua University" AND artificial intelligence'
+      patent search "drone AND type:invention-grant AND legalStatus:valid-patent"
+      
+      # Complex queries
+      patent search "(drone OR autonomous vehicle) AND (radar OR sensor) AND applicationYear:[2020 TO 2024]"
+      patent search "battery AND NOT mainIpc:H"
+      patent search "battery AND type:invention-grant AND legalStatus:valid-patent AND province:Guangdong"
+      ```
+      
+      ### Patent Details and Analysis
+      ```bash
+      # View patent details
+      patent detail CN110382353B
+      patent detail US9876543B2
+      
+      # View claims
+      patent claims CN110382353B
+      
+      # View legal information
+      patent law CN110382353B
+      
+      # Citation analysis
+      patent citing CN110382353B
+      
+      # Find similar patents
+      patent similar CN110382353B
+      ```
+      
+      ### Company Analysis
+      ```bash
+      # Company patent portfolio
+      patent company "DJI Technology Co., Ltd."
+      patent company "Huawei Technologies Co., Ltd."
+      
+      # Statistical analysis by company
+      patent analysis "applicant:Huawei Technologies Co., Ltd." --dimension ipc
+      patent analysis "applicant:Alibaba Group Holding Limited" --dimension applicationYear
+      ```
+      
+      ### Statistical Analysis
+      ```bash
+      # IPC classification distribution
+      patent analysis "artificial intelligence" --dimension ipc
+      
+      # Applicant distribution
+      patent analysis "lithium battery" --dimension applicant
+      
+      # Provincial distribution
+      patent analysis "5G" --dimension province
+      
+      # Application trend analysis
+      patent analysis "new energy vehicle" --dimension applicationYear
+      ```
+      
+      ### File Operations
+      ```bash
+      # Download patent PDF
+      patent download CN110382353B --type pdf
+      
+      # Download patent images
+      patent download CN110382353B --type image
+      
+      # Download all files to specified directory
+      patent download CN110382353B --type all --output ./patent_files/
+      ```
+      
+      ### Natural Language Queries
+      ```bash
+      "Show me recent AI patents from Google"
+      "Analyze battery technology trends"
+      "Compare Apple and Samsung mobile patents"
+      "Search for drone patents from DJI"
+      "What are the latest 5G patents?"
+      "Find similar patents to US9876543B2"
+      ```
+      
+      ## Security & compliance disclosure
+      
+      - **SKILL.md encoding**: This file is maintained as plain UTF-8 (NFC) without zero-width or bidi-override characters. If a scanner still reports hidden characters, verify against a fresh checkout or hex view of the repository file.
+      - **Credentials**: Your patent API token is taken only from (1) the `PATENT_API_TOKEN` environment variable, or (2) the OpenClaw CLI command `openclaw config get skills.entries.patent-search.apiKey` when you run scripts on a machine where the CLI is installed. This skill **does not** open or parse `~/.openclaw/openclaw.json` (or other dotfiles) directly.
+      - **Network**: Requests use HTTPS to `https://www.9235.net/api` (third-party patent data service). Search text, patent IDs, and related parameters are sent as needed for the feature you invoke.
+      - **Packaging**: Do not ship real tokens in the repository or skill bundle; use `config.example.json` plus env vars or OpenClaw config. Full text: see `COMPLIANCE.md` in this skill package.
+      
+      ## Support
+      
+      - **Email**: xxiao98@gmail.com
+      
+      ## License
+      
+      MIT License - Free for personal and commercial use.
+  zh:
+    title: "专利检索技能"
+    description: "在 OpenClaw 中搜索、查看与分析全球专利数据。**必须**配置 9235.net 专利 API 凭证：环境变量 PATENT_API_TOKEN，或 OpenClaw 的 skills.entries.patent-search.apiKey。"
+    long_description: |
+      # 专利检索技能
+      
+      专利检索技能让您能够在OpenClaw中直接搜索、查看和分析全球专利数据库中的专利信息。无论您在进行技术调研、竞品分析还是投资尽职调查，本技能都能为您提供全面的专利情报。
+      
+      ## 核心功能
+      
+      ### 🔍 智能专利搜索
+      - 自然语言理解 - 像与同事交谈一样搜索
+      - 高级布尔搜索语法，获得精确结果
+      - 实时搜索建议和自动补全
+      - 全球覆盖，包括中国、美国、欧洲、日本和世界知识产权组织专利
+      
+      ### 📊 全面分析
+      - 多维度统计分析（申请人、IPC、时间线、法律状态）
+      - 可视化趋势图和热力图
+      - 竞争情报和技术图谱
+      - 引用网络分析和相似性检测
+      
+      ### 🏢 商业智能
+      - 公司专利组合分析
+      - 技术实力评估
+      - 创新趋势跟踪
+      - 风险评估和机会识别
+      
+      ### 🎯 用户体验
+      - 简洁直观的响应式界面设计
+      - 渐进式披露 - 仅在需要时显示详细信息
+      - 个性化搜索历史和推荐
+      
+      ## 使用场景
+      
+      ### 研究人员和工程师
+      - 技术图谱分析
+      - 创新前案搜索
+      - 技术方案参考
+      - 专利性评估
+      
+      ### 商业专业人士
+      - 竞争对手技术监控
+      - 投资尽职调查
+      - 并购技术评估
+      - 市场进入策略
+      
+      ### 法律专业人士
+      - 自由实施分析
+      - 专利侵权风险评估
+      - 组合管理
+      - 诉讼支持
+      
+      ## 快速开始
+      
+      1. **安装技能**：`openclaw skills install patent-search`
+      2. **配置API Token**：在 https://www.9235.net/api/open 申请
+      3. **开始搜索**：`patent search "您的技术"`
+      4. **探索功能**：尝试分析、企业画像等功能
+      
+      ## 示例
+      
+      ### 基础搜索
+      ```bash
+      # 按关键词搜索
+      patent search "无人机"
+      patent search "石墨烯"
+      patent search "新能源汽车"
+      
+      # 带选项搜索
+      patent search "无人机" --page 2 --page-size 20
+      patent search "无人机" --sort applicationDate
+      patent search "无人机" --sort !documentDate  # 降序排序
+      patent search "无人机" --scope all  # 全球搜索
+      patent search "无人机" --details  # 显示详细信息
+      ```
+      
+      ### 高级搜索
+      ```bash
+      # 字段限定搜索
+      patent search "agency:北京博思佳知识产权代理有限公司"
+      patent search "documentYear:[2020 TO 2024] AND 锂电池"
+      patent search 'applicant:"清华大学" AND 人工智能'
+      patent search "无人机 AND type:发明授权 AND legalStatus:有效专利"
+      
+      # 复杂查询
+      patent search "(无人机 OR 无人车) AND (雷达 OR 传感器) AND applicationYear:[2020 TO 2024]"
+      patent search "电池 AND NOT mainIpc:H"
+      patent search "电池 AND type:发明授权 AND legalStatus:有效专利 AND province:广东省"
+      ```
+      
+      ### 专利详情和分析
+      ```bash
+      # 查看专利详情
+      patent detail CN110382353B
+      patent detail US9876543B2
+      
+      # 查看权利要求
+      patent claims CN110382353B
+      
+      # 查看法律信息
+      patent law CN110382353B
+      
+      # 引用分析
+      patent citing CN110382353B
+      
+      # 查找相似专利
+      patent similar CN110382353B
+      ```
+      
+      ### 企业分析
+      ```bash
+      # 企业专利组合
+      patent company "深圳市大疆创新科技有限公司"
+      patent company "华为技术有限公司"
+      
+      # 按企业统计分析
+      patent analysis "applicant:华为技术有限公司" --dimension ipc
+      patent analysis "applicant:阿里巴巴集团控股有限公司" --dimension applicationYear
+      ```
+      
+      ### 统计分析
+      ```bash
+      # IPC分类分布
+      patent analysis "人工智能" --dimension ipc
+      
+      # 申请人分布
+      patent analysis "锂电池" --dimension applicant
+      
+      # 省份分布
+      patent analysis "5G" --dimension province
+      
+      # 申请趋势分析
+      patent analysis "新能源汽车" --dimension applicationYear
+      ```
+      
+      ### 文件操作
+      ```bash
+      # 下载专利PDF
+      patent download CN110382353B --type pdf
+      
+      # 下载专利图片
+      patent download CN110382353B --type image
+      
+      # 下载所有文件到指定目录
+      patent download CN110382353B --type all --output ./patent_files/
+      ```
+      
+      ### 自然语言查询
+      ```bash
+      "显示谷歌最近的AI专利"
+      "分析电池技术趋势"
+      "对比苹果和三星的手机专利"
+      "搜索大疆公司的无人机专利"
+      "最新的5G专利有哪些？"
+      "查找与US9876543B2相似的专利"
+      ```
+      
+      ## 安全与合规声明
+      
+      - **SKILL.md 编码**：本文件以 UTF-8（NFC）维护，不含零宽字符与双向文本覆盖控制符。若扫描器仍报隐藏字符，请对照仓库原始文件或十六进制查看。
+      - **凭证**：专利 API Token 仅从 (1) 环境变量 `PATENT_API_TOKEN`，或 (2) 本机已安装 OpenClaw CLI 时通过命令 `openclaw config get skills.entries.patent-search.apiKey` 获取。本技能**不会**直接打开或解析 `~/.openclaw/openclaw.json` 等主目录下的配置文件。
+      - **网络**：通过 HTTPS 访问第三方服务 `https://www.9235.net/api`；检索式、专利号及分页等参数会随功能需要发送。
+      - **发布与仓库**：请勿在仓库或技能包内包含真实 Token；请使用 `config.example.json`，并通过环境变量或 OpenClaw 配置注入密钥。完整说明见技能包内 `COMPLIANCE.md`。
+      
+      ## 支持
+      
+      - **邮箱**：xxiao98@gmail.com
+      
+      ## 许可证
+      
+      MIT许可证 - 个人和商业使用免费。

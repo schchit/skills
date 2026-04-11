@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-测试专利API连接
+测试专利 API 连接（本地脚本）。打印参数时对 token 脱敏。
 """
 
 import os
@@ -8,6 +8,14 @@ import sys
 import json
 import requests
 from pathlib import Path
+
+
+def _params_for_logging(p: dict) -> dict:
+    o = dict(p)
+    if o.get("t"):
+        o["t"] = "<redacted>"
+    return o
+
 
 # 获取OpenClaw配置的token
 try:
@@ -20,7 +28,7 @@ try:
     )
     if result.returncode == 0:
         token = result.stdout.strip()
-        print(f"从OpenClaw配置获取token: {token[:10]}...")
+        print("从 OpenClaw CLI 获取到 token（不在此打印）")
     else:
         print("无法从OpenClaw获取token")
         token = None
@@ -32,7 +40,7 @@ except Exception as e:
 if not token or token == "__OPENCLAW_REDACTED__":
     token = os.environ.get('PATENT_API_TOKEN')
     if token:
-        print(f"从环境变量获取token: {token[:10]}...")
+        print("从环境变量 PATENT_API_TOKEN 获取到 token（不在此打印）")
     else:
         print("没有找到API Token")
         sys.exit(1)
@@ -54,7 +62,7 @@ params = {
 url = f"{base_url}/{endpoint.lstrip('/')}"
 print(f"\n测试API请求...")
 print(f"URL: {url}")
-print(f"参数: {json.dumps(params, ensure_ascii=False, indent=2)}")
+print(f"参数: {json.dumps(_params_for_logging(params), ensure_ascii=False, indent=2)}")
 
 try:
     response = requests.get(url, params=params, timeout=30)

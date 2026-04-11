@@ -153,6 +153,15 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for deta
 - Rate limiting to prevent abuse
 - Audit logging for compliance
 
+### OpenClaw compliance disclosure
+For marketplace / security review, this skill declares how credentials and data are handled:
+
+- **Token sources**: `PATENT_API_TOKEN`, or OpenClaw skill key via `openclaw config get` (CLI); **no** direct read of `~/.openclaw/openclaw.json` in shipped code.
+- **Network**: HTTPS to `https://www.9235.net/api` (third-party patent API).
+- **No secrets in repo**: Use `config.example.json`; real tokens belong in env or OpenClaw config only.
+
+**Full document (CN + EN)**: [COMPLIANCE.md](./COMPLIANCE.md)
+
 ## 🌍 Global Support
 
 ### Supported Regions
@@ -272,6 +281,14 @@ patent company "华为技术有限公司"
 
 - **API参考**: 包含在技能中
 - **教程视频**: 即将推出
+
+## 🔏 OpenClaw 合规披露（审核摘要）
+
+- **凭证来源**：环境变量 `PATENT_API_TOKEN`，或通过本机 `openclaw config get skills.entries.patent-search.apiKey` 获取；**不**在技能代码中直接读取 `~/.openclaw/openclaw.json`。
+- **网络**：经 HTTPS 访问 `https://www.9235.net/api`（第三方专利数据服务）。
+- **仓库规范**：勿提交真实 Token；以 `config.example.json` 为模板，密钥仅放在环境变量或 OpenClaw 配置中。
+
+**完整双语说明**：[COMPLIANCE.md](./COMPLIANCE.md)
 
 ## 📄 许可证
 

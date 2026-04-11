@@ -1,6 +1,6 @@
 {
   "api_base_url": "https://www.9235.net/api",
-  "token": "549c4760542074d4c116e554c50a131a1f27ca1d",
+  "token": "",
   "default_data_scope": "cn",
   "default_page_size": 10,
   "max_records": 1000,
