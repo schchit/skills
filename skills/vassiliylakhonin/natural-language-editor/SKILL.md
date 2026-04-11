@@ -1,11 +1,17 @@
 ---
 name: natural-language-editor
-description: Rewrite user-provided text to sound natural, clear, and smooth without changing meaning or factual content. Use when polishing drafts, removing robotic phrasing, improving readability, shortening text, or making writing more professional. Supports light edits, deep rewrites, clarity/concise/professional modes, and optional JSON output.
+description: Turn robotic drafts into natural, credible writing without changing meaning. Use for polish, anti-AI tone cleanup, concise/professional rewrites, readability upgrades, and tone adaptation (light/deep/clarity/concise/professional/linkedin/anti-ai/keep-length) with optional JSON output.
 ---
 
 # Natural Language Editor
 
 Rewrite user text so it reads naturally while preserving intent and facts.
+
+## 2-minute wins
+
+- Clean AI-sounding text for client-facing use.
+- Make long text concise without losing key points.
+- Convert rough draft into polished professional copy.
 
 ## Commands
 
