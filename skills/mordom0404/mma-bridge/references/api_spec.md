@@ -15,6 +15,10 @@
 | deleteGroup | 删除单条或多条流星检测数据 | [deleteGroup.md](./deleteGroup.md) |
 | collect | 收藏单条或多条流星检测数据 | [collect.md](./collect.md) |
 | incollect | 取消收藏单条或多条流星检测数据 | [incollect.md](./incollect.md) |
+| analyzeVideoFile | 分析单条视频文件 | [analyzeVideoFile.md](./analyzeVideoFile.md) |
+| analyzeImageFolder | 分析图片文件夹中的jpg/jpeg图片 | [analyzeImageFolder.md](./analyzeImageFolder.md) |
+| analyzeLiveStream | 分析直播流 | [analyzeLiveStream.md](./analyzeLiveStream.md) |
+| stopAnalyze | 停止当前直播/摄像头/推流分析 | [stopAnalyze.md](./stopAnalyze.md) |
 
 ## 调用格式
 
@@ -28,9 +32,7 @@ mma post --method <methodName> [--port <port>] --data-file <filePath>
 
 - `--method <methodName>`: 必需，指定要调用的 API 方法名称
 - `--port <port>`: 可选，指定 API 服务器端口（默认：9000）
-- `--data-file <filePath>`: 必需，指定包含 JSON 数据的文件路径
-
-**注意：** `--data-file` 参数是必需的（即使是空对象 `{}` 也需要）。需要先将 JSON 数据写入文件，再通过文件路径传递。
+- `--data-file <filePath>`: 可选，指定包含 JSON 数据的文件路径。当 API 不需要请求参数时（如 stopAnalyze），此参数可省略；否则需要先将 JSON 数据写入文件，再通过文件路径传递。
 
 ## 注意事项
 
