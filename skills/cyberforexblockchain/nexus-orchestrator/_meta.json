@@ -3,9 +3,15 @@
   "slug": "nexus-orchestrator",
   "displayName": "NEXUS Orchestrator",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773360715586,
-    "commit": "https://github.com/openclaw/skills/commit/a1848c540364d818b2b6278625fbc925842e9fff"
+    "version": "1.1.0",
+    "publishedAt": 1775754821977,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773360715586,
+      "commit": "https://github.com/openclaw/skills/commit/a1848c540364d818b2b6278625fbc925842e9fff"
+    }
+  ]
 }
