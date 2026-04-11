@@ -10,6 +10,8 @@ description: >
   (6) 用户讨论 Apple 生态下的日程管理、照片整理、文件同步。
   即使用户没有明确说"iCloud"或"Apple"，只要涉及日历管理、
   照片操作、设备定位、云端文件管理等 Apple 生态服务，都应使用此技能。
+  NOT for: Android 设备管理、Google Calendar/Photos、
+  非 Apple 生态的云存储（OneDrive/Google Drive）、钉钉日历（用 mcporter）。
 icon: 🍎
 os: linux, macos
 tools: pyicloud, caldav, icloudpd
