@@ -3,9 +3,15 @@
   "slug": "nexus-data-transform",
   "displayName": "NEXUS Data Transform",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773356130147,
-    "commit": "https://github.com/openclaw/skills/commit/f711ae4a02ce8edcddddb1281f09d4f997264347"
+    "version": "1.1.0",
+    "publishedAt": 1775754573130,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773356130147,
+      "commit": "https://github.com/openclaw/skills/commit/f711ae4a02ce8edcddddb1281f09d4f997264347"
+    }
+  ]
 }
