@@ -3,11 +3,16 @@
   "slug": "gate-exchange-assets",
   "displayName": "Gate Exchange Assets",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1775184589838,
-    "commit": "https://github.com/openclaw/skills/commit/540effc46d7c7385d0dee416caa85e2c36b7405a"
+    "version": "1.0.5",
+    "publishedAt": 1775642341697,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1775184589838,
+      "commit": "https://github.com/openclaw/skills/commit/540effc46d7c7385d0dee416caa85e2c36b7405a"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1774617558988,

@@ -1,7 +1,7 @@
 ---
 name: gate-exchange-assets
-version: "2026.3.25-1"
-updated: "2026-03-25"
+version: "2026.4.8-1"
+updated: "2026-04-08"
 description: "Gate multi-account asset and balance query skill. Use when the user asks to check total assets, account balance, or specific coin holdings across all accounts. Triggers on 'total assets', 'my balance', 'how many BTC do I have'. Read-only."
 required_credentials:
   - gate_api_key
@@ -19,6 +19,14 @@ required_permissions:
   - Tradfi:Read
   - Unified:Read
   - Wallet:Read
+metadata:
+  openclaw:
+    requires:
+      env:
+        - GATE_API_KEY
+        - GATE_API_SECRET
+    primaryEnv: GATE_API_KEY
+    homepage: https://github.com/gate/gate-skills
 ---
 
 # Gate Exchange Assets Assistant
@@ -27,7 +35,7 @@ required_permissions:
 
 ⚠️ STOP — You MUST read and strictly follow the shared runtime rules before proceeding.
 Do NOT select or call any tool until all rules are read. These rules have the highest priority.
-→ Read [gate-runtime-rules.md](https://github.com/gate/gate-skills/blob/master/skills/gate-runtime-rules.md)
+→ Read `./references/gate-runtime-rules.md`
 - **Only call MCP tools explicitly listed in this skill.** Tools not documented here must NOT be called, even if they
   exist in the MCP server.
 
@@ -67,11 +75,8 @@ Do NOT select or call any tool until all rules are read. These rules have the hi
 
 ### Installation Check
 - Required: Gate (main)
-- Install: Run installer skill for your IDE
-  - Cursor: `gate-mcp-cursor-installer`
-  - Codex: `gate-mcp-codex-installer`
-  - Claude: `gate-mcp-claude-installer`
-  - OpenClaw: `gate-mcp-openclaw-installer`
+- Install: Use the local Gate MCP installation flow for the current host IDE before continuing.
+- Continue only after the Gate MCP session is configured with the credentials listed above; do not switch to browser auth or ask the user to paste secrets into chat.
 
 ## MCP Mode
 
