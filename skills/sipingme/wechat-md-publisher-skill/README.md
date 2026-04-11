@@ -29,14 +29,9 @@ cd wechat-md-publisher-skill
 cp -r . ~/.openclaw/skills/wechat-md-publisher/
 ```
 
-3. 安装依赖：
+3. 验证工具可用：
 ```bash
-npm install -g wechat-md-publisher
-```
-
-4. 使脚本可执行：
-```bash
-chmod +x scripts/publish.sh
+npx --yes wechat-md-publisher@^1.0.5 --version
 ```
 
 ## ✅ 验证安装
@@ -49,7 +44,7 @@ openclaw skills list --eligible
 openclaw skills info wechat-md-publisher
 
 # 测试命令
-wechat-pub --version
+npx --yes wechat-md-publisher@^1.0.5 --version
 ```
 
 ## 📋 首次配置
@@ -64,10 +59,12 @@ wechat-pub --version
 ### 2. 配置账号
 
 ```bash
-wechat-pub account add \
+# 推荐：使用环境变量（避免命令行暴露凭证）
+export WECHAT_APP_ID="wx_your_app_id"
+export WECHAT_APP_SECRET="your_app_secret"
+
+npx --yes wechat-md-publisher@^1.0.5 account add \
   --name "我的公众号" \
-  --app-id "wx_your_app_id" \
-  --app-secret "your_app_secret" \
   --default
 ```
 
@@ -84,7 +81,7 @@ title: 测试文章
 EOF
 
 # 发布
-wechat-pub publish create --file test.md --theme default
+npx --yes wechat-md-publisher@^1.0.5 publish create --file test.md --theme default
 ```
 
 ## 🎯 使用方式
@@ -131,7 +128,7 @@ AI: 正在获取列表...
 openclaw run wechat-md-publisher publish article.md orangeheart
 
 # 或直接使用工具
-wechat-pub publish create --file article.md --theme orangeheart
+npx --yes wechat-md-publisher@^1.0.5 publish create --file article.md --theme orangeheart
 ```
 
 ## � 与 news-to-markdown-skill 组合使用
@@ -147,7 +144,7 @@ convert-url --url "https://www.toutiao.com/article/123" \
   --platform toutiao
 
 # 2. 发布到微信公众号
-wechat-pub publish create \
+npx --yes wechat-md-publisher@^1.0.5 publish create \
   --file /tmp/article.md \
   --theme orangeheart
 ```
@@ -206,10 +203,10 @@ export WECHAT_APP_SECRET="your_app_secret"
 
 ```bash
 # 添加本地主题（推荐）
-wechat-pub theme add-local --name my-theme --path ./my-theme.css
+npx --yes wechat-md-publisher@^1.0.5 theme add-local --name my-theme --path ./my-theme.css
 
 # 添加远程主题 API（⚠️ 见下方安全警告）
-wechat-pub theme add-remote --name md2wechat --url https://api.md2wechat.cn --key xxx
+npx --yes wechat-md-publisher@^1.0.5 theme add-remote --name md2wechat --url https://api.md2wechat.cn --key xxx
 ```
 
 > ⚠️ **远程主题安全警告**：使用 `theme add-remote` 会向第三方服务器发送请求。请仅使用您信任的远程主题 API。远程主题端点不在本 skill 的默认网络权限范围内，需要用户明确配置并承担相应风险。
@@ -228,43 +225,36 @@ openclaw skills info wechat-md-publisher
 
 **解决**：
 ```bash
-chmod +x ~/.openclaw/skills/wechat-md-publisher/scripts/publish.sh
+chmod +x ~/.openclaw/skills/wechat-md-publisher/scripts/publish.js
 ```
 
 ### 问题 3：找不到命令
 
 **解决**：
 ```bash
-npm install -g wechat-md-publisher
-which wechat-pub  # 验证安装
+# 本 Skill 使用 npx 动态执行，无需全局安装
+npx --yes wechat-md-publisher@^1.0.5 --version
 ```
 
 ### 问题 4：Token 过期
 
 Token 会自动刷新，如仍有问题：
 ```bash
-wechat-pub account remove <account-id>
-wechat-pub account add --name "新账号" --app-id xxx --app-secret xxx
+npx --yes wechat-md-publisher@^1.0.5 account remove <account-id>
+npx --yes wechat-md-publisher@^1.0.5 account add --name "新账号" --default
 ```
 
 ### 问题 5：更新 Skill 后依赖未更新
 
-**手动更新**：
+本 Skill 使用 `npx` 动态执行，会自动拉取指定版本的包。如需清除缓存：
 
 ```bash
-# 方法 1：强制重新安装（推荐）
-npm uninstall -g wechat-md-publisher
-npm install -g wechat-md-publisher@latest
-
-# 方法 2：清除缓存后安装
+# 清除 npx 缓存
 npm cache clean --force
-npm install -g wechat-md-publisher@latest
 
 # 验证版本
-wechat-pub --version
+npx --yes wechat-md-publisher@^1.0.5 --version
 ```
-
-> ⚠️ **注意**：此 skill 不会自动安装或更新 npm 包。所有安装操作需要用户手动确认执行。
 
 ## 🔒 安全性
 
