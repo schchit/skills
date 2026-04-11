@@ -35,7 +35,9 @@ Not every cell in the rectangle is listed.
 
 **FieldType** = terrain class; **TileType** = surface when unowned.
 
-**Next calls**: **FieldType 0** → **`GETNPCCITY` + tileID**; farmland / city → **`TILEINFO`**. Builds / march / chat: **`SKILL.md`**, **`build_ops.py`**, **`march_ops.py`**, **`chat_ops.py`**.
+**Next calls**: **FieldType 0** → **`GETNPCCITY` + tileID** (NPC **`troops`**); farmland / city → **`TILEINFO`**.
+
+**Wilderness / “jungle” (打野)**: Search tiles with **FieldType = 0**; use **QM** over **nearby rectangles**; for each candidate **`GETNPCCITY`** to read defenders. Estimate power / attrition using a **Lanchester square-law** style view (exchange ratios scale with squared effective strength — exact numbers are server-defined). **Clearing** wild stacks usually **grants resources**. See **`SKILL.md`** and **`march_ops.py`**.
 
 ---
 
@@ -73,7 +75,7 @@ python3 skills/earth2037/maps_util.py --ascii -99 224 2
 ```text
 Earth2037 torus; main map Count=802; maps_util for coords. QM variable-length rows: 5-tuple with city, 4-tuple without.
 FieldType 0 oasis; 1–7 fields; 9/10/14/15 trade; 11–13 fort/tower/base.
-QM empty args = current city 7×7. Builds: GETBUILDCOST + ADDBUILDQUEUE (build_ops.py); march_ops; chat_ops — see SKILL.md.
+QM empty args = current city 7×7. Wild: FieldType 0 → GETNPCCITY for troops; QM nearby. Lanchester-style attrition; clear for resources. Builds: build_ops; march_ops; chat_ops — SKILL.md.
 ```
 
 ---

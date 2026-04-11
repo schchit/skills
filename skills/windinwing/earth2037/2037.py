@@ -251,12 +251,29 @@ def cmd_newkey(api_base):
         sys.exit(1)
 
 
+def cmd_setcity(api_base, tile_id):
+    try:
+        from cache import humanize_command_output, set_current_city
+
+        ui, cs, raw = set_current_city(tile_id, api_base=api_base)
+        cv = ui.get("CurrentVillageID") or ui.get("currentVillageID")
+        print("SETCURCITY ok, cache updated")
+        print(f"  CurrentVillageID={cv}, CapitalID={ui.get('CapitalID')}")
+        print(f"  citys.json: {len(cs)} cities")
+        if raw.strip():
+            print(f"  server: {humanize_command_output(raw).strip()[:500]}")
+    except Exception as e:
+        print(f"setcity failed: {e}")
+        sys.exit(1)
+
+
 def cmd_sync(api_base):
     try:
         from cache import sync as cache_sync
         ui, cs = cache_sync(api_base=api_base)
         print("Cache updated")
-        print(f"  userinfo.json: userID={ui.get('UserID')}, CapitalID={ui.get('CapitalID')}")
+        cv = ui.get("CurrentVillageID") or ui.get("currentVillageID")
+        print(f"  userinfo.json: userID={ui.get('UserID')}, CapitalID={ui.get('CapitalID')}, CurrentVillageID={cv}")
         print(f"  citys.json: {len(cs)} cities")
     except Exception as e:
         print(f"Sync failed: {e}")
@@ -292,24 +309,74 @@ def main():
             args = args[1:]
 
     if len(args) < 1:
-        print("Usage: 2037.py [--api-base URL] key | ... | sync | bootstrap | show [focus]")
+        print("Usage: 2037.py [--api-base URL] key | ... | setcity | sync | bootstrap | show [focus]")
         print("  recover: username+password to recover API key (skill token) without SK-key")
+        print("  setcity <tileID>: SETCURCITY then refresh userinfo.json / citys.json (needs token)")
         print("  sync: USERINFO+CITYLIST only; bootstrap: full session JSON → session_cache.json")
         print("  show: print local session_cache (no HTTP); focus: city build troops task queue hero goods")
-        print("  Also: build_ops.py, march_ops.py, chat_ops.py (require token)")
+        print("  airinfo: air supply quota (used,total); airdrop [tileID]: claim (omit tileID = current/capital from cache)")
+        print("  Also: build_ops.py, recruit_ops.py, march_ops.py, chat_ops.py, airdrop_ops.py (require token)")
         print("  register: optional tribe on same line, or interactive prompt if omitted (TTY only)")
         sys.exit(1)
 
     api_base = load_config(api_base_override=api_base_override)
     cmd = args[0].lower()
 
-    if cmd == "sync":
+    if cmd == "setcity":
+        if len(args) < 2:
+            print("Usage: 2037.py setcity <tileID>")
+            sys.exit(1)
+        try:
+            tid = int(args[1])
+        except ValueError:
+            print("tileID must be an integer")
+            sys.exit(1)
+        cmd_setcity(api_base, tid)
+    elif cmd == "sync":
         cmd_sync(api_base)
     elif cmd == "show":
         focus = args[1] if len(args) > 1 else None
         cmd_show(focus)
     elif cmd == "bootstrap":
         cmd_bootstrap(api_base)
+    elif cmd == "airinfo":
+        try:
+            from cache import humanize_command_output
+            from airdrop_ops import airinfo as do_airinfo
+
+            raw, counts = do_airinfo(api_base=api_base)
+            print(humanize_command_output(raw).rstrip())
+            if counts:
+                u, t = counts
+                print(f"remaining={t - u} (used={u}, total={t})")
+        except Exception as e:
+            print(f"Error: {e}")
+            sys.exit(1)
+    elif cmd == "airdrop":
+        try:
+            from cache import humanize_command_output
+            from airdrop_ops import airdropres, get_current_village_id
+
+            tid = None
+            if len(args) > 1:
+                tid = int(args[1])
+            else:
+                tid = get_current_village_id()
+                if tid is None:
+                    print("Specify tileID: 2037.py airdrop <tileID> or run sync for userinfo.json")
+                    sys.exit(1)
+                print(f"(tileID={tid} from userinfo cache)")
+            raw, res, ok = airdropres(tid, api_base=api_base)
+            print(humanize_command_output(raw).rstrip())
+            if res:
+                print(json.dumps(res, ensure_ascii=False, indent=2))
+            if ok:
+                print("Merged getResource into session_cache.json if present")
+            else:
+                sys.exit(1)
+        except Exception as e:
+            print(f"Error: {e}")
+            sys.exit(1)
     elif cmd == "newkey":
         cmd_newkey(api_base)
     elif cmd == "key":

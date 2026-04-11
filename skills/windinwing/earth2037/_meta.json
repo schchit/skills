@@ -3,11 +3,16 @@
   "slug": "earth2037",
   "displayName": "earth2037",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1774586063098,
-    "commit": "https://github.com/openclaw/skills/commit/c83d80f2f0a0fe8ab54f4882863ccfb27d5daa0b"
+    "version": "1.0.3",
+    "publishedAt": 1775550542275,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1774586063098,
+      "commit": "https://github.com/openclaw/skills/commit/c83d80f2f0a0fe8ab54f4882863ccfb27d5daa0b"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1773940935457,

@@ -13,8 +13,8 @@ def _import_game():
     base = os.path.dirname(os.path.abspath(__file__))
     if base not in sys.path:
         sys.path.insert(0, base)
-    from cache import _game_command, _get_token, _load_config
-    return _game_command, _get_token, _load_config
+    from cache import _game_command, _get_token, _load_config, humanize_command_output
+    return _game_command, _get_token, _load_config, humanize_command_output
 
 
 def _net_date_ms_now(offset: str = "+0800") -> str:
@@ -34,7 +34,7 @@ def _load_userinfo(skill_dir: str) -> dict:
 
 
 def main():
-    gc, get_token, load_cfg = _import_game()
+    gc, get_token, load_cfg, humanize = _import_game()
     skill_dir = os.path.dirname(os.path.abspath(__file__))
     ap = argparse.ArgumentParser(description="Earth2037 chat")
     ap.add_argument("--api-base", dest="api_base", default=os.environ.get("EARTH2037_API_BASE", "").strip() or None)
@@ -114,7 +114,7 @@ def main():
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    print(out)
+    print(humanize(out))
 
 
 if __name__ == "__main__":

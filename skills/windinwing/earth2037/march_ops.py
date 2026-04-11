@@ -13,8 +13,8 @@ def _import_game():
     base = os.path.dirname(os.path.abspath(__file__))
     if base not in sys.path:
         sys.path.insert(0, base)
-    from cache import _game_command, _get_token, _load_config
-    return _game_command, _get_token, _load_config
+    from cache import _game_command, _get_token, _load_config, humanize_command_output
+    return _game_command, _get_token, _load_config, humanize_command_output
 
 
 def _expand_troops(spec: str) -> str:
@@ -36,7 +36,7 @@ def _net_date_ms(ms: int, offset: str = "+0800") -> str:
 
 
 def main():
-    gc, get_token, load_cfg = _import_game()
+    gc, get_token, load_cfg, humanize = _import_game()
     ap = argparse.ArgumentParser(description="Earth2037 ADDCOMBATQUEUE helper")
     ap.add_argument("--api-base", dest="api_base", default=os.environ.get("EARTH2037_API_BASE", "").strip() or None)
     sub = ap.add_subparsers(dest="mode", required=True)
@@ -79,7 +79,8 @@ def main():
         line = args.json_one_line.strip()
 
     try:
-        print(gc(api, token, "ADDCOMBATQUEUE", line))
+        out = gc(api, token, "ADDCOMBATQUEUE", line)
+        print(humanize(out))
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

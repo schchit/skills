@@ -47,6 +47,7 @@ Tribes: **1=Human Federation**, **2=Empire of the Rising Sun**, **3=Eagle's Real
 ## Local Cache
 
 - `2037.py sync`: USERINFO + CITYLIST only → `userinfo.json`, `citys.json`. Requires token.
+- `2037.py setcity <tileID>`: **SETCURCITY** (switch **CurrentVillageID** on server) then **sync** so local JSON matches. Use when you have multiple cities.
 - `2037.py bootstrap`: full merged JSON → `session_cache.json`. Same token; prefer for downstream tools.
 
 ## Answering game state (read cache first)
@@ -91,21 +92,52 @@ Content-Type: application/json
 
 {"cmd": "CMD_NAME", "args": "arg1 arg2 ..."}
 ```
-Auth: `Authorization: Bearer <token>` or body `apiKey`. Empty `args` → server fills defaults (e.g. capital tileID).
+Auth: `Authorization: Bearer <token>` or body `apiKey`. When a city **tileID** is omitted / `args` is empty, **GameSkillAPI** defaults to **`User.CurrentVillageID`**, else **`CapitalID`**.
+
+### Bridge aliases (GameSkillAPI `HttpGameBridge`)
+
+When using **`POST /game/command`** against this repo’s **GameSkillAPI**, these **`cmd`** names are expanded server-side (no JSON array or `/Date` for recruit):
+
+| Bridge cmd | Maps to | args |
+|------------|---------|------|
+| **BONUSES**, **PLAYERBONUSES**, **ADDITIONINFO** | GETADDITION | Usually **empty** (Plus timers) |
+| **LISTRECRUITQUEUE**, **RECRUITQLIST** | GETCONSCRIPTIONQUEUE | Optional **tileID**; **empty** = **current city** |
+| **RECRUITQUEUE**, **RECRUIT** | ADDCONSCRIPTIONQUEUE | **`troopId total [tileId]`** (omit tileId = **current city**) |
+| **USEBAGITEM**, **CONSUMEBAGITEM**, **USEUSERGOODS** | **HEROINVENTORY** | **`instanceId [tileID] […]`** → **`instanceId 1 …`** (use item) |
+| **EQUIPBAGITEM** | **HEROINVENTORY** | **`instanceId heroId weaponAction inventorySlot`** |
+| **DROPBAGITEM**, **DISCARDBAGITEM** | **HEROINVENTORY** | **`instanceId`** → drop |
+| **DISASSEMBLEBAGITEM**, **SALVAGEWEAPON** | **HEROINVENTORY** | **`instanceId`** → salvage weapon |
+| **APPLYSKILLBOOK**, **USEHEROSKILLBOOK** | **HEROINVENTORY** | **`instanceId heroId currentSkillCount`** |
+
+**Builds / upgrades:** Do **not** send **`UPGRADE_OIL` / `UPGRADE_RESOURCE` / `UPGRADE_POINT`** (not native TCP names; only some **GameSkillAPI** deployments with **`CommandHelper`** expand them to **`ADDBUILDQUEUE`**). Always use **`GETBUILDCOST` + `ADDBUILDQUEUE`** or **`build_ops.py compose`**. If the bridge is missing, you get **`command 'UPGRADE_*' not recognized`**.
+
+**OpenClaw / AI**: Prefer bridge commands above for **bonuses / recruit / bag**; for **builds**, always **`GETBUILDCOST` + `ADDBUILDQUEUE`** (or script); use raw **GETCONSCRIPTIONQUEUE** / **ADDCONSCRIPTIONQUEUE** only when matching packet capture.
+
+### Plus / bonuses (`GETADDITION` / `BONUSES`)
+
+Same as client **`/getaddition`**, **`args`** usually empty. Example: `{"cmd":"GETADDITION","args":""}` or `{"cmd":"BONUSES","args":""}`. Response **`/svr getaddition {...}`** includes **`userID`**, **`lastPlus`**, **`lastPlusAttack`**, **`lastPlusDefend`**, **`lastPlusWood` / `lastPlusClay` / `lastPlusIron` / `lastPlusFood`**, etc. (**.NET `/Date` timestamps**).
 
 ### Intent → Command Mapping
 
 | Intent | cmd | args |
 |--------|-----|------|
 | My cities | CITYLIST | (empty) |
-| City info | GETCITYINFO | tileID, empty=capital |
+| **Set current city** | **SETCURCITY** | **tileID** (your city); **`/svr setcurcity ok`**; **`2037.py setcity <tileID>`** then syncs **userinfo.json** (**CurrentVillageID**) |
+| City info | GETCITYINFO | tileID; **empty = current city** (else capital) |
 | User info | USERINFO | (empty) |
-| Resources | GETRESOURCE | tileID, empty=capital |
-| Buildings | BUILDLIST | tileID, empty=capital |
+| **Plus / bonuses** | **GETADDITION**（bridge **BONUSES**） | Usually **empty** → `/svr getaddition {...}` (`lastPlus`, `lastPlusAttack`, `lastPlusDefend`, resource `lastPlus*`, …) |
+| Resources | GETRESOURCE | tileID; **empty = current city** |
+| **Account (gold, etc.)** | **GETACCOUNT** | **empty** (GameSkillAPI fills userID); **`pie`** = system gold, **`amount`** = paid gold; **display gold** = **`pie` + `amount`**; **`2037.py sync`** merges into **userinfo.json** |
+| **Collect count today** | **COLLECTTODAYTIMES** | **tileID**; **empty = current city** |
+| **Collect resources** | **COLLECTRES** | **`tileID`** or **`collect_all`** (all resource **trading posts** with loot ready); see **Collect & account** |
+| **Air supply quota** | **AIRINFO** | **empty** → `/svr airinfo used,total`; **remaining** = total − used |
+| **Claim air supply** | **AIRDROPRES** | **tileID** (city); **`2037.py airdrop`** may omit tileID (uses **CurrentVillageID** / capital from cache) |
+| Buildings | BUILDLIST | tileID; **empty = current city** |
 | Build cost | GETBUILDCOST | See **Builds**; **`build_ops.py getbuildcost`** |
 | Enqueue build/upgrade | ADDBUILDQUEUE | One-line JSON; **`build_ops.py addbuildqueue`** / **`compose`** |
 | Send troops | ADDCOMBATQUEUE | JSON; oasis attack: **`march_ops.py attack-oasis`** |
-| Recruit | ADDCONSCRIPTIONQUEUE | JSON |
+| **Recruit (recommended)** | **LISTRECRUITQUEUE** / **RECRUITQUEUE** | List: optional tileID; recruit: **`troopId total [tileId]`**; **`recruit_ops.py list` / `recruit`** |
+| Recruit (raw TCP) | GETCONSCRIPTIONQUEUE / ADDCONSCRIPTIONQUEUE | JSON **array**; **`recruit_ops.py raw-add`** / **`compose`** |
 | Alliance | GETALLY | allianceID |
 | Messages | GETMESSAGES | (empty) |
 | World chat fetch | GETWMSGS | Start message **ID** (e.g. **`0`**) |
@@ -114,14 +146,85 @@ Auth: `Authorization: Bearer <token>` or body `apiKey`. Empty `args` → server 
 | Send alliance | SENDALLYMSG | One-line JSON with **`allianceID`**; **`chat_ops.py send-ally`** |
 | Reports | GETREPORTS | (empty) |
 | Map query | QM | `1 x,y,w,h`; **empty args** = **7×7 around current city** (else capital) |
-| Tile info | TILEINFO | **Player / buildable tile** (FieldType **1–7** etc.), tileID; empty=capital |
+| Tile info | TILEINFO | **Player / buildable tile** (FieldType **1–7** etc.), tileID; **empty = current city** |
 | Oasis NPC tile | GETNPCCITY | **FieldType=0**: `args` = `tileID` |
 | Heroes | USERHEROS | (empty) |
-| Tasks | GETTASKLIST | (empty) |
+| **Bag item actions** | **USEBAGITEM** (bridge) or **HEROINVENTORY** (TCP name) | See **Bag items (`HEROINVENTORY`)** — name is misleading |
+| Tasks | GETTASKLIST | **`taskType count`**; see **Task list**; empty **`args`** on GameSkillAPI → **`1 5`** (default) |
 | Server time | SERVERTIME | (empty) |
 | **Time-window leaderboards** | GETTOPBYTIME | see **Leaderboards** below |
 | **All-time def/atk/dev/alliance** | GETDEFENDRANK / GETATTACKRANK / GETUSERRANK / GETALLYRANK | see below |
 | **Daily star / weekly / hall of fame** | HALLOFFAME | see below |
+| **Daily gift lottery (board)** | **EVERYDAYREWARD** | Often **`1`** (same idea as **`/everydayreward 1`**); see **Daily gift lottery** below |
+| **Claim daily gift picks** | **GETDAILYGIFT** | **`tileID` space `i0,i1,...`** (comma-separated indices, second token); see below |
+
+### Daily gift lottery (`EVERYDAYREWARD` / `GETDAILYGIFT`)
+
+Same as client **`/everydayreward`** and **`/getdailygift`**. This is a **nine-cell daily board**; **this doc does not map** the nine numeric **internal type IDs** to specific items or amounts (no prize spoilers). Skills only need **pick count** and **slot indices**.
+
+**1) Fetch today’s board — `EVERYDAYREWARD`**
+
+- Example: `{"cmd":"EVERYDAYREWARD","args":"1"}`.
+- Success: **`/svr everydayreward <payload>`** where **payload** is one string:
+
+  **`pickCount:slot0,slot1,…,slot8`**
+
+  — one integer, colon, then **nine comma-separated integers** (same shape as captures like `5:18,18,18,…`).
+
+| Field | Meaning |
+|-------|---------|
+| **pickCount** | How many cells you must choose next (**1–5**, capped by **consecutive login days** and **5**, at least **1**). |
+| **Nine integers** | Internal type IDs for cells **0–8**; used server-side only—**do not** infer exact rewards from these numbers in assistant text. |
+
+**Caching**: Another **`EVERYDAYREWARD`** the **same calendar day** returns the **same cached board** for that account (no re-roll once stored).
+
+**2) Claim with indices — `GETDAILYGIFT`**
+
+- **`args`** is split on **spaces** into two parts: **`tileID`**, then **`comma-separated indices`** (no spaces inside the list).
+- Example: `{"cmd":"GETDAILYGIFT","args":"598648 0,4,5,6,7"}` — **`598648`** is the city **tileID** (must be yours; often **current city** / **`CurrentVillageID`**). Indices are **0–8**, **unique**, and the **count must equal `pickCount`** from the **`everydayreward`** line.
+
+Success: **`/svr getdailygift ok`**. Failure: **`/svr getdailygift err …`** (e.g. already claimed, bad params).
+
+**`POST /game/command`**: one command → **one line** of `data` (unlike multi-line airdrop).
+
+### Air supply (`AIRINFO` / `AIRDROPRES`)
+
+Same as client **`/airinfo`** and **`/airdropres <tileID>`**; bootstrap includes **`AIRINFO`** (key **`airinfo`**).
+
+| Step | Notes |
+|------|------|
+| **Quota** | `{"cmd":"AIRINFO","args":""}` → **`/svr airinfo used,total`**. **Remaining** = total − used. |
+| **Claim** | `{"cmd":"AIRDROPRES","args":"<tileID>"}`. |
+
+**Successful claim** emits **two** lines: **`/svr getResource {...}`** then **`/svr airdropres ok`**. **`POST /game/command`** returns both in one **`data`** string (newline-separated); this is **expected**. Parse line-by-line or use **`cache.parse_svr_lines`**.
+
+**Cache**: **`2037.py airdrop`** merges **`getResource`** into **`session_cache.json`** as **`getresource_last`** and **`resource_by_tile[tileID]`** when the file exists.
+
+### Collect & account (`COLLECTTODAYTIMES` / `COLLECTRES` / `GETACCOUNT`)
+
+**`COLLECTTODAYTIMES`**: **`args`** = city **tileID** (**empty** → GameSkillAPI default **current city**). Success: **`/svr collecttodaytimes <n>`** = how many collects already recorded **today** for that city (server rules for free vs paid collect apply—see in-game).
+
+**`COLLECTRES`** (same as **`/collectres`**):
+
+| `args` | Meaning |
+|--------|---------|
+| **`<tileID>`** | Collect **city** output for that player city; first collect of the day is typically **free**, later collects may cost gold (VIP/balance—**in-game**). |
+| **`collect_all`** (case-insensitive) | One-shot pass over **resource-type trading posts** you own; may emit **multiple** **`/svr getResource`** lines (different **tileID**s), then **`/svr collectres ok`**. |
+
+**Multi-line `data`** on success (like airdrop) is **normal**. Use **`cache.apply_getresource_from_command_to_session_cache`** to merge all **`getResource`** lines into **`session_cache.json`**.
+
+**`GETACCOUNT`**: **`args`** empty. Success: **`/svr getaccount {...}`** with **`pie`**, **`amount`**, **`vip`**, **`accumulateConsume`**, etc. **Display gold to players**: **`pie + amount`**. **`2037.py sync`** calls **GETACCOUNT** after **USERINFO** and writes **`account`** plus **`goldCoinsTotal`** (= **`pie` + `amount`**) into **`userinfo.json`**.
+
+### Task list (`GETTASKLIST`)
+
+Same as client **`/gettasklist 1 5`**: **`args` = `taskType count`** (space-separated). **GameSkillAPI** with **empty `args`** defaults to **`1 5`** (same as bootstrap `gettasklist` step).
+
+| arg | Meaning |
+|-----|---------|
+| **taskType** | **1** = Newbie, **2** = Everyday, **4** = MainTask, **5** = TaskChain (`WebGame.TaskType`) |
+| **count** | Max rows (e.g. **`1 5`** = up to 5 newbie tasks) |
+
+Success: **`/svr gettasklist [...]`** — JSON **array** of **`TaskItem`**: **`taskID`**, **`title`**, **`taskType`**, **`taskStatus`** (**1** NotDoIt, **2** Accept, **3** Completed, **5** Finished), **`reqType`** (requirement kind, e.g. **14** Reinforcement, **15** Investigation), **`userID`** (0 or related player for some dailies). Strip the `/svr gettasklist ` prefix, then **`json.loads`**.
 
 ### Builds (game protocol: `GETBUILDCOST` + `ADDBUILDQUEUE`)
 
@@ -142,6 +245,22 @@ python3 skills/earth2037/build_ops.py compose --tile 273897 --point 27 --build 8
 python3 skills/earth2037/build_ops.py cancel-queue 273897 27
 ```
 
+### Recruitment
+
+**Recommended (bridge + script):** `LISTRECRUITQUEUE` to list; `RECRUITQUEUE` with **`troopId total [tileId]`** — times and JSON are built in **GameSkillAPI** (`CommandHelper.ResolveRecruitConscription`).
+
+```bash
+python3 skills/earth2037/recruit_ops.py list
+python3 skills/earth2037/recruit_ops.py recruit 43 8 293135
+```
+
+**Raw client protocol:** `ADDCONSCRIPTIONQUEUE` with JSON **array** `[{...}]`. Use **`raw-add`** / **`compose`** without the bridge.
+
+```bash
+python3 skills/earth2037/recruit_ops.py raw-add '[{"cityID":293135,...}]'
+python3 skills/earth2037/recruit_ops.py compose --tile 293135 --troop 43 --total 8 --unit-training 141
+```
+
 ### Build, inspect tile, attack oasis, chat
 
 #### 1) `ADDBUILDQUEUE` JSON
@@ -157,12 +276,18 @@ Same as client: `buildAction`, `buildID`, `tileID`, `pointID`, `level` (target l
 
 Flow: **QM** row `[tileID, FieldType, …]` → pick command. `GETNPCCITY` returns `troops`, `oasisType`, etc.; `TILEINFO` returns owner/alliance fields (e.g. `uid`, `ally`, `p`).
 
-#### 3) Oasis attack — `ADDCOMBATQUEUE` (**`marchType` 256**)
+#### 3) Wilderness / “jungle” — `ADDCOMBATQUEUE` (**`marchType` 256**)
+
+**Definition**: Target tiles with **`FieldType = 0`**. Use **`GETNPCCITY`** on each candidate **`tileID`** to read **NPC `troops`**. Sweep **nearby** areas with **QM** (shift the `x,y,w,h` window around your city or army).
+
+**Power / losses**: Compare your troops vs NPCs (attack/defense, counts). Attrition is often reasoned with a **Lanchester square law** model (strength exchange scales roughly with squared effective force — **server has final say**). Use **`GETCITYTROOPS`** plus **`GETNPCCITY`** for rough checks.
+
+**Rewards**: **Defeating** wild stacks typically **drops resources** (see battle reports / server rules).
 
 Troop string: `armId:qty_loss_captive_level`, multiple arms with `|`.
 
-1. **QM** + **FieldType 0** + **`GETNPCCITY`**.  
-2. **`GETCITYTROOPS`**.  
+1. **QM** → filter **FieldType 0** → **`GETNPCCITY`** per tile.  
+2. **`GETCITYTROOPS`**, estimate outcome.  
 3. **`ADDCOMBATQUEUE`** or:
 
 ```bash
@@ -230,16 +355,28 @@ Example: `{"cmd":"HALLOFFAME","args":"1 0"}`
 - Prefix **`{4|0}`**: the number before `|` is **your rank** in this list (e.g. 4th). Alliance rows use `AllianceName`, etc.
 - Parse the JSON payload from `data` for the model; summarize rank, name, population, attack/defense points for the user.
 
+### Bag items (`HEROINVENTORY` / **`USEBAGITEM`**)
+
+The TCP name **`HEROINVENTORY`** is **misleading**: it is **not** “hero inventory UI only”. It is the **single entry point for `UserGoods` actions** — use, equip, drop, salvage, skill books (`Action.HeroInventory`).
+
+**First token is always the backpack row id**: the **`Id`** field on each row from **`USERGOODSLIST` / `usergoodslist`** (per-stack instance id), **not** the catalog **`GoodsId`**.
+
+**Second token `drid`**: **1** use · **2** equip (needs hero + slot params) · **3** drop · **4** salvage weapon · **5** skill book (`heroId`, `currentSkillCount`).
+
+**Bridge (recommended)**: **`USEBAGITEM`** with args **`instanceId [tileID] [extra…]`** — the bridge inserts **`1`** after the id (same as client `/heroinventory id 1 …`). Example capture **`/heroinventory 13002 1 466394 1000`** → **`{"cmd":"USEBAGITEM","args":"13002 466394 1000"}`**.
+
+**Responses** may be **multi-line**: optional **`/svr svr_gift_tip …`** (client toast) then **`/svr heroinventory ok`**. Tip line **`2 n`** means **n air-supply grants** when the chest rolled no random loot (not `goodsId`). Tip **`4 id,count;…`** is items. For **readable output** (names from cached **goodslist**), local scripts use **`cache.humanize_command_output`**; raw lines: **`EARTH2037_RAW_SVR=1`**.
+
 ### More Commands
 
-- **Account**: CURRENTUSER, USERINFOBYID, GETACCOUNT, MODIFYPWD, MODIFYEMAIL, MODIFYSIGNATURE
-- **City**: CITYITEMS, CITYBUILDQUEUE, ADDBUILDQUEUE, UPGRADE_POINT, CANCELBUILDQUEUE, MODIFYCITYNAME, SETCURCITY, CREATECITY, MOVECITY
+- **Account**: CURRENTUSER, USERINFOBYID, **GETACCOUNT** (gold **`pie`+`amount`**, **sync** → **userinfo.json**), MODIFYPWD, MODIFYEMAIL, MODIFYSIGNATURE
+- **City / collect**: CITYITEMS, CITYBUILDQUEUE, **COLLECTTODAYTIMES**, **COLLECTRES** (or **`collect_all`** trading posts), ADDBUILDQUEUE, GETBUILDCOST, CANCELBUILDQUEUE, MODIFYCITYNAME, SETCURCITY, CREATECITY, MOVECITY (no native `UPGRADE_*`; see **Builds**, **Collect & account**)
 - **Military**: ARMIES, GETCONSCRIPTIONQUEUE, COMBATQUEUE, GETCITYTROOPS, GETNPCCITY, MEDICALTROOPS, BUYSOLDIERS
 - **Alliance**: GETALLYMEMBERS, CREATEALLY, INVITEUSER, SEARCHALLY, DROPALLY
 - **Messages/Reports**: GETMESSAGE, GETREPORT, SENDMSG, GETWMSGS, GETALLYCHAT, SENDWMSG, SENDALLYMSG, DELETEMESSAGES, DELETEREPORTS
 - **Map**: TILEINFOS, MAP, MAP2, FAVPLACES, FAVPLACE, DELFAV
-- **Heroes/Items**: USERHERO, RECRUITHERO, HEROWEAPONS, USERGOODSLIST, CDKEY, VIPGIFT
-- **Tasks/Events**: GETTASK, TASKGETREWARDS, EVERYDAYREWARD, GETDAILYGIFT, ACTIVITY
+- **Heroes/Items**: USERHERO, RECRUITHERO, HEROWEAPONS, USERGOODSLIST, **HEROINVENTORY** (prefer bridge **USEBAGITEM**; see **Bag items**), CDKEY, VIPGIFT
+- **Tasks/Events**: GETTASK, TASKGETREWARDS, **EVERYDAYREWARD** (daily lottery board), **GETDAILYGIFT** (claim by indices; see **Daily gift lottery** above), ACTIVITY
 - **Leaderboards**: GETTOPBYTIME, GETDEFENDRANK, GETATTACKRANK, GETUSERRANK, GETALLYRANK, HALLOFFAME (see above)
 
 ### Response
