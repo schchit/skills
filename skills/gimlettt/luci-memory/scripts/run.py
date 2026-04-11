@@ -15,13 +15,11 @@ import sys
 import urllib.request
 from datetime import UTC, datetime
 
-API_HOST = "http://34.45.179.165/luci-memory"
+API_HOST = "https://skills.memories.ai/luci-memory"
 API_PERSONAL = API_HOST + "/personal"
 API_PORTRAIT = API_HOST + "/portrait"
 USERINFO_API = "https://mavi-backend.memories.ai/serve/api/userinfo"
 ENV_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
-
-
 
 
 def _load_env():
@@ -44,7 +42,7 @@ def resolve_user_id():
         print(f"Please create {ENV_FILE} with:", file=sys.stderr)
         print('  MEMORIES_AI_KEY=sk-your-key-here', file=sys.stderr)
         sys.exit(1)
-    req = urllib.request.Request(USERINFO_API, headers={"authorization": api_key})
+    req = urllib.request.Request(USERINFO_API, headers={"authorization": api_key, "User-Agent": "LuciMemory/1.0"})
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read())
@@ -85,6 +83,13 @@ PORTRAIT_TYPES = [
 
 ALL_TYPES = list(PERSONAL_TYPE_MAP.keys()) + PORTRAIT_TYPES
 
+# Per-type top_k defaults. query_audio/query_visual default high so that
+# fetching a full transcript with --video-ids "just works" without -k.
+DEFAULT_TOP_K = {
+    "query_audio": 5000,
+    "query_visual": 5000,
+}
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -100,7 +105,7 @@ def parse_date(s):
 
 def api_post(url, body):
     data = json.dumps(body).encode()
-    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json", "User-Agent": "LuciMemory/1.0"})
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             return json.loads(resp.read())
@@ -120,6 +125,13 @@ def _person_label(p):
         return f"{name} (you)"
     return name
 
+
+def _fmt_time(time_str):
+    """Format an ISO timestamp as 'YYYY-MM-DD HH:MM UTC'. All stored times are UTC."""
+    if not time_str or time_str == "unknown time":
+        return "unknown time"
+    return time_str[:16].replace("T", " ") + " UTC"
+
 # ---------------------------------------------------------------------------
 # Formatters — personal media
 # ---------------------------------------------------------------------------
@@ -129,9 +141,7 @@ def format_videos(videos):
         return "No videos found."
     lines = []
     for v in videos:
-        time_str = v.get("captured_time", "unknown time")
-        if time_str and time_str != "unknown time":
-            time_str = time_str[:16].replace("T", " ")
+        time_str = _fmt_time(v.get("captured_time"))
         sim = v.get("similarity", 1)
         sim_str = f" (similarity: {sim:.2f})" if sim < 1 else ""
         vid = v.get("video_id", "?")
@@ -147,9 +157,7 @@ def format_images(images):
         return "No images found."
     lines = []
     for img in images:
-        time_str = img.get("captured_time", "unknown time")
-        if time_str and time_str != "unknown time":
-            time_str = time_str[:16].replace("T", " ")
+        time_str = _fmt_time(img.get("captured_time"))
         sim = img.get("similarity", 1)
         sim_str = f" (similarity: {sim:.2f})" if sim < 1 else ""
         lines.append(f"- **{img.get('id', '?')}** [{time_str}]{sim_str}")
@@ -169,11 +177,10 @@ def format_images(images):
 def format_audio_ts(records):
     if not records:
         return "No audio transcripts found."
+    records = sorted(records, key=lambda r: (r.get("video_id", ""), r.get("start_time") or 0))
     lines = []
     for r in records:
-        time_str = r.get("captured_time", "unknown time")
-        if time_str and time_str != "unknown time":
-            time_str = time_str[:16].replace("T", " ")
+        time_str = _fmt_time(r.get("captured_time"))
         sim = r.get("similarity", 1)
         sim_str = f" (similarity: {sim:.2f})" if sim < 1 else ""
         lines.append(f"- **{r.get('video_id', '?')}** [{time_str}] {r.get('start_time', 0):.1f}s-{r.get('end_time', 0):.1f}s{sim_str}")
@@ -184,11 +191,10 @@ def format_audio_ts(records):
 def format_visual_ts(records):
     if not records:
         return "No visual transcripts found."
+    records = sorted(records, key=lambda r: (r.get("video_id", ""), r.get("start_time") or 0))
     lines = []
     for r in records:
-        time_str = r.get("captured_time", "unknown time")
-        if time_str and time_str != "unknown time":
-            time_str = time_str[:16].replace("T", " ")
+        time_str = _fmt_time(r.get("captured_time"))
         sim = r.get("similarity")
         sim_str = f" (similarity: {sim:.2f})" if sim is not None and sim < 1 else ""
         lines.append(f"- **{r.get('video_id', '?')}** [{time_str}] {r.get('start_time', 0):.1f}s-{r.get('end_time', 0):.1f}s{sim_str}")
@@ -245,9 +251,7 @@ def format_events(events):
         return "No events found."
     lines = []
     for e in events:
-        time_str = e.get("capture_time", "unknown time")
-        if time_str and time_str != "unknown time":
-            time_str = time_str[:16].replace("T", " ")
+        time_str = _fmt_time(e.get("capture_time"))
         people = e.get("people", [])
         people_str = ", ".join(_person_label(p) for p in people) if people else "no people"
         lines.append(f"- **{e.get('event_name', '')}** [{time_str}] (event_id: {e.get('event_id', '?')})")
@@ -298,7 +302,8 @@ def main():
     parser.add_argument("--query", "-q", default=None, help="Search term (required for search_* types)")
     parser.add_argument("--type", "-t", default="search_video", choices=ALL_TYPES,
                         help="Operation type (default: search_video)")
-    parser.add_argument("--top-k", "-k", type=int, default=10, help="Max results (default: 10)")
+    parser.add_argument("--top-k", "-k", type=int, default=None,
+                        help="Max results (default: 10, or 5000 for query_audio/query_visual)")
     # Personal-specific filters
     parser.add_argument("--location", "-l", default=None, help="Filter by location name (e.g. 'Suzhou', 'Heze')")
     parser.add_argument("--video-ids", default=None, help="Comma-separated video IDs to filter by")
@@ -309,6 +314,9 @@ def main():
     parser.add_argument("--after", type=parse_date, default=None, help="Filter: only results after this date (YYYY-MM-DD)")
     parser.add_argument("--before", type=parse_date, default=None, help="Filter: only results before this date (YYYY-MM-DD)")
     args = parser.parse_args()
+
+    if args.top_k is None:
+        args.top_k = DEFAULT_TOP_K.get(args.type, 10)
 
     person_names = args.person.split(",") if args.person else None
     event_ids = args.event_ids.split(",") if args.event_ids else None

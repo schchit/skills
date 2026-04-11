@@ -18,6 +18,20 @@ MEMORIES_AI_KEY=sk-their-key-here
 
 After that, everything just works — the key is loaded automatically from `.env` on every run.
 
+## Timezone
+
+**All timestamps in Luci-memory are stored and returned in UTC.** Skill output labels them with " UTC" so this is unambiguous. The user's local timezone is in `USER.md` (e.g. `Asia/Shanghai`). You are responsible for converting in both directions:
+
+1. **Reading results.** When presenting `captured_time` to the user, convert from UTC to the user's local timezone. Never show raw UTC labels to the user.
+
+2. **Writing filters.** `--after` and `--before` are interpreted as UTC. If the user says relative dates like "yesterday" or "this morning", convert their local-time intent to a UTC range before passing the dates.
+
+**Example** (user in `Asia/Shanghai`, UTC+8, asks "what did I do yesterday" on 2026-04-08):
+- Local intent: 2026-04-07 00:00 → 2026-04-08 00:00 (Asia/Shanghai)
+- UTC range to pass: `--after 2026-04-06T16:00:00 --before 2026-04-07T16:00:00`
+
+If `USER.md` has no timezone and the user uses relative dates, ask them first.
+
 Unified search across personal media and portrait data from the Luci-memory API.
 
 The user's videos go through two processing pipelines that produce different data:
@@ -57,6 +71,8 @@ The user's videos go through two processing pipelines that produce different dat
 - **If data is missing, say so.** Do not fill gaps with plausible-sounding guesses. "I couldn't find transcript data for that video" is always better than making something up.
 
 ## How to invoke
+
+Note: `--after` / `--before` are **UTC**. Convert from the user's local timezone first (see Timezone section above).
 
 ```bash
 # ============ Media content (personal) ============
