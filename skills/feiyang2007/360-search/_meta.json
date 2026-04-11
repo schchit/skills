@@ -3,11 +3,16 @@
   "slug": "360-search",
   "displayName": "360 Search",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1773885100596,
-    "commit": "https://github.com/openclaw/skills/commit/7991d148a2d4ebb63202764f737d41f7345325aa"
+    "version": "1.0.3",
+    "publishedAt": 1775546923901,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1773885100596,
+      "commit": "https://github.com/openclaw/skills/commit/7991d148a2d4ebb63202764f737d41f7345325aa"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1773446232192,
