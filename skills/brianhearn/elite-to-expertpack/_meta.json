@@ -1,13 +1,18 @@
 {
   "owner": "brianhearn",
   "slug": "elite-to-expertpack",
-  "displayName": "Elite to ExpertPack",
+  "displayName": "Elite To Expertpack",
   "latest": {
-    "version": "1.2.0",
-    "publishedAt": 1774625675730,
-    "commit": "https://github.com/openclaw/skills/commit/8b90979c5fb33c4700399abe3b81923a1fd13aeb"
+    "version": "1.0.1",
+    "publishedAt": 1775504444832,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.2.0",
+      "publishedAt": 1774625675730,
+      "commit": "https://github.com/openclaw/skills/commit/8b90979c5fb33c4700399abe3b81923a1fd13aeb"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773678999960,
