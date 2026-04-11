@@ -19,6 +19,8 @@ Treat shared-scope validation as a separate hard gate during shared promotion.
 
 Default rule in v1:
 - a candidate found in only one agent's approved local memory source should be skipped
+- similarity or repetition across multiple participating agents should be treated as the primary promotion signal by default
+- single-agent items should not be promoted merely because they look useful or shareable
 
 Allow promotion from a single local source only when at least one of the following is true:
 - the user explicitly designated the item as shared or global
@@ -31,6 +33,16 @@ Treat the following as the standard `promotionBasis` values:
 - `shared-governance-rule`
 
 If none of these bases can be justified clearly, skip the candidate.
+
+### Practical interpretation
+
+Use this default decision order:
+1. Check whether substantially similar content appears across multiple participating agents
+2. If not, check whether the user explicitly said the item should be shared
+3. If not, check whether the item is a shared-memory governance rule
+4. Otherwise skip the item
+
+Do not treat "seems broadly useful" as a sufficient basis by itself.
 
 ## Candidate evaluation categories
 

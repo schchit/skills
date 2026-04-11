@@ -14,6 +14,12 @@ Use this file as the reference source for:
 Default config file path:
 
 ```text
+<workspace-parent>/shared-memory/shared-memory.config.json
+```
+
+For the current default OpenClaw workspace layout, this resolves to:
+
+```text
 /root/.openclaw/shared-memory/shared-memory.config.json
 ```
 
@@ -93,7 +99,7 @@ Defines shared-memory filesystem locations.
 
 ```json
 "paths": {
-  "sharedRoot": "/root/.openclaw/shared-memory",
+  "sharedRoot": "<workspace-parent>/shared-memory",
   "sharedFiles": {
     "user": "shared-user.md",
     "memory": "shared-memory.md",
@@ -109,6 +115,11 @@ Defines shared-memory filesystem locations.
 #### `paths.sharedRoot`
 - Type: `string`
 - Meaning: absolute root directory for the shared-memory system
+- Default intent in v1: use a `shared-memory/` directory under the OpenClaw workspace parent directory (that is, as a sibling of `workspace/`)
+- In the default local layout, this resolves to:
+  ```text
+  /root/.openclaw/shared-memory
+  ```
 - Used by:
   - `init`
   - `run-shared-scan`
@@ -737,7 +748,7 @@ Incomplete local attachment must be displayed as `detached`.
     "agentId": "main"
   },
   "paths": {
-    "sharedRoot": "/root/.openclaw/shared-memory",
+    "sharedRoot": "<workspace-parent>/shared-memory",
     "sharedFiles": {
       "user": "shared-user.md",
       "memory": "shared-memory.md",

@@ -4,7 +4,7 @@
     "agentId": "main"
   },
   "paths": {
-    "sharedRoot": "/root/.openclaw/shared-memory",
+    "sharedRoot": "<workspace-parent>/shared-memory",
     "sharedFiles": {
       "user": "shared-user.md",
       "memory": "shared-memory.md",
