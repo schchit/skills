@@ -3,11 +3,16 @@
   "slug": "r2-uploader",
   "displayName": "r2-uploader",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1775045002790,
-    "commit": "https://github.com/openclaw/skills/commit/c367d05a5d15513e115aa0d151ce9df51f059855"
+    "version": "1.0.3",
+    "publishedAt": 1775840066357,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1775045002790,
+      "commit": "https://github.com/openclaw/skills/commit/c367d05a5d15513e115aa0d151ce9df51f059855"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1774078410075,
