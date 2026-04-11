@@ -194,9 +194,9 @@ source ~/.bashrc
 | **合计**     | **48**   |
 
 ## 数据来源与依赖
-- **官方文档**: `https://equal-data.com/equal/dist/datainterface`
+- **官方文档**: https://equaldata.kanjiujing.cn/equal/dist/introduction
 - **PYPI包地址**: `https://pypi.org/project/equal-data/`
-- **官网**: [https://equal-data.com/](https://equal-data.com/)
+- **官网**: [https://equaldata.kanjiujing.cn](https://equaldata.kanjiujing.cn)
 - **数据用途**: 仅用于获取行情数据，不涉及交易操作
 - **开源依赖**:
   - requests (Apache 2.0)
