@@ -1,12 +1,39 @@
 from __future__ import annotations
 
 import argparse
+import importlib
 import subprocess
 import sys
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Iterable
+
+REQUIRED_PACKAGES = {
+    "faster_whisper": "faster-whisper",
+    "opencc": "opencc-python-reimplemented",
+}
+
+
+def check_dependencies() -> list[str]:
+    """Return list of missing required package names."""
+    missing = []
+    for module_name, pip_name in REQUIRED_PACKAGES.items():
+        try:
+            importlib.import_module(module_name)
+        except ImportError:
+            missing.append(pip_name)
+    return missing
+
+
+_missing = check_dependencies()
+if _missing:
+    print(
+        f"ERROR: Missing required dependencies: {', '.join(_missing)}\n"
+        f"Install them with:  pip install {' '.join(_missing)}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
 
 # OpenClaw 技能版本
 SUPPORTED_INPUT_SUFFIXES = {

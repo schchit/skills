@@ -1,17 +1,36 @@
 from __future__ import annotations
 
 import argparse
+import importlib
 import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-SHARED_DEPENDENCY_DIR = Path(r"D:\SOFTware\py_dependent")
-if SHARED_DEPENDENCY_DIR.exists():
-    shared_dependency_dir = str(SHARED_DEPENDENCY_DIR)
-    if shared_dependency_dir not in sys.path:
-        sys.path.insert(0, shared_dependency_dir)
+REQUIRED_PACKAGES = {
+    "cv2": "opencv-python-headless",
+}
 
+
+def check_dependencies() -> list[str]:
+    """Return list of missing required package names."""
+    missing = []
+    for module_name, pip_name in REQUIRED_PACKAGES.items():
+        try:
+            importlib.import_module(module_name)
+        except ImportError:
+            missing.append(pip_name)
+    return missing
+
+
+_missing = check_dependencies()
+if _missing:
+    print(
+        f"ERROR: Missing required dependencies: {', '.join(_missing)}\n"
+        f"Install them with:  pip install {' '.join(_missing)}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
 
 SUPPORTED_INPUT_SUFFIXES = {
     ".mp4",

@@ -16,6 +16,33 @@ import sys
 import subprocess
 import tempfile
 import re
+import importlib
+
+# ===== 依赖检查 =====
+REQUIRED_PACKAGES = {
+    "yt_dlp": "yt-dlp",
+}
+
+
+def check_dependencies() -> list[str]:
+    """Return list of missing required package names."""
+    missing = []
+    for module_name, pip_name in REQUIRED_PACKAGES.items():
+        try:
+            importlib.import_module(module_name)
+        except ImportError:
+            missing.append(pip_name)
+    return missing
+
+
+_missing = check_dependencies()
+if _missing:
+    print(
+        f"ERROR: Missing required dependencies: {', '.join(_missing)}\n"
+        f"Install them with:  pip install {' '.join(_missing)}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
 
 # ===== 兼容性修复 =====
 # Windows 上 yt-dlp 可能不在 PATH，用 python -m yt_dlp 更稳
