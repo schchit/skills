@@ -1,13 +1,18 @@
 {
   "owner": "kilb",
   "slug": "awp",
-  "displayName": "AWP Core Skill",
+  "displayName": "AWP  Skill",
   "latest": {
-    "version": "0.24.8",
-    "publishedAt": 1774425531034,
-    "commit": "https://github.com/openclaw/skills/commit/735d806a8e81d995bf245bf2bba2c1318cbdaa41"
+    "version": "1.7.0",
+    "publishedAt": 1775924895241,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.24.8",
+      "publishedAt": 1774425531034,
+      "commit": "https://github.com/openclaw/skills/commit/735d806a8e81d995bf245bf2bba2c1318cbdaa41"
+    },
     {
       "version": "0.19.9",
       "publishedAt": 1774063653980,

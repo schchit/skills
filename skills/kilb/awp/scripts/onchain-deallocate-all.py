@@ -1,26 +1,23 @@
 #!/usr/bin/env python3
-"""On-chain deallocate stake from agent+worknet (V2)
-deallocate(address staker, address agent, uint256 worknetId, uint256 amount)
-Takes effect immediately, no cooldown period.
+"""On-chain deallocate all stake from agent+worknet
+deallocateAll(address staker, address agent, uint256 worknetId)
+Removes all allocated stake in a single call. Takes effect immediately.
 """
 from awp_lib import *
 
 
 def main() -> None:
-    parser = base_parser("On-chain deallocate stake from agent+worknet (V2)")
+    parser = base_parser("On-chain deallocate all stake from agent+worknet")
     parser.add_argument("--agent", required=True, help="Agent address")
     parser.add_argument("--worknet", required=True, help="Worknet ID")
-    parser.add_argument("--amount", required=True, help="AWP amount (human readable)")
     args = parser.parse_args()
 
     token: str = args.token
     agent: str = args.agent
     worknet: str = args.worknet
-    amount: str = args.amount
 
     # Validate inputs
     validate_address(agent, "agent")
-    validate_positive_number(amount, "amount")
     worknet_id: int = validate_positive_int(worknet, "worknet")
     worknet_id = expand_worknet_id(worknet_id)
 
@@ -31,18 +28,15 @@ def main() -> None:
     registry = get_registry()
     awp_allocator = require_contract(registry, "awpAllocator")
 
-    amount_wei = to_wei(amount)
-
-    # deallocate(address,address,uint256,uint256) selector = 0x716fb83d
+    # deallocateAll(address,address,uint256) selector = 0x586ac6b3
     calldata = encode_calldata(
-        "0x716fb83d",
+        "0x586ac6b3",
         pad_address(wallet_addr),
         pad_address(agent),
         pad_uint256(worknet_id),
-        pad_uint256(amount_wei),
     )
 
-    step("deallocate", staker=wallet_addr, agent=agent, worknet=worknet_id, amount=f"{amount} AWP")
+    step("deallocateAll", staker=wallet_addr, agent=agent, worknet=worknet_id)
     result = wallet_send(token, awp_allocator, calldata)
     print(result)
 

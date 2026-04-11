@@ -1,37 +1,43 @@
 #!/usr/bin/env python3
-"""链上 bind(address target) — 绑定到账户树中的目标（V2）
-基于树的绑定，带反循环检查。
+"""On-chain bind(address target) — bind to a target in the account tree
+Tree-based binding with anti-cycle checks on the AWPRegistry contract.
 """
-from awp_lib import *
+import json
+
+from awp_lib import (
+    base_parser,
+    encode_calldata,
+    get_registry,
+    get_wallet_address,
+    pad_address,
+    require_contract,
+    rpc,
+    step,
+    validate_address,
+    wallet_send,
+)
 
 
 def main() -> None:
-    parser = base_parser("On-chain bind to target address (V2)")
-    parser.add_argument("--target", required=True, help="绑定目标地址")
-    # 兼容旧参数名
-    parser.add_argument("--principal", dest="target_alt", help=argparse.SUPPRESS)
+    parser = base_parser("On-chain bind to target address")
+    parser.add_argument("--target", required=True, help="Bind target address")
     args = parser.parse_args()
 
     token: str = args.token
-    target: str = args.target_alt if args.target_alt else args.target
+    target: str = args.target
     validate_address(target, "target")
 
-    # 预检：获取钱包地址
+    # Pre-check: get wallet address
     wallet_addr = get_wallet_address()
 
-    # 获取合约注册表
+    # Get contract registry
     registry = get_registry()
     awp_registry = require_contract(registry, "awpRegistry")
 
-    # 检查是否已绑定
-    check = api_get(f"address/{wallet_addr}/check")
+    # Check if already bound — avoids paying gas for a call the contract would revert
+    check = rpc("address.check", {"address": wallet_addr})
     if isinstance(check, dict):
-        # V2: .boundTo; V1: .isRegisteredAgent + .ownerAddress
         bound_to = check.get("boundTo", "")
-        is_agent = str(check.get("isRegisteredAgent", False)).lower()
-        if is_agent == "true":
-            bound_to = check.get("ownerAddress", "")
-
         zero_addr = "0x0000000000000000000000000000000000000000"
         if bound_to and bound_to != "null" and bound_to != zero_addr:
             print(json.dumps({
@@ -41,7 +47,7 @@ def main() -> None:
             }))
             return
 
-    # bind(address) selector = 0x81bac14f + ABI 编码地址
+    # bind(address) selector = 0x81bac14f + ABI-encoded address
     calldata = encode_calldata("0x81bac14f", pad_address(target))
 
     step("bind", address=wallet_addr, target=target)

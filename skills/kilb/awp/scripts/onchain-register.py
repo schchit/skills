@@ -1,43 +1,55 @@
 #!/usr/bin/env python3
-"""链上 register() — 显式注册（V2）
-V2 中 register() 等同于 setRecipient(msg.sender)。
-每个地址隐式为 root；调用 register() 只是显式将 recipient 设为自己。
+"""On-chain registration on AWPRegistry.
+
+AWPRegistry has no standalone `register()` function; registration happens implicitly
+the first time an address calls `setRecipient(address)`. Setting the recipient to the
+caller's own address is the canonical way to mark an address as active without
+changing the reward recipient from its default (self).
+
+If the agent is already registered, this script is a no-op.
 """
-from awp_lib import *
+import json
+
+from awp_lib import (
+    base_parser,
+    encode_calldata,
+    get_registry,
+    get_wallet_address,
+    pad_address,
+    require_contract,
+    rpc,
+    step,
+    wallet_send,
+)
 
 
 def main() -> None:
-    parser = base_parser("On-chain register (V2)")
+    parser = base_parser("On-chain register (setRecipient to self)")
     args = parser.parse_args()
     token: str = args.token
 
-    # 预检：获取钱包地址
+    # Pre-check: get wallet address
     wallet_addr = get_wallet_address()
 
-    # 获取合约注册表
+    # Get contract registry
     registry = get_registry()
     awp_registry = require_contract(registry, "awpRegistry")
 
-    # 检查是否已注册
-    check = api_get(f"address/{wallet_addr}/check")
-    if isinstance(check, dict):
-        # V2: .isRegistered; V1: .isRegisteredUser
-        is_registered = check.get("isRegistered")
-        if is_registered is None:
-            is_registered = check.get("isRegisteredUser", False)
-        recipient = check.get("recipient", "")
+    # Check if already registered — avoids paying gas for a no-op
+    check = rpc("address.check", {"address": wallet_addr})
+    if isinstance(check, dict) and check.get("isRegistered"):
+        print(json.dumps({
+            "status": "already_registered",
+            "address": wallet_addr,
+            "recipient": check.get("recipient", ""),
+        }))
+        return
 
-        if str(is_registered).lower() == "true":
-            print(json.dumps({
-                "status": "already_registered",
-                "address": wallet_addr,
-                "recipient": recipient,
-            }))
-            return
-
-    # register() selector = 0x1aa3a008
-    step("register", address=wallet_addr)
-    result = wallet_send(token, awp_registry, "0x1aa3a008")
+    # setRecipient(address) selector = 0x3bbed4a0
+    # Passing the caller's own address registers without changing reward routing.
+    calldata = encode_calldata("0x3bbed4a0", pad_address(wallet_addr))
+    step("register", address=wallet_addr, method="setRecipient(self)")
+    result = wallet_send(token, awp_registry, calldata)
     print(result)
 
 
