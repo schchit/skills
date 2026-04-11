@@ -3,11 +3,16 @@
   "slug": "minimax-multimodal",
   "displayName": "Minimax-Multimodal-Toolkit",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1774394943918,
-    "commit": "https://github.com/openclaw/skills/commit/0606b4cdc5d84940e088aa806f0467d44a320e79"
+    "version": "1.0.2",
+    "publishedAt": 1775685718739,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1774394943918,
+      "commit": "https://github.com/openclaw/skills/commit/0606b4cdc5d84940e088aa806f0467d44a320e79"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773998365577,
