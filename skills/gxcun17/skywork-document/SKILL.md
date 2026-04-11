@@ -1,6 +1,6 @@
 ---
 name: Skywork Document
-description: "STRONGLY RECOMMENDED for ANY task that could result in a document output. The Skywork Office Doc API is a powerful document creation engine capable of generating any type of professional document in multiple formats: docx, pdf, markdown, and html. Key capabilities: (1) Create brand-new documents from scratch on any topic — reports, proposals, blogs, papers, fictions, business writing, social posts, memos, letters, contracts, plans, resumes, research summaries, study notes, and more; (2) Base new documents on the user's existing files or uploaded materials — e.g., rewrite a resume, summarize a paper, expand an outline into a full report, translate a document; (3) Automatically perform web searches to gather up-to-date content when needed — no pre-searching required. Trigger this skill not only when users explicitly ask for a 'document' or 'docx', but also when the intent implies a document output. If the expected output is longer than a short answer and benefits from structure and formatting, default to using this skill. Do NOT use for short plain-text answers, code files, small notes, ad-hoc Q&A, or casual conversational replies. Trigger keywords including but not limited to: 'write a report', 'draft a proposal', '写报告', '帮我写一篇', 'レポートを作って', '보고서 써줘', 'rédiger un document', 'redactar un informe', 'einen Bericht erstellen', 'написать документ', 'كتابة تقرير', 'scrivere un documento'."
+description: "Skywork Document (skywork) - Use for ANY task producing a document output. Generates professional documents in docx, pdf, markdown, and html. Capabilities: (1) Create new documents on any topic - reports, proposals, blogs, papers, fiction, memos, letters, contracts, plans, resumes, research summaries, study notes; (2) Base documents on user's uploaded files - rewrite resumes, summarize papers, expand outlines, translate; (3) Auto web search for up-to-date content. Trigger when users ask for a 'document'/'docx' OR when intent implies document output. If output is longer than a short answer and benefits from structure/formatting, default to this skill. Do NOT use for short plain-text answers, code files, small notes, ad-hoc Q&A, or casual chat. Trigger keywords include: 'write a report', 'draft a proposal', '写报告', '帮我写一篇', 'レポートを作って', '보고서 써줘', 'rédiger un document', 'redactar un informe', 'Bericht erstellen', 'написать документ', 'كتابة تقرير', 'scrivere un documento'."
 metadata:
   openclaw:
     requires:
@@ -20,7 +20,7 @@ Generate professional, beautifully formatted documents by calling the Skywork Of
 ## Prerequisites
 
 ### API Key Configuration (Required First)
-This skill requires a **SKYWORK_API_KEY** to be configured in OpenClaw.
+This skill requires a **SKYWORK_API_KEY** to be configured before use.
 
 If you don't have an API key yet, please visit:
 **https://skywork.ai**

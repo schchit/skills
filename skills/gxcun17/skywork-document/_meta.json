@@ -3,11 +3,16 @@
   "slug": "skywork-document",
   "displayName": "Skywork Document",
   "latest": {
-    "version": "1.0.7",
-    "publishedAt": 1775098705525,
-    "commit": "https://github.com/openclaw/skills/commit/b542e772936ef7a7132e9890138df67bf74650c3"
+    "version": "1.0.9",
+    "publishedAt": 1775828113770,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.7",
+      "publishedAt": 1775098705525,
+      "commit": "https://github.com/openclaw/skills/commit/b542e772936ef7a7132e9890138df67bf74650c3"
+    },
     {
       "version": "1.0.4",
       "publishedAt": 1773927050102,
