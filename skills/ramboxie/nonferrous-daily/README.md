@@ -6,25 +6,28 @@ A lightweight Node.js system that collects real-time base metals prices from mul
 
 ## Features
 
-- 📊 **Multi-source price aggregation** — Yahoo Finance (USD), CCMN 長江有色 (CNY), Stooq
-- 📰 **News & sentiment** — Google News RSS (CN + EN), SMM quick headlines, Reddit r/Commodities
-- 🏦 **Investment bank signals** — filters Google News for Goldman Sachs / JPMorgan / Citi base metals coverage
-- 📈 **Technical analysis** — forward curve (spot/+2M/+6M), basis, contango/backwardation detection
-- 🔮 **3-dimensional reasoning** — Technical × Fundamental × Sentiment cross-validation with confidence rating
-- 🔥 **Anomaly detection** — Reddit hot vs top divergence to catch sudden surging topics
-- ⏰ **14:00 CST timing** — after China morning session + LME overnight data both available
-- 🚫 **Zero paid APIs** — all free data sources; no API key required to run
+- 📊 **Multi-source price aggregation** — Yahoo Finance (USD), CCMN 長江有色 (CNY), SMM/Westmetall cross-checks
+- 📰 **News & sentiment** — Google News (CN+EN) with 48h filter, SMM 快訊, Reddit r/Commodities 異動偵測
+- 🏦 **Investment bank signals** — 自動抽取高盛/摩根大通/花旗的基本金屬觀點
+- 📈 **Technical** — forward curve (spot/+2M/+6M), basis, contango/backwardation detection
+- 📦 **庫存三件套** — 交易所 / 保稅 / 社會庫存（佔位兜底），周環比箭頭
+- 🚢 **進口盈虧/到岸成本** — Cu/Zn/Ni 匯率+外盤→內盤，盈虧/壓力標註
+- 📊 **信號摘要** — 庫存 / 基差 / 進口盈虧 / 需求 四維 +/0/- 打分
+- 🌡️ **宏觀溫度計** — DXY / VIX / CRB（佔位）/ 10Y，提示風險開關
+- 🔮 **Cross reasoning** — 宏觀 × 庫存 × 結構 × 情緒，段落式分析 + 操作參考
+- ⏰ **14:00 CST timing** — after China morning session + LME overnight data
+- 🚫 **Zero paid APIs** — all free data sources; no API key required
 
 ## Metals Covered
 
 | Metal | USD Source | CNY Source |
-|-------|-----------|------------|
-| Copper (Cu) | Yahoo `HG=F` + forward contracts | CCMN 長江有色 |
-| Zinc (Zn) | — (ZNC=F stale, disabled) | CCMN 長江有色 |
-| Aluminum (Al) | Yahoo `ALI=F` | — |
-| Nickel (Ni) | — | CCMN 長江有色 |
-| Cobalt (Co) | — | CCMN 長江有色 |
-| Bismuth (Bi) | Stooq `BI.F` ⚠️ reliability unverified | — |
+|-------|------------|------------|
+| Copper (Cu) | Yahoo `HG=F` + COMEX forwards | CCMN 長江有色 + SMM 交叉驗證 |
+| Zinc (Zn)   | Westmetall LME Cash | CCMN 長江有色 + SMM 交叉驗證 |
+| Nickel (Ni) | Westmetall LME Cash | CCMN 長江有色 + SMM 交叉驗證 |
+| Cobalt (Co) | TradingEconomics (USD) | CCMN 長江有色 |
+| Bismuth (Bi)| SMM CIF USD/kg | SMM 精鉍 |
+| Magnesium (Mg) | — | CCMN 1#鎂 |
 
 ## Architecture
 

@@ -80,6 +80,20 @@ function emoji(v) {
   return '🔵';
 }
 
+function arrow(v) {
+  if (v == null) return '➖';
+  if (v > 0) return '🔺';
+  if (v < 0) return '🔻';
+  return '➖';
+}
+
+function signScore(v, pos = 0, neg = 0) {
+  if (v == null) return '0';
+  if (v > pos) return '+';
+  if (v < neg) return '-';
+  return '0';
+}
+
 // ────────────────────────────────────────────
 // 日期校验：只保留 48h 内的新闻
 // ────────────────────────────────────────────
@@ -93,6 +107,47 @@ function freshNews(items) {
   });
 }
 
+function buildImportParity(prices, fx) {
+  const fxRate = fx?.price ?? null;
+  const fee = { nickel: 1500, copper: 800, zinc: 500 };
+  const metals = ['nickel', 'copper', 'zinc'];
+  const result = {};
+  for (const m of metals) {
+    const usdRaw = prices?.[m]?.usd ?? null;
+    const unit = prices?.[m]?.usdUnit ?? null;
+    const usdPerTon = unit === 'USD/lb' ? (usdRaw != null ? usdRaw * 2204.62 : null) : usdRaw;
+    const cny = prices?.[m]?.cny ?? null;
+    if (usdPerTon == null || fxRate == null || cny == null) {
+      result[m] = null;
+      continue;
+    }
+    const landed = Math.round(usdPerTon * fxRate + fee[m]);
+    const pnl = cny - landed; // >0 = 內盤升水，進口盈利
+    const status = pnl > 200 ? '盈利' : (pnl < -200 ? '虧損' : '中性');
+    result[m] = { usd: usdPerTon, fx: fxRate, landed, domestic: cny, pnl, status, fee: fee[m] };
+  }
+  return result;
+}
+
+function summarizeScores(scores) {
+  const pos = Object.values(scores).filter(s => s === '+').length;
+  const neg = Object.values(scores).filter(s => s === '-').length;
+  if (pos > neg + 1) return '整體偏多（+）';
+  if (neg > pos + 1) return '整體偏空（-）';
+  return '中性觀望（0）';
+}
+
+function calcBasis(prices, fx, key) {
+  const usdRaw = prices?.[key]?.usd ?? null;
+  const unit = prices?.[key]?.usdUnit ?? null;
+  const usd = unit === 'USD/lb' ? (usdRaw != null ? usdRaw * 2204.62 : null) : usdRaw;
+  const cny = prices?.[key]?.cny ?? null;
+  const rate = fx?.price ?? null;
+  if (usd == null || cny == null || rate == null) return null;
+  const importParity = usd * rate;
+  return cny - importParity; // >0 = 內盤升水
+}
+
 // ────────────────────────────────────────────
 // 组装报告
 // ────────────────────────────────────────────
@@ -101,6 +156,9 @@ function buildReport(d) {
   const inv = d.inventory || {};
   const fwd = d.forwards?.copper;
   const idx = d.indices || [];
+  const fx = d.fxRates?.usdCny || null;
+  const macro = d.macro || [];
+  const importParity = buildImportParity(p, fx);
   // 目標品種：Cu / Zn / Ni / Co / Mg / Bi（不含 Al）
 
   const lines = [];
@@ -243,24 +301,65 @@ function buildReport(d) {
   }
   lines.push('');
 
-  // ── 四、基本面（库存） ──
-  lines.push('━━━ 四、基本面（LME 庫存） ━━━');
-  if (inv.copper?.tonnes != null) {
-    lines.push(`• 銅：${fmtNum(inv.copper.tonnes)} t ${fmtChange(inv.copper.change)}（${inv.copper.change > 0 ? '累庫，壓制升水' : '去庫，支撐現貨'}）`);
-  }
-  if (inv.zinc?.tonnes != null) {
-    lines.push(`• 鋅：${fmtNum(inv.zinc.tonnes)} t ${fmtChange(inv.zinc.change)}（${inv.zinc.change < 0 ? '去庫，供應偏緊' : '累庫，壓力存在'}）`);
-  }
-  if (inv.nickel?.tonnes != null) {
-    lines.push(`• 鎳：${fmtNum(inv.nickel.tonnes)} t ${fmtChange(inv.nickel.change)}`);
-  }
+  // ── 四、庫存三件套 ──
+  lines.push('━━━ 四、庫存三件套 ━━━');
+  const exchLine = [
+    `Cu ${inv.copper?.tonnes ? fmtNum(inv.copper.tonnes) + 't' : '—'} ${arrow(inv.copper?.change)}${fmtChange(inv.copper?.change)}`,
+    `Zn ${inv.zinc?.tonnes ? fmtNum(inv.zinc.tonnes) + 't' : '—'} ${arrow(inv.zinc?.change)}${fmtChange(inv.zinc?.change)}`,
+    `Ni ${inv.nickel?.tonnes ? fmtNum(inv.nickel.tonnes) + 't' : '—'} ${arrow(inv.nickel?.change)}${fmtChange(inv.nickel?.change)}`,
+  ].join('  |  ');
+  lines.push(`交易所 (LME)：${exchLine}`);
+  lines.push('保稅區：暫缺（待接入，保留欄位不崩）');
+  lines.push('社會庫存：暫缺（待接入，保留欄位不崩）');
   if (inv.copper?.dataDate) {
     lines.push(`_庫存截至 ${inv.copper.dataDate}_`);
   }
   lines.push('');
 
-  // ── 五、市场情绪与机构观点 ──
-  lines.push('━━━ 五、市場情緒與機構觀點 ━━━');
+  // ── 五、進口盈虧 / 到岸成本 ──
+  lines.push('━━━ 五、進口盈虧 / 到岸成本 ━━━');
+  const fxLine = fx?.price ? `USD/CNY ${fx.price.toFixed(4)} ${fmtPct(fx.changePct)}` : 'USD/CNY 暫缺';
+  lines.push(`匯率：${fxLine}；假設含稅費用 Ni ¥1,500 / Cu ¥800 / Zn ¥500`);
+  function importLine(key, label) {
+    const row = importParity[key];
+    if (!row) return `${label}：數據暫缺（外盤或內盤或匯率缺失）`;
+    const pnlEmoji = row.pnl > 200 ? '🟢' : (row.pnl < -200 ? '🔴' : '🔵');
+    return `${pnlEmoji} ${label}：外盤 $${fmtNum(row.usd)}/t → 到岸 ¥${fmtNum(row.landed)}/t（含費¥${fmtNum(row.fee)}） | 內盤 ¥${fmtNum(row.domestic)}/t → 盈虧 ${row.pnl >= 0 ? '+' : ''}${fmtNum(row.pnl)}/t（${row.status}）`;
+  }
+  lines.push(importLine('nickel', '鎳 Ni'));
+  lines.push(importLine('copper', '銅 Cu'));
+  lines.push(importLine('zinc',   '鋅 Zn'));
+  lines.push('');
+
+  // ── 六、信號摘要（+ / 0 / -） ──
+  lines.push('━━━ 六、信號摘要（+ / 0 / -） ━━━');
+  const invChanges = [inv.copper?.change, inv.zinc?.change, inv.nickel?.change].filter(v => v != null);
+  const invDir = invChanges.length ? invChanges.reduce((a, b) => a + b, 0) / invChanges.length : null;
+  const invScore = signScore(invDir != null ? -invDir : null); // 去庫為正
+
+  const basisVals = ['copper', 'zinc', 'nickel']
+    .map(k => calcBasis(p, fx, k))
+    .filter(v => v != null);
+  const basisAvg = basisVals.length ? basisVals.reduce((a, b) => a + b, 0) / basisVals.length : null;
+  const basisScore = signScore(basisAvg, 100, -100);
+
+  const importPnls = ['nickel', 'copper', 'zinc']
+    .map(k => importParity[k]?.pnl)
+    .filter(v => v != null);
+  const importAvg = importPnls.length ? importPnls.reduce((a, b) => a + b, 0) / importPnls.length : null;
+  const importScore = signScore(importAvg, 200, -200);
+
+  const demandVals = [p.copper?.cnyChange, p.zinc?.cnyChange, p.nickel?.cnyChange].filter(v => v != null);
+  const demandAvg = demandVals.length ? demandVals.reduce((a, b) => a + b, 0) / demandVals.length : null;
+  const demandScore = signScore(demandAvg, 0, 0);
+
+  const scores = { '庫存趨勢': invScore, '基差/升貼水': basisScore, '進口盈虧': importScore, '需求/成交': demandScore };
+  lines.push(Object.entries(scores).map(([k, v]) => `${k}:${v}`).join('  |  '));
+  lines.push(`總結：${summarizeScores(scores)}（+ 看多 / - 看空 / 0 中性）`);
+  lines.push('');
+
+  // ── 七、市场情绪与机构观点 ──
+  lines.push('━━━ 七、市場情緒與機構觀點 ━━━');
 
   const ibItems = freshNews(d.ibNews);
   const forum = d.forumSentiment;
@@ -285,8 +384,9 @@ function buildReport(d) {
   }
 
   if (ibSummaries.length > 0) {
+    const uniqIb = [...new Set(ibSummaries)];
     lines.push('*🏦 機構觀點*');
-    ibSummaries.forEach(s => lines.push(`• ${s}`));
+    uniqIb.forEach(s => lines.push(`• ${s}`));
     lines.push('');
   }
 
@@ -338,8 +438,8 @@ function buildReport(d) {
   }
   lines.push('');
 
-  // ── 六、四维交叉推理与操作参考 ──
-  lines.push('━━━ 六、四維交叉推理 ━━━');
+  // ── 八、四维交叉推理与操作参考 ──
+  lines.push('━━━ 八、四維交叉推理 ━━━');
 
   // 宏观维度
   let macroText = '';
@@ -416,6 +516,21 @@ function buildReport(d) {
     ? sentParts.join('；') + '。'
     : '市場情緒中性，無顯著異動，短線跟隨基本面邏輯為主。';
   lines.push(`④ 情緒維度：${sentText}`);
+
+  lines.push('');
+  lines.push('━━━ 九、宏觀風險溫度計 ━━━');
+  const dxy = macro.find(m => ['^DXY', 'DX-Y.NYB', 'DX=F'].includes(m.symbol));
+  const vix = macro.find(m => m.symbol === '^VIX');
+  const crb = macro.find(m => ['CRY', 'TRJEFFCR', '^CRB'].includes(m.symbol));
+  const tnx = macro.find(m => m.symbol === '^TNX');
+  const macroLines = [];
+  const macroMsg = [];
+  if (dxy) { macroLines.push(`DXY ${dxy.price?.toFixed(2)} ${fmtPct(dxy.changePct)}`); if (dxy.changePct > 0.3) macroMsg.push('美元走強對大宗偏空'); else if (dxy.changePct < -0.3) macroMsg.push('美元走弱利好商品定價'); }
+  if (vix) { macroLines.push(`VIX ${vix.price?.toFixed(2)} ${fmtPct(vix.changePct)}`); if (vix.price > 18 || vix.changePct > 5) macroMsg.push('波動上升，風險偏好降'); }
+  if (crb) macroLines.push(`CRB ${crb.price?.toFixed(2)} ${fmtPct(crb.changePct)}`);
+  if (tnx) { macroLines.push(`美債10Y ${tnx.price?.toFixed(2)}% ${fmtPct(tnx.changePct)}`); if (tnx.changePct > 0.5) macroMsg.push('利率上行，成本壓力↑'); }
+  lines.push(macroLines.length ? macroLines.join('  |  ') : '宏觀指標暫缺');
+  lines.push(`溫度計：${macroMsg.length ? macroMsg.join('；') : '風險情緒中性'}`);
 
   lines.push('');
   lines.push('📌 *操作參考（非投資建議）*');
@@ -543,9 +658,15 @@ async function main() {
   const env = loadEnv();
   const token = env.TELEGRAM_BOT_TOKEN;
   const chatId = env.TELEGRAM_CHAT_ID;
+  const dryRun = process.env.DRY_RUN === '1' || process.env.DRY_RUN === 'true';
 
   if (!token) {
     process.stderr.write('[daily-report] ⚠️  未配置 TELEGRAM_BOT_TOKEN，跳过发送\n');
+    return;
+  }
+
+  if (dryRun) {
+    process.stderr.write('[daily-report] 🧪 DRY_RUN=1，僅打印預覽不發送 Telegram\n');
     return;
   }
 

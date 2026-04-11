@@ -212,6 +212,13 @@ async function fetchYahoo(symbol) {
   }
 }
 
+// USD/CNY 匯率（Yahoo Finance）
+async function fetchUsdcny() {
+  const fx = await fetchYahoo('USDCNY=X');
+  if (!fx.ok || fx.price == null) return null;
+  return { price: fx.price, changePct: fx.changePct, source: 'Yahoo/USDCNY=X' };
+}
+
 // ────────────────────────────────────────────
 // v7 新增：有色金屬行業指數（Yahoo Finance）
 // 測試結果（2026-03-15）：
@@ -242,6 +249,42 @@ async function fetchMetalIndices() {
       price: data.price,
       changePct: data.changePct,
       changeAbs,
+    };
+  }));
+
+  return results.filter(Boolean);
+}
+
+// 宏觀風險指標：DXY / VIX / CRB / 美債10Y
+async function fetchMacroIndicators() {
+  const symbols = [
+    { symbol: '^DXY', name: '美元指數', unit: 'pts' },
+    { symbol: '^VIX', name: 'VIX恐慌指數', unit: 'pts' },
+    { symbol: 'CRY',  name: 'CRB商品指數', unit: 'pts' },
+    { symbol: '^TNX', name: '美債10Y收益率', unit: '%' },
+  ];
+
+  const results = await Promise.all(symbols.map(async (cfg) => {
+    let data = await fetchYahoo(cfg.symbol);
+    if ((!data.ok || data.price == null) && cfg.symbol === 'CRY') {
+      // CRB 指數備用 symbol：TRJEFFCR
+      data = await fetchYahoo('TRJEFFCR');
+      cfg = { ...cfg, symbol: 'TRJEFFCR' };
+    }
+    if ((!data.ok || data.price == null) && cfg.symbol === '^DXY') {
+      // DXY 備用 symbol：DX-Y.NYB
+      data = await fetchYahoo('DX-Y.NYB');
+      cfg = { ...cfg, symbol: 'DX-Y.NYB' };
+    }
+    if (!data.ok || data.price == null) return null;
+    // ^TNX 報價通常為收益率×10（若>20則縮放），否則直接使用
+    const rawPrice = data.price;
+    const price = cfg.symbol === '^TNX' && rawPrice > 20 ? +(rawPrice / 10).toFixed(3) : rawPrice;
+    return {
+      ...cfg,
+      price,
+      changePct: data.changePct,
+      source: 'Yahoo',
     };
   }));
 
@@ -1077,6 +1120,8 @@ async function main() {
     smmNews,
     redditPosts,
     metalIndices,
+    fxRate,
+    macroIndicators,
   ] = await Promise.all([
     fetchCcmnPrices(),
     fetchOmetal(),                 // v11 新增：OmetalCN 備用源（Cu/Al/Pb/Zn/Ni/Sn）
@@ -1096,6 +1141,8 @@ async function main() {
     fetchSmmNews(),
     fetchRedditCommodities(),
     fetchMetalIndices(),
+    fetchUsdcny(),                 // USD/CNY 匯率（供進口盈虧、基差）
+    fetchMacroIndicators(),        // 宏觀風險指標（DXY/VIX/CRB/TNX）
   ]);
   // v9: 從 inventory._wmPrices 提取 Westmetall 現貨 USD 數據（從輸出中清理內部字段）
   const westmetall = inventory?._wmPrices ?? { copper: null, zinc: null, nickel: null };
@@ -1281,6 +1328,10 @@ async function main() {
     prices,
     forwards,
     indices: metalIndices,
+    macro: macroIndicators,
+    fxRates: {
+      usdCny: fxRate,
+    },
     inventory,
     // SMM 長江報價交叉驗證（與 CCMN 對比，差異 <1% 為正常市場誤差）
     smmCrossCheck: {
@@ -1358,6 +1409,8 @@ main().catch(err => {
     prices: { copper: null, zinc: null, aluminum: null, nickel: null, cobalt: null, bismuth: null, magnesium: null, lead: null, tin: null },
     forwards: { copper: null },
     indices: [],
+    macro: [],
+    fxRates: { usdCny: null },
     inventory: { copper: null, zinc: null, nickel: null, cobalt: null, note: err.message },
     news: [],
     ibNews: [],
