@@ -1,11 +1,17 @@
 {
   "owner": "michaelfeng",
   "slug": "clawbrain-pro-doctor",
-  "displayName": "Clawbrain Pro Doctor",
+  "displayName": "ClawBrain Doctor",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774251475000,
-    "commit": "https://github.com/openclaw/skills/commit/b19d28488622c9992591f66e958a8af79b4483d1"
+    "version": "1.2.0",
+    "publishedAt": 1775796993208,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774251475000,
+      "commit": "https://github.com/openclaw/skills/commit/b19d28488622c9992591f66e958a8af79b4483d1"
+    }
+  ]
 }
