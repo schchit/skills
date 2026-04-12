@@ -1,13 +1,18 @@
 {
   "owner": "sealawyer2026",
   "slug": "zhang-eu-ai-act",
-  "displayName": "九章-欧盟AI法案专家",
+  "displayName": "Zhang Eu Ai Act",
   "latest": {
-    "version": "1.5.0",
-    "publishedAt": 1775098775766,
-    "commit": "https://github.com/openclaw/skills/commit/fe9853dc232ddda49ac365efe19284880ef9f624"
+    "version": "1.0.0",
+    "publishedAt": 1775484350052,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.5.0",
+      "publishedAt": 1775098775766,
+      "commit": "https://github.com/openclaw/skills/commit/fe9853dc232ddda49ac365efe19284880ef9f624"
+    },
     {
       "version": "1.4.0",
       "publishedAt": 1774508410399,
