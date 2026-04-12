@@ -1,6 +1,9 @@
 ---
-name: Agent Memory System Guide
-description: An agent memory workflow guide for OpenClaw and Codex with MEMORY.md, daily notes, SESSION-STATE, working-buffer, Obsidian archiving, and optional OpenViking support.
+name: memory-system
+description: Use when setting up or improving an agent memory workflow for OpenClaw, Codex, or Obsidian with MEMORY.md, daily notes, session recovery, and optional OpenViking support.
+homepage: https://github.com/cjke84/agent-memory-system-guide
+user-invocable: true
+metadata: {"openclaw": {"emoji": "🧠", "homepage": "https://github.com/cjke84/agent-memory-system-guide", "always": true}}
 ---
 
 # Agent 记忆系统搭建指南 Skill
@@ -182,6 +185,7 @@ memory_search(query="相关关键词")
 Agent 每次会话醒来都是空白的。没有记忆文件，你就等于每次失忆重启。记忆系统是 Agent 的“大脑持久化”方案。它不让你变聪明，但让你不犯重复的错误。
 
 这个 skill 的核心定位是本地优先的文件工作流和恢复约定，不是托管式 memory platform。外部检索或语义召回能力只能作为可选后端接在后面，不能替代本地恢复层。
+即使 OpenClaw 新版已经提供 native memory、diary、dreaming 或 grounded recall，这个 skill 仍然负责可审计、可迁移的 local recovery layer，并与这些原生能力互补而不是竞争。
 
 ## 核心架构（本地优先分层）
 

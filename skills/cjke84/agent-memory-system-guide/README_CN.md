@@ -8,9 +8,9 @@ Canonical OpenClaw skill id：`memory-system`
 
 面向 OpenClaw 和 Obsidian 工作流的 Agent 长期记忆搭建指南。
 
-GitHub 发布归档：[v0.1.0](https://github.com/cjke84/agent-memory-system-guide/releases/tag/v0.1.0)
+历史 GitHub release archive：[v0.1.0](https://github.com/cjke84/agent-memory-system-guide/releases/tag/v0.1.0)
 
-当前已发布 skill 版本：`1.1.5`
+Registry / 已发布 skill 版本：`1.1.7`
 
 ## 是什么
 
@@ -18,6 +18,7 @@ GitHub 发布归档：[v0.1.0](https://github.com/cjke84/agent-memory-system-gui
 它是本地文件工作流和约定，不是托管式 memory platform。
 OpenViking 是可选增强层，用来补充语义召回和摘要。
 可以把 OpenViking、`memory_search`，或者未来别的记忆服务都理解成可选召回后端，而不是本地恢复层的替代品。
+OpenClaw 新版自带的 native memory、diary、dreaming 与 grounded recall 更像互补层；这个仓库仍然聚焦可审计、可迁移的本地恢复层，而不是替代原生能力。
 
 适合：
 - 需要长期记忆的 Agent
@@ -30,6 +31,20 @@ OpenViking 是可选增强层，用来补充语义召回和摘要。
 2. 先复制 `templates/SESSION-STATE.md` 和 `templates/working-buffer.md`，再配合 `MEMORY.md` 和每日笔记使用。
 3. 把稳定事实蒸馏进长期记忆，原始记录留在每日笔记里。
 4. 将稳定知识归档到 Obsidian。
+
+## OpenClaw 兼容说明
+
+- 当前文档以 OpenClaw `v2026.4.9`（2026-04-09 发布）作为能力基线。
+- 本仓库的技能格式遵循当前 OpenClaw Skills 约定：`SKILL.md` frontmatter、workspace `skills/` 安装路径，以及可迁移的本地文件恢复层。
+- 只要旧版 OpenClaw 还能正常加载普通 `SKILL.md`，这套本地记忆工作流大多仍可使用；但安装路径以上述新版 `openclaw skills install <slug>` 为主。
+- OpenClaw 原生的 memory、diary、grounded recall、dreaming 是互补层；这个仓库继续负责可读、可同步、可审计、可备份的本地恢复层。
+
+## 安装后自检
+
+1. 先确认 skill 已出现在当前 OpenClaw workspace 中。
+2. 运行 `python3 scripts/memory_capture.py bootstrap --workspace /path/to/workspace`。
+3. 确认 `SESSION-STATE.md`、`working-buffer.md`、`memory-capture.md` 已被创建，或者在已有情况下被保留。
+4. 如果想快速看健康状态，再运行 `python3 scripts/memory_capture.py report --workspace /path/to/workspace`。
 
 ## 文件边界
 

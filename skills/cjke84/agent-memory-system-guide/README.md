@@ -13,8 +13,8 @@ Canonical OpenClaw skill id: `memory-system`
 - [English README](README_EN.md)
 - [中文介绍](README_CN.md)
 - [Install Skill for Agent](INSTALL.md)
-- GitHub release archive: [v0.1.0](https://github.com/cjke84/agent-memory-system-guide/releases/tag/v0.1.0)
-- Current published skill version: `1.1.5`
+- Historical GitHub release archive: [v0.1.0](https://github.com/cjke84/agent-memory-system-guide/releases/tag/v0.1.0)
+- Registry / published skill version: `1.1.7`
 
 ## What it is
 
@@ -23,6 +23,7 @@ It is a local-first workflow and file contract, not a hosted memory platform.
 OpenViking is an optional enhancement for semantic recall and summary support.
 It is not required for the core workflow.
 Treat OpenViking, `memory_search`, or future memory services as optional recall backends that sit behind the local recovery layer instead of replacing it.
+OpenClaw's newer native memory, diary, and dreaming features complement this repository rather than replace it: this guide focuses on an auditable local recovery layer that still works when you want portable files first.
 
 Best fit:
 - Agents that need persistent memory
@@ -35,6 +36,20 @@ Best fit:
 2. Copy `templates/SESSION-STATE.md` and `templates/working-buffer.md`, then use them together with `MEMORY.md` and daily notes.
 3. Distill stable facts into long-term memory and keep raw notes in daily files.
 4. Archive stable knowledge into Obsidian.
+
+## OpenClaw compatibility
+
+- Baseline tested and documented against OpenClaw `v2026.4.9` (released 2026-04-09).
+- The skill format here follows the current OpenClaw Skills contract: `SKILL.md` frontmatter, workspace `skills/` install flow, and portable file-first recovery.
+- Core workflow remains useful on older OpenClaw versions as long as plain `SKILL.md` loading works, but the clearest install path is the newer `openclaw skills install <slug>` flow.
+- OpenClaw native memory, diary, grounded recall, and dreaming are complementary layers; this repository remains the local recovery layer you can read, sync, audit, and back up directly.
+
+## Post-install self-check
+
+1. Confirm the skill appears in your current OpenClaw workspace.
+2. Run `python3 scripts/memory_capture.py bootstrap --workspace /path/to/workspace`.
+3. Confirm `SESSION-STATE.md`, `working-buffer.md`, and `memory-capture.md` were created or kept as expected.
+4. Run `python3 scripts/memory_capture.py report --workspace /path/to/workspace` if you want a quick health summary.
 
 ## File boundaries
 

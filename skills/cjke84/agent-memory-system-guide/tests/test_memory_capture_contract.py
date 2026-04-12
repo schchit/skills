@@ -159,3 +159,34 @@ def test_skill_mentions_report_command():
     assert 'report command' in skill_text
     assert 'supported files' in skill_text
     assert 'python3 scripts/memory_capture.py report' in skill_text
+
+
+def test_docs_position_local_memory_as_complement_to_openclaw_native_memory():
+    repo_root = Path(__file__).resolve().parents[1]
+
+    for path in ['SKILL.md', 'README.md', 'README_CN.md', 'README_EN.md']:
+        text = (repo_root / path).read_text(encoding='utf-8')
+        assert 'dreaming' in text
+        assert 'local recovery layer' in text or '本地恢复层' in text
+
+
+def test_readmes_document_compatibility_and_post_install_self_check():
+    repo_root = Path(__file__).resolve().parents[1]
+    readme_text = (repo_root / 'README.md').read_text(encoding='utf-8')
+    readme_cn_text = (repo_root / 'README_CN.md').read_text(encoding='utf-8')
+    readme_en_text = (repo_root / 'README_EN.md').read_text(encoding='utf-8')
+
+    assert '## OpenClaw compatibility' in readme_text
+    assert '2026.4.9' in readme_text
+    assert '## Post-install self-check' in readme_text
+    assert 'python3 scripts/memory_capture.py bootstrap --workspace /path/to/workspace' in readme_text
+
+    assert '## OpenClaw 兼容说明' in readme_cn_text
+    assert '2026.4.9' in readme_cn_text
+    assert '## 安装后自检' in readme_cn_text
+    assert 'python3 scripts/memory_capture.py bootstrap --workspace /path/to/workspace' in readme_cn_text
+
+    assert '## OpenClaw compatibility' in readme_en_text
+    assert '2026.4.9' in readme_en_text
+    assert '## Post-install self-check' in readme_en_text
+    assert 'python3 scripts/memory_capture.py bootstrap --workspace /path/to/workspace' in readme_en_text

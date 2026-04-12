@@ -1,5 +1,6 @@
 from pathlib import Path
 import re
+import tomllib
 
 
 def test_skill_uses_canonical_openclaw_name():
@@ -8,6 +9,9 @@ def test_skill_uses_canonical_openclaw_name():
 
     assert 'name: memory-system' in skill_text
     assert 'Use when' in skill_text
+    assert 'homepage: https://github.com/cjke84/agent-memory-system-guide' in skill_text
+    assert 'user-invocable: true' in skill_text
+    assert 'metadata: {"openclaw": {"emoji": "🧠", "homepage": "https://github.com/cjke84/agent-memory-system-guide", "always": true}}' in skill_text
 
 
 def test_manifest_exists_for_publish_workflows():
@@ -24,6 +28,20 @@ def test_manifest_exists_for_publish_workflows():
         assert token in manifest_text
 
 
+def test_manifest_parses_and_matches_expected_publish_shape():
+    repo_root = Path(__file__).resolve().parents[1]
+    manifest = tomllib.loads((repo_root / 'manifest.toml').read_text(encoding='utf-8'))
+
+    assert manifest['name'] == 'Agent Memory System Guide'
+    assert manifest['slug'] == 'agent-memory-system-guide'
+    assert manifest['version'] == '1.1.7'
+    assert manifest['github']['enabled'] is True
+    assert manifest['openclaw']['enabled'] is True
+    assert manifest['clawhub']['enabled'] is True
+    assert manifest['xiaping']['enabled'] is True
+    assert manifest['xiaping']['skill_id'] == '14ff5aad-4df3-4b33-ba0b-6cc217cdb939'
+
+
 def test_release_entrypoints_match_manifest_version():
     repo_root = Path(__file__).resolve().parents[1]
     manifest_text = (repo_root / 'manifest.toml').read_text(encoding='utf-8')
@@ -37,3 +55,12 @@ def test_release_entrypoints_match_manifest_version():
     for path in ['README.md', 'README_CN.md', 'README_EN.md', 'INSTALL.md']:
         text = (repo_root / path).read_text(encoding='utf-8')
         assert f'`{version}`' in text
+
+
+def test_release_entrypoints_document_registry_version_and_historical_github_release():
+    repo_root = Path(__file__).resolve().parents[1]
+
+    for path in ['README.md', 'README_CN.md', 'README_EN.md', 'INSTALL.md']:
+        text = (repo_root / path).read_text(encoding='utf-8')
+        assert 'Historical GitHub release archive' in text or '历史 GitHub release archive' in text
+        assert 'Registry / published skill version' in text or 'Registry / 已发布 skill 版本' in text
