@@ -26,12 +26,30 @@ The user should be able to hand over draft material and receive:
 - a separate review file
 - a clear summary of what was inferred, fixed, changed, or flagged
 
-The skill should minimize question loops and favor best-effort packaging plus clear review notes.
+The package is the main product.
+The review file is the support layer.
 
-## Runtime identity note
-This package intentionally uses:
-- `clawhub-pack` as the short runtime / slash identity
-- `clawhub-skill-packager` as the fuller slug / skill key identity
+## Unified identity
+This package uses one identity everywhere:
+- Display name: `ClawHub Skill Packager`
+- Slug: `clawhub-skill-packager`
+- Runtime name: `clawhub-skill-packager`
+- Folder name: `clawhub-skill-packager`
+- Skill key: `clawhub-skill-packager`
+
+## Invocation
+This skill is designed for explicit invocation.
+
+Recommended invocation:
+- `/skill clawhub-skill-packager`
+
+Direct skill alias:
+- `/clawhub-skill-packager`
+
+Compatibility note:
+- some OpenClaw surfaces may not dispatch dedicated per-skill slash aliases consistently
+- if the direct alias does not trigger, use `/skill clawhub-skill-packager`
+- this is usually a surface/runtime invocation difference, not a packaging defect in the skill itself
 
 ## What it does
 
@@ -40,7 +58,7 @@ This skill:
 - identifies what is missing
 - fills gaps using safe defaults when needed
 - repairs naming and frontmatter issues
-- aligns slug, skill key, and package naming
+- aligns display name, slug, runtime name, folder name, and skill key
 - builds the final folder
 - performs a second-pass self-review
 - produces one pure publish bundle zip
@@ -67,7 +85,13 @@ These are part of the packager skill itself:
 
 ## Publish fields
 - Slug: `clawhub-skill-packager`
-- Internal skill name / slash command: `clawhub-pack`
+- Runtime name: `clawhub-skill-packager`
 - Skill key: `clawhub-skill-packager`
-- Version: `1.4.0`
+- Version: `1.5.2`
 - Tags: `latest, clawhub, openclaw, packaging, review, audit, skills`
+
+## Notes for maintainers
+- Keep runtime identity unified unless there is a strong reason not to.
+- Prefer one finished package plus one separate review file over extra artifact classes.
+- Preserve the low-friction, inference-first stance.
+- For user-facing docs, prefer documenting `/skill clawhub-skill-packager` as the most reliable invocation path across surfaces.

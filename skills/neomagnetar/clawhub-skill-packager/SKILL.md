@@ -1,7 +1,7 @@
 ---
-name: clawhub-pack
-description: "Review, repair, package, and self-audit ClawHub/OpenClaw skill bundles into a publish-ready zip plus one separate plain-text review file using an inference-first, low-friction workflow."
-version: "1.4.0"
+name: clawhub-skill-packager
+description: "Turn rough, partial, or broken ClawHub/OpenClaw skill material into one publish-ready skill bundle plus one separate plain-text review file using an inference-first, low-friction workflow."
+version: "1.5.2"
 user-invocable: true
 disable-model-invocation: true
 metadata: {"openclaw":{"emoji":"📦","skillKey":"clawhub-skill-packager"}}
@@ -11,17 +11,32 @@ metadata: {"openclaw":{"emoji":"📦","skillKey":"clawhub-skill-packager"}}
 
 Use this skill when the user wants to create, repair, review, rename, repackage, or republish a ClawHub / OpenClaw skill bundle.
 
-## Identity note
+## Product promise
 
-This skill intentionally uses:
-- `name: clawhub-pack` as the short runtime / slash identity
-- `metadata.openclaw.skillKey: clawhub-skill-packager` as the fuller registry / config identity
+This skill makes the **publish-ready skill package first**.
 
-Treat this split as deliberate, not as drift.
+Then it provides the **separate review file** that explains:
+- what was provided
+- what was inferred
+- what was fixed
+- what still deserves human review
+
+The package is the main product.
+The review file is the supporting layer.
+
+## Unified identity rule
+
+This skill uses one unified identity across runtime, packaging, and publishing surfaces:
+- runtime name: `clawhub-skill-packager`
+- slug: `clawhub-skill-packager`
+- folder name: `clawhub-skill-packager`
+- metadata.openclaw.skillKey: `clawhub-skill-packager`
+
+Do not intentionally split runtime, folder, slug, and skill key identities unless the user explicitly asks for it.
 
 ## Core job
 
-This skill turns user input, existing skill files, or partial drafts into a **publish-ready ClawHub skill bundle**.
+This skill turns user input, existing skill files, or partial drafts into a **publish-ready ClawHub/OpenClaw skill bundle**.
 
 It is designed to:
 - inspect what is present
@@ -50,7 +65,7 @@ If something is missing but inferable:
 - keep moving
 
 If something is risky, ambiguous, or likely to affect publishing:
-- still produce the package
+- still produce the package when a safe best-effort package is possible
 - highlight the issue clearly in the review file
 - mark it for user review
 
@@ -71,11 +86,11 @@ This bundle must include:
 - `CHANGELOG.md`
 
 It may also include only those additional files that are genuinely part of the skill itself or required for the skill to function correctly, such as:
-- references
-- examples
-- scripts
-- configs
-- assets
+- `references/`
+- `examples/`
+- `scripts/`
+- `configs/`
+- `assets/`
 
 Do **not** include inside the publish bundle:
 - review notes
@@ -112,48 +127,16 @@ The review file must remain **outside** the publish bundle unless the user expli
 This packager skill ships with reusable support files that are part of the skill itself.
 
 Use them like this:
-
 - `REVIEW-CHECKLIST.txt` = the permanent self-audit standard
 - `REVIEW-RECORD-TEMPLATE.txt` = the base for the generated separate review file
 
-## Packaging promise
-
-Always finish by producing the intended package, even if some fields required inference.
-
-If information is missing:
-- determine the best safe default
-- state the assumption clearly in the review file
-- highlight the assumption for user review
-
-If information is sufficient:
-- package the skill cleanly
-- audit it
-- report what was done
-
 ## Operating modes
 
-Use one of these modes based on the user's request and the material provided:
+Use one of these modes based on the user's request and the material provided.
 
 ### 1. Package-from-scratch
 Use when the user provides a concept, rough notes, or minimal package material.
 
-### 2. Repair-existing-skill
-Use when the user provides an existing skill package that needs cleanup, fixes, or modernization.
-
-### 3. Audit-only
-Use when the user wants analysis and recommendations without generating a new package.
-
-### 4. Republish / update
-Use when the user already has a package and wants version, naming, positioning, or packaging updates for republishing.
-
-### 5. Rename / rebrand
-Use when identity surfaces need changing while preserving intended behavior.
-
-## Two-pass workflow by mode
-
-The packager always works in two passes, but the shape of those passes depends on the mode.
-
-### Package-from-scratch
 Pass 1:
 - assemble identity
 - infer missing metadata
@@ -165,7 +148,9 @@ Pass 2:
 - self-audit
 - generate the separate review file
 
-### Repair-existing-skill
+### 2. Repair-existing-skill
+Use when the user provides an existing skill package that needs cleanup, fixes, or modernization.
+
 Pass 1:
 - inspect existing files
 - identify drift, breakage, or parser-risky structure
@@ -176,7 +161,9 @@ Pass 2:
 - self-audit
 - generate the separate review file
 
-### Audit-only
+### 3. Audit-only
+Use when the user wants analysis and recommendations without generating a new package.
+
 Pass 1:
 - inspect the provided package or concept
 - identify strengths, issues, risks, and missing information
@@ -185,7 +172,9 @@ Pass 2:
 - generate the review file
 - do not build a replacement package unless the user also asked for packaging
 
-### Republish / update
+### 4. Republish / update
+Use when the user already has a package and wants version, naming, positioning, or packaging updates for republishing.
+
 Pass 1:
 - inspect the current package
 - identify what changed since the prior release
@@ -196,7 +185,9 @@ Pass 2:
 - self-audit
 - generate the separate review file
 
-### Rename / rebrand
+### 5. Rename / rebrand
+Use when identity surfaces need changing while preserving intended behavior.
+
 Pass 1:
 - inspect current identity surfaces
 - preserve intended behavior
@@ -226,7 +217,7 @@ Look at all provided material:
 Check whether the package has enough information for:
 - display name
 - slug
-- internal skill name
+- runtime identity
 - version
 - description
 - tags
@@ -240,7 +231,7 @@ Check whether the package has enough information for:
 If something is missing or inconsistent:
 - choose the best safe default
 - repair mismatched naming
-- align slug, skill key, package folder name, and README publish fields
+- align display name, slug, runtime name, folder name, skill key, and README publish fields unless the user explicitly requests a split
 - correct parser-risky frontmatter
 - normalize versioning
 - remove obvious contradictions
@@ -260,8 +251,8 @@ Deliver exactly two user-facing artifacts:
 Then provide a short summary in the response telling the user:
 - here is your publish bundle
 - here is your review file
-- here is what I inferred
-- here is what I fixed
+- here is what was inferred
+- here is what was fixed
 - here is what may still deserve review
 
 ## Visibility rule
@@ -315,15 +306,15 @@ If these exist:
 
 For OpenClaw compatibility, prefer:
 - single-line frontmatter keys
-- `metadata` as a single-line JSON object
-- quoted `version`
-- quoted long `description` strings when helpful
+- metadata as a single-line JSON object
+- quoted version
+- quoted long description strings when helpful
 
 Preferred base frontmatter pattern:
 
 ```yaml
 ---
-name: skill-name
+name: skill-slug
 description: "Short clear skill description."
 version: "1.0.0"
 user-invocable: true
@@ -338,23 +329,25 @@ Align these surfaces unless the user explicitly wants them different:
 - public display name
 - package folder name
 - slug
-- `metadata.openclaw.skillKey`
+- runtime name
+- metadata.openclaw.skillKey
 - README publish fields
 - changelog package identity
 
 Use:
 - human-readable title for display name
 - lowercase hyphenated form for slug
-- concise internal command name when user invocation is intended
+- the same lowercase hyphenated form for runtime name by default
 
 ## Review checklist
 
-A package should be checked for all of the following:
+A package should be checked for all of the following.
 
 ### Identity alignment
 - display name matches intent
 - slug is lowercase and hyphenated
 - folder name matches slug
+- runtime name matches slug unless intentionally split
 - skill key matches slug
 - README publish fields match final identity
 - changelog reflects the current version and identity
@@ -408,12 +401,11 @@ A package should be checked for all of the following:
 ## Severity markers
 
 Use these markers consistently:
-
-- **✅ FIXED AUTOMATICALLY** = safe automatic repair completed
-- **🔶 INFERRED FIELD** = best-effort inferred value that should remain visible
-- **⚠️ REQUIRED REVIEW** = likely publish-affecting issue that deserves human confirmation
-- **📝 EDITED FOR ALIGNMENT** = consistency edit across identity or package surfaces
-- **🚀 READY TO PUBLISH** = no major blocker detected in the final package
+- `✅ FIXED AUTOMATICALLY` = safe automatic repair completed
+- `🔶 INFERRED FIELD` = best-effort inferred value that should remain visible
+- `⚠️ REQUIRED REVIEW` = likely publish-affecting issue that deserves human confirmation
+- `📝 EDITED FOR ALIGNMENT` = consistency edit across identity or package surfaces
+- `🚀 READY TO PUBLISH` = no major blocker detected in the final package
 
 ## Final response contract
 

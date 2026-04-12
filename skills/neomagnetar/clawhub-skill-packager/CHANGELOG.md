@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.5.2
+- Clarified invocation guidance across OpenClaw surfaces
+- Documented `/skill clawhub-skill-packager` as the most reliable invocation path
+- Documented `/clawhub-skill-packager` as a direct alias that may depend on surface support
+- Clarified that direct alias failures are usually surface/runtime dispatch differences, not a packaging defect
+- No intended functional behavior change; documentation and release metadata only
+
+## 1.5.0
+- Unified runtime, package, and registry identity to `clawhub-skill-packager`
+- Removed the deliberate split between short runtime name and fuller skill key
+- Promoted the package-first product promise so the publish-ready bundle is clearly the main output
+- Preserved the exact two-deliverable contract:
+  - one pure publish bundle zip
+  - one separate plain-text review file
+- Tightened naming rules so display name, slug, runtime name, folder name, and skill key align by default
+- Clarified that split identities are opt-in exceptions, not the default design
+- Kept `disable-model-invocation: true` for explicit invocation behavior
+- Preserved low-friction, inference-first packaging and self-audit behavior
+
 ## 1.4.0
 - Tightened the output contract to exactly two user-facing artifacts:
   - one pure publish bundle zip
@@ -23,14 +42,6 @@
 - Documented the intentional split between short runtime name and fuller skill key identity
 - Preserved low-friction, inference-first packaging stance
 - Preserved slash-only explicit invocation via `disable-model-invocation: true`
-
-## 1.2.0
-- Expanded the packager beyond text-only skill packaging into broader package-scope analysis
-- Added runtime declarations review for skills with external requirements
-- Added deeper security-scope analysis for non-text skill packages
-- Added file-type awareness for scripts, APIs, env vars, binaries, and mixed package classes
-- Improved search and discoverability coverage for broader skill package types
-- Treated the `disable-model-invocation` choice as a runtime validation question rather than a settled desk-only decision
 
 ## 1.1.0
 - Polished the skill around low-friction, inference-first packaging behavior

@@ -6,48 +6,48 @@ Status:
 - [ ] Ready to publish
 
 Mode used:
-- 
+-
 
 Inputs received:
-- 
+-
 
 Missing information detected:
-- 
+-
 
 Assumptions made:
-- 
+-
 
 Skill classification:
-- 
+-
 
 Runtime / security notes:
-- 
+-
 
 Files created:
-- 
+-
 
 Files edited:
-- 
+-
 
 Files removed:
-- 
+-
 
 Identity alignment changes:
-- 
+-
 
 Frontmatter changes:
-- 
+-
 
 Behavioral changes:
-- 
+-
 
 Branding / positioning edits:
-- 
+-
 
 Publish handoff:
 - Display name:
 - Slug:
-- Internal skill name / slash command:
+- Runtime name:
 - Version:
 - Tags:
 - ClawHub publish command:
@@ -55,16 +55,16 @@ Publish handoff:
 - OpenClaw verify commands:
 
 ⚠️ REQUIRED REVIEW
-- 
+-
 
 🔶 INFERRED FIELD
-- 
+-
 
 ✅ FIXED AUTOMATICALLY
-- 
+-
 
 📝 EDITED FOR ALIGNMENT
-- 
+-
 
 🚀 READY TO PUBLISH
-- 
+-

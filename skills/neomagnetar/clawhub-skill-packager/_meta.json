@@ -3,11 +3,16 @@
   "slug": "clawhub-skill-packager",
   "displayName": "ClawHub Skill Packager",
   "latest": {
-    "version": "1.4.0",
-    "publishedAt": 1774629188615,
-    "commit": "https://github.com/openclaw/skills/commit/d6e0832f831e6eef6456fce08973241b5334cccd"
+    "version": "1.5.2",
+    "publishedAt": 1775745565110,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.4.0",
+      "publishedAt": 1774629188615,
+      "commit": "https://github.com/openclaw/skills/commit/d6e0832f831e6eef6456fce08973241b5334cccd"
+    },
     {
       "version": "1.3.0",
       "publishedAt": 1774593794304,
