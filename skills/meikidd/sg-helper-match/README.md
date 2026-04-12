@@ -4,12 +4,15 @@ An AI Agent Skill for searching and matching domestic helpers from [Sunrise Link
 
 This skill lets AI agents (Claude, Cursor, GitHub Copilot, etc.) query available helper candidates on behalf of employers, filtering by budget, skills, nationality, and more.
 
+## Install
+
+```bash
+npx skills add https://github.com/sunrise-link/sg-helper-match
+```
+
 ## Quick Start
 
 ```bash
-# Clone the skill
-git clone https://github.com/sunriselink/sg-helper-match.git
-
 # Search for Filipino helpers with infant care experience, SGD 600–700/month
 node scripts/search_helpers.mjs '{"nationality":"Philippines","minSalary":600,"maxSalary":700,"needsInfantCare":true}'
 ```

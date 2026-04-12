@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 // Search the Sunrise Link domestic helper database.
-// Usage: node search_helpers.mjs '{"nationality":"Philippines","minSalary":600}'
+// Usage: echo '{"nationality":"Philippines","minSalary":600}' | node search_helpers.mjs
+// Reads JSON filters from stdin (or argv[2] when run interactively in a TTY).
 // Requires Node.js 18+ (uses built-in fetch). Zero third-party dependencies.
 
 const API_BASE_URL = 'https://www.sunriselink.sg'
@@ -39,8 +40,19 @@ function buildUrl(filters) {
   return url.toString()
 }
 
+async function readStdin() {
+  return new Promise((resolve) => {
+    let data = ''
+    process.stdin.setEncoding('utf8')
+    process.stdin.on('data', chunk => { data += chunk })
+    process.stdin.on('end', () => resolve(data.trim()))
+    // Fall back to argv if stdin is a TTY (direct CLI usage)
+    if (process.stdin.isTTY) resolve(process.argv[2] ?? '')
+  })
+}
+
 async function main() {
-  const input = process.argv[2]
+  const input = await readStdin()
 
   if (!input) {
     console.error('Usage: node search_helpers.mjs \'{"nationality":"Philippines"}\'')
