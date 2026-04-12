@@ -7,23 +7,23 @@ Detect misalignment between what the user wants and how the agent is actually co
 ## Step 1: Scan for Instruction Contradictions
 
 Read these files:
-1. `AGENTS.md`
+1. `core instruction files`
 2. `MEMORY.md`
-3. `SOUL.md`
-4. `USER.md`
-5. `HEARTBEAT.md`
+3. `persona files`
+4. `user-profile files`
+5. `heartbeat schedules`
 
 For each pair, find:
 
 ### Contradictions
 - Instructions in one file that directly conflict with instructions in another
-- Example: AGENTS.md says "always ask before sending emails" but SOUL.md says "don't ask for confirmation on things I should just handle"
-- Example: MEMORY.md records "use Todoist for tasks" but AGENTS.md says "tasks live in projects/*.md"
+- Example: core instruction files says "always ask before sending emails" but persona files says "don't ask for confirmation on things I should just handle"
+- Example: MEMORY.md records "use Todoist for tasks" but core instruction files says "tasks live in projects/*.md"
 
 ### Duplicates
 - The same instruction stated in different places in different words
 - These create ambiguity: which version is authoritative? What if someone updates one but not the other?
-- Example: deploy steps in both AGENTS.md and MEMORY.md, slightly different
+- Example: deploy steps in both core instruction files and MEMORY.md, slightly different
 
 For each finding, quote the exact lines and file paths.
 
@@ -34,7 +34,7 @@ Read the last 7 daily memory files (`memory/YYYY-MM-DD.md`, most recent 7).
 ### At-Risk Instructions (critical)
 Identify things the user said in chat that:
 - Establish a rule or preference ("always do X", "never do Y", "from now on...")
-- Were recorded in a daily log but NOT in AGENTS.md, SOUL.md, USER.md, or MEMORY.md
+- Were recorded in a daily log but NOT in core instruction files, persona files, user-profile files, or MEMORY.md
 - Would be lost after context compaction because daily logs aren't always re-read
 
 These are the highest priority findings. An instruction that only lives in a daily log or in conversation history WILL be forgotten after compaction.
@@ -45,12 +45,12 @@ Find patterns where:
 - The user corrects the same behavior more than once
 - The user reminds the agent of a rule that should be permanent
 
-If the user is saying "remember to always do X" more than twice, X should be in AGENTS.md.
+If the user is saying "remember to always do X" more than twice, X should be in core instruction files.
 
 ## Step 3: Scan for Manual Work That Should Be Automated
 
 ### Should Be Scheduled
-Review daily logs and HEARTBEAT.md:
+Review daily logs and heartbeat schedules:
 - Tasks the user triggers manually at roughly the same time each day/week
 - Tasks with a clear trigger condition that could be a heartbeat job
 - Example: "run daily content" every morning at 6AM but no cron, user has to ask
@@ -70,19 +70,19 @@ Find time-based patterns:
 ## Step 4: Scan for Stale or Ignored Instructions
 
 ### Ignored Instructions
-For each directive in AGENTS.md:
+For each directive in core instruction files:
 - Search recent daily logs (last 7-14 days) for evidence the instruction is being followed
 - If an instruction exists but there's evidence it's being routinely skipped or contradicted in practice, flag it
-- Example: AGENTS.md says "create Paperclip issue for every task" but daily logs show tasks completed without Paperclip entries
+- Example: core instruction files says "create Paperclip issue for every task" but daily logs show tasks completed without Paperclip entries
 
 ### Dead Heartbeat Tasks
-For each scheduled task in HEARTBEAT.md:
+For each scheduled task in heartbeat schedules:
 - Look for evidence it actually ran (daily logs, spa reports, git commits)
 - If a task is listed as scheduled but shows no execution evidence in 14+ days, flag it
 
 ### Phantom Skills
 For each installed skill:
-- Check if it's referenced in AGENTS.md or any workflow
+- Check if it's referenced in core instruction files or any workflow
 - Check if it appears in any daily log in the last 30 days
 - If installed but never mentioned, never invoked, and not referenced anywhere, flag it
 
@@ -93,26 +93,26 @@ For each installed skill:
 ═══════════════════════════════════════
 
 Contradictions found: X
- - [AGENTS.md line Y says "...", but MEMORY.md line Z says "..."]
- - [SOUL.md says "...", conflicts with AGENTS.md "..."]
+ - [core instruction files line Y says "...", but MEMORY.md line Z says "..."]
+ - [persona files says "...", conflicts with core instruction files "..."]
 
 Duplicates found: X
- - ["..." appears in both AGENTS.md and MEMORY.md in different wording]
+ - ["..." appears in both core instruction files and MEMORY.md in different wording]
  → Consolidate to one location
 
 At-risk instructions (chat only, won't survive compaction): X
  - ["Always check with me before sending emails" — said in chat on Mar 18, not in any permanent file]
- → Move to AGENTS.md to make it permanent
+ → Move to core instruction files to make it permanent
  - ["Use German for de/ch country content" — in daily log only]
- → Move to AGENTS.md or project MD
+ → Move to core instruction files or project MD
 
 Should-be-automated: X
- - [You run daily content manually every morning at ~6am → add to crontab or HEARTBEAT.md]
+ - [You run daily content manually every morning at ~6am → add to crontab or heartbeat schedules]
  - [Same 5-step deploy sequence repeated 3x this week → could be a script or skill]
 
 Stale instructions: X
- - [AGENTS.md says "use Todoist for tasks" but no Todoist skill installed, no mentions in 30 days]
- - [HEARTBEAT.md lists "Monday SEO check" but no evidence it ran last 2 Mondays]
+ - [core instruction files says "use Todoist for tasks" but no Todoist skill installed, no mentions in 30 days]
+ - [heartbeat schedules lists "Monday SEO check" but no evidence it ran last 2 Mondays]
 
 ═══════════════════════════════════════
 ```

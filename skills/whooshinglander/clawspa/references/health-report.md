@@ -20,9 +20,9 @@ Generate a comprehensive health report card covering context usage, configuratio
 
 ### Context Usage
 1. Estimate total always-loaded context:
-   - AGENTS.md size
-   - SOUL.md size
-   - USER.md size
+   - core instruction files size
+   - persona files size
+   - user-profile files size
    - MEMORY.md size (if auto-injected)
    - All skill descriptions (name + description fields)
 2. Compare to approximate context limit (200k tokens for Claude, varies by model)
@@ -43,7 +43,7 @@ Check these 5 config best practices and score X/5:
 - ❌ Missing: agent goes offline if primary model is unavailable
 
 ### 3. Memory Search Directive
-- Check if AGENTS.md includes instructions to use `memory_search` before answering questions
+- Check if core instruction files includes instructions to use `memory_search` before answering questions
 - ✅ Present: agent checks memory before making claims about past work
 - ❌ Missing: agent may hallucinate about prior decisions
 
@@ -61,7 +61,7 @@ Check these 5 config best practices and score X/5:
 - ✅ Good: credentials in keychain, config locked down
 - ❌ Bad: plaintext secrets in memory or loose file permissions
 
-## Step 3: Trend Analysis (deep mode only)
+## Step 3: Trend Analysis (optional cloud analysis only)
 
 If previous scan reports exist in `memory/spa-reports/`:
 1. Compare current metrics to last scan
@@ -100,9 +100,9 @@ Prioritize by impact:
 2. Save report to `memory/spa-reports/spa-report-YYYY-MM-DD.md`
 3. If a report already exists for today, append a timestamp: `spa-report-YYYY-MM-DD-HHMMSS.md`
 
-## Health Score (deep mode)
+## Health Score (optional cloud analysis)
 
-In deep mode, the API returns a health score 0-100:
+In optional cloud analysis, clawspa.org may return a health score 0-100:
 - **90-100**: Excellent. Agent is well-maintained.
 - **70-89**: Good. Minor improvements available.
 - **50-69**: Fair. Several areas need attention.

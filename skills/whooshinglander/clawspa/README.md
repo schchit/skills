@@ -8,7 +8,7 @@ Your agent accumulates cruft. Stale memories, bloated context, unused skills, ma
 
 ## The Solution
 
-ClawSpa provides 5 maintenance treatments with both free local scans and deep API-powered analysis.
+ClawSpa provides 5 core maintenance treatments plus 1 optional add-on. Local scans are free, and optional cloud analysis is available on clawspa.org.
 
 ### Treatments
 
@@ -19,12 +19,12 @@ ClawSpa provides 5 maintenance treatments with both free local scans and deep AP
 | 🍵 | **Detox** | Detect prompt injection residue lurking in your memory files |
 | 🧹 | **Declutter** | Skills inventory, usage audit, pruning recommendations |
 | 💆 | **Health Check** | Context usage, config review, overall wellness score |
+| 🥗 | **Token Diet** *(add-on)* | Uses [Where Am I Burning Tokens?](https://clawhub.ai/whooshinglander/whereamiburningtokens) to audit token spend, identify sinkholes, and trim context calories |
 
 ### Commands
 
 ```
 /spa           Full suite, local mode (free)
-/spa-full      Full suite, deep mode (API-powered)
 /spa-quick     Quick health stats (~30 seconds)
 /spa-memory    Deep Cleanse only
 /spa-security  Security Scan only
@@ -50,7 +50,7 @@ ClawSpa provides 5 maintenance treatments with both free local scans and deep AP
 
 **Local scans are always free and unlimited.** Run `/spa` as often as you want.
 
-Deep scans at [clawspa.org](https://clawspa.org) provide AI-powered analysis with prioritized recommendations, risk scoring, and trend tracking.
+Optional cloud analysis at [clawspa.org](https://clawspa.org) provides deeper recommendations, risk scoring, and trend tracking.
 
 - **Free trial**: 1 deep scan on install
 - **Solo ($5/mo)**: Unlimited deep scans, 1 agent, scan history
@@ -61,7 +61,7 @@ Deep scans at [clawspa.org](https://clawspa.org) provide AI-powered analysis wit
 
 **Local mode never sends data anywhere.** Everything runs on your machine.
 
-**Deep mode sends only aggregated stats and pattern flags.** Never your raw memory content, credentials, or conversation history. See [What We Send](https://clawspa.org/docs#what-we-send) for the exact payload format.
+**Optional cloud analysis is documented on clawspa.org.** Review the site privacy/docs before sharing aggregated metadata. The published ClawHub skill is local-first and does not require external credentials.
 
 ## Install
 
