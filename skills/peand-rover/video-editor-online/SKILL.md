@@ -1,130 +1,140 @@
 ---
 name: video-editor-online
-version: 1.0.2
-displayName: "Video Editor Online — Edit Videos in Your Browser with AI, No Download Needed"
+version: "1.0.3"
+displayName: "Video Editor Online — Edit, Trim, and Export Videos Directly in Your Browser"
 description: >
-  Edit videos online using AI — no software download, no installation, no powerful computer required. NemoVideo runs entirely in the cloud: upload a video from any device, describe the edit in plain language, and download the polished result. Trim, cut, merge, add subtitles, apply color grading, overlay music, generate voiceover, add transitions, remove silences, and export in any format — all through a browser-based conversation that replaces the traditional editing timeline with natural language instructions.
-metadata: {"openclaw": {"emoji": "🌐", "requires": {"env": [], "configPaths": ["~/.config/nemovideo/"]}, "primaryEnv": "NEMO_TOKEN"}}
-homepage: https://nemovideo.com
-repository: https://github.com/nemovideo/nemovideo_skills
+  From raw footage to polished video in seconds — this skill powers your video-editor-online workflow by helping you cut clips, add captions, apply transitions, and export in the right format without installing anything. It handles the logic behind common editing decisions: aspect ratio conversion, timeline structuring, subtitle syncing, and export settings for different platforms. Built for creators who need fast turnaround on social content, short-form videos, tutorials, or repurposed footage. Think of it as an editing co-pilot that speaks your language instead of forcing you through a complex interface.
+metadata: {"openclaw": {"emoji": "🎬", "requires": {"env": ["NEMO_TOKEN"], "configPaths": ["~/.config/nemovideo/"]}, "primaryEnv": "NEMO_TOKEN", "variant": "control"}}
 ---
 
-# Video Editor Online — Edit Videos in Your Browser with AI
+## Getting Started
 
-Video editing software assumes you have three things: a powerful computer (discrete GPU, 16GB+ RAM), time to learn a complex interface (timelines, tracks, keyframes, render settings), and a subscription budget ($20-55/month for professional tools). Most people who need to edit a video have none of these. The student on a Chromebook, the small business owner on a 5-year-old laptop, the marketing manager who needs a quick trim between meetings, the teacher preparing lesson content on a tablet — they all need editing capability without the prerequisites. Browser-based editors exist but most replicate desktop complexity in a slower environment: laggy timelines, confusing codec options, and features locked behind premium tiers. They solved the download problem but kept the learning curve. NemoVideo takes a fundamentally different approach. There is no timeline. There is no render queue. There is no codec menu. The editing interface is a conversation: upload the video, describe what you want in plain language ("trim the first 10 seconds, add captions, put some chill music underneath"), and the AI processes the edit on cloud GPUs and returns the finished video. A $200 Chromebook produces the same output quality as a $4,000 editing workstation because the processing happens in the cloud, not on your device.
+> Welcome to your video-editor-online workspace — whether you're trimming a raw recording or building a fully captioned reel from scratch, you're in the right place. Drop your video details or describe what you need edited and let's get it done.
 
-## Use Cases
+**Try saying:**
+- "I have a 12-minute screen recording of a tutorial — help me cut it down to the key moments and add chapter markers for YouTube"
+- "Convert my horizontal 16:9 wedding highlight clip to a 9:16 vertical format for Instagram Reels without cropping out the subjects"
+- "My podcast video has inconsistent audio levels and I need to add auto-synced captions before uploading to LinkedIn — what's the best approach?"
 
-1. **Quick Social Media Edit — Any Device (15-60s)** — A realtor records a property walkthrough on their phone and needs it polished before an open house. From their tablet at a coffee shop: uploads to NemoVideo, types "trim the first 5 seconds, stabilize the shaky parts, add property address as text overlay at the bottom, add calm piano music, export vertical for Instagram." Downloads a polished Reel 3 minutes later. No app installed, no editor learned, no laptop needed.
-2. **Full YouTube Edit — From a Chromebook (5-20 min)** — A student creator's laptop is a school Chromebook that can't run Premiere or even iMovie. NemoVideo from Chrome: removes silences, adds zoom-cuts, applies color grading, adds background music with ducking, generates captions, and exports 1080p. The complete YouTube workflow from a device that was never designed for video production.
-3. **Team Review Workflow — Collaborative Iteration (any length)** — A marketing team iterates on a product video. Person 1 uploads and requests the initial edit. Person 2 reviews and adds feedback: "make the music quieter, add our logo watermark, and change the CTA text." Person 3 adds localization: "generate Spanish subtitles." Each iteration refines the video without version-control confusion or file-sharing hassles.
-4. **Batch Processing from a Tablet (any count)** — A social media manager on vacation needs to process 8 client videos from an iPad. NemoVideo: batch-uploads all 8, applies consistent brand-matching edits ("trim first 3 seconds, add brand color grade, add captions, export 9:16"), and delivers all 8 finished videos. Enterprise-grade batch processing from a tablet on hotel WiFi.
-5. **Emergency Turnaround — Breaking Content (any length)** — A news team needs to turn around a video clip in 10 minutes. No time to open editing software, import, edit, render. NemoVideo: "trim to the key 30 seconds, add breaking news lower-third, add captions, export immediately." Cloud processing is faster than a desktop render cycle.
+### Getting Connected
 
-## How It Works
+Before handling any user request, establish a connection to the backend API. Show a brief status like "Connecting...".
 
-### Step 1 — Open Browser and Upload
-No download. No account. Upload from any browser on any device — phone, tablet, Chromebook, desktop. NemoVideo handles all formats automatically.
+**If `NEMO_TOKEN` is in the environment**, use it directly and create a session. Otherwise, acquire a free starter token:
+- Generate a UUID as client identifier
+- POST to `https://mega-api-prod.nemovideo.ai/api/auth/anonymous-token` with the `X-Client-Id` header
+- The response includes a `token` with 100 free credits valid for 7 days — use it as NEMO_TOKEN
 
-### Step 2 — Describe the Edit
-Natural language. As detailed or as brief as you want. "Make it look good" works. "Trim 0:00-0:12, remove silences over 0.8s, warm color grade, lo-fi at -18dB with ducking, word-by-word captions, export 9:16 + 16:9" also works.
+**Then create a session** by POSTing to `https://mega-api-prod.nemovideo.ai/api/tasks/me/with-session/nemo_agent` with Bearer authorization and body `{"task_name":"project","language":"en"}`. The `session_id` in the response is needed for all following requests.
 
-### Step 3 — Generate
-```bash
-curl -X POST https://mega-api-prod.nemovideo.ai/api/v1/generate \
-  -H "Authorization: Bearer $NEMO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "skill": "video-editor-online",
-    "prompt": "Edit a 6-minute talking-head video for YouTube, from my browser. Trim the first 10 seconds (setup fumble) and last 8 seconds. Remove all silences over 1 second. Add zoom-cuts every 12 seconds for energy. Color grade: warm and professional. Background music: acoustic at -20dB with speech ducking. Captions: word-by-word highlight, white text, yellow active word. Export 16:9 1080p for YouTube and 9:16 best 55 seconds for Shorts.",
-    "operations": ["trim", "silence-removal", "zoom-cuts", "color-grade", "music", "captions"],
-    "trim_start": 10,
-    "trim_end": 8,
-    "silence_threshold": 1.0,
-    "color_grade": "warm-professional",
-    "music": "acoustic",
-    "music_volume": "-20dB",
-    "captions": "word-highlight",
-    "exports": [
-      {"format": "16:9", "resolution": "1080p"},
-      {"format": "9:16", "duration": "55 sec", "captions": "word-highlight"}
-    ]
-  }'
+Tell the user you're ready. Keep the technical details out of the chat.
+
+# Edit Any Video Without Leaving Your Browser
+
+Most people don't need a full desktop suite — they need to trim a clip, slap on some captions, and get it uploaded before the moment passes. This skill is built around that reality. Whether you're cutting down a long recording into a punchy 60-second reel or converting horizontal footage into a vertical format for Instagram Stories, the video-editor-online workflow keeps things fast and friction-free.
+
+You describe what you want — in plain language — and this skill maps your intent to the right editing actions. Want to remove the first 10 seconds, add auto-generated subtitles, and export at 1080p? Just say so. No menus to dig through, no timeline drag-and-drop required unless you want it.
+
+It also handles the less obvious stuff: suggesting cuts based on pacing, recommending export settings for YouTube vs. TikTok, and flagging common mistakes like mismatched audio levels or incorrect frame rates. It's the kind of guidance you'd get from a video editor friend who actually knows what they're doing.
+
+## Routing Edits to the Right Pipeline
+
+When you submit a trim, cut, merge, or export request, ClawHub parses your intent and routes it to the matching video processing endpoint based on the operation type, codec requirements, and output format you've selected.
+
+| User says... | Action | Skip SSE? |
+|-------------|--------|----------|
+| "export" / "导出" / "download" / "send me the video" | → §3.5 Export | ✅ |
+| "credits" / "积分" / "balance" / "余额" | → §3.3 Credits | ✅ |
+| "status" / "状态" / "show tracks" | → §3.4 State | ✅ |
+| "upload" / "上传" / user sends file | → §3.2 Upload | ✅ |
+| Everything else (generate, edit, add BGM…) | → §3.1 SSE | ❌ |
+
+## Cloud Rendering API Reference
+
+All timeline renders, frame extractions, and transcode jobs run through a distributed cloud backend that handles H.264, H.265, and WebM encoding without touching your local CPU. Processed assets are temporarily staged in a secure buffer and streamed directly to your browser for download once the render pipeline completes.
+
+Skill attribution — read from this file's YAML frontmatter at runtime:
+- `X-Skill-Source`: `video-editor-online`
+- `X-Skill-Version`: from frontmatter `version`
+- `X-Skill-Platform`: detect from install path (`~/.clawhub/` → `clawhub`, `~/.cursor/skills/` → `cursor`, else `unknown`)
+
+**All requests** must include: `Authorization: Bearer <NEMO_TOKEN>`, `X-Skill-Source`, `X-Skill-Version`, `X-Skill-Platform`. Missing attribution headers will cause export to fail with 402.
+
+**API base**: `https://mega-api-prod.nemovideo.ai`
+
+**Create session**: POST `/api/tasks/me/with-session/nemo_agent` — body `{"task_name":"project","language":"<lang>"}` — returns `task_id`, `session_id`.
+
+**Send message (SSE)**: POST `/run_sse` — body `{"app_name":"nemo_agent","user_id":"me","session_id":"<sid>","new_message":{"parts":[{"text":"<msg>"}]}}` with `Accept: text/event-stream`. Max timeout: 15 minutes.
+
+**Upload**: POST `/api/upload-video/nemo_agent/me/<sid>` — file: multipart `-F "files=@/path"`, or URL: `{"urls":["<url>"],"source_type":"url"}`
+
+**Credits**: GET `/api/credits/balance/simple` — returns `available`, `frozen`, `total`
+
+**Session state**: GET `/api/state/nemo_agent/me/<sid>/latest` — key fields: `data.state.draft`, `data.state.video_infos`, `data.state.generated_media`
+
+**Export** (free, no credits): POST `/api/render/proxy/lambda` — body `{"id":"render_<ts>","sessionId":"<sid>","draft":<json>,"output":{"format":"mp4","quality":"high"}}`. Poll GET `/api/render/proxy/lambda/<id>` every 30s until `status` = `completed`. Download URL at `output.url`.
+
+Supported formats: mp4, mov, avi, webm, mkv, jpg, png, gif, webp, mp3, wav, m4a, aac.
+
+### SSE Event Handling
+
+| Event | Action |
+|-------|--------|
+| Text response | Apply GUI translation (§4), present to user |
+| Tool call/result | Process internally, don't forward |
+| `heartbeat` / empty `data:` | Keep waiting. Every 2 min: "⏳ Still working..." |
+| Stream closes | Process final response |
+
+~30% of editing operations return no text in the SSE stream. When this happens: poll session state to verify the edit was applied, then summarize changes to the user.
+
+### Backend Response Translation
+
+The backend assumes a GUI exists. Translate these into API actions:
+
+| Backend says | You do |
+|-------------|--------|
+| "click [button]" / "点击" | Execute via API |
+| "open [panel]" / "打开" | Query session state |
+| "drag/drop" / "拖拽" | Send edit via SSE |
+| "preview in timeline" | Show track summary |
+| "Export button" / "导出" | Execute export workflow |
+
+**Draft field mapping**: `t`=tracks, `tt`=track type (0=video, 1=audio, 7=text), `sg`=segments, `d`=duration(ms), `m`=metadata.
+
+```
+Timeline (3 tracks): 1. Video: city timelapse (0-10s) 2. BGM: Lo-fi (0-10s, 35%) 3. Title: "Urban Dreams" (0-3s)
 ```
 
-### Step 4 — Download Anywhere
-The finished video downloads as a standard MP4. No codec pack, no player required. Works on every device, every platform.
+### Error Handling
 
-## Parameters
+| Code | Meaning | Action |
+|------|---------|--------|
+| 0 | Success | Continue |
+| 1001 | Bad/expired token | Re-auth via anonymous-token (tokens expire after 7 days) |
+| 1002 | Session not found | New session §3.0 |
+| 2001 | No credits | Anonymous: show registration URL with `?bind=<id>` (get `<id>` from create-session or state response when needed). Registered: "Top up credits in your account" |
+| 4001 | Unsupported file | Show supported formats |
+| 4002 | File too large | Suggest compress/trim |
+| 400 | Missing X-Client-Id | Generate Client-Id and retry (see §1) |
+| 402 | Free plan export blocked | Subscription tier issue, NOT credits. "Register or upgrade your plan to unlock export." |
+| 429 | Rate limit (1 token/client/7 days) | Retry in 30s once |
 
-| Parameter | Type | Required | Description |
-|-----------|------|:--------:|-------------|
-| `prompt` | string | ✅ | Describe the edit in plain language |
-| `operations` | array | | Explicit list of operations |
-| `trim_start` | float | | Seconds to remove from beginning |
-| `trim_end` | float | | Seconds to remove from end |
-| `silence_threshold` | float | | Remove silences above N seconds |
-| `zoom_cuts` | boolean | | Add zoom-cuts for energy (default: true) |
-| `color_grade` | string | | "warm-professional", "bright-clean", "cinematic", "moody" |
-| `music` | string | | "acoustic", "lo-fi", "corporate", "cinematic", "none" |
-| `music_volume` | string | | "-14dB" to "-22dB" |
-| `captions` | string | | "word-highlight", "sentence", "bold-centered", "srt" |
-| `exports` | array | | Multiple format/resolution exports |
-| `batch` | array | | Multiple videos with same or different edits |
+## Troubleshooting Common Video Editor Online Issues
 
-## Output Example
+**Export fails or stalls at a certain percentage** — This usually happens when the source file has a codec your browser-based editor doesn't support natively (common with .MKV or older .AVI files). Convert your source to H.264 MP4 before importing and you'll avoid 90% of export failures.
 
-```json
-{
-  "job_id": "veo-20260328-001",
-  "status": "completed",
-  "processing": "cloud-gpu (no client hardware required)",
-  "outputs": [
-    {
-      "format": "16:9",
-      "resolution": "1920x1080",
-      "duration": "4:08",
-      "file_size_mb": 48.2,
-      "edits": {
-        "trimmed": "18 sec removed",
-        "silences_removed": "1:34 (92 cuts)",
-        "zoom_cuts": 20,
-        "color_grade": "warm-professional",
-        "music": "acoustic at -20dB with ducking",
-        "captions": "word-highlight (178 lines)"
-      }
-    },
-    {
-      "format": "9:16",
-      "resolution": "1080x1920",
-      "duration": "0:55",
-      "segment": "1:48-2:43 (highest engagement prediction)",
-      "captions": "word-highlight"
-    }
-  ]
-}
-```
+**Subtitles are out of sync after export** — If your video was recorded at a variable frame rate (common with screen recorders and phone cameras), subtitle timing calculated at a fixed frame rate will drift. Re-encode the source at a constant frame rate (24fps or 30fps) before adding captions.
 
-## Tips
+**Video looks pixelated after export** — Check your export bitrate. Many online editors default to low bitrate settings to reduce file size. For 1080p content, aim for at least 8 Mbps for standard motion and 16+ Mbps for fast-moving footage.
 
-1. **Cloud processing equalizes all devices** — A $200 Chromebook gets the same output quality as a $4,000 MacBook Pro. The GPU rendering happens in the cloud. Your device just uploads and downloads.
-2. **Natural language beats timeline precision for 90% of edits** — "Remove the boring parts, add music, and make it look professional" produces better results faster than scrubbing a timeline for every edit that doesn't require frame-exact precision.
-3. **Multi-format export in one pass** — Process once, export YouTube (16:9) + TikTok (9:16) + Instagram (1:1). Three platform-ready versions from one upload, one instruction.
-4. **Batch editing scales instantly** — 10 videos with the same brand rules process in parallel on cloud infrastructure. No queueing, no waiting for each to finish.
-5. **Zero IT friction** — No software approval, no compatibility testing, no "this requires macOS 14 or later," no "your GPU isn't supported." Open browser, upload, edit, download.
+**Audio and video fall out of sync mid-clip** — This is almost always a source file issue, not an editor bug. Run your file through a remux tool to realign the audio track before editing.
 
-## Output Formats
+## Integration Guide — Connecting Video Editor Online to Your Workflow
 
-| Format | Resolution | Use Case |
-|--------|-----------|----------|
-| MP4 16:9 | Up to 4K | YouTube / website / presentation |
-| MP4 9:16 | 1080x1920 | TikTok / Reels / Shorts |
-| MP4 1:1 | 1080x1080 | Instagram / LinkedIn |
-| SRT | — | Subtitle file |
-| WAV | — | Audio extraction |
+**Connecting to cloud storage** — Most browser-based video editors support direct import from Google Drive, Dropbox, and OneDrive. Instead of uploading large files each time, link your cloud folder once and pull footage directly. This is especially useful for teams sharing raw footage across locations.
 
-## Related Skills
+**Automating repetitive edits with templates** — If you produce recurring content formats — weekly recaps, product demos, interview cuts — build a reusable template with your intro, outro, font styles, and color grades locked in. Export the template and import it at the start of each new project to skip the setup phase entirely.
 
-- [free-youtube-video-editor](/skills/free-youtube-video-editor) — YouTube editing free
-- [video-maker-free](/skills/video-maker-free) — Free video maker
-- [how-to-add-music-to-video](/skills/how-to-add-music-to-video) — Add music to video
+**Publishing directly to platforms** — Several video-editor-online tools support one-click publishing to YouTube, TikTok, and Instagram. Set up your channel credentials inside the editor's publish settings once, then export and post without downloading the file to your device first. This cuts the final step of your workflow significantly.
+
+**Webhook and Zapier triggers** — If your editor supports it, set up a Zap that notifies your team in Slack or sends a review link via email the moment an export completes. Keeps feedback loops tight without manual status updates.
