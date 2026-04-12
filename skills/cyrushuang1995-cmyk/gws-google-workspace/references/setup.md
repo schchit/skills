@@ -36,7 +36,12 @@ npm install -g @googleworkspace/cli
 
 1. 访问 `apis/credentials/consent`
 2. 配置应用信息（名称、支持邮箱、开发者联系邮箱）
-3. **Scopes 标签页**：添加以下 scope：
+3. **发布状态**：
+   - **Testing 模式**（默认）：refresh_token 7天后过期，需重新授权。适合测试和短期使用。
+   - **In production** 模式：refresh_token 长期有效。
+   - ⚠️ 切换到 Production 前请确保你理解其安全影响：长期 refresh_token 意味着只要你的 GCP 项目不被撤销，该 token 就会持续有效。建议仅在你完全控制该 GCP 项目时才切换。
+   - 如果切换：点击 **"PUBLISH APP"**。注意：如果显示 "Your app requires verification"，这表示 Google 建议你完成应用验证流程。对于个人/内部使用，你可以评估风险后自行决定是否继续。
+4. **Scopes 标签页**：添加以下 scope（建议仅添加你实际需要的 scope，最小权限原则）：
    - `https://www.googleapis.com/auth/gmail.modify`
    - `https://www.googleapis.com/auth/drive`
    - `https://www.googleapis.com/auth/calendar`
@@ -51,7 +56,7 @@ npm install -g @googleworkspace/cli
    - `https://www.googleapis.com/auth/userinfo.email`
 4. **测试用户**（如处于测试模式）：添加你的 Google 账号
 
-> **注意**：授权时若看到 "Google hasn't verified this app"，点击 Advanced → "Go to [app name] (unsafe)" 继续
+> **安全提示**：授权时若看到 "Google hasn't verified this app" 警告，这是正常的——因为你创建的是个人 GCP 项目，未经 Google 官方验证。点击 Advanced → "Go to [app name] (unsafe)" 继续。仅在你信任自己的 GCP 项目时才这样做。
 
 ### 2.3 OAuth 凭证
 
@@ -125,6 +130,28 @@ rm ~/.config/gws/credentials.enc
 rm ~/.config/gws/token_cache.json
 gws auth login --full
 ```
+
+### Token 7天后过期 / 需要频繁重新授权
+
+**原因**：OAuth 应用处于 **Testing** 模式  
+**解决**：
+1. 去 [GCP Console → OAuth consent screen](https://console.cloud.google.com/auth/audience) 查看 Publishing status
+2. 如果你想切换到 **In production**（长期 token），请先评估安全风险：
+   - 长期 token 在 GCP 项目被删除/撤销前持续有效
+   - 建议使用专用的 GCP 项目，并定期审查已授权的应用
+   - 考虑使用 Service Account 或 Domain-wide Delegation 作为更安全的替代方案
+3. 确认后点击 **"PUBLISH APP"**
+4. 删除旧 token：`rm ~/.config/gws/token_cache.json`
+5. 重新授权：`gws auth login --full`
+
+**注意**：切换到 Production 后**必须重新授权**一次，之前的 token 仍然是 7天过期的。
+
+### 检查当前 App 状态
+
+访问：GCP Console → APIs & Services → [OAuth consent screen](https://console.cloud.google.com/auth/audience)
+
+- ✅ **长期有效**：Publishing status = "In production"
+- ⚠️ **7天过期**：Publishing status = "Testing"
 
 ---
 
