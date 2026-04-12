@@ -1,9 +1,21 @@
 import sys
 import json
+import hashlib
 import urllib.request
 import urllib.error
 
+from file_utils import load_order
+
 GET_RESULT_URL = "https://ms.jr.jd.com/gw2/generic/hyqy/na/m/getWeatherResult"
+
+# 硬编码的 skill-name，与 create_order.py 保持一致
+SKILL_NAME = "clawtip-weather"
+
+
+def compute_indicator(skill_name: str) -> str:
+    """根据 skill-name 计算 MD5 作为 indicator。"""
+    return hashlib.md5(skill_name.encode("utf-8")).hexdigest()
+
 
 
 def counseling(question: str, order_no: str, credential: str) -> str:
@@ -49,16 +61,21 @@ import argparse
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Get weather counseling report")
-    parser.add_argument("question", help="Location for weather report")
     parser.add_argument("order_no", help="Order number")
-    parser.add_argument("credential", help="Payment credential")
     args = parser.parse_args()
 
+    indicator = compute_indicator(SKILL_NAME)
+
     try:
-        result = counseling(args.question, args.order_no, args.credential)
+        order_data = load_order(indicator, args.order_no)
+        question = order_data.get("question")
+        if not question:
+            raise RuntimeError("订单文件中缺少 question 字段")
+        credential = order_data.get("payCredential")
+        if not credential:
+            raise RuntimeError("订单文件中缺少 payCredential 字段")
+        result = counseling(question, args.order_no, credential)
         print(result)
     except Exception as e:
         print(f"ERROR: {e}")
         sys.exit(1)
-
-

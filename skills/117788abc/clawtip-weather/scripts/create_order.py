@@ -1,15 +1,27 @@
 import sys
 import json
+import hashlib
 import urllib.request
 import urllib.error
 
+from file_utils import save_order
+
 CREATE_ORDER_URL = "https://ms.jr.jd.com/gw2/generic/hyqy/na/m/createOrder"
+
+# 硬编码的 slug，用于计算 indicator
+SLUG = "clawtip-weather"
+
+
+def compute_indicator(slug: str) -> str:
+    """根据 slug 计算 MD5 作为 indicator。"""
+    return hashlib.md5(slug.encode("utf-8")).hexdigest()
+
 
 
 def create_order(question: str) -> tuple:
     """
     POST the user's question to the createOrder endpoint.
-    Returns (order_no, amount) on success, or raises RuntimeError on failure.
+    Returns (order_no, amount, encrypted_data, pay_to) on success, or raises RuntimeError on failure.
     """
     pay_data_dict = {
         "reqData":{
@@ -32,7 +44,6 @@ def create_order(question: str) -> tuple:
     if body is None:
         raise RuntimeError("网络请求异常，请确认网络链接并稍后重试")
 
-    print(body)
     if body.get("responseCode") != '200':
         raise RuntimeError(
             f"Order creation failed: {body.get('responseMessage', 'unknown error')}"
@@ -49,6 +60,27 @@ def create_order(question: str) -> tuple:
     return order_no, amount, encrypted_data, pay_to
 
 
+def save_order_info(order_no: str, amount: str, question: str,
+                    encrypted_data: str, pay_to: str, indicator: str) -> str:
+    """
+    Save order info to the fixed directory.
+    Includes all fixed values needed by pre-verify-skill and dynamic values.
+    Returns the full path of the saved JSON file.
+    """
+    order_data = {
+        "skill-id": "si-weather-reporter",
+        "order_no": order_no,
+        "amount": amount,
+        "question": question,
+        "encrypted_data": encrypted_data,
+        "pay_to": pay_to,
+        "description": "天气报告服务费用",
+        "slug": SLUG,
+        "resource_url": "https://ms.jr.jd.com",
+    }
+    return save_order(indicator, order_no, order_data)
+
+
 import argparse
 
 if __name__ == "__main__":
@@ -56,13 +88,18 @@ if __name__ == "__main__":
     parser.add_argument("question", help="Location for weather report")
     args = parser.parse_args()
 
+    indicator = compute_indicator(SLUG)
+
     try:
         order_no, amount, encrypted_data, pay_to = create_order(args.question)
     except RuntimeError as e:
         print(f"订单创建失败: {e}")
         sys.exit(1)
 
+    save_order_info(order_no, amount, args.question,
+                    encrypted_data, pay_to, indicator)
+
     print(f"ORDER_NO={order_no}")
     print(f"AMOUNT={amount}")
-    print(f"ENCRYPTED_DATA={encrypted_data}")
-    print(f"PAY_TO={pay_to}")
+    print(f"QUESTION={args.question}")
+    print(f"INDICATOR={indicator}")
