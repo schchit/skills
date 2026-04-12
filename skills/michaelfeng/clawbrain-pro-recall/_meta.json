@@ -1,11 +1,17 @@
 {
   "owner": "michaelfeng",
   "slug": "clawbrain-pro-recall",
-  "displayName": "Clawbrain Pro Recall",
+  "displayName": "ClawBrain Recall",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1774707689012,
-    "commit": "https://github.com/openclaw/skills/commit/ff2568761e5c1386b4ece111093bb7dec7e716f1"
+    "version": "1.2.0",
+    "publishedAt": 1775796982522,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1774707689012,
+      "commit": "https://github.com/openclaw/skills/commit/ff2568761e5c1386b4ece111093bb7dec7e716f1"
+    }
+  ]
 }
