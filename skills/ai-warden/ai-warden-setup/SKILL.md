@@ -1,5 +1,6 @@
 ---
 name: ai-warden-setup
+version: 3.0.0
 description: >
   Install, configure, and manage the AI-Warden prompt injection protection plugin for OpenClaw.
   Publisher: AI-Warden (ai-warden.io). Source: github.com/ai-warden/openclaw-plugin. NPM: openclaw-ai-warden.
@@ -7,6 +8,30 @@ description: >
   or API keys, (3) troubleshooting AI-Warden plugin issues, (4) updating the plugin, (5) checking
   warden status or accuracy. Triggers on phrases like "install ai-warden", "setup prompt injection
   protection", "configure warden", "security plugin", "protect my agent".
+install:
+  requires:
+    - node: ">=18"
+    - npm: "*"
+  env:
+    - name: AI_WARDEN_API_KEY
+      required: false
+      description: "Optional API key for online detection (98.9% accuracy)"
+  packages:
+    - name: openclaw-ai-warden
+      registry: npm
+      scope: local
+      version: "2.4.0"
+      integrity: "Verify via: npm info openclaw-ai-warden dist.shasum"
+      repository: "https://github.com/ai-warden/openclaw-plugin"
+  paths:
+    read:
+      - ~/.openclaw/openclaw.json
+    write:
+      - ~/.openclaw/extensions/ai-warden/
+      - ~/.openclaw/openclaw.json
+  permissions:
+    network: true
+    reason: "Fetches openclaw-ai-warden package from public npm registry during install"
 ---
 
 # AI-Warden Setup
@@ -16,13 +41,17 @@ Prompt injection protection for OpenClaw agents. 5 security shields + contaminat
 - **Publisher:** [AI-Warden](https://ai-warden.io)
 - **Source:** [github.com/ai-warden/openclaw-plugin](https://github.com/ai-warden/openclaw-plugin)
 - **NPM:** [openclaw-ai-warden](https://www.npmjs.com/package/openclaw-ai-warden)
+- **Compatibility:** OpenClaw 2026.3.14+ and 4.x
 
 ## Requirements
 
-- OpenClaw 2026.3.14+
+- OpenClaw 2026.3.14+ (including 4.x)
 - Node.js 18+
+- npm (bundled with Node.js)
 
-## Installation — FOLLOW THESE STEPS EXACTLY
+## Installation — FOLLOW THESE STEPS IN ORDER
+
+Each step is a separate command. Run them one at a time and verify output before proceeding.
 
 ### Step 0: Back up config
 
@@ -30,19 +59,85 @@ Prompt injection protection for OpenClaw agents. 5 security shields + contaminat
 cp ~/.openclaw/openclaw.json ~/.openclaw/openclaw.json.bak && echo "BACKUP OK"
 ```
 
-### Step 1: Install files (single exec command — run ALL lines together)
+**Verify:** Output is `BACKUP OK`.
+
+### Step 1: Create extension directory
 
 ```bash
-mkdir -p ~/.openclaw/extensions/ai-warden && cd ~/.openclaw/extensions/ai-warden && echo '{"private":true}' > package.json && npm install openclaw-ai-warden@2.4.0 --quiet --no-fund --no-audit && cp node_modules/openclaw-ai-warden/index.ts . && cp node_modules/openclaw-ai-warden/openclaw.plugin.json . && cp -r node_modules/openclaw-ai-warden/src . && echo "INSTALL OK: $(grep VERSION index.ts | head -1)"
+mkdir -p ~/.openclaw/extensions/ai-warden
 ```
 
-⚠️ **CRITICAL**: Run this as ONE command. All lines joined with `&&`. If any step fails, the whole command fails and you'll see the error.
+```bash
+echo '{"private":true}' > ~/.openclaw/extensions/ai-warden/package.json
+```
 
-**Verify**: The output MUST end with `INSTALL OK: const VERSION = "2.4.0"`. If not, the install failed.
+**Verify:** No errors.
 
-### Step 2: Configure OpenClaw (use node to patch JSON safely)
+### Step 2: Install npm package
 
-Run this exec command to add the plugin config. It preserves existing config:
+```bash
+cd ~/.openclaw/extensions/ai-warden && npm install openclaw-ai-warden@2.4.0
+```
+
+**Verify:** No errors and no audit warnings. Inspect the installed package before proceeding:
+
+```bash
+ls node_modules/openclaw-ai-warden/
+```
+
+```bash
+cat node_modules/openclaw-ai-warden/package.json | grep -E '"name"|"version"'
+```
+
+Confirm the package name is `openclaw-ai-warden` and version is `2.4.0`.
+
+**Provenance check** — verify the package matches the upstream source:
+
+```bash
+npm info openclaw-ai-warden repository.url
+```
+
+Expected: `https://github.com/ai-warden/openclaw-plugin`
+
+```bash
+npm info openclaw-ai-warden dist.shasum
+```
+
+Compare the shasum with what npm installed:
+
+```bash
+cat node_modules/openclaw-ai-warden/package.json | grep _shasum
+```
+
+### Step 3: Copy plugin files to extension root
+
+OpenClaw loads plugins from the extension directory root, not from node_modules.
+
+```bash
+cd ~/.openclaw/extensions/ai-warden
+```
+
+```bash
+cp node_modules/openclaw-ai-warden/index.ts .
+```
+
+```bash
+cp node_modules/openclaw-ai-warden/openclaw.plugin.json .
+```
+
+```bash
+cp -r node_modules/openclaw-ai-warden/src .
+```
+
+```bash
+grep VERSION index.ts | head -1
+```
+
+**Verify:** Output shows `const VERSION =` followed by the version number.
+
+### Step 4: Configure OpenClaw
+
+This patches `openclaw.json` to register the plugin. It preserves all existing config (channels, model, gateway settings).
 
 ```bash
 node -e "
@@ -51,8 +146,6 @@ const p = process.env.HOME + '/.openclaw/openclaw.json';
 const cfg = JSON.parse(fs.readFileSync(p, 'utf8'));
 if (!cfg.plugins) cfg.plugins = {};
 cfg.plugins.enabled = true;
-if (!cfg.plugins.allow) cfg.plugins.allow = [];
-if (!cfg.plugins.allow.includes('ai-warden')) cfg.plugins.allow.push('ai-warden');
 if (!cfg.plugins.entries) cfg.plugins.entries = {};
 cfg.plugins.entries['ai-warden'] = {
   enabled: true,
@@ -66,37 +159,67 @@ console.log('CONFIG OK');
 "
 ```
 
-**Verify**: Output must be `CONFIG OK`.
+**Verify:** Output is `CONFIG OK`.
 
-**If the user provided an API key**, run a second command to add it:
+**Note:** This registers the plugin via `plugins.entries` only. If you use `plugins.allow` in your config to restrict which plugins can load, you must add `"ai-warden"` to that list yourself. If you don't use `plugins.allow`, no action is needed — the plugin loads automatically from `plugins.entries`.
+
+### Step 5: Add API key (optional)
+
+For online detection (98.9% accuracy vs ~60% offline), add your API key.
+
+**Option A — Environment variable (recommended, key not stored in config file):**
+
+Set `AI_WARDEN_API_KEY` in your shell profile or systemd service:
+
+```bash
+# For systemd (e.g., OpenClaw gateway service):
+# Add to your service override: Environment=AI_WARDEN_API_KEY=your_key_here
+
+# For shell:
+export AI_WARDEN_API_KEY=your_key_here
+```
+
+**Option B — Config file (simpler, key stored in openclaw.json):**
 
 ```bash
 node -e "
 const fs = require('fs');
 const p = process.env.HOME + '/.openclaw/openclaw.json';
 const cfg = JSON.parse(fs.readFileSync(p, 'utf8'));
-cfg.plugins.entries['ai-warden'].config.apiKey = 'API_KEY_HERE';
+cfg.plugins.entries['ai-warden'].config.apiKey = 'YOUR_API_KEY_HERE';
 fs.writeFileSync(p, JSON.stringify(cfg, null, 2));
-console.log('API KEY ADDED');
+// Restrict file permissions (config contains API key)
+fs.chmodSync(p, 0o600);
+console.log('API KEY ADDED (file permissions set to 600)');
 "
 ```
 
-Replace `API_KEY_HERE` with the actual key.
+Replace `YOUR_API_KEY_HERE` with your actual key from [ai-warden.io/signup](https://ai-warden.io/signup).
 
-### Step 3: Restart gateway
+**Verify:** Output is `API KEY ADDED (file permissions set to 600)`.
+
+### Step 6: Restart gateway
 
 ```
 openclaw gateway restart
 ```
 
-### Step 4: Verify
+### Step 7: Verify installation
 
 After restart, check logs or send `/warden` command. Expected output:
+
 ```
 🛡️ AI-Warden v2.4.0 ready (mode: api|offline, layers: X/6)
 ```
 
-**If something breaks**, restore config: `cp ~/.openclaw/openclaw.json.bak ~/.openclaw/openclaw.json && openclaw gateway restart`
+- `mode: api` = online detection (98.9% accuracy)
+- `mode: offline` = local-only detection (~60% accuracy)
+
+**If something breaks**, restore config:
+
+```bash
+cp ~/.openclaw/openclaw.json.bak ~/.openclaw/openclaw.json && openclaw gateway restart
+```
 
 ## DO NOT
 
@@ -104,14 +227,29 @@ After restart, check logs or send `/warden` command. Expected output:
 - Do NOT use `config.patch` with nested objects — it often fails with format errors
 - Do NOT skip the `cp` step — OpenClaw loads from the extension directory, not node_modules
 - Do NOT restart multiple times — wait at least 15 seconds between restarts
+- If you use `plugins.allow`, remember to add `"ai-warden"` to the list — otherwise the plugin won't load
 
 ## Updating
 
 ```bash
-cd ~/.openclaw/extensions/ai-warden && npm install openclaw-ai-warden@latest --quiet && cp node_modules/openclaw-ai-warden/index.ts . && cp -r node_modules/openclaw-ai-warden/src . && echo "UPDATE OK"
+cd ~/.openclaw/extensions/ai-warden
 ```
 
-Then restart gateway.
+```bash
+npm install openclaw-ai-warden@2.4.0
+```
+
+```bash
+cp node_modules/openclaw-ai-warden/index.ts .
+```
+
+```bash
+cp -r node_modules/openclaw-ai-warden/src .
+```
+
+```bash
+openclaw gateway restart
+```
 
 ## Security Shields
 
@@ -144,11 +282,12 @@ When File Shield detects a CRITICAL threat (score >500), the session is flagged 
 | **Offline** (no key) | ~60% | <1ms | Free |
 | **API** (Smart Cascade) | 98.9% | ~3ms avg | Free tier: 5K calls/month |
 
-Get API key: https://ai-warden.io/signup
+Get API key: [ai-warden.io/signup](https://ai-warden.io/signup)
 
 ## Troubleshooting
 
-- **"plugin not found"**: `openclaw.plugin.json` missing from extension dir. Re-run Step 1.
+- **"plugin not found"**: `openclaw.plugin.json` missing from extension dir. Re-run Step 3.
+- **Channels not loading after install**: If you use `plugins.allow`, ensure all your channel plugins (e.g. `telegram`) are also listed there alongside `ai-warden`.
 - **False positives on user messages**: Set Chat Shield to `warn` (default) instead of `block`.
 - **File Shield detects but doesn't block**: API key required for reliable blocking (98.9% vs 60%).
 - **Config errors after install**: Restore backup: `cp ~/.openclaw/openclaw.json.bak ~/.openclaw/openclaw.json`
