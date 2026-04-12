@@ -7,7 +7,7 @@
 - 项目：`get_project_list` / `create_projects` / `import_images_to_projects`
 - 图片：`get_project_images`
 - 修图：`get_preset_suit_list` / `apply_preset_suit`
-- 导出：`export_images`
+- 导出：`batch_export_images` / `get_task_status`
 
 本地路径定位、文件夹判断和文件筛选，优先使用 agent 自身的 shell / command 能力。
 
@@ -20,6 +20,7 @@
 - 获取预设列表并匹配预设
 - 对指定图片应用预设
 - 提交导出任务
+- 查询导出任务状态和进度
 
 ## Out Of Scope
 
@@ -40,7 +41,8 @@
 - 需要读取项目图片时，用 `get_project_images`
 - 需要处理修图诉求时，先用 `get_preset_suit_list`
 - 只有选定预设后，才用 `apply_preset_suit`
-- 导出统一用 `export_images`
+- 导出统一用 `batch_export_images`
+- 需要查询导出是否完成、当前进度或任务状态时，用 `get_task_status`
 
 ## Boundary Response
 

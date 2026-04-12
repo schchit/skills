@@ -27,10 +27,13 @@
 
 ### 创建项目并导入图片
 
+> `create_projects` 支持在创建时通过 `image_paths` 一步导入图片。
+> 如果创建和导入需要分步处理（如图片来源不同），再单独调用 `import_images_to_projects`。
+
 1. 确认图片来源
 2. 路径不明确时先定位真实目录
-3. 调用 `create_projects`
-4. 调用 `import_images_to_projects`
+3. 调用 `create_projects`（可通过 `image_paths` 同时导入图片）
+4. 如需分步导入，再调用 `import_images_to_projects`
 
 ### 导入到已有项目
 

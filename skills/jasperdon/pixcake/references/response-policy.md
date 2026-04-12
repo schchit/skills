@@ -9,7 +9,7 @@
 
 ## Export Language
 
-`export_images` 返回成功时，只能表达为：
+`batch_export_images` 返回成功时，只能表达为：
 
 - 已提交导出任务
 - 已开始导出
@@ -19,6 +19,16 @@
 
 - 已经导出完成
 - 图片已经在桌面上了
+
+## Export Status Language
+
+`get_task_status` 返回成功时：
+
+- 如果任务还在处理中，说“导出任务处理中”或“当前进度为 `<x>`”
+- 如果任务已完成，才说“导出任务已完成”
+- 如果任务失败，直接说明任务失败，并带上最关键的失败信息
+
+不要在没有 `get_task_status` 结果时，把导出任务说成已完成。
 
 ## Preset Matching Language
 

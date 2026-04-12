@@ -9,20 +9,16 @@
     "win32"
   ],
   "runtime": {
-    "primary_command": "node ./scripts/pixcake_bridge.js",
+    "primary_command": "mcporter --config ~/.openclaw/workspace/config/mcporter.json call pixcake.<tool_name>",
     "flow": [
-      "doctor",
+      "preflight",
+      "setup",
       "list",
       "call"
     ],
-    "env_overrides": [
-      "PIXCAKE_BRIDGE_CMD",
-      "PIXCAKE_SOCKET_PATH",
-      "PIXCAKE_SKILLS_CONFIG"
-    ],
+    "env_overrides": [],
     "config_sources": [
-      "~/.openclaw/skills/pixcake-skills/config.local.json",
-      "./config.local.json"
+      "~/.openclaw/workspace/config/mcporter.json"
     ]
   },
   "domains": {
@@ -45,7 +41,9 @@
     "export": {
       "reference": "./references/export.md",
       "required_tools": [
-        "export_images"
+        "get_project_images",
+        "get_task_status",
+        "batch_export_images"
       ]
     }
   },
@@ -66,6 +64,6 @@
       "smart_crop"
     ]
   },
-  "path_resolution": "Resolve local file paths with the agent's own shell or command tools before PixCake calls.",
-  "mismatch_policy": "If doctor, list, or call signals incompatibility, stop probing, recommend upgrading PixCake to 9.0.0 or newer, and suggest support if the issue remains."
+  "path_resolution": "Resolve PixCake and pixcake-mcp paths with the agent's own shell or command tools before PixCake calls, then prefer ./scripts/setup.sh to write ~/.openclaw/workspace/config/mcporter.json. On Windows, do not assume mcporter can auto-discover PixCake on D:/E:; the command path must be explicit.",
+  "mismatch_policy": "If mcporter --config ~/.openclaw/workspace/config/mcporter.json list pixcake or mcporter --config ~/.openclaw/workspace/config/mcporter.json call pixcake.<tool_name> signals incompatibility, stop probing, recommend upgrading PixCake to 9.0.0 or newer, and suggest support if the issue remains."
 }
