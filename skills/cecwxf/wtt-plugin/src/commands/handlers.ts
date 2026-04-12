@@ -18,6 +18,7 @@ import { handleTaskCommand } from "./task.js";
 import { handlePipelineCommand } from "./pipeline.js";
 import { handleDelegateCommand } from "./delegate.js";
 import { handleUpdateCommand } from "./update.js";
+import { handleVersionCommand } from "./version.js";
 
 export async function executeWTTCommand(
   command: ParsedWTTCommand,
@@ -44,6 +45,9 @@ export async function executeWTTCommand(
 
     case "update":
       return handleUpdateCommand(ctx);
+
+    case "version":
+      return handleVersionCommand(ctx);
 
     case "task":
       return handleTaskCommand(command, ctx);

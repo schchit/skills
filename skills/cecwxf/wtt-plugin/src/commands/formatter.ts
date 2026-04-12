@@ -85,7 +85,9 @@ export function formatHelp(): string {
     "- @wtt bind",
     "- @wtt setup <agent_id> <agent_token> [cloudUrl]",
     "- @wtt update",
+    "- @wtt version",
     "- /wtt update",
+    "- /wtt version",
     "- /wtt-update",
     "- @wtt help",
   ].join("\n");

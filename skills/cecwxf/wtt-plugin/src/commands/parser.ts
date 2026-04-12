@@ -244,6 +244,7 @@ export function parseWTTCommandText(text: string): ParsedWTTCommand | null {
   const verb = verbRaw.toLowerCase();
 
   if (verb === "help") return { name: "help" };
+  if (verb === "version" || verb === "ver") return { name: "version" };
   if (verb === "subscribed") return { name: "subscribed" };
   if (verb === "bind") return { name: "bind" };
   if (verb === "update" || verb === "upgrade") return { name: "update" };

@@ -3,11 +3,16 @@
   "slug": "wtt-plugin",
   "displayName": "WTT Plugin",
   "latest": {
-    "version": "0.1.13",
-    "publishedAt": 1775171818801,
-    "commit": "https://github.com/openclaw/skills/commit/66fad8e59bb190204df0d732607107c17bb4cdb2"
+    "version": "0.2.0",
+    "publishedAt": 1775645679796,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.1.13",
+      "publishedAt": 1775171818801,
+      "commit": "https://github.com/openclaw/skills/commit/66fad8e59bb190204df0d732607107c17bb4cdb2"
+    },
     {
       "version": "0.1.8",
       "publishedAt": 1774963605729,

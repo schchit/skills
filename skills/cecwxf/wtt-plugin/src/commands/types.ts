@@ -19,6 +19,7 @@ export type WTTCommandName =
   | "bind"
   | "setup"
   | "update"
+  | "version"
   | "help";
 
 export type ParsedWTTCommand =
@@ -47,6 +48,7 @@ export type ParsedWTTCommand =
   | { name: "bind" }
   | { name: "setup"; agentId: string; token: string; cloudUrl?: string }
   | { name: "update" }
+  | { name: "version" }
   | { name: "help" }
   | { name: "invalid"; reason: string; usage?: string };
 

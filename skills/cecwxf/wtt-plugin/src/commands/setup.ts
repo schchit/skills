@@ -30,6 +30,23 @@ function mergeWttConfig(
     enabled: true,
   };
   plugins.entries = entries;
+
+  // Cleanup legacy load path that can cause duplicate plugin-id warning:
+  // global plugin (/opt/wtt-plugin) + config plugin (extensions/wtt).
+  const load = asObject(plugins.load);
+  const rawPaths = Array.isArray(load.paths)
+    ? load.paths.filter((v): v is string => typeof v === "string")
+    : [];
+  const filteredPaths = rawPaths.filter((v) => v.trim() !== "/opt/wtt-plugin");
+  if (filteredPaths.length > 0) {
+    load.paths = filteredPaths;
+    plugins.load = load;
+  } else {
+    delete load.paths;
+    if (Object.keys(load).length > 0) plugins.load = load;
+    else delete plugins.load;
+  }
+
   next.plugins = plugins;
 
   const commands = asObject(next.commands);

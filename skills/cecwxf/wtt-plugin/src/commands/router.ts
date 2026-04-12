@@ -36,6 +36,7 @@ function noClientRequired(commandName: string): boolean {
     || commandName === "bind"
     || commandName === "setup"
     || commandName === "update"
+    || commandName === "version"
     || commandName === "task"
     || commandName === "pipeline"
     || commandName === "delegate"
