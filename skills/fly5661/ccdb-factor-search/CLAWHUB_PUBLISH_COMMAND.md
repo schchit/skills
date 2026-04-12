@@ -10,12 +10,12 @@ clawhub whoami
 ## 2. Publish command
 
 ```bash
-clawhub publish /root/.openclaw/workspace/skills/ccdb-carbon-factor-search \
+clawhub publish /root/.openclaw/workspace/skills/ccdb-factor-search \
   --slug ccdb-factor-search \
   --name "CCDB Factor Search" \
-  --version 0.1.0 \
+  --version 0.1.3 \
   --tags carbon,emission-factor,ccdb,sustainability,lca,search \
-  --changelog "Initial beta release for CCDB factor matching. Supports bilingual search, smallest-core-term query strategy, iterative candidate comparison, suitability filtering, and structured factor selection output."
+  --changelog "0.1.3 improves best-fit factor selection with richer README/docs, confirmed API field meanings, better geo-sensitive matching, latest-factor recency handling, stronger authority weighting, clearer carbon-footprint vs emission-factor distinction, and safer direct-use guidance."
 ```
 
 ## 3. Suggested follow-up checks

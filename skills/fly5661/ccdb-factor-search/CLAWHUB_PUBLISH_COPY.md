@@ -29,7 +29,7 @@ This skill is especially useful when users want to:
 carbon, emission-factor, ccdb, sustainability, lca, search
 
 ## Changelog
-Initial beta release for CCDB factor matching. Supports bilingual search, smallest-core-term query strategy, iterative candidate comparison, suitability filtering, and structured factor selection output.
+0.1.3 improves best-fit factor selection with richer README/docs, confirmed API field meanings, better geo-sensitive matching, latest-factor recency handling, stronger authority weighting, clearer carbon-footprint vs emission-factor distinction, and safer direct-use guidance.
 
 ## Known limitations
 - This skill depends on the Carbonstop CCDB API.

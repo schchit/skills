@@ -6,6 +6,9 @@ ccdb-factor-search
 ## Suggested short summary
 Search and select the best-fit CCDB emission factor from Carbonstop APIs using bilingual query expansion, multi-round candidate comparison, suitability filtering, and structured result explanations.
 
+## Suggested version
+0.1.3
+
 ## Suggested full description
 `ccdb-factor-search` helps find the most suitable CCDB / Carbonstop emission factor for a user's scenario instead of just returning a raw query result list. It extracts a minimal core search term, searches in both Chinese and English, expands only when necessary, compares candidates across multiple rounds, rejects obviously unsuitable results, and returns a reasoned recommendation with risks, alternatives, and search trace.
 
@@ -40,4 +43,4 @@ Reason:
 - data quality and coverage affect final matching quality
 
 ## Recommended publish note
-This is a beta release focused on best-fit factor retrieval and suitability judgment. It is designed to be conservative: when no reliable candidate is found, it should prefer `not_suitable` over misleading recommendations.
+This is a 0.1.3 beta release focused on best-fit factor retrieval and suitability judgment. It is designed to be conservative: when no reliable candidate is found, it should prefer `not_suitable` over misleading recommendations.

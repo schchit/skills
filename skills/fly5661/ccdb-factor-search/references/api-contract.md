@@ -1,18 +1,14 @@
 # CCDB API Contract
 
-## Current test endpoint
+## Current endpoint
 
 `POST https://gateway.carbonstop.com/management/system/website/queryFactorListClaw`
-
-This is the current test endpoint. Production URL can be swapped later.
 
 ## Request headers
 
 Minimum required headers for script usage:
 - `Content-Type: application/json`
 - `Accept: application/json, text/plain, */*`
-
-Browser-origin headers are not required unless the upstream later enforces them.
 
 ## Request body
 
@@ -26,58 +22,58 @@ Browser-origin headers are not required unless the upstream later enforces them.
 
 ## Signing rule
 
-- `businessLabel` is currently `openclaw_ccdb` in production (test environments may differ)
-- `sign = md5("openclaw_ccdb" + name) in the current production environment`
-
-Example:
-- `name = "电力"`
-- source string = `openclaw_ccdb电力`
-- md5 should be computed from that exact UTF-8 string
+- `businessLabel` is currently `openclaw_ccdb`
+- `sign = md5("openclaw_ccdb" + name)`
 
 ## Response shape
 
 Top-level fields:
-- `code`: integer
-- `msg`: string
-- `total`: integer
-- `rows`: array of factor candidates
+- `code`
+- `msg`
+- `total`
+- `rows`
 
-Example candidate fields observed:
+Common candidate fields observed:
 - `id`
-- `sourceId`
 - `name`
 - `nameEn`
 - `description`
 - `specification`
 - `unit`
 - `cValue`
-- `area`
 - `countries`
+- `area`
 - `year`
 - `applyYear`
 - `applyYearEnd`
 - `institution`
 - `source`
-- `documentType`
 - `sourceLevel`
+- `documentType`
 - `factorClassify`
-- `factorPattern`
-- `parentId`
-- `isEncryption`
 
-## Matching guidance from current sample
+## Field interpretation checklist
 
-When ranking candidates, prefer:
-1. direct semantic match in `name` / `nameEn`
-2. stronger contextual match in `description` + `specification`
-3. region fit in `area` / `countries`
-4. unit fit in `unit`
-5. source reliability in `institution` / `sourceLevel` / `documentType`
-6. more suitable time period in `applyYear`
+- `year` → 发布年份
+- `applyYear` → 适用年份开始时间
+- `applyYearEnd` → 适用年份结束时间
+- `countries` → 发布国家 / 地区
+- `area` → 可忽略
+- `sourceLevel` → 来源级别
+
+## Matching guidance
+
+When ranking candidates, consider together:
+1. semantic fit in `name` / `description` / `specification`
+2. region fit in `countries`
+3. unit fit in `unit`
+4. applicability time in `applyYear` ~ `applyYearEnd`
+5. publication recency in `year`
+6. authority in `institution` / `sourceLevel`
+7. factor-type fit: 碳足迹因子 vs 排放因子
 
 ## Caveats
 
 - `cValue` may be encrypted / unavailable for unpaid data
-- Chinese and English queries currently return the same JSON structure
-- Some records may contain noisy or weak region values such as `0` or mismatched countries
-- Suitability ranking must not rely on a single field
+- the current interface exposes a lightweight query body; precision depends heavily on post-query ranking
+- suitability ranking should not rely on a single field
