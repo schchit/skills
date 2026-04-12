@@ -1,13 +1,18 @@
 {
   "owner": "sealawyer2026",
   "slug": "zhang-contract-generator",
-  "displayName": "九章-合同生成器",
+  "displayName": "Zhang Contract Generator",
   "latest": {
-    "version": "1.5.0",
-    "publishedAt": 1775098624652,
-    "commit": "https://github.com/openclaw/skills/commit/9c8126383c7c8971d4d21fb424da349b43db6f73"
+    "version": "1.0.0",
+    "publishedAt": 1775484133862,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.5.0",
+      "publishedAt": 1775098624652,
+      "commit": "https://github.com/openclaw/skills/commit/9c8126383c7c8971d4d21fb424da349b43db6f73"
+    },
     {
       "version": "1.4.0",
       "publishedAt": 1774508434456,
