@@ -1,6 +1,8 @@
-# Simplify Budget
+# Simplify Budget Skill
 
-`simplify-budget` is an OpenClaw skill for running a personal budget tracker on top of a specific Google Sheets template.
+`simplify-budget` is an OpenClaw skill package for running a personal budget tracker on top of a specific Google Sheets template.
+
+OpenClaw is the messaging/tool host. The active OpenClaw conversation model handles orchestration natively.
 
 It handles:
 - expenses: log, find, update, delete
@@ -13,13 +15,21 @@ It handles:
 
 ## What This Ships
 
-This repo contains the full skill implementation:
-- [SKILL.md](./SKILL.md): agent instructions
+This skill package contains:
+- [SKILL.md](./SKILL.md): skill instructions
 - [SETUP.md](./SETUP.md): end-to-end installation
+- `commands/`: bundled command wrappers and dispatcher for OpenClaw routing
 - `scripts/`: the actual shell scripts used by the skill
 - `data/learned_category_aliases.json`: confirmed category hints learned from real usage
 
-The `clawhub/` folder is the publishable bundle. It should be an exact mirror of the skill contents that matter at runtime.
+This package is for skill installation. The plugin package is a separate deliverable.
+
+## Orchestration
+
+- The active OpenClaw conversation model handles intent routing, confirmations, and conversation state natively
+- OpenClaw owns the message/tool surface and runs the live sheet scripts
+- the live sheet remains the source of truth for reads, writes, edits, deletes, and verification
+- budget chat flows should not rely on long conversation history
 
 ## Required Template
 
@@ -57,11 +67,13 @@ Optional:
 
 Install summary:
 1. Copy the Google Sheet template.
-2. Share the copied sheet with the service account email.
-3. Install this skill in `~/.openclaw/skills/simplify-budget`.
-4. Install the matching workspace wrappers in `~/.openclaw/workspace`.
-5. Set the required environment variables.
-6. Restart OpenClaw.
+2. Create your own Google service account JSON key.
+3. Share the copied sheet with the service account email.
+4. Optionally use [simplifybudget.com](https://simplifybudget.com/) as the browser UI for the same sheet.
+5. Install this skill under your chosen OpenClaw home.
+6. Use the bundled command wrappers from that installation.
+7. Set the required environment variables.
+8. Restart OpenClaw.
 
 Full instructions are in [SETUP.md](./SETUP.md).
 
@@ -72,6 +84,7 @@ Full instructions are in [SETUP.md](./SETUP.md).
 - If the parser already knows the item, it suggests that category.
 - If the parser does not know the item, the LLM suggests a category and asks for confirmation before writing.
 - Once the user confirms, the skill can learn that alias for future suggestions.
+- The default account is `Revolut` unless the user says otherwise.
 
 ## Example Prompts
 

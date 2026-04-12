@@ -1,7 +1,7 @@
 ---
 name: simplify-budget
 description: "Log, find, update, and delete expenses and income in the Simplify Budget Google Sheet, and answer read-only recurring schedule questions. NEVER use sessions_spawn or ACP — ONLY use the exec tool to run bash scripts. Categories are hardcoded in this skill — NEVER invent category names, ALWAYS pick from the exact list provided. Income uses name, account, source, and notes. For edits/deletes, find rows first, then mutate by transaction id. Amounts are always stored in the configured tracker currency. Just do it."
-version: 1.1.0
+version: 1.2.0
 user-invocable: true
 metadata:
   openclaw:
@@ -37,7 +37,7 @@ Every single response must begin by running the appropriate script from the list
 | Today's / a specific date's income | `find_income.sh --date YYYY-MM-DD --limit 20` |
 | A specific income entry | `find_income.sh "<query>" 10` |
 | Recurring items | `find_recurring.sh --month YYYY-MM` or `find_recurring.sh --query "<name>"` |
-| Logging a new expense | `find_expenses.sh --date YYYY-MM-DD --limit 20` (duplicate check), then `write_expense.sh` |
+| Logging a new expense | `log.sh "<user message>"` |
 | Logging new income | `write_income.sh` |
 
 If you have not run the script yet, you have not started your response yet. Run the script. Then respond conversationally based on what it returns.
@@ -52,8 +52,8 @@ If you have not run the script yet, you have not started your response yet. Run 
 
 Rules that must never be broken:
 1. Category names MUST come from the exact list below — never invent names like "Fuel/Transport" or "Food & Drink"
-2. NEVER ask the user to pick or confirm a category — always pick it yourself using the list below
-3. NEVER say "your choice" or "please confirm the category"
+2. Always confirm with the user before writing — relay the `question` field from `preview_expense.sh` verbatim
+3. NEVER say "your choice" or ask the user to pick from a list — the script picks and you relay its suggestion
 4. DO NOT call `get_categories.sh` — the full category list is hardcoded right here:
 
 | Formula | Name |
@@ -131,46 +131,9 @@ If a script returns an error, report the actual error message. Never invent an e
 - When conversion happens, the scripts append an `[auto-fx]` audit line to `notes` with the original amount, converted amount, rate, and rate date.
 - Never read the sheet to discover the base currency during normal operation. Use the configured environment instead.
 
-## Categories
-
-All available categories with their stableIds. Fixed here for accuracy — do NOT call `get_categories.sh` at runtime.
-
-| Formula | Full Name | Match when the user mentions… |
-|---|---|---|
-| `=zategory1` | Housing 🏡 | rent, mortgage, apartment, flat, condo, room, landlord, lease, property tax, HOA, building fee, accommodation |
-| `=zategory2` | Transport 🚙 | uber, grab, lyft, taxi, bus, metro, subway, train, tram, petrol, fuel, gas station, parking, toll, car wash, ride, commute, vehicle |
-| `=zategory3` | Groceries 🍎 | supermarket, grocery, market, vegetables, fruit, food shopping, produce, bakery, butcher, Tesco, Lidl, Aldi, Carrefour, hypermarket, minimarket |
-| `=zategory4` | Dining Out 🍕 | restaurant, café, coffee shop, pizza, takeaway, food delivery, lunch, dinner, breakfast, brunch, fast food, burger, sushi, noodles, meal, eat out, Wolt, Glovo, Deliveroo, Starbucks, McDonald's, KFC, snack bar |
-| `=zategory5` | Personal Care ❤️ | haircut, salon, barber, spa, skincare, cosmetics, hygiene, toothbrush, shampoo, beauty, nails, waxing, massage, personal grooming |
-| `=zategory6` | Shopping 🛍️ | electronics, phone, laptop, Amazon, online shopping, retail, mall, IKEA, furniture, appliance, gadget, general purchase |
-| `=zategory7` | Utilities 💡 | electricity, water bill, internet, broadband, phone bill, mobile plan, gas bill, Netflix, Spotify, Disney+, Apple subscription, streaming service, SaaS subscription, recurring software bill |
-| `=zategory8` | Fun 🎬 | movie, cinema, concert, live event, bowling, bar, pub, club, night out, show, ticket, amusement park, escape room, karaoke, entertainment |
-| `=zategory9` | Business 💻️ | software tool, domain, hosting, cloud service, AWS, work expense, office supply, coworking, professional service, freelance, client meeting, business travel |
-| `=zategory10` | Other ❓ | anything that clearly doesn't fit any other category |
-| `=zategory11` | Donation 🕌 | donation, charity, sadaqah, general giving, mosque, food bank |
-| `=zategory12` | Childcare 🐣 | daycare, nursery, school fees, tuition, kindergarten, preschool, nanny, babysitter, kids activity, children's class, school supplies |
-| `=zategory13` | Travel ✈️ | flight, hotel, Airbnb, vacation, holiday, travel booking, trip, visa fee, travel insurance, luggage |
-| `=zategory14` | Zakat 🌟 | zakat, zakat al-mal, zakat al-fitr, obligatory religious giving |
-| `=zategory15` | Debt Payment 💸 | loan repayment, debt, installment, credit card payment, EMI, owe, pay back |
-| `=zategory16` | Fitness 💪 | gym, gym membership, fitness class, yoga, pilates, CrossFit, personal trainer, workout, exercise, sports class |
-| `=zategory17` | Family Support 🏘️ | sending money home, supporting family, remittance to family, parent support, sibling support |
-| `=zategory18` | Taxes 💵 | income tax, tax payment, tax return, VAT, council tax, tax filing |
-| `=zategory19` | Maintenance 🧰 | repair, fix, plumber, electrician, handyman, service fee, appliance repair, car repair, maintenance |
-| `=zategory20` | Painting 🎨 | painting, paint, wall paint, decorating, interior work, renovating |
-| `=zategory21` | TestGround 🤖 | test, dummy, sample — only use if the user explicitly says this is a test entry |
-| `=zategory22` | Learning 📚 | book, ebook, course, online learning, Udemy, Coursera, class, training, tutorial, educational material |
-| `=zategory23` | Sports 🏀 | sports gear, football, basketball, tennis, swimming, cycling, running gear, sports club membership, match ticket |
-| `=zategory24` | Pet 🐶 | pet food, vet, veterinary, pet supplies, grooming (for pets), pet toy, animal |
-| `=zategory25` | Gifts 🎁 | gift, present, birthday gift, anniversary gift, wedding gift, buying for someone else |
-| `=zategory26` | Special Occasions 🥰 | birthday party, wedding, celebration, anniversary event, graduation, ceremony, event planning |
-| `=zategory27` | Dress 👚 | clothes, clothing, shirt, dress, shoes, bag, handbag, jacket, outfit, fashion, Zara, H&M, Uniqlo, apparel |
-| `=zategory28` | Hobby 🪂 | hobby, craft, photography gear, gaming purchase, musical instrument, DIY materials, art supply, workshop, collection |
-| `=zategory29` | Insurance 🛡️ | insurance premium, health insurance, car insurance, life insurance, travel insurance, policy payment |
-| `=zategory30` | Medical 🩺 | doctor, hospital, clinic, pharmacy, medicine, prescription, dental, dentist, medical test, health checkup, surgery |
-
 ## Category Matching Rules
-1. Use the Categories table above — never call `get_categories.sh` during normal operation
-2. Always make your best guess — NEVER ask the user to pick or confirm a category.
+1. Use the category list in the ⛔ CATEGORY RULES section above — never call `get_categories.sh` during normal operation
+2. The script picks the category and generates the confirmation question — relay it verbatim, do not pick or rephrase.
 3. Pass the plain English category name to the script (e.g. `"Dining Out"`, `"Business"`, `"Transport"`). The script resolves it to the correct formula internally. Never construct `=zategory{N}` yourself.
 4. Disambiguation hints:
    - Coffee or café → Dining Out
@@ -191,41 +154,49 @@ All available categories with their stableIds. Fixed here for accuracy — do NO
 
 ### Log a new expense
 
-**ONE COMMAND. NO EXTRACTION. NO DECISIONS. NO EXCEPTIONS.**
+When the user mentions spending money, buying something, paying for something, or asks to log an expense — follow this flow:
 
-When the user mentions spending money, buying something, paying for something, or asks to log an expense — run this single command with their message passed through verbatim:
-
+**Step 1 — Preview:**
 ```
-bash <skill_dir>/scripts/log.sh "<user's message, word-for-word>"
+bash <skill_dir>/scripts/log.sh --preview "<user's message, word-for-word>"
 ```
+Pass the raw message. Do not reformat. Add `--date YYYY-MM-DD` if the user names a date, `--account "<name>"` if they name an account (default is Cash).
 
-That's it. The script parses amount, currency, description, and category itself. You do no extraction. You do no formatting. You do not ask the user to rephrase anything — ever, under any circumstances.
+The script parses amount, description, and category. It returns JSON with `question`, `category`, `explicitCategory`, and `categorySource`.
 
-**Examples — always run the command, always relay the CONFIRM line:**
+**Step 2 — Confirm or write directly:**
+- If `explicitCategory` is `true`: skip confirmation, go straight to Step 3.
+- If `categorySource` is `"builtin"` or `"learned"`: relay the `question` field verbatim and wait for the user's reply.
+- Otherwise: relay the `question` field (it includes a "best guess" note) and wait.
+
+When the user replies:
+- **"yes"** → proceed with the proposed category
+- **A category name** (e.g. "Transport") → use that category instead
+- **"no" / "cancel"** → stop
+
+**Step 3 — Write:**
+```
+bash <skill_dir>/scripts/log.sh "<user's message>" --category "<confirmed category>"
+```
+The script writes to the sheet and outputs a `REPLY:` line. Send everything after `REPLY: ` verbatim. Do not paraphrase.
+
+**Examples:**
 
 - User: `i bought a pencil for 10 euro under business category`
-  → `bash <skill_dir>/scripts/log.sh "i bought a pencil for 10 euro under business category"`
+  → preview detects explicit category → write directly (no confirmation needed)
 
 - User: `spent 23 on mcdonalds`
-  → `bash <skill_dir>/scripts/log.sh "spent 23 on mcdonalds"`
-
-- User: `log 50 myr shell petrol`
-  → `bash <skill_dir>/scripts/log.sh "log 50 myr shell petrol"`
+  → preview suggests Dining Out (builtin match) → ask "Log mcdonalds under Dining Out 🍕?" → on yes, write
 
 - User: `€12 coffee`
-  → `bash <skill_dir>/scripts/log.sh "€12 coffee"`
+  → preview suggests Dining Out → confirm → write
 
 **Rules:**
-1. Pass the user's message through without editing it. Do not trim, do not reformat, do not "clean it up".
-2. The script outputs a `CONFIRM:` line. Relay it word-for-word. Do not paraphrase.
-3. If the user specifies a date ("yesterday", "on the 3rd"), pass the date with `--date YYYY-MM-DD`. Otherwise the script defaults to today.
-4. If the user specifies an account other than Cash, pass `--account "<name>"`. Otherwise the script defaults to Cash.
-5. **NEVER ask the user to rephrase, reformat, or simplify their message.** The script takes any phrasing. If you feel tempted to say "please say it as X" — stop. Run `log.sh` with whatever they said. That is your only job.
-6. For multiple expenses in one message (e.g. "10 on coffee and 5 on parking"), call `log.sh` once per expense, sequentially.
-7. Duplicate check: before running `log.sh`, run `find_expenses.sh --date <today> --limit 20` once. If the same description + amount already exists for today, ask before logging again. Otherwise just log.
-
-**Step 3 — Relay the CONFIRM line:**
-The script outputs a `CONFIRM:` line. Send it to the user word for word. Do not paraphrase, do not add to it, do not confirm from memory.
+1. Never edit or reformat the user's message. Pass it verbatim.
+2. Never ask the user to rephrase. The script handles any phrasing.
+3. For multiple expenses in one message (e.g. "10 on coffee and 5 on parking"), run the preview → confirm → write flow once per expense, sequentially.
+4. Duplicate check: if the write step outputs `DUPLICATE_FOUND:`, tell the user and ask if they want to log anyway. If yes, re-run with `--skip-duplicate-check`.
+5. Relay `REPLY:` lines verbatim — do not paraphrase or confirm from memory.
 
 ### Log an expense from a receipt image
 
@@ -423,7 +394,7 @@ When the user says things like "fix that", "that was wrong", "change the amount"
    ```
    bash <skill_dir>/scripts/update_expense.sh --id "<transaction_id>" --amount "<amount_or___KEEP__>" --description "<description_or___KEEP__>" --category "<category_name_or___KEEP__>" --date "<YYYY-MM-DD_or___KEEP__>" --account "<account_or___KEEP__>" --notes "<notes_or___KEEP___or___CLEAR__>"
    ```
-4. Relay the `CONFIRM:` line from the script output word for word.
+4. Relay the `REPLY:` line from the script output word for word.
 
 ### Undo / delete last expense
 If the user asks to undo or delete an entry:
@@ -433,20 +404,20 @@ If the user asks to undo or delete an entry:
    ```
    bash <skill_dir>/scripts/delete_expense.sh "<transaction_id>"
    ```
-3. Relay the `CONFIRM:` line from the script output word for word.
+3. Relay the `REPLY:` line from the script output word for word.
 4. Never delete sheet rows — the script clears the row contents.
 
 ## Rules
 - Pass category as plain English to scripts — never construct `=zategory{N}` yourself
 - Do NOT call `get_categories.sh` at runtime — the category table is hardcoded in the scripts
 - For income, use the explicit `name`, `account`, `source`, and `notes` fields.
-- Relay `CONFIRM:` lines from scripts verbatim — do not paraphrase or confirm from memory
+- Relay `REPLY:` lines from scripts verbatim — do not paraphrase or confirm from memory
 - Never include transaction IDs or internal record IDs in any response
 - Never use conversation history as evidence of what is or isn't in the sheet — always check the sheet
 - Always relay what the script confirmed — the user should never have to guess if it worked
 - If a script returns an error, tell the user clearly and do not silently retry
 - Default date is always today in the user's local timezone
-- Default account is always "Cash" unless the user specifies otherwise
+- Default account is always "Revolut" unless the user specifies otherwise
 - Default income account is always "Other" unless the user specifies otherwise
 - Default income source is always "Other" unless the user specifies otherwise
 - Amounts are always stored as plain numbers in `TRACKER_CURRENCY`

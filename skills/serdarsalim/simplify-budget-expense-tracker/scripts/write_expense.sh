@@ -7,7 +7,7 @@ AMOUNT=""
 DESCRIPTION=""
 CATEGORY_INPUT=""
 DATE_INPUT=""
-ACCOUNT="Cash"
+ACCOUNT="Revolut"
 NOTES=""
 
 while [[ $# -gt 0 ]]; do
@@ -102,7 +102,7 @@ update_master_timestamp
 DISPLAY_AMOUNT="${TRACKER_SYMBOL}${AMOUNT_VALUE}"
 
 if [ "$CATEGORY_FALLBACK" = "true" ]; then
-  echo "CONFIRM: Logged ${DESCRIPTION} — ${DISPLAY_AMOUNT} under ${CATEGORY_DISPLAY} on ${DISPLAY_DATE} (${ACCOUNT}) [note: '${CATEGORY_INPUT}' not recognised, used Other]"
+  echo "REPLY: ✅ ${DESCRIPTION} — ${DISPLAY_AMOUNT} under ${CATEGORY_DISPLAY} on ${DISPLAY_DATE} (${ACCOUNT}) [category '${CATEGORY_INPUT}' not recognised, used Other]"
 else
-  echo "CONFIRM: Logged ${DESCRIPTION} — ${DISPLAY_AMOUNT} under ${CATEGORY_DISPLAY} on ${DISPLAY_DATE} (${ACCOUNT})"
+  echo "REPLY: ✅ ${DESCRIPTION} — ${DISPLAY_AMOUNT} under ${CATEGORY_DISPLAY} on ${DISPLAY_DATE} (${ACCOUNT})"
 fi

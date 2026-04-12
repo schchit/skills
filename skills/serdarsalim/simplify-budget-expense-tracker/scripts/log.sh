@@ -14,10 +14,12 @@ DATE_OVERRIDE=""
 ACCOUNT_OVERRIDE=""
 CATEGORY_OVERRIDE=""
 PREVIEW_ONLY="0"
+SKIP_DUP_CHECK="0"
 MESSAGE=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --preview) PREVIEW_ONLY="1"; shift ;;
+    --skip-duplicate-check) SKIP_DUP_CHECK="1"; shift ;;
     --date) DATE_OVERRIDE="$2"; shift 2 ;;
     --account) ACCOUNT_OVERRIDE="$2"; shift 2 ;;
     --category) CATEGORY_OVERRIDE="$2"; shift 2 ;;
@@ -335,6 +337,7 @@ fillers = {
     "expense", "expenses", "purchase", "purchased", "order", "ordered",
     "is", "was", "were", "be", "been", "being",
     "got", "get",
+    "today", "yesterday", "tomorrow", "now",
 }
 
 tokens = re.split(r'\s+', desc.strip())
@@ -343,14 +346,31 @@ desc = " ".join(tokens).strip(" .,!?-")
 if not desc:
     desc = "expense"
 
-preview_category = category if category_source != "none" else None
+CATEGORY_EMOJIS = {
+    "Housing": "🏡", "Transport": "🚙", "Groceries": "🍎", "Dining Out": "🍕",
+    "Personal Care": "❤️", "Shopping": "🛍️", "Utilities": "💡", "Fun": "🎬",
+    "Business": "💻️", "Other": "❓", "Donation": "🕌", "Childcare": "🐣",
+    "Travel": "✈️", "Zakat": "🌟", "Debt Payment": "💸", "Fitness": "💪",
+    "Family Support": "🏘️", "Taxes": "💵", "Maintenance": "🧰", "Painting": "🎨",
+    "TestGround": "🤖", "Learning": "📚", "Sports": "🏀", "Pet": "🐶",
+    "Gifts": "🎁", "Special Occasions": "🥰", "Dress": "👚", "Hobby": "🪂",
+    "Insurance": "🛡️", "Medical": "🩺",
+}
+emoji = CATEGORY_EMOJIS.get(category, "")
+cat_display = f"{category} {emoji}".strip()
+
+if category_source in ("builtin", "learned", "explicit"):
+    question = f"Log *{desc}* under {cat_display}?"
+else:
+    question = f"Log *{desc}* under {cat_display}? (best guess — reply yes or give me the right category)"
 
 print(json.dumps({
     "amount": amount_str,
     "description": desc,
-    "category": preview_category,
+    "category": category,
     "explicitCategory": explicit_category,
-    "categorySource": category_source
+    "categorySource": category_source,
+    "question": question,
 }))
 PY
 )"
@@ -377,7 +397,16 @@ if [[ "$EXPLICIT_CATEGORY" != "true" ]]; then
 fi
 
 DATE_ARG="${DATE_OVERRIDE:-$(date +%Y-%m-%d)}"
-ACCOUNT_ARG="${ACCOUNT_OVERRIDE:-Cash}"
+ACCOUNT_ARG="${ACCOUNT_OVERRIDE:-Revolut}"
+
+if [[ "$SKIP_DUP_CHECK" != "1" ]]; then
+  DUP_JSON="$(bash "$SCRIPT_DIR/find_expenses.sh" --date "$DATE_ARG" --description "$DESCRIPTION" --limit 5 2>/dev/null || echo '[]')"
+  DUP_COUNT="$(printf '%s' "$DUP_JSON" | python3 -c 'import json,sys; print(len(json.loads(sys.stdin.read())))')"
+  if [[ "$DUP_COUNT" -gt 0 ]]; then
+    echo "DUPLICATE_FOUND: \"${DESCRIPTION}\" may already be logged for ${DATE_ARG}. Run with --skip-duplicate-check to log anyway."
+    exit 0
+  fi
+fi
 
 bash "$SCRIPT_DIR/write_expense.sh" \
   --amount "$AMOUNT" \

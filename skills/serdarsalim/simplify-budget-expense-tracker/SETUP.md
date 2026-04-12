@@ -21,29 +21,35 @@ Your copy must still contain:
 
 Do not change the expected column layout unless you also change the scripts.
 
+Set a canonical OpenClaw root first:
+
+```bash
+export OPENCLAW_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"
+```
+
 ## 2. Install The Skill
 
 Put this skill at:
 
 ```bash
-~/.openclaw/skills/simplify-budget
+$OPENCLAW_HOME/skills/simplify-budget
 ```
 
-## 3. Install The Workspace Wrappers
+## 3. Use The Bundled Command Wrappers
 
-For Telegram and OpenClaw command routing to work, install the workspace wrappers at:
+For Telegram and OpenClaw command routing, use the bundled command wrappers at:
 
 ```bash
-~/.openclaw/workspace
+$OPENCLAW_HOME/skills/simplify-budget/commands
 ```
 
-The workspace layer has two parts:
+The bundled command layer has two parts:
 
-**`exec`** — the central dispatcher all wrappers call. It handles:
+**`exec.sh`** — the central dispatcher all wrappers call. It handles:
 - argument normalisation (`--date`, `--amount`, `--account`, etc.)
 - date parsing: converts natural language like `"yesterday"`, `"2 days ago"`, `"March 31"` into `YYYY-MM-DD` automatically
 - category resolution: fuzzy-matches a description to the hardcoded category list
-- category cache: reads `~/.openclaw/cache/simplify-budget/categories.tsv` so inactive categories work without hitting the sheet
+- category cache: reads `$OPENCLAW_HOME/cache/simplify-budget/categories.tsv` so inactive categories work without hitting the sheet
 
 **`log.sh`** — natural language expense entry, the recommended command for Telegram. Pass the user's full expense message as one raw string. Optional account/date should only be passed when they are independently clear:
 ```bash
@@ -51,9 +57,9 @@ The workspace layer has two parts:
 ./log.sh "Shell 12.50" "Revolut" "yesterday"
 ./log.sh "dentist 80 euro" "Revolut" "March 31"
 ```
-Do not ask the user to rephrase into CLI-shaped chunks like `"pencil 10 euro"`. The date phrase (`"yesterday"`, `"2 days ago"`, `"March 31"`, `"last week"`) is parsed by `exec` — the bot never needs to compute or pass an ISO date itself.
+Do not ask the user to rephrase into CLI-shaped chunks like `"pencil 10 euro"`. The date phrase (`"yesterday"`, `"2 days ago"`, `"March 31"`, `"last week"`) is parsed by `exec.sh` — the bot never needs to compute or pass an ISO date itself.
 
-**Thin shell wrappers** — one per script, each forwards to `exec`. You need these in `~/.openclaw/workspace`:
+**Thin shell wrappers** — one per script, each forwards to `exec.sh`. These are bundled in `$OPENCLAW_HOME/skills/simplify-budget/commands`:
 ```
 write_expense.sh    update_expense.sh    delete_expense.sh    find_expenses.sh
 write_income.sh     update_income.sh     delete_income.sh     find_income.sh
@@ -69,10 +75,10 @@ Each thin wrapper looks like this (adjust the script name):
 #!/usr/bin/env bash
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-exec "${SCRIPT_DIR}/exec" write_expense.sh "$@"
+exec "${SCRIPT_DIR}/exec.sh" write_expense.sh "$@"
 ```
 
-Without the workspace wrappers the skill files still exist, but the bot will have no reliable way to route commands, resolve dates, or match categories.
+Without the bundled command wrappers the skill files still exist, but the bot will have no reliable way to route commands, resolve dates, or match categories.
 
 ## 4. Create Or Reuse A Google Service Account
 
@@ -81,7 +87,7 @@ Create a Google Cloud service account with Google Sheets access and download the
 A common location is:
 
 ```bash
-~/.openclaw/sa.json
+$OPENCLAW_HOME/sa.json
 ```
 
 ## 5. Share The Sheet With The Service Account
@@ -97,7 +103,7 @@ If you skip this, reads and writes will fail.
 Add these to your OpenClaw config or shell environment:
 
 ```bash
-export GOOGLE_SA_FILE="$HOME/.openclaw/sa.json"
+export GOOGLE_SA_FILE="$OPENCLAW_HOME/sa.json"
 export SPREADSHEET_ID="your_google_sheet_id"
 export TRACKER_CURRENCY="EUR"
 export TRACKER_CURRENCY_SYMBOL="€"
@@ -127,20 +133,20 @@ The skill expects:
 openclaw daemon restart
 ```
 
-If Telegram is already connected, restart after config changes so it picks up the new environment and wrappers.
+If Telegram is already connected, restart after config changes so it picks up the new environment and bundled command wrappers.
 
 ## 9. Smoke Test
 
 Expense via natural language (recommended):
 
 ```bash
-bash "$HOME/.openclaw/workspace/log.sh" "setup test 10 euro" "Cash"
+bash "$OPENCLAW_HOME/skills/simplify-budget/commands/log.sh" "setup test 10 euro" "Cash"
 ```
 
 Expense via explicit flags:
 
 ```bash
-bash "$HOME/.openclaw/workspace/write_expense.sh" \
+bash "$OPENCLAW_HOME/skills/simplify-budget/commands/write_expense.sh" \
   --amount 10 \
   --category 4 \
   --description "setup test" \
@@ -151,7 +157,7 @@ bash "$HOME/.openclaw/workspace/write_expense.sh" \
 Recurring:
 
 ```bash
-OPENCLAW_HOME="$HOME/.openclaw" bash "$HOME/.openclaw/workspace/write_recurring.sh" \
+bash "$OPENCLAW_HOME/skills/simplify-budget/commands/write_recurring.sh" \
   --start-date 2026-03-28 \
   --name "setup recurring test" \
   --category "Business 💻️" \
@@ -168,14 +174,14 @@ Delete the test rows afterward.
 If the user wants Telegram access too:
 - configure the Telegram bot token in OpenClaw
 - use pairing or allowlist
-- make sure the Telegram prompt routes budget requests to the Simplify Budget wrappers
+- make sure the Telegram prompt routes budget requests to the bundled Simplify Budget command wrappers
 
 This repo does not contain any private Telegram token or local OpenClaw config.
 
 ## Common Failures
 
 `scripts are missing`
-- workspace wrappers were not installed
+- the skill was not installed correctly, or the bundled command wrappers are missing
 
 `category not found`
 - the user is not using the real template, or the category table changed
