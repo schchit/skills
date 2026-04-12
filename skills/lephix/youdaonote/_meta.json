@@ -1,13 +1,18 @@
 {
   "owner": "lephix",
   "slug": "youdaonote",
-  "displayName": "youdaonote",
+  "displayName": "YoudaoNote",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1775220310024,
-    "commit": "https://github.com/openclaw/skills/commit/7cb014de8fc38f889be2471af23887eb3ff1dd56"
+    "version": "1.0.4",
+    "publishedAt": 1775824459017,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1775220310024,
+      "commit": "https://github.com/openclaw/skills/commit/7cb014de8fc38f889be2471af23887eb3ff1dd56"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1774951239858,

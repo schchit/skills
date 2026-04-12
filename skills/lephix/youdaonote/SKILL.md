@@ -1,8 +1,8 @@
 ---
 name: youdaonote
-description: "有道云笔记全能工具：笔记管理（创建、搜索、浏览、读取）、待办管理（创建、完成、分组）、网页剪藏（服务端抓取）。当用户需要操作有道云笔记时使用此 Skill。"
+description: "有道云笔记官方 AI 工具，支持笔记、待办、网页剪藏等操作。当涉及有道云笔记相关业务时使用此 Skill。"
 official: true
-version: 1.0.3
+version: 1.0.4
 minCliVersion: "1.2.0"
 ---
 
@@ -136,9 +136,12 @@ export PATH="$HOME/.local/bin:$PATH"
 # 执行完成后回复“已安装”，Agent 将继续原始请求
 ```
 
-**Windows（CMD/PowerShell）**：不支持一键安装，告知用户下载预编译包：
-- x64：https://artifact.lx.netease.com/download/youdaonote-cli/youdaonote-cli-windows-x64.tar.gz
+**Windows（CMD/PowerShell）**：Agent 应自动完成下载、解压、加入 PATH 的全过程，尽量不让用户手动操作。下载地址：
+- x64（常见新 CPU）：https://artifact.lx.netease.com/download/youdaonote-cli/youdaonote-cli-windows-x64.tar.gz
+- x64（旧 CPU、无 AVX2 等，运行默认包秒退 / 退出码约 `0xC000001D`）：https://artifact.lx.netease.com/download/youdaonote-cli/youdaonote-cli-win-x64-bl.tar.gz
 - ARM64：https://artifact.lx.netease.com/download/youdaonote-cli/youdaonote-cli-windows-arm64.tar.gz
+
+安装策略：先尝试默认 x64 包，若运行闪退或退出码为 `0xC000001D`，自动换用 x64 baseline 包重试。
 
 ## 故障排查
 
