@@ -1,6 +1,6 @@
 ---
 name: music-video-maker
-version: "1.0.0"
+version: "1.3.1"
 displayName: "Music Video Maker — Create Music Videos with AI from Any Song or Audio Track"
 description: >
   Create music videos with AI — upload a song or audio track and NemoVideo produces a complete music video with beat-synced visuals, cinematic scenes, lyric animations, transitions timed to the music, and professional color grading. Make music videos for YouTube, Spotify Canvas, TikTok, Instagram Reels, and live performance backdrops. Works for any genre: hip-hop, pop, rock, electronic, lo-fi, indie, R&B, country, and ambient. AI music video generator, make music video online, lyric video maker, visualizer video, song to video, audio to video, beat-synced video creator.
