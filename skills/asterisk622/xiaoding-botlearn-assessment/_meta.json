@@ -3,9 +3,15 @@
   "slug": "xiaoding-botlearn-assessment",
   "displayName": "BotLearn Assessment",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1774335666923,
-    "commit": "https://github.com/openclaw/skills/commit/7582c42770e6685c890f557cf15e53c17095b691"
+    "version": "1.0.7",
+    "publishedAt": 1775631884852,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1774335666923,
+      "commit": "https://github.com/openclaw/skills/commit/7582c42770e6685c890f557cf15e53c17095b691"
+    }
+  ]
 }
