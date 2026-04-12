@@ -1,13 +1,18 @@
 {
   "owner": "shenmeng",
   "slug": "shenmeng-odds-movement-monitor",
-  "displayName": "Odds Movement Monitor 赔率变动监控",
+  "displayName": "Odds Movement Monitor 赔率异动监控",
   "latest": {
-    "version": "11.1.0",
-    "publishedAt": 1775916799995,
-    "commit": "https://github.com/openclaw/skills/commit/3f5fa28acf5c68ec74316c17ea5e083dcc1dbff1"
+    "version": "1000000.1.1",
+    "publishedAt": 1776007638337,
+    "commit": null
   },
   "history": [
+    {
+      "version": "11.1.0",
+      "publishedAt": 1775916799995,
+      "commit": "https://github.com/openclaw/skills/commit/3f5fa28acf5c68ec74316c17ea5e083dcc1dbff1"
+    },
     {
       "version": "1775829171.0.0",
       "publishedAt": 1775829209068,
