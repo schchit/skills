@@ -1,1 +1,1 @@
-{"project_name":"google-workspace","tag":"v0.5.0","previous_tag":"google-workspace/v0.4.3","version":"0.5.0","commit":"ead136b24ac74c1ef661e0b22c178d76861cc7ca","date":"2026-04-02T15:02:49.053205418Z","runtime":{"goos":"linux","goarch":"amd64"}}
+{"project_name":"google-workspace","tag":"v0.5.2","previous_tag":"token-usage/v0.2.2","version":"0.5.2","commit":"886b24a9b81973ae239fe31a403ab21ec11f940e","date":"2026-04-08T20:42:36.57138941Z","runtime":{"goos":"linux","goarch":"amd64"}}
