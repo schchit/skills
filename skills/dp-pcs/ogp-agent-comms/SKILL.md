@@ -1,7 +1,7 @@
 ---
 skill_name: ogp-agent-comms
-version: 0.2.1
-description: Interactive wizard to configure agent-to-agent communication policies (updated for OGP 0.2.24+ peer identity)
+version: 0.6.0
+description: Interactive wizard to configure agent-to-agent communication policies (updated for multi-framework `--for` workflows, OGP 0.2.24+ peer identity, and 0.2.28+ multi-agent routing)
 trigger: Use when the user wants to configure how their agent responds to incoming agent-comms messages from federated peers
 ---
 ## Prerequisites
@@ -9,9 +9,11 @@ trigger: Use when the user wants to configure how their agent responds to incomi
 The OGP daemon must be installed. If you see errors like 'ogp: command not found', install it first:
 
 ```bash
-npm install -g github:dp-pcs/ogp --ignore-scripts
+npm install -g @dp-pcs/ogp
 ogp-install-skills
 ogp setup
+ogp agent-comms interview
+ogp config show
 ```
 
 Full documentation: https://github.com/dp-pcs/ogp
@@ -37,6 +39,21 @@ Agent-comms policies control HOW your agent responds to incoming messages (separ
 **Two layers:**
 1. **Scope grants** (doorman) - Controls which intents/topics are ALLOWED
 2. **Response policies** (this skill) - Controls HOW your agent RESPONDS
+3. **Human delivery preferences** - Controls WHERE and WHEN your agent surfaces federated requests back to the human
+
+**Important default:** when a federation request is approved, OGP auto-enables the `general` topic for that peer. Everything else still needs explicit policy if the user wants something more restrictive or more open.
+
+**Multi-Agent Routing (v0.2.28+):**
+When using `notifyTargets` in your OGP config, federation messages can be routed to specific agents based on the message context. Each agent can have its own agent-comms policies.
+
+**Human delivery behavior (v0.4.2+):**
+Use `humanDeliveryTarget` plus `inboundFederationPolicy.mode` to tell the agent whether it should forward everything, summarize, act autonomously, or wait for approval before replying.
+
+OGP now evaluates delegated-authority rules—global defaults, per-peer overrides, message-class-specific rules (`agent-work`, `human-relay`, `approval-request`, `status-update`), and topic overrides—before finalizing delivery behavior. This determines whether the agent may reply directly or must escalate to the configured human session. On OpenClaw, `/hooks/agent` is the preferred delivery path; it tries to request the actual human session key only when `hooks.allowRequestSessionKey=true` and the requested key matches configured prefixes. When the flag is false, the hook runs in the default session (`agent:main:main`), so Telegram sender identity continues to appear as injected/system/`cli`, which is the accepted `v0.4.2` limitation documented in the README and changelog. Lifecycle events such as federation approvals now surface through these same hook-driven turns, so humans see the lifecycle update without needing to poll another channel.
+
+On OpenClaw, human-facing federated work should be handled through the platform's hook-driven agent turn (`/hooks/agent`). Direct `sessions.send` injection is a lower-level fallback or sync mechanism, not the primary behavioral path.
+
+**Multi-Framework note:** Policies are framework-local. Use `ogp --for openclaw ...` for OpenClaw state and `ogp --for hermes ...` for Hermes state.
 
 ## Interactive Flow
 
@@ -46,34 +63,59 @@ When invoked, guide the user through this flow:
 
 ```bash
 # Verify OGP is running and has peers
-ogp status
-ogp federation list --status approved
+ogp config show
+ogp --for openclaw status
+ogp --for openclaw federation list --status approved
 ```
 
 If no approved peers, inform the user they need to federate first.
 
-### Step 2: Show Current Configuration
+### Step 2: Re-run the Delegated-Authority Interview First
+
+When the user is configuring overall human-delivery or autonomy behavior, start with the canonical interview command instead of approximating it manually:
+
+```bash
+ogp --for openclaw agent-comms interview
+```
+
+Use the Hermes variant when the active framework is Hermes:
+
+```bash
+ogp --for hermes agent-comms interview
+```
+
+This command updates:
+- `humanDeliveryTarget` when the framework supports it
+- `inboundFederationPolicy.mode`
+- delegated-authority defaults for human surfacing, relay handling, approval-required topics, and trusted-peer autonomy
+
+After the interview, continue with per-peer or per-topic policy commands only if the user wants something more specific.
+
+### Step 3: Show Current Configuration
 
 ```bash
 # Show current policies
-ogp agent-comms policies
+ogp --for openclaw agent-comms policies
 ```
 
-### Step 3: Ask What to Configure
+### Step 4: Ask What to Configure
 
 Present options:
 1. **Global defaults** - Apply to all peers (current and future)
 2. **Specific peer(s)** - Configure individual peers
 3. **View current policies** - Just show what's configured
 
-### Step 4: For Specific Peers - Multi-Select
+### Step 5: For Specific Peers - Multi-Select
 
 If configuring specific peers, show the list and allow multi-select:
 
+Use the peer list from:
+
 ```bash
-# List peers for selection
-ogp federation list --status approved --json
+ogp --for openclaw federation list --status approved
 ```
+
+Prefer the peer ID shown in the list. Some commands also accept a display-name match, but the peer ID is the safest input.
 
 Example interaction:
 ```
@@ -85,7 +127,7 @@ Select peers to configure:
 Selected: Stanislav, Alice
 ```
 
-### Step 5: Configure Topics
+### Step 6: Configure Topics
 
 Ask which topics the agent should engage on:
 
@@ -110,17 +152,18 @@ For each topic (or all topics), set the response level:
 | `summary` | High-level responses only, no specifics |
 | `escalate` | Ask human before responding |
 | `deny` | Politely decline to discuss |
+| `off` | Block the topic entirely |
 
 ### Step 7: Save Configuration
 
 ```bash
 # Save policies for selected peers
-ogp agent-comms configure <peer-id> \
+ogp --for openclaw agent-comms configure <peer-id> \
   --topics "memory-management,testing,general" \
   --level full
 
 # Or set global defaults
-ogp agent-comms configure --global \
+ogp --for openclaw agent-comms configure --global \
   --topics "general,testing" \
   --level summary
 ```
@@ -129,7 +172,7 @@ ogp agent-comms configure --global \
 
 ```bash
 # Show the updated configuration
-ogp agent-comms policies <peer-id>
+ogp --for openclaw agent-comms policies <peer-id>
 ```
 
 ## CLI Commands
@@ -137,7 +180,7 @@ ogp agent-comms policies <peer-id>
 ### View All Policies
 
 ```bash
-ogp agent-comms policies
+ogp --for openclaw agent-comms policies
 ```
 
 Shows global defaults and per-peer overrides.
@@ -145,7 +188,7 @@ Shows global defaults and per-peer overrides.
 ### View Peer Policy
 
 ```bash
-ogp agent-comms policies 302a300506032b65
+ogp --for openclaw agent-comms policies 302a300506032b65
 ```
 
 Shows effective policy for a specific peer (global + overrides).
@@ -153,7 +196,7 @@ Shows effective policy for a specific peer (global + overrides).
 ### Configure Global Defaults
 
 ```bash
-ogp agent-comms configure --global \
+ogp --for openclaw agent-comms configure --global \
   --topics "general,testing" \
   --level summary \
   --notes "Default: be helpful but don't overshare"
@@ -162,7 +205,7 @@ ogp agent-comms configure --global \
 ### Configure Specific Peer
 
 ```bash
-ogp agent-comms configure <peer-id> \
+ogp --for openclaw agent-comms configure <peer-id> \
   --topics "memory-management,testing,general" \
   --level full \
   --notes "Stan is a trusted collaborator"
@@ -171,27 +214,29 @@ ogp agent-comms configure <peer-id> \
 ### Configure Multiple Peers at Once
 
 ```bash
-ogp agent-comms configure stan,leonardo,alice \
+ogp --for openclaw agent-comms configure 302a300506032b65,5f8b2c,9d4e1f \
   --topics "testing" \
   --level full
 ```
 
+**Note:** Prefer peer IDs. Partial peer IDs or display-name matches may work, but peer IDs are canonical.
+
 ### Add Topic to Existing Policy
 
 ```bash
-ogp agent-comms add-topic <peer-id> calendar --level escalate
+ogp --for openclaw agent-comms add-topic <peer-id> calendar --level escalate
 ```
 
 ### Remove Topic
 
 ```bash
-ogp agent-comms remove-topic <peer-id> personal
+ogp --for openclaw agent-comms remove-topic <peer-id> personal
 ```
 
 ### Reset to Global Defaults
 
 ```bash
-ogp agent-comms reset <peer-id>
+ogp --for openclaw agent-comms reset <peer-id>
 ```
 
 ## Policy Inheritance
@@ -213,12 +258,12 @@ Effective for Stan:
 
 ## Response Policy Schema
 
-Stored in `~/.ogp/peers.json` under each peer:
+Stored in the active framework's `peers.json` under each peer:
 
 ```json
 {
   "id": "302a300506032b65",
-  "displayName": "Stanislav",
+  "alias": "Stanislav",
   "responsePolicy": {
     "memory-management": {
       "level": "full",
@@ -235,10 +280,16 @@ Stored in `~/.ogp/peers.json` under each peer:
 }
 ```
 
-Global defaults in `~/.ogp/config.json`:
+**Note:** The `alias` field (formerly `petname`) is stored with the peer, but agent-comms commands should still prefer the peer ID shown by `ogp federation list`.
+
+Global defaults live in the active framework config, for example `~/.ogp/config.json` or `~/.ogp-hermes/config.json`:
 
 ```json
 {
+  "humanDeliveryTarget": "telegram:123456789",
+  "inboundFederationPolicy": {
+    "mode": "summarize"
+  },
   "agentComms": {
     "globalPolicy": {
       "general": { "level": "summary" },
@@ -246,6 +297,10 @@ Global defaults in `~/.ogp/config.json`:
     },
     "defaultLevel": "summary",
     "activityLog": true
+  },
+  "notifyTargets": {
+    "main": "telegram:123456789",
+    "scribe": "telegram:987654321"
   }
 }
 ```
@@ -255,7 +310,7 @@ Global defaults in `~/.ogp/config.json`:
 When an agent-comms message arrives:
 
 1. **Doorman** checks if the intent/topic is allowed (scope grants)
-2. **Your agent** receives the message via notification
+2. **Your agent** receives the message via the local platform backend
 3. **Your agent** looks up the response policy:
    - Check peer-specific policy for this topic
    - Fall back to global policy for this topic
@@ -266,19 +321,25 @@ When an agent-comms message arrives:
    - `escalate`: "Let me check with my human and get back to you"
    - `deny`: "I'm not able to discuss that topic"
 
+**OpenClaw delivery path:** OGP should hand human-facing federated work to OpenClaw through `/hooks/agent`, letting the agent run a real turn and deliver via the configured human channel. A compact `sessions.send` note may still be used to keep session state synchronized, but that is secondary.
+
+**Multi-Agent Routing:** When `notifyTargets` is configured, messages are routed to the appropriate agent who then applies their own policies.
+
+**Human Delivery:** When `humanDeliveryTarget` is configured, the agent should treat "tell my human X" as a delivery obligation to that configured channel, not merely as something to mention in whatever session happens to be active.
+
 ## Activity Logging
 
 When enabled, all agent-comms interactions are logged:
 
 ```bash
 # View activity log
-ogp agent-comms activity
+ogp --for openclaw agent-comms activity
 
 # View for specific peer
-ogp agent-comms activity <peer-id>
+ogp --for openclaw agent-comms activity <peer-id>
 
 # View last N entries
-ogp agent-comms activity --last 20
+ogp --for openclaw agent-comms activity --last 20
 ```
 
 Log format:
@@ -294,7 +355,7 @@ Log format:
 ### Trusted Collaborator (Full Access)
 
 ```bash
-ogp agent-comms configure 302a300506032b65 \
+ogp --for openclaw agent-comms configure 302a300506032b65 \
   --topics "memory-management,testing,general,code-review" \
   --level full \
   --notes "Trusted peer, full collaboration"
@@ -303,7 +364,7 @@ ogp agent-comms configure 302a300506032b65 \
 ### Business Contact (Limited)
 
 ```bash
-ogp agent-comms configure 5f8b2c... \
+ogp --for openclaw agent-comms configure 5f8b2c... \
   --topics "general,status-updates" \
   --level summary \
   --notes "Professional contact, keep it high-level"
@@ -312,11 +373,42 @@ ogp agent-comms configure 5f8b2c... \
 ### New Federation (Cautious)
 
 ```bash
-ogp agent-comms configure --global \
+ogp --for openclaw agent-comms configure --global \
   --topics "general,testing" \
   --level escalate \
   --notes "Default: check with human for new peers"
 ```
+
+### Human Delivery Modes
+
+These now have a first-class CLI interview via `ogp agent-comms interview`, and they remain part of the same operational policy:
+
+- `forward` — forward all inbound federated requests/replies to the human
+- `summarize` — summarize and escalate only important/actionable items
+- `autonomous` — act independently unless blocked or explicitly told to relay something
+- `approval-required` — do not act or reply until the human approves
+
+Make the user's intent explicit during setup and documentation. Examples:
+
+- "Tell me everything that comes in from peers."
+- "Summarize most things, but escalate if you need me."
+- "Act on your own unless you are blocked."
+- "Never reply to a peer without clearing it with me first."
+
+### Multi-Agent Setup
+
+With `notifyTargets` configured in `~/.ogp/config.json`:
+
+```json
+{
+  "notifyTargets": {
+    "main": "telegram:123456789",
+    "scribe": "telegram:987654321"
+  }
+}
+```
+
+Each agent can have independent policies. The main agent might have full access for operational topics, while the scribe agent handles content-related discussions.
 
 ## Troubleshooting
 
@@ -324,22 +416,31 @@ ogp agent-comms configure --global \
 
 1. Verify the policy is saved:
    ```bash
-   ogp agent-comms policies <peer-id>
+   ogp --for openclaw agent-comms policies <peer-id>
    ```
 
 2. Check if the topic is in scope grants (doorman):
    ```bash
-   ogp federation scopes <peer-id>
+   ogp --for openclaw federation scopes <peer-id>
    ```
 
 3. Restart daemon to reload config:
    ```bash
-   ogp stop && ogp start
+   ogp --for openclaw stop && ogp --for openclaw start --background
    ```
 
 ### Policy not taking effect for new peer
 
 New peers inherit global defaults. Configure them specifically:
 ```bash
-ogp agent-comms configure 302a300506032b65 --topics "..." --level "..."
+ogp --for openclaw agent-comms configure 302a300506032b65 --topics "..." --level "..."
 ```
+
+### Multi-Agent Routing Issues
+
+If notifications aren't reaching the right agent:
+1. Check `notifyTargets` and `humanDeliveryTarget` in the active framework config
+2. Verify the target format: `telegram:chat_id` or a raw session key like `agent:main:telegram:direct:<chat-id>`
+3. For OpenClaw, verify hooks are enabled and the hook token is present
+4. For OpenClaw Gateway RPC debugging, use `wss://localhost:18789` against a TLS-enabled local gateway, not `ws://`
+5. Remember that a successful direct session injection is not the same thing as the agent correctly handling a human-delivery obligation
