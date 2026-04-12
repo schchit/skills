@@ -1,11 +1,17 @@
 {
   "owner": "asterisk622",
   "slug": "xiaoding-deep-research",
-  "displayName": "Deep Research (XiaoDing)",
+  "displayName": "Deep Research",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1774249534639,
-    "commit": "https://github.com/openclaw/skills/commit/f8c1a11d36a451ee00c5cdc07de970db68630cba"
+    "version": "1.0.2",
+    "publishedAt": 1775631868345,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1774249534639,
+      "commit": "https://github.com/openclaw/skills/commit/f8c1a11d36a451ee00c5cdc07de970db68630cba"
+    }
+  ]
 }
