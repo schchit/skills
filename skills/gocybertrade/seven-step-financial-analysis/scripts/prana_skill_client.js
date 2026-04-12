@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * 调用 Prana 技能接口。：
- * --question / -q：用户需求任务描述，例如：帮我使用XXX技能
+ * --get-api-keys / -g：获取 Prana 平台 api_key
+ * --question / -q：-q 表示创建任务，参数为用户需求描述，例如：帮我使用XXX技能
  * --request-id / -r：指定需要查询的任务的 request_id
  */
 import { randomUUID } from "node:crypto";
@@ -15,6 +16,33 @@ const AGENT_RESULT_RETRY_INTERVAL_MS = 20000;
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function apiKeyEnvelopeFromEnv(apiKey) {
+  return {
+    code: 200,
+    message: "success",
+    data: { api_key: apiKey },
+  };
+}
+
+async function fetchApiKeys(baseUrl) {
+  const url = `${baseUrl.replace(/\/+$/, "")}/api/v2/api-keys`;
+  const res = await fetch(url, {
+    method: "GET",
+    signal: AbortSignal.timeout(30000),
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    const error = new Error(`HTTP ${res.status}: ${text}`);
+    error.status = res.status;
+    throw error;
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
 }
 
 function isTimeoutError(error) {
@@ -65,16 +93,15 @@ async function invokeAgentResultWithRetry(baseUrl, requestId, xApiKey) {
         return result;
       }
     } catch (error) {
-      lastResult = { error: true, detail: `第 ${attempt} 次 agent-result 请求失败: ${error.message || error}` };
+      return { error: true, detail: `第 ${attempt} 次 agent-result 请求失败: ${error.message || error}` };
     }
   }
 
   console.error(
-    "提示: 本轮尝试已达到上限；Prana 服务端任务可能仍需要较长时间才能完成。" +
-      "若希望继续等待同一任务的结果，请稍后执行继续尝试命令:node scripts/prana_skill_client.js -r " +
+    "提示: 本轮尝试已达到上限；Prana 服务端任务可能仍需要较长时间才能完成。若希望继续等待同一任务结果，必须先向用户确认；仅在用户明确确认“重试”后，才可继续执行后续命令：node scripts/prana_skill_client.js -r " +
       requestId,
   );
-  return lastResult;
+  return null;
 }
 
 async function invokeAgentRun(baseUrl, skillKey, question, xApiKey) {
@@ -107,6 +134,7 @@ async function main() {
     ({ values } = parseArgs({
       args: process.argv.slice(2),
       options: {
+        "get-api-keys": { type: "boolean", short: "g", default: false },
         question: { type: "string", short: "q", default: "" },
         "request-id": { type: "string", short: "r", default: "" },
         help: { type: "boolean", short: "h", default: false },
@@ -122,12 +150,34 @@ async function main() {
     console.log(
       "调用 Prana 技能接口。\n" +
         "\n" +
-        "  -q, --question   用户需求任务描述，例如：帮我使用XXX技能\n" +
-        "  -r, --request-id 指定需要查询的任务的 request_id\n" +
+        "  -g, --get-api-keys 获取 Prana 平台 api_key\n" +
+        "  -q, --question     -q 表示创建任务，参数为用户需求描述，例如：帮我使用XXX技能\n" +
+        "  -r, --request-id   指定需要查询的任务的 request_id\n" +
         "\n" +
-        '用法: node scripts/prana_skill_client.js -q "用户任务"\n' +
+        "用法: node scripts/prana_skill_client.js -g\n" +
+        '      或: node scripts/prana_skill_client.js -q "用户任务"\n' +
         "      或: node scripts/prana_skill_client.js -r <request_id>",
     );
+    process.exit(0);
+  }
+
+  if (values["get-api-keys"]) {
+    const fromEnv = String(process.env.PRANA_SKILL_API_FLAG || "").trim();
+    if (fromEnv) {
+      console.log(JSON.stringify(apiKeyEnvelopeFromEnv(fromEnv), null, 2));
+      process.exit(0);
+    }
+    try {
+      const body = await fetchApiKeys(DEFAULT_BASE_URL);
+      if (typeof body === "string") {
+        console.log(body);
+      } else {
+        console.log(JSON.stringify(body, null, 2));
+      }
+    } catch (error) {
+      console.error(`请求失败: ${error.message || error}`);
+      process.exit(2);
+    }
     process.exit(0);
   }
 
@@ -153,7 +203,9 @@ async function main() {
           xApiKey,
         )
       : await invokeAgentResultWithRetry(DEFAULT_BASE_URL, requestIdArg, xApiKey);
-    console.log(JSON.stringify(result, null, 2));
+    if (result != null) {
+      console.log(JSON.stringify(result, null, 2));
+    }
   } catch (error) {
     console.error(`请求失败: ${error.message || error}`);
     process.exit(2);

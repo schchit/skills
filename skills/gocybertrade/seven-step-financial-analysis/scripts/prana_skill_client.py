@@ -11,13 +11,33 @@ import time
 import uuid
 import urllib.error
 import urllib.request
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 DEFAULT_BASE_URL = "https://claw-uat.ebonex.io"
 DEFAULT_SKILL_KEY = "stock_analysis_7step"
 AGENT_RUN_TIMEOUT_SEC = 150
 AGENT_RESULT_RETRY_TIMES = 30
 AGENT_RESULT_RETRY_INTERVAL_SEC = 20
+API_KEYS_TIMEOUT_SEC = 30
+
+
+def _api_key_envelope_from_env(api_key: str) -> Dict[str, Any]:
+    return {
+        "code": 200,
+        "message": "success",
+        "data": {"api_key": api_key},
+    }
+
+
+def get_api_keys(base_url: str) -> Any:
+    url = base_url.rstrip("/") + "/api/v2/api-keys"
+    req = urllib.request.Request(url=url, method="GET")
+    with urllib.request.urlopen(req, timeout=API_KEYS_TIMEOUT_SEC) as resp:
+        raw = resp.read().decode("utf-8")
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return raw
 
 
 def _headers(x_api_key: str) -> Dict[str, str]:
@@ -51,7 +71,9 @@ def _is_timeout_error(exc: BaseException) -> bool:
     return False
 
 
-def invoke_agent_result_with_retry(base_url: str, request_id: str, x_api_key: str) -> Dict[str, Any]:
+def invoke_agent_result_with_retry(
+    base_url: str, request_id: str, x_api_key: str
+) -> Optional[Dict[str, Any]]:
     url = base_url.rstrip("/") + "/api/claw/agent-result"
     last_result: Dict[str, Any] = {"error": True, "detail": "agent-result 尚未获取到结果"}
     for attempt in range(1, AGENT_RESULT_RETRY_TIMES + 1):
@@ -76,16 +98,17 @@ def invoke_agent_result_with_retry(base_url: str, request_id: str, x_api_key: st
             if status:
                 return result
         except Exception as exc:  # noqa: BLE001
-            last_result = {"error": True, "detail": f"第 {attempt} 次 agent-result 请求失败: {exc}"}
+            return {"error": True, "detail": f"第 {attempt} 次 agent-result 请求失败: {exc}"}
     print(
-        f"提示: 本轮尝试已达到上限；Prana 服务端任务可能仍需要较长时间才能完成。"
-        f"若希望继续等待同一任务的结果，请稍后执行继续尝试命令:python3 scripts/prana_skill_client.py -r {request_id}",
+        f"提示: 本轮尝试已达到上限；Prana 服务端任务可能仍需要较长时间才能完成。若希望继续等待同一任务结果，必须先向用户确认；仅在用户明确确认“重试”后，才可继续执行后续命令：python3 scripts/prana_skill_client.py -r {request_id}",
         file=sys.stderr,
     )
-    return last_result
+    return None
 
 
-def invoke_agent_run(base_url: str, skill_key: str, question: str, x_api_key: str) -> Dict[str, Any]:
+def invoke_agent_run(
+    base_url: str, skill_key: str, question: str, x_api_key: str
+) -> Optional[Dict[str, Any]]:
     request_id = str(uuid.uuid4())
     run_url = base_url.rstrip("/") + "/api/claw/agent-run"
     run_payload = {
@@ -115,7 +138,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="调用 Prana 技能接口。question=用户需求任务。"
     )
-    parser.add_argument("--question", "-q", default=None, help="用户需求任务描述，例如：帮我使用XXX技能")
+    parser.add_argument(
+        "--question",
+        "-q",
+        default=None,
+        help="-q 表示创建任务，参数为用户需求描述，例如：帮我使用XXX技能",
+    )
     parser.add_argument(
         "--request-id",
         "-r",
@@ -123,7 +151,33 @@ def main() -> None:
         dest="request_id",
         help="指定需要查询的任务的 request_id",
     )
+    parser.add_argument(
+        "--get-api-keys",
+        "-g",
+        action="store_true",
+        help="获取 Prana 平台 api_key",
+    )
     args = parser.parse_args()
+
+    if args.get_api_keys:
+        from_env = os.getenv("PRANA_SKILL_API_FLAG", "").strip()
+        if from_env:
+            print(json.dumps(_api_key_envelope_from_env(from_env), ensure_ascii=False, indent=2))
+            return
+        try:
+            result = get_api_keys(DEFAULT_BASE_URL)
+            if isinstance(result, (dict, list)):
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+            else:
+                print(result)
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace")
+            print(f"HTTP {exc.code}: {body}", file=sys.stderr)
+            sys.exit(2)
+        except Exception as exc:  # noqa: BLE001
+            print(f"请求失败: {exc}", file=sys.stderr)
+            sys.exit(3)
+        return
 
     question_trimmed = str(args.question).strip() if args.question is not None else ""
     request_id_arg = (args.request_id or "").strip()
@@ -149,7 +203,8 @@ def main() -> None:
                 request_id=request_id_arg,
                 x_api_key=x_api_key,
             )
-        print(json.dumps(result, ensure_ascii=False, indent=2))
+        if result is not None:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")
         print(f"HTTP {exc.code}: {body}", file=sys.stderr)

@@ -4,12 +4,12 @@
   "required_env": [
     "PRANA_SKILL_API_FLAG"
   ],
-  "required_env_note": "调用随附 scripts/prana_skill_client.py 或 prana_skill_client.js 时，进程环境中必须已设置 PRANA_SKILL_API_FLAG。随附脚本不会请求 GET /api/v2/api-keys；取钥须由集成方/操作者（curl 等）完成后再写入该环境变量。",
+  "required_env_note": "运行 -q 或 -r 前，进程环境中必须已设置 PRANA_SKILL_API_FLAG（用于 x-api-key）。仅在显式执行 -g 且用户明确同意时，随附脚本才会请求 GET /api/v2/api-keys 获取 data.api_key；",
   "network_requests": [
     {
       "method": "GET",
       "url": "https://claw-uat.ebonex.io/api/v2/api-keys",
-      "description": "供集成方自行取 data.api_key 并配置为 PRANA_SKILL_API_FLAG；随附薄客户端脚本不实现此请求"
+      "description": "可通过随附客户端脚本的 -g 获取 data.api_key（内部请求该接口），再配置为 PRANA_SKILL_API_FLAG"
     },
     {
       "method": "POST",
@@ -19,7 +19,7 @@
           "name": "x-api-key",
           "required": true,
           "source": "env:PRANA_SKILL_API_FLAG",
-          "description": "从环境变量 PRANA_SKILL_API_FLAG 读取；须预先设置，脚本不会自动获取 api_key"
+          "description": "从环境变量 PRANA_SKILL_API_FLAG 读取（用于 -q/-r 调用）；可先通过脚本 -g 获取 api_key 再设置"
         }
       ]
     },

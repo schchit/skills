@@ -3,11 +3,16 @@
   "slug": "seven-step-financial-analysis",
   "displayName": "Prana七步财务分析",
   "latest": {
-    "version": "1.0.13",
-    "publishedAt": 1775193843860,
-    "commit": "https://github.com/openclaw/skills/commit/701130558ec2874d320fe4a03fcb61a896cf9023"
+    "version": "1.0.22",
+    "publishedAt": 1775799829620,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.13",
+      "publishedAt": 1775193843860,
+      "commit": "https://github.com/openclaw/skills/commit/701130558ec2874d320fe4a03fcb61a896cf9023"
+    },
     {
       "version": "1.0.7",
       "publishedAt": 1775011736988,
