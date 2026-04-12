@@ -55,8 +55,14 @@ log_info "共享目录：$SHARED_LEARNING_DIR"
 log_info "日志目录：$SKILL_DIR/logs"
 echo ""
 
-# 步骤 2.5：初始化状态文件
-log_step "2.5. 初始化状态文件..."
+# 步骤 2.5：设置脚本执行权限
+log_step "2.5. 设置脚本执行权限..."
+chmod +x "$SCRIPT_DIR"/*.sh
+log_info "脚本执行权限已设置"
+echo ""
+
+# 步骤 3：初始化状态文件
+log_step "3. 初始化状态文件..."
 if [ ! -f "$SKILL_DIR/heartbeat-state.json" ]; then
     echo '{"agents":{}}' > "$SKILL_DIR/heartbeat-state.json"
     log_info "状态文件已创建：$SKILL_DIR/heartbeat-state.json"
@@ -65,16 +71,16 @@ else
 fi
 echo ""
 
-# 步骤 3：复制模板文件到共享目录
-log_step "3. 复制模板文件到共享目录..."
+# 步骤 4：复制模板文件到共享目录
+log_step "4. 复制模板文件到共享目录..."
 cp "$SKILL_DIR/.learnings/ERRORS.md" "$SHARED_LEARNING_DIR/"
 cp "$SKILL_DIR/.learnings/LEARNINGS.md" "$SHARED_LEARNING_DIR/"
 cp "$SKILL_DIR/.learnings/FEATURE_REQUESTS.md" "$SHARED_LEARNING_DIR/"
 log_info "模板文件已复制到共享目录"
 echo ""
 
-# 步骤 4：遍历所有 agent 工作区
-log_step "4. 配置所有 agent 工作区..."
+# 步骤 5：遍历所有 agent 工作区
+log_step "5. 配置所有 agent 工作区..."
 
 # 默认共享的 agent（主 agent）
 DEFAULT_AGENTS="workspace-agent1"
@@ -154,8 +160,8 @@ for agent_dir in "$OPENCLAW_DIR"/workspace-*; do
 done
 echo ""
 
-# 步骤 5：配置 hook
-log_step "5. 配置 hook..."
+# 步骤 6：配置 hook
+log_step "6. 配置 hook..."
 HOOK_DIR="$OPENCLAW_DIR/hooks/self-evolution-cn"
 if [ -d "$HOOK_DIR" ]; then
     rm -rf "$HOOK_DIR"
@@ -172,8 +178,8 @@ else
 fi
 echo ""
 
-# 步骤 6：设置 cron 任务
-log_step "6. 设置 cron 任务..."
+# 步骤 7：设置 cron 任务
+log_step "7. 设置 cron 任务..."
 LOG_FILE="$SKILL_DIR/logs/heartbeat-daily.log"
 CRON_JOB="0 0 * * * $SCRIPT_DIR/trigger-daily-review.sh >> $LOG_FILE 2>&1"
 
@@ -186,8 +192,8 @@ log_info "  删除旧 cron 任务"
 log_info "Cron 任务已添加"
 echo ""
 
-# 步骤 7：验证配置
-log_step "7. 验证配置..."
+# 步骤 8：验证配置
+log_step "8. 验证配置..."
 echo ""
 
 # 检查共享目录

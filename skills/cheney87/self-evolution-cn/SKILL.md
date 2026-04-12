@@ -1,7 +1,7 @@
 ---
 name: self-evolution-cn
 slug: self-evolution-cn
-version: 1.0.5
+version: 2.0.0
 homepage: https://clawhub.ai/skills/self-evolution-cn
 description: "多 agent 自我进化系统，自动记录学习、错误和功能需求，支持多 agent 统计和自动提升"
 ---
@@ -42,7 +42,7 @@ crontab -e  # 添加：0 0 * * * ~/.openclaw/skills/self-evolution-cn/scripts/tr
 | 脚本 | 功能 |
 |------|------|
 | `setup.sh` | 一键配置 |
-| `daily_review.sh` | 日检查脚本 |
+| `daily_review.sh` | 自动统计与提升（每日 00:00 执行） |
 | `trigger-daily-review.sh` | Cron 触发脚本 |
 | `activator.sh` | 任务完成后提醒 |
 | `error-detector.sh` | 命令失败时提醒 |
@@ -64,11 +64,20 @@ openclaw hooks enable self-evolution-cn
 
 ### Q: 如何手动执行检查？
 
-A: 在对话中说"执行日检查"、"执行周检查"或"执行月检查"。
-
-或直接运行：
+A: 直接运行：
 ```bash
-AGENT_ID=agent1 bash ~/.openclaw/skills/self-evolution-cn/scripts/daily_review.sh
+bash ~/.openclaw/skills/self-evolution-cn/scripts/daily_review.sh
+```
+
+### Q: 如何控制是否启用自动提升？
+
+A: 设置环境变量 `AUTO_PROMOTE_ENABLED`：
+```bash
+# 禁用自动提升（仅统计）
+AUTO_PROMOTE_ENABLED=false bash ~/.openclaw/skills/self-evolution-cn/scripts/daily_review.sh
+
+# 启用自动提升（默认）
+AUTO_PROMOTE_ENABLED=true bash ~/.openclaw/skills/self-evolution-cn/scripts/daily_review.sh
 ```
 
 ### Q: 如何修改共享目录？
@@ -81,23 +90,17 @@ export SHARED_LEARNING_DIR="/your/custom/path"
 ### Q: 执行状态和日志在哪里？
 
 A:
-- 状态：`~/.openclaw/skills/self-evolution-cn/heartbeat-state.json`
-- 日志：`~/.openclaw/skills/self-evolution-cn/logs/heartbeat-daily.log`
-
-### Q: Cron 任务和用户触发有什么区别？
-
-A:
-- **Cron**：每日 00:00 自动执行，遍历所有 agent
-- **用户触发**：只检查当前 agent
+- 状态：`$SHARED_LEARNING_DIR/heartbeat-state.json`
+- 日志：`$SHARED_LEARNING_DIR/logs/heartbeat-daily.log`
 
 ## 详细文档
 
-- `format.md` - 记录格式
-- `promotion.md` - 提升机制
-- `multi-agent.md` - 多 agent 支持
-- `examples.md` - 示例条目
-- `hooks-setup.md` - Hook 配置
-- `openclaw-integration.md` - OpenClaw 集成
+- `references/format.md` - 记录格式
+- `references/promotion.md` - 提升机制
+- `references/multi-agent.md` - 多 agent 支持
+- `references/hooks-setup.md` - Hook 配置
+- `references/openclaw-integration.md` - OpenClaw 集成
+- `hooks/openclaw/HOOK.md` - Hook 说明
 
 ## 更新
 
@@ -107,4 +110,18 @@ clawdhub update self-evolution-cn
 
 ## 版本
 
-当前版本：1.0.5
+当前版本：2.0.0
+
+### 更新日志
+
+**v2.0.0 (2026-04-07)**
+- 优化提升格式，去除冗余元数据
+- 根据 Area 字段自动映射到对应的二级标题
+- 修复 Area 字段提取逻辑
+- 更新文档说明
+- 精简所有说明文档
+- 修复 Pattern-Key 匹配逻辑
+- 添加无效 Pattern-Key 过滤
+
+**v1.0.6 (2026-04-06)**
+- 初始版本

@@ -15,21 +15,21 @@ metadata: {"openclaw":{"emoji":"🧠","events":["agent:bootstrap","message:recei
 **用户纠正（自动记录到 LEARNINGS.md）：**
 - 检测到关键词："不对"、"错了"、"错误"、"不是这样"、"应该是"
 - 检测到纠正性表达："No, that's wrong"、"Actually"、"应该是"
-- **动作**：自动记录到 .learnings/LEARNINGS.md，类别为 correction
+- **动作**：自动记录到 LEARNINGS.md，类别为 correction
 
 **命令失败（自动记录到 ERRORS.md）：**
 - 检测到工具执行失败（非零退出码）
 - 检测到错误信息：error、Error、ERROR、failed、FAILED
-- **动作**：自动记录到 .learnings/ERRORS.md
+- **动作**：自动记录到 ERRORS.md
 
 **知识缺口（自动记录到 LEARNINGS.md）：**
 - 检测到用户提供新信息
 - 检测到"我不知道"、"查不到"等表达
-- **动作**：自动记录到 .learnings/LEARNINGS.md，类别为 knowledge_gap
+- **动作**：自动记录到 LEARNINGS.md，类别为 knowledge_gap
 
 **发现更好的方法（自动记录到 LEARNINGS.md）：**
 - 检测到"更好的方法"、"更简单"、"优化"等表达
-- **动作**：自动记录到 .learnings/LEARNINGS.md，类别为 best_practice
+- **动作**：自动记录到 LEARNINGS.md，类别为 best_practice
 
 ### 2. 自动记录格式
 
@@ -90,7 +90,7 @@ metadata: {"openclaw":{"emoji":"🧠","events":["agent:bootstrap","message:recei
 ### 3. 记录后回复
 
 记录完成后，必须回复：
-"已记录到 .learnings/LEARNINGS.md" 或 "已记录到 .learnings/ERRORS.md"
+"已记录到 LEARNINGS.md" 或 "已记录到 ERRORS.md"
 
 ### 4. 提升规则
 
@@ -99,10 +99,26 @@ metadata: {"openclaw":{"emoji":"🧠","events":["agent:bootstrap","message:recei
 - 按 `Pattern-Key` 累计 `Recurrence-Count`
 - 累计次数 >= 3 时自动提升到 SOUL.md
 
-**提升目标：**
-- 行为模式 → SOUL.md
-- 工作流改进 → AGENTS.md
-- 工具问题 → TOOLS.md
+**提升格式：**
+```markdown
+### 一句话总结
+一句话建议行动
+
+---
+```
+
+**提升位置：**
+- 根据 `Area` 字段自动映射到对应的二级标题
+- 如果二级标题不存在，自动创建
+
+**Area 映射规则：**
+- `行为准则`|`行为模式`|`交互规范` → `## Core Truths（核心准则）`
+- `工作流`|`工作流改进`|`任务分发` → `## 工作流程`
+- `工具`|`配置`|`工具问题` → `## 工具使用`
+- `边界`|`安全` → `## Boundaries（边界）`
+- `风格`|`气质` → `## Vibe（风格气质）`
+- `连续性`|`偏好` → `## Continuity（连续性）`
+- 其他 → `## 其他`
 
 ## 配置
 
@@ -115,6 +131,21 @@ openclaw hooks enable self-evolution-cn
 ## 多 Agent 支持
 
 此 hook 支持多 agent 共享学习目录。所有 agent 的学习记录将存储在共享目录中，并按 `Pattern-Key` 累计 `Recurrence-Count`。
+
+### 学习目录检测逻辑
+
+Hook 会自动检测工作区的 `.learnings` 文件夹：
+
+1. **如果工作区有 `.learnings` 软连接指向共享目录** → 使用共享目录
+   - 示例：`/root/.openclaw/workspace-agent1/.learnings -> /root/.openclaw/shared-learning`
+   - 学习目录：`/root/.openclaw/shared-learning`
+
+2. **如果工作区有独立的 `.learnings` 文件夹** → 使用工作区的 `.learnings`
+   - 示例：`/root/.openclaw/workspace-agent2/.learnings/`（独立文件夹）
+   - 学习目录：`/root/.openclaw/workspace-agent2/.learnings`
+
+3. **如果工作区没有 `.learnings`** → 使用共享目录
+   - 学习目录：`/root/.openclaw/shared-learning`
 
 ## 环境变量
 
@@ -140,43 +171,9 @@ export AGENT_ID="main"
 
 **位置**：`$SHARED_LEARNING_DIR/heartbeat-state.json`
 
-**内容（多 agent）：**
-```json
-{
-  "agents": {
-    "main": {
-      "last_execution_date": "2026-03-26",
-      "last_execution_time": "2026-03-26T00:20:00+08:00",
-      "status": "completed"
-    },
-    "bh": {
-      "last_execution_date": "2026-03-26",
-      "last_execution_time": "2026-03-26T01:00:00+08:00",
-      "status": "completed"
-    }
-  }
-}
-```
-
 ### 日志文件
 
 **位置**：`$SHARED_LEARNING_DIR/logs/heartbeat-daily.log`
-
-**内容（多 agent）：**
-```
-=== Self-Evolution-CN Daily Review [main]: 2026-03-26 00:20:00 ===
-执行日检查...
-...
-
-=== Self-Evolution-CN Daily Review [bh]: 2026-03-26 01:00:00 ===
-执行日检查...
-...
-```
-
-### 默认路径
-
-- 状态文件：`/root/.openclaw/shared-learning/heartbeat-state.json`
-- 日志文件：`/root/.openclaw/shared-learning/logs/heartbeat-daily.log`
 
 ### 查看 Agent 状态
 
@@ -187,10 +184,10 @@ cat $SHARED_LEARNING_DIR/heartbeat-state.json
 
 **查看特定 agent 状态：**
 ```bash
-jq '.agents.main' $SHARED_LEARNING_DIR/heartbeat-state.json
+jq '.agents.agent1' $SHARED_LEARNING_DIR/heartbeat-state.json
 ```
 
 **查看特定 agent 日志：**
 ```bash
-grep '\[main\]' $SHARED_LEARNING_DIR/logs/heartbeat-daily.log
+grep 'Processing agent: agent1' $SHARED_LEARNING_DIR/logs/heartbeat-daily.log
 ```

@@ -1,12 +1,13 @@
 # Hook 配置指南
 
-为 AI 编码代理配置自动自我改进触发器。
+为 OpenClaw 配置自动自我改进触发器。
 
 ## 概述
 
 Hook 通过在关键时刻注入提醒来启用主动学习捕获：
-- **UserPromptSubmit**：每次提示后提醒评估学习
-- **PostToolUse (Bash)**：命令失败时错误检测
+- **agent:bootstrap** - 在工作区文件注入之前
+- **message:received** - 收到用户消息时
+- **tool:after** - 工具执行之后
 
 ## OpenClaw 设置
 
@@ -35,151 +36,26 @@ openclaw hooks list
 ### 3. 测试 Hook
 
 1. 启用 hook 配置
-2. 启动新的 OpenClaw 会话
-3. 发送任何提示
-4. 验证你在上下文中看到 `<self-improvement-reminder>`
-
-## Claude Code 设置
-
-### 项目级配置
-
-在项目根目录创建 `.claude/settings.json`：
-
-```json
-{
-  "hooks": {
-    "UserPromptSubmit": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "./skills/self-evolution-cn/scripts/activator.sh"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "./skills/self-evolution-cn/scripts/error-detector.sh"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-### 用户级配置
-
-添加到 `~/.claude/settings.json` 以进行全局激活：
-
-```json
-{
-  "hooks": {
-    "UserPromptSubmit": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.claude/skills/self-evolution-cn/scripts/activator.sh"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-### 最小设置（仅激活器）
-
-为了降低开销，仅使用 UserPromptSubmit hook：
-
-```json
-{
-  "hooks": {
-    "UserPromptSubmit": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "./skills/self-evolution-cn/scripts/activator.sh"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-## Codex CLI 设置
-
-Codex 使用与 Claude Code 相同的 hook 系统。创建 `.codex/settings.json`：
-
-```json
-{
-  "hooks": {
-    "UserPromptSubmit": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "./skills/self-evolution-cn/scripts/activator.sh"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-## GitHub Copilot 设置
-
-Copilot 不直接支持 hook。相反，将指导添加到 `.github/copilot-instructions.md`：
-
-```markdown
-## 自我改进
-
-在完成涉及以下内容的任务后：
-- 调试非显而易见的问题
-- 发现变通方法
-- 学习项目特定模式
-- 解决意外错误
-
-考虑使用 self-evolution-cn 技能的格式将学习记录到 `.learnings/`。
-
-对于将使其他会话受益的高价值学习，考虑技能提取。
-```
+2. 重启 gateway
+3. 启动新的 OpenClaw 会话
+4. 发送任何提示
+5. 验证你在上下文中看到 `<self-improvement-reminder>`
 
 ## 验证
 
 ### 测试激活器 Hook
 
 1. 启用 hook 配置
-2. 启动新的 Claude Code 会话
-3. 发送任何提示
-4. 验证你在上下文中看到 `<self-improvement-reminder>`
+2. 重启 gateway
+3. 启动新的 OpenClaw 会话
+4. 发送任何提示
+5. 验证你在上下文中看到 `<self-improvement-reminder>`
 
 ### 测试错误检测器 Hook
 
 1. 为 Bash 启用 PostToolUse hook
 2. 运行失败的命令：`ls /nonexistent/path`
 3. 验证你看到 `<error-detected>` 提醒
-
-### 干运行提取脚本
-
-```bash
-./skills/self-evolution-cn/scripts/extract-skill.sh test-skill --dry-run
-```
-
-预期输出显示将创建的技能脚手架。
 
 ## 故障排除
 
@@ -188,7 +64,7 @@ Copilot 不直接支持 hook。相反，将指导添加到 `.github/copilot-inst
 1. **检查脚本权限**：`chmod +x scripts/*.sh`
 2. **验证路径**：使用绝对路径或相对于项目根目录的路径
 3. **检查设置位置**：项目级 vs 用户级设置
-4. **重启会话**：Hook 在会话启动时加载
+4. **重启 gateway**：Hook 在 gateway 启动时加载
 
 ### 权限被拒绝
 
@@ -208,20 +84,6 @@ chmod +x ./skills/self-evolution-cn/scripts/extract-skill.sh
 }
 ```
 
-### 开销太大
-
-如果激活器感觉侵入性太强：
-
-1. **使用最小设置**：仅 UserPromptSubmit，跳过 PostToolUse
-2. **添加匹配器过滤器**：仅对某些提示触发：
-
-```json
-{
-  "matcher": "fix|debug|error|issue",
-  "hooks": [...]
-}
-```
-
 ## Hook 输出预算
 
 激活器设计为轻量级：
@@ -233,25 +95,18 @@ chmod +x ./skills/self-evolution-cn/scripts/extract-skill.sh
 
 ## 安全考虑
 
-- Hook 脚本以与 Claude Code 相同的权限运行
+- Hook 脚本以与 OpenClaw 相同的权限运行
 - 脚本仅输出文本；它们不修改文件或运行命令
-- 错误检测器读取 `CLAUDE_TOOL_OUTPUT` 环境变量
+- 错误检测器读取环境变量
 - 所有脚本都是可选的（你必须显式配置它们）
 
 ## 禁用 Hook
 
 要在不删除配置的情况下临时禁用：
 
-1. **在设置中注释掉**：
-```json
-{
-  "hooks": {
-    // "UserPromptSubmit": [...]
-  }
-}
+```bash
+openclaw hooks disable self-evolution-cn
 ```
-
-2. **或删除设置文件**：没有配置 Hook 不会运行
 
 ## OpenClaw Hook 事件
 

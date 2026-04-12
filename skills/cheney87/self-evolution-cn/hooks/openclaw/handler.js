@@ -14,6 +14,51 @@ const SHARED_LEARNING_DIR = process.env.SHARED_LEARNING_DIR || '/root/.openclaw/
 // 获取当前 agent ID
 const AGENT_ID = process.env.AGENT_ID || 'main';
 
+// 获取当前工作区路径
+const WORKSPACE_DIR = process.cwd();
+
+// 检测学习目录路径
+function getLearningDir() {
+  try {
+    const learningsPath = path.join(WORKSPACE_DIR, '.learnings');
+    
+    // 检查 .learnings 是否存在
+    if (!fs.existsSync(learningsPath)) {
+      // 不存在，使用共享目录
+      return SHARED_LEARNING_DIR;
+    }
+    
+    // 检查是否是软连接
+    const stats = fs.lstatSync(learningsPath);
+    if (stats.isSymbolicLink()) {
+      // 解析软连接目标
+      const targetPath = fs.realpathSync(learningsPath);
+      
+      // 如果软连接目标是共享目录，使用共享目录
+      if (targetPath === SHARED_LEARNING_DIR) {
+        return SHARED_LEARNING_DIR;
+      }
+      
+      // 否则使用软连接目标
+      return targetPath;
+    }
+    
+    // 如果是独立文件夹，使用工作区的 .learnings
+    if (stats.isDirectory()) {
+      return learningsPath;
+    }
+    
+    // 默认使用共享目录
+    return SHARED_LEARNING_DIR;
+  } catch (error) {
+    console.error('检测学习目录失败:', error);
+    return SHARED_LEARNING_DIR;
+  }
+}
+
+// 获取学习目录
+const LEARNING_DIR = getLearningDir();
+
 // 自动识别和记录的提醒内容
 const REMINDER_CONTENT = `
 ## 自我进化提醒
@@ -25,21 +70,21 @@ const REMINDER_CONTENT = `
 **用户纠正（自动记录到 LEARNINGS.md）：**
 - 检测到关键词："不对"、"错了"、"错误"、"不是这样"、"应该是"
 - 检测到纠正性表达："No, that's wrong"、"Actually"、"应该是"
-- **动作**：自动记录到 .learnings/LEARNINGS.md，类别为 correction
+- **动作**：自动记录到 LEARNINGS.md，类别为 correction
 
 **命令失败（自动记录到 ERRORS.md）：**
 - 检测到工具执行失败（非零退出码）
 - 检测到错误信息：error、Error、ERROR、failed、FAILED
-- **动作**：自动记录到 .learnings/ERRORS.md
+- **动作**：自动记录到 ERRORS.md
 
 **知识缺口（自动记录到 LEARNINGS.md）：**
 - 检测到用户提供新信息
 - 检测到"我不知道"、"查不到"等表达
-- **动作**：自动记录到 .learnings/LEARNINGS.md，类别为 knowledge_gap
+- **动作**：自动记录到 LEARNINGS.md，类别为 knowledge_gap
 
 **发现更好的方法（自动记录到 LEARNINGS.md）：**
 - 检测到"更好的方法"、"更简单"、"优化"等表达
-- **动作**：自动记录到 .learnings/LEARNINGS.md，类别为 best_practice
+- **动作**：自动记录到 LEARNINGS.md，类别为 best_practice
 
 ### 2. 自动记录格式
 
@@ -100,7 +145,7 @@ const REMINDER_CONTENT = `
 ### 3. 记录后回复
 
 记录完成后，必须回复：
-"已记录到 .learnings/LEARNINGS.md" 或 "已记录到 .learnings/ERRORS.md"
+"已记录到 LEARNINGS.md" 或 "已记录到 ERRORS.md"
 
 ### 4. 提升规则
 
@@ -118,6 +163,13 @@ const REMINDER_CONTENT = `
 
 共享目录：${SHARED_LEARNING_DIR}
 当前 Agent：${AGENT_ID}
+当前工作区：${WORKSPACE_DIR}
+学习目录：${LEARNING_DIR}
+
+**学习目录检测逻辑：**
+- 如果工作区有 .learnings 软连接指向共享目录 → 使用共享目录
+- 如果工作区有独立的 .learnings 文件夹 → 使用工作区的 .learnings
+- 如果工作区没有 .learnings → 使用共享目录
 `.trim();
 
 // 检测用户纠正
@@ -169,18 +221,18 @@ function recordToFile(type, content) {
   try {
     let filePath;
     if (type === 'LRN') {
-      filePath = path.join(SHARED_LEARNING_DIR, 'LEARNINGS.md');
+      filePath = path.join(LEARNING_DIR, 'LEARNINGS.md');
     } else if (type === 'ERR') {
-      filePath = path.join(SHARED_LEARNING_DIR, 'ERRORS.md');
+      filePath = path.join(LEARNING_DIR, 'ERRORS.md');
     } else if (type === 'FEAT') {
-      filePath = path.join(SHARED_LEARNING_DIR, 'FEATURE_REQUESTS.md');
+      filePath = path.join(LEARNING_DIR, 'FEATURE_REQUESTS.md');
     } else {
       return false;
     }
 
     // 确保目录存在
-    if (!fs.existsSync(SHARED_LEARNING_DIR)) {
-      fs.mkdirSync(SHARED_LEARNING_DIR, { recursive: true });
+    if (!fs.existsSync(LEARNING_DIR)) {
+      fs.mkdirSync(LEARNING_DIR, { recursive: true });
     }
 
     // 追加内容
@@ -227,7 +279,7 @@ ${message}
 - Recurrence-Count: 1
 `;
     recordToFile('LRN', content);
-    console.log('已记录到 .learnings/LEARNINGS.md');
+    console.log('已记录到 LEARNINGS.md');
   }
 
   // 检测知识缺口
@@ -256,7 +308,7 @@ ${message}
 - Recurrence-Count: 1
 `;
     recordToFile('LRN', content);
-    console.log('已记录到 .learnings/LEARNINGS.md');
+    console.log('已记录到 LEARNINGS.md');
   }
 
   // 检测更好的方法
@@ -285,7 +337,7 @@ ${message}
 - Recurrence-Count: 1
 `;
     recordToFile('LRN', content);
-    console.log('已记录到 .learnings/LEARNINGS.md');
+    console.log('已记录到 LEARNINGS.md');
   }
 }
 
@@ -330,7 +382,7 @@ ${output}
 - Recurrence-Count: 1
 `;
     recordToFile('ERR', content);
-    console.log('已记录到 .learnings/ERRORS.md');
+    console.log('已记录到 ERRORS.md');
   }
 }
 
