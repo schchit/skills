@@ -3,11 +3,16 @@
   "slug": "free-ai-image-generator",
   "displayName": "Free Ai Image Generator",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1774852652495,
-    "commit": "https://github.com/openclaw/skills/commit/beea5e920a19dce6592ddf63b615d917cf16742c"
+    "version": "1.0.6",
+    "publishedAt": 1775666869038,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1774852652495,
+      "commit": "https://github.com/openclaw/skills/commit/beea5e920a19dce6592ddf63b615d917cf16742c"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1774509463924,
