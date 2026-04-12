@@ -4,6 +4,7 @@ description: "Use nanobanana-plus over HTTP to generate images with per-call mod
 version: 1.5.2
 license: Apache-2.0
 homepage: https://github.com/webkubor/nanobanana-plus
+store: https://clawhub.ai/webkubor/nanobanana-plus
 author: webkubor
 compatibility:
   platforms:
