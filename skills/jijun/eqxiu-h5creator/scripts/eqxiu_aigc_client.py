@@ -9,14 +9,65 @@
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
 import os
 import sys
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import requests
 
 DEFAULT_BASE_URL = os.environ.get("EQXIU_AIGC_API_BASE", "https://ai-api.eqxiu.com").rstrip("/")
+CONFIG_DIR = Path.home() / ".eqxiu"
+CONFIG_PATH = CONFIG_DIR / "config.json"
+CONFIG_TOKEN_KEY = "X-Openclaw-Token"
+PASSPORT_PROFILE_URL = "https://passport.eqxiu.com/user/profile"
+
+
+def _load_config() -> dict[str, Any]:
+    if not CONFIG_PATH.is_file():
+        return {}
+    try:
+        data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _save_config(data: dict[str, Any]) -> None:
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    CONFIG_PATH.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    try:
+        CONFIG_PATH.chmod(0o600)
+    except OSError:
+        pass
+
+
+def _token_from_config(cfg: dict[str, Any]) -> str:
+    v = cfg.get(CONFIG_TOKEN_KEY) or cfg.get("x_openclaw_token")
+    return (v if isinstance(v, str) else str(v or "")).strip()
+
+
+def _check_auth_status(access_token: str, timeout: float) -> dict[str, Any]:
+    headers = {CONFIG_TOKEN_KEY: access_token}
+    r = requests.get(PASSPORT_PROFILE_URL, headers=headers, timeout=timeout)
+    if r.status_code != 200:
+        return {"success": False, "code": 1002, "msg":"认证失败"}
+    return {"success": True, "code": 200, "msg":"认证成功"}
+
+
+def _login_interactive() -> int:
+    cfg = _load_config()
+    print("交互式登录：令牌输入时不会回显。", file=sys.stderr)
+    token = getpass.getpass("X-Openclaw-Token: ").strip()
+    if not token:
+        print("未输入令牌，已取消。", file=sys.stderr)
+        return 1
+    cfg[CONFIG_TOKEN_KEY] = token
+    _save_config(cfg)
+    print(f"已保存至 {CONFIG_PATH}（{CONFIG_TOKEN_KEY}）。", file=sys.stderr)
+    return 0
 
 
 class EqxiuAigcApiError(Exception):
@@ -31,10 +82,14 @@ class EqxiuAigcApiError(Exception):
 class EqxiuAigcClient:
     """调用 /iaigc/* 接口。注意：outline 与 scene-tpl 可能耗时数分钟，默认 timeout 较大。"""
 
-    def __init__(self, base_url: str = DEFAULT_BASE_URL, timeout: float = 900.0) -> None:
+    def __init__(
+        self, base_url: str = DEFAULT_BASE_URL, timeout: float = 900.0, access_token: Optional[str] = None
+    ) -> None:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self._session = requests.Session()
+        if access_token:
+            self._session.headers.update({CONFIG_TOKEN_KEY: access_token})
 
     def _unwrap(self, resp: requests.Response) -> Any:
         try:
@@ -60,7 +115,9 @@ class EqxiuAigcClient:
         r.raise_for_status()
         return self._unwrap(r)
 
-    def list_styles(self, two_level_category_id: int, three_level_category_id: int) -> List[Dict[str, Any]]:
+    def list_styles(
+        self, two_level_category_id: int, three_level_category_id: int
+    ) -> Dict[str, Any]:
         r = self._session.get(
             f"{self.base_url}/iaigc/style",
             params={
@@ -153,7 +210,16 @@ def main() -> int:
         default=900.0,
         help="请求超时秒数（scene-tpl 可能很慢）",
     )
+    parser.add_argument(
+        "--access-token",
+        default=None,
+        help=f"X-Openclaw-Token（默认从 {CONFIG_PATH} 读取）",
+    )
     sub = parser.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("login", help="交互式登录，保存 X-Openclaw-Token")
+    p_auth = sub.add_parser("auth", help="认证相关命令")
+    auth_sub = p_auth.add_subparsers(dest="auth_cmd", required=True)
+    auth_sub.add_parser("status", help="验证 token 是否有效")
 
     p_cat = sub.add_parser("category", help="GET /iaigc/category")
     p_sty = sub.add_parser("style", help="GET /iaigc/style")
@@ -178,45 +244,59 @@ def main() -> int:
     p_pipe.add_argument("--style-id", type=int, default=None)
 
     args = parser.parse_args()
-    client = EqxiuAigcClient(base_url=args.base_url, timeout=args.timeout)
+    cfg = _load_config()
+    token = (args.access_token or "").strip() or _token_from_config(cfg)
+
+    if args.cmd == "login":
+        return _login_interactive()
 
     try:
-        if args.cmd == "category":
-            out = client.list_categories()
-        elif args.cmd == "style":
-            out = client.list_styles(args.two_level, args.three_level)
-        elif args.cmd == "outline":
-            fields = _load_json_arg(args.fields_json)
-            if not isinstance(fields, list):
-                print("fields-json 必须是 JSON 数组", file=sys.stderr)
+        if args.cmd == "auth":
+            if args.auth_cmd != "status":
+                print("未知 auth 子命令", file=sys.stderr)
                 return 2
-            out = client.create_outline(fields, args.category_id)
-        elif args.cmd == "scene-tpl":
-            with open(args.json_file, encoding="utf-8") as f:
-                body = json.load(f)
-            out = client.create_scene_tpl(
-                scene_fields=body["sceneFields"],
-                scene_id=body["sceneId"],
-                title=body["title"],
-                outline_task_id=body["outlineTaskId"],
-                outline=body["outline"],
-                image_id=body.get("imageId"),
-                style_id=body.get("styleId"),
-            )
-        elif args.cmd == "pipeline":
-            fields = _load_json_arg(args.fields_json)
-            if not isinstance(fields, list):
-                print("fields-json 必须是 JSON 数组", file=sys.stderr)
-                return 2
-            out = client.run_pipeline(
-                fields,
-                args.category_id,
-                args.title,
-                style_id=args.style_id,
-            )
+            if not token:
+                print("缺少 X-Openclaw-Token：请先执行 login 或传 --access-token", file=sys.stderr)
+                return 1
+            out = _check_auth_status(token, args.timeout)
         else:
-            print(f"未知子命令: {args.cmd}", file=sys.stderr)
-            return 2
+            client = EqxiuAigcClient(base_url=args.base_url, timeout=args.timeout, access_token=token or None)
+            if args.cmd == "category":
+                out = client.list_categories()
+            elif args.cmd == "style":
+                out = client.list_styles(args.two_level, args.three_level)
+            elif args.cmd == "outline":
+                fields = _load_json_arg(args.fields_json)
+                if not isinstance(fields, list):
+                    print("fields-json 必须是 JSON 数组", file=sys.stderr)
+                    return 2
+                out = client.create_outline(fields, args.category_id)
+            elif args.cmd == "scene-tpl":
+                with open(args.json_file, encoding="utf-8") as f:
+                    body = json.load(f)
+                out = client.create_scene_tpl(
+                    scene_fields=body["sceneFields"],
+                    scene_id=body["sceneId"],
+                    title=body["title"],
+                    outline_task_id=body["outlineTaskId"],
+                    outline=body["outline"],
+                    image_id=body.get("imageId"),
+                    style_id=body.get("styleId"),
+                )
+            elif args.cmd == "pipeline":
+                fields = _load_json_arg(args.fields_json)
+                if not isinstance(fields, list):
+                    print("fields-json 必须是 JSON 数组", file=sys.stderr)
+                    return 2
+                out = client.run_pipeline(
+                    fields,
+                    args.category_id,
+                    args.title,
+                    style_id=args.style_id,
+                )
+            else:
+                print(f"未知子命令: {args.cmd}", file=sys.stderr)
+                return 2
     except EqxiuAigcApiError as e:
         print(json.dumps({"error": str(e), "raw": e.raw}, ensure_ascii=False, indent=2))
         return 1
