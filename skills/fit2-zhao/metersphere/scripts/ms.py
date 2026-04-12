@@ -24,8 +24,8 @@ if ENV_FILE.exists():
     load_dotenv(ENV_FILE)
 
 BASE_URL = os.environ.get('METERSPHERE_BASE_URL', '').rstrip('/')
-ACCESS_KEY = os.environ.get('METERSPHERE_ACCESS_KEY') or os.environ.get('CORDYS_ACCESS_KEY', '')
-SECRET_KEY = os.environ.get('METERSPHERE_SECRET_KEY') or os.environ.get('CORDYS_SECRET_KEY', '')
+ACCESS_KEY = os.environ.get('METERSPHERE_ACCESS_KEY') or os.environ.get('METERSPHERE_ACCESS_KEY', '')
+SECRET_KEY = os.environ.get('METERSPHERE_SECRET_KEY') or os.environ.get('METERSPHERE_SECRET_KEY', '')
 PROJECT_ID = os.environ.get('METERSPHERE_PROJECT_ID', '')
 ORG_ID = os.environ.get('METERSPHERE_ORGANIZATION_ID', '100001')
 HEADERS_JSON = os.environ.get('METERSPHERE_HEADERS_JSON', '')
@@ -222,11 +222,12 @@ def usage():
   ms api-module list 100001100001
   ms functional-case list 登录
   ms functional-case-review list '{"caseId":"922301316472832"}'
-  ms case-review list '{"projectId":"1163437937827840"}'
-  ms case-review get 922833892417536
-  ms case-review-detail list '{"projectId":"1163437937827840","reviewId":"922833892417536","viewStatusFlag":false}'
-  ms case-review-module list 1163437937827840
-  ms case-review-user list 1163437937827840
+  ms case-review list '{"projectId":"<your-project-id>"}'
+  ms case-review get <review-id>
+  ms case-review-detail list '{"projectId":"<your-project-id>","reviewId":"<review-id>","viewStatusFlag":false}'
+  ms case-review-module list <your-project-id>
+  ms case-review-user list <your-project-id>
+  # 注意: 请将 <your-project-id> 和 <review-id> 替换为实际的值，避免使用硬编码的示例值
 ''')
 
 

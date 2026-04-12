@@ -3,11 +3,16 @@
   "slug": "metersphere",
   "displayName": "MeterSphere",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1774949063350,
-    "commit": "https://github.com/openclaw/skills/commit/fdb7cafc9324dd58139dacc35c795b48d07ceddf"
+    "version": "1.0.5",
+    "publishedAt": 1775549454952,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1774949063350,
+      "commit": "https://github.com/openclaw/skills/commit/fdb7cafc9324dd58139dacc35c795b48d07ceddf"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1774605534873,
