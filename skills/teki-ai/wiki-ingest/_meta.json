@@ -1,0 +1,11 @@
+{
+  "owner": "teki-ai",
+  "slug": "wiki-ingest",
+  "displayName": "Wiki Ingest",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1776020341711,
+    "commit": null
+  },
+  "history": []
+}
