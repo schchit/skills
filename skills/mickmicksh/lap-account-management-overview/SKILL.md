@@ -11,6 +11,7 @@ metadata:
 ---
 
 # Account Management Overview
+API version: 1.0
 
 ## Auth
 Bearer bearer
