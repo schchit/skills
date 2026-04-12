@@ -1,13 +1,18 @@
 {
   "owner": "sealawyer2026",
   "slug": "zhang-environmental-law",
-  "displayName": "九章-环境保护法律专家",
+  "displayName": "Zhang Environmental Law",
   "latest": {
-    "version": "1.5.0",
-    "publishedAt": 1775098758130,
-    "commit": "https://github.com/openclaw/skills/commit/36d2dd83d2c1c9bfb7ba78eff11be40bd631cce6"
+    "version": "1.0.0",
+    "publishedAt": 1775484329657,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.5.0",
+      "publishedAt": 1775098758130,
+      "commit": "https://github.com/openclaw/skills/commit/36d2dd83d2c1c9bfb7ba78eff11be40bd631cce6"
+    },
     {
       "version": "1.4.0",
       "publishedAt": 1774502218156,
