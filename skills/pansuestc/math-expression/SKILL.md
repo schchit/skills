@@ -1,6 +1,6 @@
 ---
 name: math-expression
-description: Evaluate complex Wolfram Language math expressions with exact results, high-precision numerics, and consistency verification. Use when users ask for reliable symbolic/numeric math results.
+description: Use when the user wants an actual math result, simplification, expansion, exact value, high-precision value, analytic solution, or numerical solution for algebra, calculus, linear algebra, series, asymptotics, or ODE/PDE problems.
 metadata:
   openclaw:
     os:
@@ -13,87 +13,73 @@ metadata:
         - WolframKernel
       python:
         - wolframclient
+    triggers:
+      patterns:
+        - "(?i)\\b(simplify|fullsimplify|factor|expand|collect|reduce|substitute|eliminate|roots?)\\b|化简|因式分解|展开|配方|代换|消元"
+        - "(?i)\\b(integral|integrate|derivative|differentiate|limit|residue)\\b|积分|求积分|求导|微分|极限|留数"
+        - "(?i)\\b(solve|solving|equation\\s*system|nsolve|dsolve|ndsolve|ode|pde|boundary\\s*value)\\b|求解|解方程|方程组|微分方程|常微分|偏微分|边值问题"
+        - "(?i)\\b(sum|series|taylor|laurent|asymptotic|asymptotics)\\b|级数|求和|泰勒|洛朗|渐近展开|渐进展开"
+        - "(?i)\\b(matrix|determinant|eigenvalue|eigenvector|inverse|rank|linear\\s+algebra)\\b|矩阵|行列式|特征值|特征向量|逆矩阵|秩|线性代数"
+        - "(?i)(求|解|算|化简|展开|近似|evaluate|solve|simplify|expand|factor|find)\\s*.*(∫|∂|∑|Σ|Π|lim|d/dx|partial|eigen|det|rank|x\\^|y''|->)"
+        - "(?i)(∫|∂|∑|Σ|Π|lim|d/dx).*(是多少|怎么解|怎么展开|exact|numeric|solution|approximation)"
+        - "(?i)\\b[Nn]\\[.*,\\s*\\d+\\]"
+        - "(?i)\\b(Integrate|D|Limit|Solve|Reduce|DSolve|NDSolve|Series|Asymptotic|MatrixExp|Eigenvalues|Det)\\s*\\["
+      when: |
+        Use this skill when the user wants a concrete mathematical result, simplification, expansion,
+        exact value, high-precision value, analytic solution, or numerical solution.
+
+        Typical requests include algebra, calculus, limits, linear algebra, series, Taylor/Laurent
+        expansions, asymptotic expansions, and ODE/PDE problems that can be expressed as a single
+        Wolfram Language expression.
+
+        Do not use this skill for ordinary code expression evaluation, shell or programming-language
+        operators, API or business cost calculations, or conceptual discussion that does not ask for
+        actual mathematical manipulation.
 ---
 
-# Math Expression (Wolfram Engine)
+# Math Expression
 
 ## Overview
 
-Use this skill to compute complex Wolfram Language expressions with reliable output:
+Use this skill when a natural-language math request should be translated into a single Wolfram Language expression and then evaluated or solved.
 
-1. Exact/symbolic result
-2. High-precision numeric result
-3. Consistency verification between exact and numeric forms
+It fits symbolic algebra, calculus, exact arithmetic, high-precision numerics, matrix problems, series, asymptotics, and ODE/PDE tasks. It does not replace a general code executor or a multi-step notebook workflow.
 
 ## Quick start
 
 ```bash
 python3 -m pip install --user wolframclient
-python {baseDir}/scripts/eval_expression.py --expr "Integrate[Sin[x]^2, {x, 0, Pi}]"
-python {baseDir}/scripts/eval_expression.py --expr "Solve[x^5 - x - 1 == 0, x]" --precision 80
-python {baseDir}/scripts/eval_expression.py --expr "N[Pi, 80]" --precision 80 --json
+python3 {baseDir}/scripts/eval_expression.py --expr "Factor[x^4 - 1]"
+python3 {baseDir}/scripts/eval_expression.py --expr "DSolve[y''[x] + y[x] == 0, y[x], x]"
+python3 {baseDir}/scripts/eval_expression.py --expr "N[Pi, 80]" --precision 80 --json
 ```
 
 ## Safety boundary
 
-- Use this skill for symbolic/numeric math only.
-- By default, the script blocks expressions containing high-risk Wolfram symbols related to filesystem, network, or process execution (for example: `Import`, `URLRead`, `Run`, `RunProcess`, `Get`, `Put`, `OpenRead`, `OpenWrite`).
-- Do not disable this guard unless the runtime is isolated (sandbox/container/VM).
-- If you intentionally need unrestricted evaluation, pass `--allow-unsafe` and explicitly explain the risk.
+- Use this skill for math-only Wolfram Language expressions.
+- By default, the script blocks filesystem, network, and process-related symbols such as `Import`, `URLRead`, `Run`, `RunProcess`, `Get`, `Put`, `OpenRead`, and `OpenWrite`.
+- Do not disable this guard unless the runtime is isolated.
+- This skill is not a general code execution tool and not a multi-step notebook agent.
 
 ## Workflow
 
-1. Translate the user's math request into a Wolfram Language expression.
-2. Ensure the expression is math-only (no filesystem/network/process operations).
-3. Run `eval_expression.py` with `--expr`.
-4. Return the script output as:
-   - `Exact`
-   - `Numeric`
-   - `Verified`
-   - `Version`
-5. If `Verified` is `null`/not available, explain that the expression is non-numeric or not directly comparable.
-
-## Inputs
-
-- Required:
-  - `--expr "<Wolfram Language expression>"`
-- Optional:
-  - `--precision <int>` default `50`
-  - `--timeout <seconds>` default `30`
-  - `--json` for machine-readable output
-  - `--no-verify` to skip consistency verification
-  - `--allow-unsafe` to bypass safety guard (use only in isolated environments)
-
-## Output schema (`--json`)
-
-- `expr`: original expression
-- `exact`: exact/symbolic result (string)
-- `numeric`: high-precision numeric result (string)
-- `verified`: `true` / `false` / `null`
-- `precision`: precision used
-- `version`: Wolfram version string
-- `warnings`: warning list
-
-## Exit codes
-
-- `0`: success
-- `2`: invalid arguments (including empty expression)
-- `3`: missing runtime dependency (`WolframKernel` or `wolframclient`)
-- `4`: evaluation failure or timeout
+1. Convert the user's request into one Wolfram Language expression.
+2. Check that the expression is math-only.
+3. Run `scripts/eval_expression.py --expr "..."`
+4. Return `Exact`, `Numeric`, `Verified`, and `Version`.
 
 ## Examples
 
-- Definite integral:
-  - `Integrate[Sin[x]^2, {x, 0, Pi}]`
-- Polynomial root solving:
-  - `Solve[x^5 - x - 1 == 0, x]`
-- Limit:
-  - `Limit[(Sin[x] - x)/x^3, x -> 0]`
-- High precision constant:
-  - `N[Pi, 120]`
+- Algebraic simplification: `Factor[x^4 - 1]`
+- Definite integral: `Integrate[x^2 Exp[-x], {x, 0, Infinity}]`
+- Limit: `Limit[(Sin[x] - x)/x^3, x -> 0]`
+- ODE analytic solution: `DSolve[y''[x] + y[x] == 0, y[x], x]`
+- PDE numeric solution: `NDSolve[{D[u[x, t], t] == D[u[x, t], {x, 2}], u[0, t] == 0, u[1, t] == 0, u[x, 0] == Sin[Pi x]}, u, {x, 0, 1}, {t, 0, 1}]`
+- Asymptotic expansion: `Asymptotic[LogGamma[x], x -> Infinity, 5]`
+- High-precision value: `N[Pi, 120]`
 
 ## Notes
 
 - Input is Wolfram Language only.
-- This v1 is single-expression, single-run (no REPL session reuse).
-- Runtime dependency: Python package `wolframclient` is required.
+- This skill is single-expression and single-run.
+- Runtime dependency: `wolframclient` and `WolframKernel`.
