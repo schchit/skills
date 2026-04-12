@@ -1,13 +1,18 @@
 {
   "owner": "sealawyer2026",
   "slug": "zhang-crypto-law",
-  "displayName": "九章-加密货币法律专家",
+  "displayName": "Zhang Crypto Law",
   "latest": {
-    "version": "1.5.0",
-    "publishedAt": 1775098671110,
-    "commit": "https://github.com/openclaw/skills/commit/6b7a49f067ebd4cf1a3e5b2370a31b4499acc478"
+    "version": "1.0.0",
+    "publishedAt": 1775484204208,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.5.0",
+      "publishedAt": 1775098671110,
+      "commit": "https://github.com/openclaw/skills/commit/6b7a49f067ebd4cf1a3e5b2370a31b4499acc478"
+    },
     {
       "version": "1.2.0",
       "publishedAt": 1774397891982,
