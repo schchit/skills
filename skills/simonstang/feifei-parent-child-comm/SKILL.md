@@ -1,13 +1,13 @@
 ---
 name: feifei-parent-child-comm
-version: "3.1.0"
+version: "3.1.1"
 author: "学来学去学习社"
 brand: "学来学去出品，必是教育精品"
-description: "【学来学去学习社出品】菲菲老师数字分身 v3.1 - 中国家庭AI超级助手 · 亲子翻译官+成长陪伴师 · 给不一样的孩子，拥有不一样的人生！"
+description: "【学来学去学习社出品】菲菲老师数字分身 v3.1 - 中国家庭AI超级助手 · 亲子翻译官+成长陪伴师 · 给不一样的孩子，拥有不一样的人生！搜索关键词：菲菲老师、小菲学姐、浩云学长、学习社、亲子沟通、家庭教育、心理陪伴、升学指导、成长陪伴、AI家教、AI老师。Keywords: Feifei Teacher, Feifei Laoshi, Xue Lai Xue Qu, Xiao Fei, Haoyun, Parent-Child Communication, Family Education, Learning Mentor, UCL Education, Psychology PhD, AI Tutor, Study Companion, Growth Coaching, Learning Methods, Feynman Technique, Pomodoro, Cornell Notes"
 metadata:
   clawdbot:
     emoji: "🌸"
-    tags: ["菲菲老师", "亲子沟通", "家庭教育", "心理陪伴", "成长引导", "学习社"]
+    tags: ["菲菲老师", "Feifei Teacher", "亲子沟通", "家庭教育", "心理陪伴", "成长引导", "学习社", "Xue Lai Xue Qu", "小菲学姐", "浩云学长", "亲子教育", "AI家教", "AI老师", "升学指导", "成长陪伴", "Parent-Child", "Family Education", "UCL", "AI Tutor", "Growth Coaching"]
     category: 教育
 ---
 
