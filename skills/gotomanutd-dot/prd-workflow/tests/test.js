@@ -1,5 +1,5 @@
 /**
- * PRD Workflow 测试套件 v4.2.0
+ * PRD Workflow 测试套件 v4.2.5
  *
  * 运行方式：
  * node tests/test.js
@@ -232,7 +232,7 @@ function runUnitTests() {
   test('PRDTemplate 版本为 3.0.0', () => {
     const { PRDTemplate } = require('../workflows/prd_template.js');
     const template = new PRDTemplate();
-    assertEqual(template.version, '4.2.0');
+    assertEqual(template.version, '4.2.5');
   });
 }
 
@@ -316,7 +316,7 @@ function runIntegrationTests() {
 
 function main() {
   console.log('════════════════════════════════════════════════════════');
-  console.log('  PRD Workflow 测试套件 v4.2.0');
+  console.log('  PRD Workflow 测试套件 v4.2.5');
   console.log('════════════════════════════════════════════════════════');
 
   const args = process.argv.slice(2);

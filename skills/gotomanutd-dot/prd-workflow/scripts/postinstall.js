@@ -34,6 +34,14 @@ const NODE_DEPS = {
     required: true,
     hint: '用于生成流程图、时序图、ER 图等'
   },
+  'adm-zip': {
+    name: 'adm-zip',
+    description: 'Word 文档图片检查（推荐，~50KB）',
+    checkCommand: 'node -e "require(\'adm-zip\')"',
+    installCommand: 'npm install adm-zip',
+    required: false,
+    hint: '用于验证 Word 文档是否正确嵌入图片'
+  },
   'playwright': {
     name: 'Playwright',
     description: '完整截图方案（备选，~50MB）',

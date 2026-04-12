@@ -13,7 +13,7 @@ const { AIDiagramExtractor } = require('./ai_diagram_extractor');
 
 class PRDTemplate {
   constructor() {
-    this.version = '4.2.0';
+    this.version = '4.2.5';
     this.extractor = new AIDiagramExtractor();
   }
   
