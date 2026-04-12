@@ -17,6 +17,20 @@ All heavy lifting (schema, indexing, embedding, maintenance) is implemented
 in the `clawsqlite` PyPI package. This skill is just a thin, auditable
 wrapper.
 
+For environment sanity checks (paths, vec0, embedding, small LLM), the
+underlying CLI now exposes a `doctor` subcommand:
+
+```bash
+# Installed via PyPI
+clawsqlite knowledge doctor --json
+
+# From source (inside the repo) without installing the wheel
+python -m clawsqlite_knowledge.cli doctor
+```
+
+It is strongly recommended to run `clawsqlite knowledge doctor` once when
+setting up a new environment or troubleshooting search/embedding behavior.
+
 > If you need full control over `clawsqlite` (plumbing commands, custom
 > tables, advanced CLIs), use the Python package and CLI directly instead of
 > this skill.
@@ -34,7 +48,8 @@ wrapper.
   - Lives under `clawhub-skills/clawsqlite-knowledge`.
   - Installed inside the ClawHub/OpenClaw environment as a skill.
   - Depends on `clawsqlite` via PyPI (no vendored source, no git clone).
-  - Exposes a **small JSON API** over stdin/stdout:
+  - Exposes a **small JSON API** over stdin/stdout (and expects
+    `clawsqlite knowledge doctor` to be available in the environment):
     - `ingest_url`
     - `ingest_text`
     - `search`
@@ -81,7 +96,7 @@ At this point you only have:
 
 > **Important:** After Stage 1, the skill shell is present, but the underlying
 > `clawsqlite` CLI may still be missing or outdated. Stage 2 ensures
-> `clawsqlite>=0.1.8` is available in the runtime Python environment.
+> `clawsqlite>=1.0.2` is available in the runtime Python environment.
 
 ### 2.2 Stage 2 — install or upgrade `clawsqlite` (PyPI, v0.1.7)
 
@@ -99,7 +114,7 @@ install:
 The script content (simplified) is:
 
 ```python
-requirement = "clawsqlite>=0.1.8"
+requirement = "clawsqlite>=1.0.2"
 cmd = [sys.executable, "-m", "pip", "install", requirement]
 proc = subprocess.run(cmd)
 if proc.returncode != 0:
@@ -116,7 +131,7 @@ if proc.returncode != 0:
 
 This means:
 
-- It first tries to install `clawsqlite>=0.1.8` into the default Python
+- It first tries to install `clawsqlite>=1.0.2` into the default Python
   environment used by the skill runtime;
 - If that environment is read‑only (or `pip install` fails), it falls back to a
   **workspace‑local prefix** under:
@@ -144,13 +159,13 @@ openclaw skills install clawsqlite-knowledge  # re-runs the install hooks
 
 > **Note:** This skill **never** vendors `clawsqlite` source code or clones the
 > GitHub repo. The only way it brings in code is via `pip install
-> "clawsqlite>=0.1.8"`.
+> "clawsqlite>=1.0.2"`.
 
 ### 2.3 Where is the `clawsqlite` CLI installed?
 
 Depending on your environment:
 
-- If `pip install clawsqlite>=0.1.8` succeeds in the base runtime venv, the
+- If `pip install clawsqlite>=1.0.2` succeeds in the base runtime venv, the
   `clawsqlite` entrypoint will live in that venv’s `bin` directory and be
   importable as the `clawsqlite_cli` module.
 - If the bootstrap falls back to the workspace prefix,
@@ -206,7 +221,28 @@ All handlers return a JSON object with at least:
 
 ---
 
-## 4. Supported actions
+## 4. Recommended first step: run `doctor`
+
+Before using this skill in a new environment, it is recommended that an
+agent or human operator first run the underlying doctor command and
+inspect the report:
+
+```bash
+clawsqlite knowledge doctor --json
+```
+
+This checks:
+
+- CLAWSQLITE_ROOT / CLAWSQLITE_DB paths (do they exist?)
+- sqlite-vec extension and vec tables (vec0/vec index availability)
+- Embedding configuration (EMBEDDING_* + CLAWSQLITE_VEC_DIM)
+- Small LLM configuration (SMALL_LLM_* triple)
+- Overall capability mode (LLM+Embedding / LLM-only / Embedding-only / FTS-only)
+
+Agents can use this report to decide which search modes to enable (fts vs
+hybrid/vec), and whether to surface NEXT hints to the user.
+
+## 5. Supported actions
 
 ### 4.1 `ingest_url`
 
@@ -260,41 +296,51 @@ This is the path for:
 The underlying `clawsqlite knowledge ingest --text ...` call will:
 
 - Generate a long summary (up to ~800 characters, soft‑truncated)
-- Extract tags using jieba/heuristics (in clawsqlite>=0.1.8 these reuse the
+- Extract tags using jieba/heuristics (in clawsqlite>=1.0.2 these reuse the
   same TextRank/semantic pipelines as the query‑side keyword extraction)
 - Optionally embed the summary (when embedding is configured)
 - Store a markdown file with a pinyin/ASCII slug filename
 
 ### 4.3 `search`
 
-Search the knowledge base.
+Search the knowledge base using the new `clawsqlite>=1.0.2` search
+pipeline (LLM-aware query_refine/query_tags + FTS/vec hybrid).
 
-Under the hood this calls `clawsqlite knowledge search ...` with:
+Under the hood this calls `clawsqlite knowledge search ... --json` and
+forwards filters, then surfaces the structured results.
 
-- hybrid retrieval: vector + FTS, with automatic downgrade when
-  embeddings or vec0 are not available;
-- tag‑aware scoring: tags are generated from article content via
-  TextRank/TF‑IDF + optional semantic rerank (when embeddings + jieba are
-  available) and used as an extra signal in the final score. In
-  clawsqlite>=0.1.8, the scorer embeds both summary and tags into vec0
-  tables, normalizes vector distances via a logistic sigmoid over
-  `1/(1+d)`, and splits the tag channel into semantic (vector) and
-  lexical (FTS) parts; lexical tag scores can be log-compressed via
-  `CLAWSQLITE_TAG_FTS_LOG_ALPHA` so partial hits do not dominate;
-- query keyword extraction: natural‑language queries are converted to a
-  small set of keywords using the same heuristics as tag generation
-  (TextRank + optional semantic centrality), then normalized for FTS.
+High-level behavior:
 
-You can further tune the hybrid scoring behavior via:
+- Queries are split into:
+  - `query_refine`: a search-friendly sentence (LLM or heuristic);
+  - `query_tags`: a small set of keywords (length controlled by
+    `CLAWSQLITE_SEARCH_QUERY_TAG_MIN/MAX`).
+- Capability modes are decided by whether embeddings and SMALL_LLM are
+  available:
+  - Mode1 (LLM + Embedding): LLM builds query_refine/query_tags, then the
+    scorer uses content/tag vectors + FTS + lexical tags.
+  - Mode2 (LLM + no Embedding): LLM builds query_refine/query_tags, then
+    the scorer uses FTS + lexical tags only.
+  - Mode3 (no LLM + Embedding): heuristic query_refine/query_tags,
+    content/tag vectors + FTS + lexical tags.
+  - Mode4 (no LLM + no Embedding): heuristic query_refine/query_tags,
+    FTS + lexical tags only.
+- When embeddings are enabled, the scorer:
+  - embeds both summary and tags into vec0 tables;
+  - normalizes vector distances via a logistic sigmoid over `1/(1+d)`;
+  - splits the tag channel into semantic (vector) and lexical (FTS)
+    parts, controlled by `CLAWSQLITE_TAG_VEC_FRACTION` and
+    `CLAWSQLITE_TAG_FTS_LOG_ALPHA`.
+- Final scores are a weighted sum of vec/fts/tag/priority/recency
+  channels. Per-mode default weights are controlled by
+  `CLAWSQLITE_SCORE_WEIGHTS_MODE1..4` (and legacy
+  `CLAWSQLITE_SCORE_WEIGHTS*`).
 
-- `CLAWSQLITE_SCORE_WEIGHTS` (overall vec/fts/tag/priority/recency weights);
-- `CLAWSQLITE_TAG_VEC_FRACTION` (split of the tag channel between
-  semantic tag vectors and lexical tag match);
-- `CLAWSQLITE_TAG_FTS_LOG_ALPHA` (strength of log compression applied to
-  lexical tag scores).
-
-See `ENV_EXAMPLE.md` and the underlying `clawsqlite` README for details
-and recommended values for mixed Chinese/English knowledge bases.
+See the upstream `ENV.example` and `README` in the `clawsqlite`
+project root for details and recommended values for mixed
+Chinese/English knowledge bases. Do **not** create a `.env` inside this
+skill directory; configure env on the agent/host or in the upstream
+project instead.
 
 **Payload example:**
 
@@ -406,9 +452,9 @@ See the `clawsqlite` README for the full behavior and env matrix.
 
 ---
 
-## 7. Upgrade notes (clawsqlite>=0.1.8)
+## 7. Upgrade notes (clawsqlite>=1.0.2)
 
-- This Skill now depends on `clawsqlite>=0.1.8`; updates will install the new PyPI version via `bootstrap_deps.py`.
+- This Skill now depends on `clawsqlite>=1.0.2`; updates will install the new PyPI version via `bootstrap_deps.py`.
 - In OpenClaw, a typical rollout is: `openclaw skills update clawsqlite-knowledge`, then rebuild FTS if you changed `CLAWSQLITE_FTS_JIEBA`.
 
 ## 8. Interest clusters & weekly reports (via underlying clawsqlite CLI)

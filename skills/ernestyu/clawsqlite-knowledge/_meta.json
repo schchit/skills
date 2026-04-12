@@ -3,11 +3,16 @@
   "slug": "clawsqlite-knowledge",
   "displayName": "Claw SQLite Knowledge",
   "latest": {
-    "version": "0.1.13",
-    "publishedAt": 1775057373092,
-    "commit": "https://github.com/openclaw/skills/commit/d7af132d5f55607a02efe9d7f8bc4755bdf213f6"
+    "version": "1.0.2",
+    "publishedAt": 1775639275788,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.1.13",
+      "publishedAt": 1775057373092,
+      "commit": "https://github.com/openclaw/skills/commit/d7af132d5f55607a02efe9d7f8bc4755bdf213f6"
+    },
     {
       "version": "0.1.12",
       "publishedAt": 1774689354222,

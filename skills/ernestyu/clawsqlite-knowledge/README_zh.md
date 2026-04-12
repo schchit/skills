@@ -17,6 +17,20 @@
 `clawsqlite` 实现。`clawsqlite-knowledge` 只是一个薄薄的 JSON 封装，
 让 Agent 调用更方便、更安全。
 
+为了让环境更透明可检查，底层 CLI 提供了一个 `doctor` 子命令，用于
+自检当前知识库配置（路径、vec0、embedding、小模型等）：
+
+```bash
+# 通过 PyPI 安装后
+clawsqlite knowledge doctor --json
+
+# 在源码目录下（未安装 wheel 时）
+python -m clawsqlite_knowledge.cli doctor
+```
+
+建议在新环境首次配置 clawsqlite 时先跑一遍 `clawsqlite knowledge doctor`
+看一下报告，再开始正常使用知识库和 Skill。
+
 > 如果你需要完全控制 clawsqlite 的所有能力（包括 plumbing 命令、
 > 自己的表、复杂流水线），应该直接使用 `clawsqlite` 包和 CLI，
 > 而不是这个 Skill。
@@ -33,8 +47,9 @@
 - **clawsqlite-knowledge（本 Skill）**
   - 代码目录：`clawhub-skills/clawsqlite-knowledge`；
   - 由 ClawHub 安装并运行；
-  - 依赖 PyPI 上的 `clawsqlite>=0.1.8` 包（不 vendor 源码，不 git clone）；
-  - 对外暴露一个小而精的 JSON API：
+  - 依赖 PyPI 上的 `clawsqlite>=1.0.2` 包（不 vendor 源码，不 git clone）；
+  - 对外暴露一个小而精的 JSON API（并假定环境中可以运行
+    `clawsqlite knowledge doctor` 做自检）：
     - `ingest_url`
     - `ingest_text`
     - `search`
@@ -78,7 +93,7 @@ openclaw skills install clawsqlite-knowledge
 
 > **重要：** 完成这一步后，只是把 Skill 壳拉到了 workspace，底层的
 > `clawsqlite` CLI 可能还没有安装，或者版本还停留在旧的 0.1.x。第二步
-> 会确保环境里存在 **`clawsqlite>=0.1.8`**。
+> 会确保环境里存在 **`clawsqlite>=1.0.2`**。
 
 ### 2.2 第二步：安装/升级 `clawsqlite`（PyPI v0.1.4）
 
@@ -95,7 +110,7 @@ install:
 脚本的核心逻辑（简化版）：
 
 ```python
-requirement = "clawsqlite>=0.1.8"
+requirement = "clawsqlite>=1.0.2"
 cmd = [sys.executable, "-m", "pip", "install", requirement]
 proc = subprocess.run(cmd)
 if proc.returncode != 0:
@@ -112,7 +127,7 @@ if proc.returncode != 0:
 
 含义是：
 
-- 优先尝试把 `clawsqlite>=0.1.8` 装到 Skill 运行时使用的默认 Python 环境；
+- 优先尝试把 `clawsqlite>=1.0.2` 装到 Skill 运行时使用的默认 Python 环境；
 - 如果该环境只读或 `pip install` 失败，则退回安装到 workspace 本地前缀：
 
   ```text
@@ -138,13 +153,13 @@ openclaw skills install clawsqlite-knowledge
 ```
 
 > **注意：** 这个 Skill **从不** vendor `clawsqlite` 源码，也不会 git clone
-> 仓库。唯一的代码来源就是 `pip install "clawsqlite>=0.1.8"`。
+> 仓库。唯一的代码来源就是 `pip install "clawsqlite>=1.0.2"`。
 
 ### 2.3 `clawsqlite` CLI 实际装在哪里？
 
 取决于你的环境：
 
-- 如果 `pip install clawsqlite>=0.1.8` 能在基础 venv 中成功：
+- 如果 `pip install clawsqlite>=1.0.2` 能在基础 venv 中成功：
   - `clawsqlite` 可执行入口会出现在该 venv 的 `bin` 目录；
   - 模块 `clawsqlite_cli` 可直接通过 `python -m clawsqlite_cli` 调用。
 - 如果走的是 workspace 前缀回退路径：
@@ -196,7 +211,33 @@ EOF)"$PYTHONPATH" \
 
 ---
 
-## 4. 支持的 actions
+## 4. 推荐的第一步：先跑一次 `doctor`
+
+在一个全新的环境里启用这个 Skill 之前，强烈建议先用底层 CLI 跑一遍
+自检命令，看看当前环境处于哪种能力模式：
+
+```bash
+clawsqlite knowledge doctor --json
+```
+
+报告会检查：
+
+- CLAWSQLITE_ROOT / CLAWSQLITE_DB（路径是否存在）；
+- sqlite-vec 扩展和向量表（vec0 / vec 索引是否可用）；
+- Embedding 配置（EMBEDDING_* + CLAWSQLITE_VEC_DIM 是否完整）；
+- 小模型配置（SMALL_LLM_* 三元组是否完整）；
+- 当前整体属于哪种能力模式：
+  - LLM + Embedding
+  - LLM + 无 Embedding
+  - 无 LLM + Embedding
+  - 无 LLM + 无 Embedding（纯 FTS）
+
+Agent 可以根据这份报告决定：
+
+- 默认使用 `mode=fts` 还是 `mode=hybrid/vec`；
+- 在能力缺失时是否向用户输出 NEXT 提示，指导补齐配置。
+
+## 5. 支持的 actions
 
 ### 4.1 `ingest_url`
 
@@ -251,53 +292,46 @@ EOF)"$PYTHONPATH" \
 
 - 从正文构造“长摘要”（约 800 字以内，按自然段边界软截断）；
 - 用 jieba/启发式抽标签；
-- 在 `clawsqlite>=0.1.8` 中，这套标签生成逻辑与查询侧关键词抽取共用
+- 在 `clawsqlite>=1.0.2` 中，这套标签生成逻辑与查询侧关键词抽取共用
   同一条 TextRank + 语义向心流水线；
 - 在配置了 Embedding 的情况下，为摘要打向量并写入 vec 表；
 - 用拼音/ASCII 生成文件名，在 articles 目录下写入 markdown。
 
 ### 4.3 `search`
 
-在知识库中检索。
+在知识库中检索，使用 `clawsqlite>=1.0.2` 提供的完整检索流水线：
+`query_refine/query_tags + FTS/vec hybrid`。
 
-底层调用的是 `clawsqlite knowledge search ...`，并继承了
-`clawsqlite>=0.1.8` 中的行为：
+底层调用的是 `clawsqlite knowledge search ... --json`，本 Skill 只负责
+转发参数和返回结果。
 
-- hybrid 检索：向量 + FTS 的混合模式，在 Embedding 或 vec0
-  不可用时自动退化为纯 FTS；
-- 标签感知打分：标签由 TextRank/TF‑IDF +（可选的）语义向心力生成，
-  并以 0..1 的得分参与最终排序。在 0.1.7 中，打分逻辑会：
+高层行为：
+
+- 查询会被拆成两部分：
+  - `query_refine`：更适合检索的一句话（由 Small LLM 或启发式生成）；
+  - `query_tags`：若干个关键词（数量由 `CLAWSQLITE_SEARCH_QUERY_TAG_MIN/MAX`
+    控制）。
+- 是否使用 Small LLM 和 Embedding，会决定内部的「能力模式」：
+  - Mode1（有 LLM + 有 Embedding）：用 LLM 生成 query_refine/query_tags，
+    打分时同时使用摘要/标签向量 + FTS + 标签字面匹配；
+  - Mode2（有 LLM + 无 Embedding）：用 LLM 生成 query_refine/query_tags，
+    打分时使用 FTS + 标签字面匹配；
+  - Mode3（无 LLM + 有 Embedding）：用启发式生成 query_refine/query_tags，
+    打分时使用摘要/标签向量 + FTS + 标签字面匹配；
+  - Mode4（无 LLM + 无 Embedding）：启发式 query_refine/query_tags +
+    FTS + 标签字面匹配。
+- 在有 Embedding 的模式下，打分逻辑会：
   - 将摘要与标签分别 embed 到 vec0 表（`articles_vec`、`articles_tag_vec`）中；
-  - 用 `1/(1+d)` + 以 0.5 为中心的 Logistic Sigmoid 归一化向量距离，让“真正相似”的条目得分明显高于一般相似；
+  - 用 `1/(1+d)` + 以 0.5 为中心的 Logistic Sigmoid 归一化向量距离；
   - 将标签通道拆成“标签语义得分（tag vector）”和“标签字面得分（tag lexical）”，拆分比例由 `CLAWSQLITE_TAG_VEC_FRACTION` 控制；
-  - 对标签字面得分应用可选的 log 压缩：`ln(1+αx)/ln(1+α)`，`α` 来自 `CLAWSQLITE_TAG_FTS_LOG_ALPHA`（默认 5.0），防止一堆弱命中压制语义得分；
-- 查询关键词抽取：自然语言问句会先经过与标签生成相同的
-  TextRank + 语义向心水平线抽取少量关键词，再喂给 FTS。
+  - 对标签字面得分应用可选的 log 压缩：`ln(1+αx)/ln(1+α)`，`α` 来自
+    `CLAWSQLITE_TAG_FTS_LOG_ALPHA`（默认 5.0），防止一堆弱命中压制语义得分。
+- 最终总分是 vec/fts/tag/priority/recency 多通道按权重线性组合，
+  不同模式的默认权重由 `CLAWSQLITE_SCORE_WEIGHTS_MODE1..4` 控制
+  （兼容旧的 `CLAWSQLITE_SCORE_WEIGHTS*`）。
 
-混合打分的权重可以通过 `CLAWSQLITE_SCORE_WEIGHTS` 环境变量进行微调，
-其中：
-- `vec`：摘要语义通道权重；
-- `fts`：全文 FTS 通道权重；
-- `tag`：标签通道总权重（再由 `CLAWSQLITE_TAG_VEC_FRACTION` 在“标签语义/标签字面”之间拆分）；
-- `priority` / `recency`：人工权重 + 时效权重。
-
-在中英文混合知识库场景下，一个常见配置是：
-
-```env
-CLAWSQLITE_SCORE_WEIGHTS=vec=0.30,fts=0.10,tag=0.55,priority=0.03,recency=0.02
-CLAWSQLITE_TAG_VEC_FRACTION=0.82
-CLAWSQLITE_TAG_FTS_LOG_ALPHA=5.0
-```
-
-对应大致贡献：
-
-- ~45% 标签语义；
-- ~30% 摘要语义；
-- ~10% 标签字面匹配；
-- ~10% 全文 FTS；
-- ~5% priority/recency。
-
-更多细节可参考 clawsqlite 仓库的 README/README_zh。
+更多细节可参考本目录的 `ENV_EXAMPLE.md` 与 clawsqlite 仓库的
+README/README_zh。
 
 **Payload 示例：**
 
@@ -403,9 +437,9 @@ clawsqlite knowledge reindex --rebuild --fts
 
 ---
 
-## 7. 升级说明（clawsqlite>=0.1.8）
+## 7. 升级说明（clawsqlite>=1.0.2）
 
-- 本 Skill 依赖 `clawsqlite>=0.1.8`，更新时会通过 `bootstrap_deps.py` 安装新的 PyPI 版本。
+- 本 Skill 依赖 `clawsqlite>=1.0.2`，更新时会通过 `bootstrap_deps.py` 安装新的 PyPI 版本。
 - 在 OpenClaw 中，推荐的下发流程是：`openclaw skills update clawsqlite-knowledge`，如同时调整了 `CLAWSQLITE_FTS_JIEBA`，再执行一次 FTS 重建。
 
 ## 8. 兴趣簇与兴趣报告（通过底层 clawsqlite CLI）
