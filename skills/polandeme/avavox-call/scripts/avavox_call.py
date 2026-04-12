@@ -17,10 +17,9 @@ ALLOWED_BASE_HOSTS = {"dashboard.avavox.com"}
 ALLOWED_API_PREFIX = "/open/api"
 ENV_APP_KEY = "AVAVOX_APP_KEY"
 ENV_BASE_URL = "AVAVOX_BASE_URL"
-SKILL_VERSION = "0.6.0"
+SKILL_VERSION = "0.6.2"
 ENV_DEFAULTS = {
     "taskId": "AVAVOX_DEFAULT_TASK_ID",
-    "robotId": "AVAVOX_DEFAULT_ROBOT_ID",
     "lineId": "AVAVOX_DEFAULT_LINE_ID",
     "concurrency": "AVAVOX_DEFAULT_CONCURRENCY",
     "backgroundAudio": "AVAVOX_DEFAULT_BACKGROUND_AUDIO",
@@ -446,7 +445,6 @@ def build_task_payload(args: argparse.Namespace, defaults: Dict[str, Any], mode:
         body["scheduledTime"] = scheduled_time
 
     if mode == "create":
-        assign_if_non_empty(body, "robotId", defaults.get("robotId"))
         assign_if_non_empty(body, "lineId", defaults.get("lineId"))
         assign_if_non_empty(body, "backgroundAudio", defaults.get("backgroundAudio"))
         assign_if_non_empty(body, "callTimeType", defaults.get("callTimeType"))

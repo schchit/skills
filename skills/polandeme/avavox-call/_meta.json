@@ -3,11 +3,16 @@
   "slug": "avavox-call",
   "displayName": "avavox  智能外呼",
   "latest": {
-    "version": "0.6.1",
-    "publishedAt": 1774871033632,
-    "commit": "https://github.com/openclaw/skills/commit/71cc5e7efd20f42c4a246e992cba871d6c6e85f0"
+    "version": "0.6.2",
+    "publishedAt": 1775737782152,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.6.1",
+      "publishedAt": 1774871033632,
+      "commit": "https://github.com/openclaw/skills/commit/71cc5e7efd20f42c4a246e992cba871d6c6e85f0"
+    },
     {
       "version": "0.6.0",
       "publishedAt": 1774536256752,

@@ -3,7 +3,6 @@
   "appKey": "sk-xxxxxxxxxxxxxxxx",
   "defaults": {
     "taskId": "",
-    "robotId": "",
     "lineId": "",
     "concurrency": 1,
     "backgroundAudio": "",

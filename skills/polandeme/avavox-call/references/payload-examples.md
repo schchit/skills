@@ -110,7 +110,51 @@
 
 - 单次最多 2000 条
 - 同一任务内重复号码会被忽略
+- **`ext` 中的键名必须与 `tasks variables` 返回结果里的 `data.variables[].name` 完全一致**
 - `ext` 推荐按 `tasks variables` 的结果来构造
+
+**变量传递工作流**：
+
+1. 先查询任务支持的变量：
+   ```bash
+   python3 {baseDir}/scripts/avavox_call.py tasks variables \
+     --config {baseDir}/config.json \
+     --task-id "task_xxx"
+   ```
+   返回示例：
+   ```json
+   {
+     "data": {
+       "variables": [
+         {
+           "name": "客户姓名",
+           "key": "customer_name"
+         },
+         {
+           "name": "手机尾号",
+           "key": "phone_suffix"
+         },
+         {
+           "name": "订单号",
+           "key": "order_id"
+         }
+       ]
+     }
+   }
+   ```
+
+2. 根据返回结果里的 `data.variables[].name` 构造 `ext`：
+   ```bash
+   python3 {baseDir}/scripts/avavox_call.py customers import \
+     --config {baseDir}/config.json \
+     --task-id "task_xxx" \
+     --customers-inline '[{"phoneNumber":"13800000001","ext":{"客户姓名":"张三","手机尾号":"0001"}}]'
+   ```
+
+3. 关键点：
+   - `ext` 的键名使用 `name`，不要使用 `key`
+   - `ext` 是可选字段，如果机器人没有配置变量，可以省略
+   - 变量值会在通话记录回调时原样回传，用于关联客户信息
 
 ## 5. 获取任务变量
 
