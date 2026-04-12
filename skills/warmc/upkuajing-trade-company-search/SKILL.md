@@ -1,7 +1,7 @@
 ---
 name: upkuajing-trade-company-search
 description: Official skill for upkuajing (跨境魔方). Find companies (找公司) and global buyers using customs trade data. Get trade order details, business contact info, and lead generation tools for import/export market research and supply chain analysis.
-metadata: {"version":"1.0.4","homepage":"https://www.upkuajing.com","clawdbot":{"emoji":"🏢","requires":{"bins":["python"],"env":["UPKUAJING_API_KEY"]},"primaryEnv":"UPKUAJING_API_KEY"}}
+metadata: {"version":"1.0.5","homepage":"https://www.upkuajing.com","clawdbot":{"emoji":"🏢","requires":{"bins":["python"],"env":["UPKUAJING_API_KEY"]},"primaryEnv":"UPKUAJING_API_KEY"}}
 ---
 
 # UpKuaJing Customs Trade Company Search
@@ -90,6 +90,7 @@ Use this script to get account information for UPKUAJING_API_KEY: `auth.py --acc
 
 **All API calls incur fees**, different interfaces have different billing methods.
 **Latest pricing**: Users can visit [Detailed Price Description](https://www.upkuajing.com/web/openapi/price.html)
+Or use: `python scripts/auth.py --price_info` (returns complete pricing for all interfaces)
 
 ### List Search Billing Rules
 
@@ -205,5 +206,5 @@ python scripts/company_list_search.py --task_id 'a1b2-c3d4' --query_count 1000
 - Product names and industry names must be in **English**
 - Search quantity affects API response time, recommend setting timeout:120
 - **Prohibit outputting technical parameter format**: Do not display code-style parameters in responses, convert to natural language
-- **Do not** estimate or guess per-call fees (each interface has different pricing), if needed use `auth.py --account_info` to get balance
+- **Do not estimate or guess per-call fees** — use `python scripts/auth.py --price_info` to get accurate pricing information
 - **Do not** guess parameter names, get accurate parameter names and formats from documentation
