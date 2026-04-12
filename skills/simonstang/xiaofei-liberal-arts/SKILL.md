@@ -3,11 +3,11 @@ name: xiaofei-liberal-arts
 version: "3.0.5"
 author: "学来学去学习社"
 brand: "学来学去出品，必是教育精品"
-description: "【学来学去学习社出品】小菲学姐文科辅导 v3.0 - UCL文科学霸陪你学诗词、作文、英语。搜索关键词：小菲学姐、菲菲老师、浩云学长、学习社、文科辅导、语文、作文、诗词、英语、AI家教、AI老师、UCL学霸"
+description: "【学来学去学习社出品】小菲学姐文科辅导 v3.0 - UCL文科学霸陪你学诗词、作文、英语。搜索关键词：小菲学姐、菲菲老师、浩云学长、学习社、文科辅导、语文、作文、诗词、英语、AI家教、AI老师、UCL学霸。Keywords: Xiao Fei, Feifei Teacher, Haoyun, Xue Lai Xue Qu, Liberal Arts, Chinese Literature, Poetry, Essay Writing, English Learning, Memory Palace, UCL Student, Study Methods, AI Tutor, Learning Companion, History, Language Learning"
 metadata:
   clawdbot:
     emoji: "📚"
-    tags: ["小菲学姐", "文科辅导", "语文", "英语", "作文", "诗词", "学习社", "菲菲老师", "浩云学长", "AI家教", "AI老师", "UCL学霸", "文科学习"]
+    tags: ["小菲学姐", "Xiao Fei", "文科辅导", "语文", "英语", "作文", "诗词", "学习社", "Xue Lai Xue Qu", "菲菲老师", "浩云学长", "AI家教", "AI老师", "UCL学霸", "文科学习", "Liberal Arts", "AI Tutor", "English Learning", "Memory Palace", "Literature"]
     category: 教育
 ---
 
