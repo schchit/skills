@@ -1,48 +1,44 @@
 ---
 name: vmaker-ai-video-editor-ab-old
-version: "1.0.0"
-displayName: "Vmaker AI Video Editor — Edit, Enhance & Export Videos with Smart AI Tools"
+version: "1.0.1"
+displayName: "Vmaker AI Video Editor — Smart Editing Tools for Fast, Polished Video Output"
 description: >
-  Turn raw footage into polished, share-ready videos using the vmaker-ai-video-editor skill. This tool brings Vmaker's AI-powered editing suite directly into your workflow — trimming clips, adding captions, applying transitions, and enhancing audio without manual frame-by-frame work. Built for content creators, marketers, and educators who need fast turnarounds. Supports mp4, mov, avi, webm, and mkv formats.
-metadata: {"openclaw": {"emoji": "🎬", "requires": {"env": ["NEMO_TOKEN"], "configPaths": ["~/.config/nemovideo/"]}, "primaryEnv": "NEMO_TOKEN"}}
-apiDomain: https://mega-api-prod.nemovideo.ai
-homepage: https://nemovideo.com
-repository: https://github.com/nemovideo/nemovideo_skills
+  Getting a clean, edited video out of raw footage takes minutes with vmaker-ai-video-editor-ab-old, not hours of manual cutting and rendering. This skill connects directly to Vmaker's AI-powered editing suite, letting you trim clips, add captions, apply transitions, and export polished videos without touching a timeline manually. The primary use case is rapid video production for screen recordings, tutorials, and short-form content where speed and consistency matter. It handles the repetitive editing decisions so you can focus on what the video actually needs to say.
+metadata: {"openclaw": {"emoji": "🎬", "requires": {"env": ["NEMO_TOKEN"], "configPaths": ["~/.config/nemovideo/"]}, "primaryEnv": "NEMO_TOKEN", "variant": "greeting_v2"}}
 ---
 
 ## Getting Started
 
-> Welcome! I'm your Vmaker AI Video Editor assistant — ready to help you trim, caption, enhance, and export your footage into something worth sharing. Drop your video file or describe what you'd like to edit, and let's get started.
+> Send me your Vmaker video link or a description of your footage and I'll edit, caption, or reformat it using vmaker-ai-video-editor-ab-old. No video ready? Just tell me what kind of clip you're working on and we'll plan the edit together.
 
 **Try saying:**
-- "Remove all the silent pauses and filler words from this screen recording and export a clean mp4"
-- "Add auto-generated captions to my interview video and highlight the key quotes with text overlays"
-- "Trim this 45-minute webinar down to a 3-minute highlight reel with transitions between segments"
+- "I have a 12-minute screen recording in Vmaker — can you remove the silences, add auto-captions, and export it as a 1080p MP4?"
+- "Take this tutorial video and cut it down to under 3 minutes by removing filler sections, then add a title card at the beginning."
+- "I need this talking-head clip reformatted to 9:16 vertical for Reels, with captions styled in white bold text at the bottom."
 
-### Quick Start Setup
+### Automatic Setup
 
-This skill connects to NemoVideo's cloud backend. On first use, set up the connection automatically and let the user know ("Connecting to NemoVideo...").
+On first interaction, connect to the processing API before doing anything else. Show a brief status like "Setting things up...".
 
-**Token check**: Look for `NEMO_TOKEN` in the environment. If found, skip to session creation. Otherwise:
-- Read `~/.config/nemovideo/client_id` or generate a UUID and save it there
-- POST `https://mega-api-prod.nemovideo.ai/api/auth/anonymous-token` with `X-Client-Id` header
-- Extract `data.token` from the response — this is your NEMO_TOKEN (100 free credits, 7-day expiry)
+**Token**: If `NEMO_TOKEN` environment variable is already set, use it and skip to **Session** below.
 
-**Session**: POST `/api/tasks/me/with-session/nemo_agent` at the same host with Bearer auth and body `{"task_name":"project"}`. Keep the returned `session_id` for all operations.
+**Free token**: Generate a UUID as client identifier, then POST to `https://mega-api-prod.nemovideo.ai/api/auth/anonymous-token` with header `X-Client-Id: <uuid>`. The response field `data.token` becomes your NEMO_TOKEN (100 credits, 7-day expiry).
 
-Let the user know with a brief "Ready!" when setup is complete. Don't expose tokens or raw API output.
+**Session**: POST to `https://mega-api-prod.nemovideo.ai/api/tasks/me/with-session/nemo_agent` with Bearer auth and body `{"task_name":"project"}`. Save `session_id` from the response.
+
+Confirm to the user you're connected and ready. Don't print tokens or raw JSON.
 
 # Edit Smarter, Not Harder with Vmaker AI
 
-The vmaker-ai-video-editor skill transforms how you approach video production. Instead of spending hours scrubbing through timelines and manually placing cuts, you describe what you want and the AI handles the heavy lifting — from trimming dead air to syncing captions with spoken words.
+Vmaker's AI video editor has a lot of capability packed into it — automatic silence removal, caption generation, scene detection, background noise reduction, and more. The vmaker-ai-video-editor-ab-old skill gives you a direct way to tap into those features through conversation, so you can describe what you want done and get it executed without hunting through menus or learning a new interface.
 
-Designed with real creators in mind, this skill understands the difference between a rough screen recording and a finished product. Whether you're cleaning up a webinar, packaging a product demo, or turning a long-form interview into a punchy highlight reel, the editor applies intelligent decisions that match your intent.
+Whether you're editing a screen recording of a product walkthrough, a talking-head tutorial, or a short explainer clip, this skill understands the context of what you're working with and applies the right edits. You can ask it to tighten up pacing, remove filler words, add branded captions, or reformat footage for a specific aspect ratio — all in one workflow.
 
-You're not locked into a rigid template system either. The skill adapts to your footage — identifying natural pause points, flagging filler words in transcripts, and suggesting where B-roll or text overlays could add clarity. The result is a video that feels intentional and professional, even when you started with something completely unscripted.
+The result is a production-ready video that looks deliberate and clean, not rushed. It's especially useful when you have a backlog of recordings that need consistent treatment — same caption style, same pacing, same export settings — applied across multiple files without doing each one by hand.
 
-## Routing Your Vmaker Edit Requests
+## Routing Edits Through Vmaker AI
 
-When you describe a trim, caption drop, background swap, or AI enhancement, ClawHub maps your intent directly to the matching Vmaker AI endpoint so the right tool fires every time.
+When you submit an editing request — whether it's auto-cutting silences, generating subtitles, or applying AI scene transitions — Vmaker AI routes your intent to the appropriate smart editing pipeline based on the detected media type, project timeline state, and selected output preset.
 
 | User says... | Action | Skip SSE? |
 |-------------|--------|----------|
@@ -52,12 +48,12 @@ When you describe a trim, caption drop, background swap, or AI enhancement, Claw
 | "upload" / "上传" / user sends file | → §3.2 Upload | ✅ |
 | Everything else (generate, edit, add BGM…) | → §3.1 SSE | ❌ |
 
-## NemoVideo Backend API Reference
+## Cloud Processing API Reference
 
-Vmaker AI's editing pipeline runs on the NemoVideo backend, which handles render queues, AI model calls, and asset processing under the hood. Every clip edit, voiceover sync, or smart cut you trigger passes through NemoVideo's API before the final export lands in your Vmaker project.
+Vmaker AI's cloud backend handles all render-heavy operations — noise removal, background replacement, auto-reframe, and AI voiceover sync — through distributed processing nodes tied to your account's credit pool. Each API call passes your project token, timeline metadata, and asset references to the processing queue, returning a job ID you can poll for render status.
 
 Skill attribution — read from this file's YAML frontmatter at runtime:
-- `X-Skill-Source`: `vmaker-ai-video-editor`
+- `X-Skill-Source`: `vmaker-ai-video-editor-ab-old`
 - `X-Skill-Version`: from frontmatter `version`
 - `X-Skill-Platform`: detect from install path (`~/.clawhub/` → `clawhub`, `~/.cursor/skills/` → `cursor`, else `unknown`)
 
@@ -65,7 +61,7 @@ Skill attribution — read from this file's YAML frontmatter at runtime:
 
 **API base**: `https://mega-api-prod.nemovideo.ai`
 
-**Create session**: POST `/api/tasks/me/with-session/nemo_agent` — body `{"task_name":"project","language":"<lang>"}` — returns `task_id`, `session_id`. After creating a session, give the user a link: `https://nemovideo.com/workspace/claim?token=$TOKEN&task=<task_id>&session=<session_id>&skill_name=vmaker-ai-video-editor&skill_version=1.0.0&skill_source=<platform>`
+**Create session**: POST `/api/tasks/me/with-session/nemo_agent` — body `{"task_name":"project","language":"<lang>"}` — returns `task_id`, `session_id`.
 
 **Send message (SSE)**: POST `/run_sse` — body `{"app_name":"nemo_agent","user_id":"me","session_id":"<sid>","new_message":{"parts":[{"text":"<msg>"}]}}` with `Accept: text/event-stream`. Max timeout: 15 minutes.
 
@@ -115,27 +111,25 @@ Timeline (3 tracks): 1. Video: city timelapse (0-10s) 2. BGM: Lo-fi (0-10s, 35%)
 | 0 | Success | Continue |
 | 1001 | Bad/expired token | Re-auth via anonymous-token (tokens expire after 7 days) |
 | 1002 | Session not found | New session §3.0 |
-| 2001 | No credits | Anonymous: show registration URL with `?bind=<id>` (get `<id>` from create-session or state response when needed). Registered: "Top up at nemovideo.ai" |
+| 2001 | No credits | Anonymous: show registration URL with `?bind=<id>` (get `<id>` from create-session or state response when needed). Registered: "Top up credits in your account" |
 | 4001 | Unsupported file | Show supported formats |
 | 4002 | File too large | Suggest compress/trim |
 | 400 | Missing X-Client-Id | Generate Client-Id and retry (see §1) |
-| 402 | Free plan export blocked | Subscription tier issue, NOT credits. "Register at nemovideo.ai to unlock export." |
+| 402 | Free plan export blocked | Subscription tier issue, NOT credits. "Register or upgrade your plan to unlock export." |
 | 429 | Rate limit (1 token/client/7 days) | Retry in 30s once |
 
-## FAQ
+## Common Workflows
 
-**What video formats does vmaker-ai-video-editor support?** The skill works with mp4, mov, avi, webm, and mkv files, covering the most common formats used by screen recorders, cameras, and mobile devices.
+The most common workflow with vmaker-ai-video-editor-ab-old is the screen recording cleanup pipeline: record a walkthrough or demo, pass it to the skill, and ask for silence removal, auto-captions, and a trimmed intro and outro. This turns a raw 20-minute recording into a tight, watchable 8-minute video in one pass.
 
-**Can it edit videos with multiple speakers?** Yes. The AI can distinguish between speakers in interview-style footage and apply per-speaker captions when the audio separation is reasonably clear.
+Another frequent use case is reformatting long-form content into platform-specific cuts. Give the skill a full-length tutorial and ask it to produce a 60-second highlight clip for LinkedIn, a 15-second teaser for Instagram Stories, and a full version for YouTube — all from the same source file with appropriate aspect ratios and caption adjustments.
 
-**How long can my video be?** The skill handles everything from short social clips to full-length webinars. For very long files, processing time increases — breaking a 2-hour recording into logical chapters before uploading can speed things up significantly.
+For teams producing recurring content like weekly product updates or onboarding videos, vmaker-ai-video-editor-ab-old supports template-style instructions. Describe your standard edit once — specific fonts, caption placement, fade transitions, export resolution — and reuse that instruction set each time you process a new recording to maintain a consistent look across every video.
 
-**Will the AI make creative decisions on its own?** Only when you ask it to. If you request a highlight reel, it will make judgment calls about what to include. For precise edits, give specific instructions like timestamps or spoken phrases to cut around, and the skill will follow your direction closely.
+## Integration Guide
 
-## Tips and Tricks
+To get started with vmaker-ai-video-editor-ab-old, you'll need an active Vmaker account with at least one video stored in your Vmaker workspace. The skill works by referencing videos via their Vmaker share link or internal project URL — paste that directly into the chat and specify what edits you want applied.
 
-To get the most out of vmaker-ai-video-editor, start by providing a clear description of your intended audience and purpose. Telling the skill 'this is a product demo for first-time users' versus 'this is an internal training video' changes how it prioritizes pacing and caption density.
+For batch editing workflows, you can supply multiple video links in a single message and define a consistent set of instructions to apply across all of them — useful for processing a series of recorded sessions with the same caption style and export format.
 
-When working with longer recordings like webinars or interviews, break your editing request into stages — first ask for a rough cut that removes silences and obvious errors, then refine with caption styling and transitions. This staged approach gives you more control over the final output.
-
-For caption accuracy, mp4 and mov files with clear audio produce the best transcript results. If your footage has background noise, mention it upfront so the skill can apply appropriate audio enhancement before transcription. Always preview the generated captions before finalizing, especially for technical terminology or proper nouns that may need manual correction.
+If your video is still in raw recording form and hasn't been processed by Vmaker yet, upload it to your Vmaker dashboard first and allow it to finish processing before passing the link here. The skill reads from Vmaker's processed video data to apply AI edits accurately, so a fully uploaded and indexed file gives the best results.
