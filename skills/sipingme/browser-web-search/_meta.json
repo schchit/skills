@@ -3,9 +3,15 @@
   "slug": "browser-web-search",
   "displayName": "Browser Web Search Skill",
   "latest": {
-    "version": "0.1.1",
-    "publishedAt": 1775056808309,
-    "commit": "https://github.com/openclaw/skills/commit/4cde44b86bd46663e692a81e44075da57c4c63ca"
+    "version": "0.3.8",
+    "publishedAt": 1775871882178,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.1",
+      "publishedAt": 1775056808309,
+      "commit": "https://github.com/openclaw/skills/commit/4cde44b86bd46663e692a81e44075da57c4c63ca"
+    }
+  ]
 }

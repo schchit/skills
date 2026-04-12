@@ -1,7 +1,7 @@
 ---
 name: browser-web-search
-description: 把任何网站变成命令行 API。13 平台 41 命令 — 知乎、小红书、B站、GitHub、豆瓣等。专为 OpenClaw 设计，复用浏览器登录态。
-version: 0.1.0
+description: 把任何网站变成命令行 API。17 平台 37 命令 — 头条、小红书、知乎、B站、澎湃、腾讯、网易、新浪、微博等。专为 OpenClaw 设计，复用浏览器登录态。
+version: 0.3.7
 author: Ping Si <sipingme@gmail.com>
 type: cli
 requires:
@@ -13,16 +13,14 @@ requires:
       description: Node.js 包管理器（随 Node.js 安装）
   packages:
     - npm: browser-web-search
-      global: true
+      global: false
   binaries:
-    - name: bws
-      providedBy: browser-web-search
     - name: openclaw
       description: OpenClaw CLI，用于浏览器自动化
 install:
-  command: npm install -g browser-web-search
-  riskLevel: moderate
-  riskReason: 全局安装第三方 npm 包，会在主机上执行未经审计的代码。包代码不包含在此 Skill 中，需独立审查。
+  command: npx --yes browser-web-search@0.3.7
+  riskLevel: high
+  riskReason: 通过 npx 动态拉取并执行第三方 npm 包，该包会在浏览器页面上下文中执行 JavaScript，可访问站点认证数据。存在供应链风险，使用前请审计源码。
   requiresApproval: true
   source:
     registry: npmjs.com
@@ -60,7 +58,7 @@ capabilities:
   privacyNotice:
     summary: 此 Skill 自动复用浏览器登录态，可读取您已登录站点的任何可见数据
     details:
-      - "零配置"意味着 CLI 自动获得您在 OpenClaw 浏览器中的登录会话访问权
+      - 零配置意味着 CLI 自动获得您在 OpenClaw 浏览器中的登录会话访问权
       - 可读取账户保护的页面（私信、收藏、个人资料、订单等）
       - 访问范围取决于您在目标站点的登录权限
       - 建议仅在信任 browser-web-search 包代码后使用
@@ -116,14 +114,17 @@ bws 命令
 ### 安装 browser-web-search
 
 ```bash
+# 通过 npx 动态执行（无需全局安装）
+npx --yes browser-web-search@0.3.7 --version
+
+# 或全局安装（可选）
 npm install -g browser-web-search
 ```
 
 ### 验证安装
 
 ```bash
-bws --version
-bws site list
+npx --yes browser-web-search@0.3.7 site list
 ```
 
 ## 🚀 快速开始
@@ -136,20 +137,30 @@ bws site list
 bws zhihu/hot                      # 知乎热榜
 bws xiaohongshu/search "旅行"       # 小红书搜索
 bws bilibili/popular               # B站热门
-bws github/repo facebook/react     # GitHub 仓库
+bws weibo/hot                      # 微博热搜
 ```
 
-## 📊 内置平台（13 平台 41 命令）
+## 📊 内置平台（17 个）
 
-| 分类 | 平台 | 命令数 | 示例命令 |
-|-----|-----|-------|---------|
-| **搜索** | Google, Baidu, Bing | 3 | `bws google/search "query"` |
-| **社交** | 小红书, 知乎 | 10 | `bws zhihu/hot` |
-| **新闻** | 36kr, 今日头条 | 3 | `bws 36kr/newsflash` |
-| **开发** | GitHub, CSDN, 博客园 | 8 | `bws github/repo owner/repo` |
-| **视频** | Bilibili | 9 | `bws bilibili/popular` |
-| **娱乐** | 豆瓣 | 6 | `bws douban/top250` |
-| **招聘** | BOSS直聘 | 2 | `bws boss/search "职位"` |
+| 平台 | 说明 | 命令 |
+|-----|------|-----|
+| **今日头条** | 新闻资讯 | `toutiao/hot`, `toutiao/search`, `toutiao/feed` |
+| **澎湃新闻** | 权威新闻 | `thepaper/hot` |
+| **腾讯新闻** | 热点新闻 | `qqnews/hot` |
+| **网易新闻** | 热点新闻 | `netease/hot` |
+| **新浪新闻** | 门户新闻 | `sina/hot` |
+| **微博** | 社交热搜 | `weibo/hot` |
+| **微信公众号** | 公众号文章 | `weixin/search`, `weixin/article` |
+| **小红书** | 生活分享 | `xiaohongshu/search`, `xiaohongshu/note`, `xiaohongshu/comments`, `xiaohongshu/feed`, `xiaohongshu/me`, `xiaohongshu/user_posts` |
+| **36kr** | 科技创投 | `36kr/newsflash`, `36kr/search`, `36kr/article` |
+| **知乎** | 问答社区 | `zhihu/hot`, `zhihu/search`, `zhihu/question`, `zhihu/me` |
+| **CSDN** | 开发者社区 | `csdn/search` |
+| **博客园** | 技术博客 | `cnblogs/search` |
+| **Bilibili** | 视频弹幕 | `bilibili/popular`, `bilibili/trending`, `bilibili/ranking`, `bilibili/search`, `bilibili/video`, `bilibili/comments`, `bilibili/feed`, `bilibili/history`, `bilibili/me` |
+| **BOSS直聘** | 招聘平台 | `boss/search`, `boss/detail` |
+| **Baidu** | 百度搜索 | `baidu/search` |
+| **Bing** | 必应搜索 | `bing/search` |
+| **Google** | 谷歌搜索 | `google/search` |
 
 ## 🔧 标准操作流程 (SOP)
 
@@ -309,23 +320,27 @@ bws bilibili/popular --jq '.videos[] | {title, play}'
 
 ---
 
-### 操作 8：获取 GitHub 仓库信息
+### 操作 8：获取微博热搜
 
-**场景**：用户想查看某个 GitHub 仓库
+**场景**：用户想查看微博热搜
 
 **命令**：
 ```bash
-bws github/repo facebook/react
+bws weibo/hot
 ```
 
 **输出示例**：
 ```json
 {
-  "name": "react",
-  "description": "A declarative, efficient, and flexible JavaScript library...",
-  "stars": 220000,
-  "forks": 45000,
-  "language": "JavaScript"
+  "count": 30,
+  "items": [
+    {
+      "rank": 1,
+      "title": "某某事件",
+      "hot": 1234567,
+      "url": "https://s.weibo.com/weibo?q=..."
+    }
+  ]
 }
 ```
 
@@ -487,8 +502,8 @@ bws xiaohongshu/search "露营"
 
 ## 📝 维护说明
 
-- **版本**: 0.1.0
-- **最后更新**: 2026-03-31
+- **版本**: 0.3.7
+- **最后更新**: 2026-04-10
 - **维护者**: Ping Si <sipingme@gmail.com>
 - **许可证**: MIT
 
@@ -498,10 +513,9 @@ bws xiaohongshu/search "露营"
 
 新用户应该能在 2 分钟内完成：
 
-- [ ] 安装工具：`npm install -g browser-web-search`
-- [ ] 检查安装：`bws --version`
-- [ ] 查看命令：`bws site list`
-- [ ] 测试运行：`bws zhihu/hot`
+- [ ] 安装工具：`npx --yes browser-web-search@0.3.7 --version`
+- [ ] 查看命令：`npx --yes browser-web-search@0.3.7 site list`
+- [ ] 测试运行：`npx --yes browser-web-search@0.3.7 zhihu/hot`
 - [ ] 看到 JSON 输出
 
 如果以上步骤都能顺利完成，说明 Skill 已正确配置！
