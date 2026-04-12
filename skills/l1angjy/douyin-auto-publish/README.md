@@ -1,33 +1,25 @@
-# 抖音/Douyin 自动发上传+自动发布 skill
+# douyin-upload
 
-- 无需依赖视觉模型: 直接通过 DOM 元素定位（snapshot + 文字匹配），无需截图分析，成本更低、速度更快、稳定性更高.
-- 完全模拟人类点击, 实现更安全.
-- 开箱即用! 自动上传视频并发布到抖音创作者平台。适用于 Openclaw, Claude Cowork 等AI Agent应用(内置Browser Tool或者Chrome中安装了插件的).
-- 该Skill不包含任何外部指令, 可放心使用. 同时也可以根据不同工作流/业务逻辑进行调整.
+自动上传视频到抖音创作者平台。
 
 ## 安装 Skill
 
-### OpenClaw
+### 从 ClawHub 安装（推荐）
+
+```bash
+# 1. 登录 ClawHub（浏览器认证）
+clawhub login
+
+# 2. 安装 skill
+openclaw skills install douyin-auto-publish
+```
+
+> ClawHub 地址: https://clawhub.com
+
+### 手动安装
 
 ```bash
 # 将 skill 文件夹复制到 ~/.openclaw/skills/
-```
-
-### Claude Code / Claude CoWork (需要Claude for Chrome 插件)
-
-```bash
-# 将 skill 文件夹复制到 ~/.claude/skills/
-```
-
-### 其他 AI Agent 应用
-
-Skill 本质上是一个包含 `SKILL.md` 文件的文件夹。大多数 AI Agent 应用都支持以下目录结构：
-
-```
-~/.claude/skills/          # Claude Code/CoWork 全局
-~/.codex/skills/          # Codex 全局
-~/.openclaw/skills/       # OpenClaw 全局
-.agent/skills/            # 项目级 skill（多个应用通用）
 ```
 
 ## 准备工作（只需做一次）
@@ -100,28 +92,23 @@ AI 会自动完成全部流程。
 ## 常见问题
 
 **Q: 为什么提示需要登录？**
-
 A: 请确保 Chrome 已登录抖音创作者平台。AI 使用你 Chrome 的登录状态。
 
 **Q: 应该用 `target="host"` 还是 `target="sandbox"`？**
-
 A:
 - 用 `target="host"`：需要使用已有登录态，AI 控制你电脑的 Chrome
 - 用 `target="sandbox"`：需要隔离环境，不想暴露真实浏览器数据
 
 **Q: `profile="user"` 和不填 profile 有什么区别？**
-
 A:
 - 不填 profile：使用 OpenClaw 的隔离浏览器，需手动登录一次抖音
 - `profile="user"`：直接附加到你真实的 Chrome，会继承所有 cookies 和登录态，但需要你在电脑前
 
 **Q: 支持哪些视频格式？**
-
 A: 与抖音网页版支持格式相同，通常为 MP4、MOV 等常见格式。
 
 **Q: 可以设置定时发布吗？**
-
-A: 可以通过 Cron Job 等方式让AI Agent定时调用skill即可。
+A: 目前仅支持立即发布。
 
 ## 相关链接
 
