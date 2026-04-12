@@ -1,123 +1,239 @@
-# Zero-to-Launch 🚀
+<h1 align="center">Product Sense Coach</h1>
 
-> 帮独立开发者从"我好像想做点什么"到"我知道该做什么、做给谁、怎么验证"
+<p align="center">
+  <strong>A thinking partner for product managers — turn raw intuition into clear product vision</strong>
+</p>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Claude Skill](https://img.shields.io/badge/Claude-Skill-blueviolet)](https://github.com/viliawang-pm/zero-to-launch)
+<p align="center">
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#what-it-does">What It Does</a> •
+  <a href="#see-it-in-action">See It in Action</a> •
+  <a href="#philosophy">Philosophy</a> •
+  <a href="#install">Install</a>
+</p>
 
-## 这是什么？
+<p align="center">
+  English | <a href="README.zh-CN.md">简体中文</a>
+</p>
 
-一个专为**独立开发者**和 **Vibe Coder** 设计的 Claude Skill。
-
-当你有了一个模糊的产品想法，但还没想清楚的时候——这个 Skill 帮你理清思路，输出一份完整的"从 0 到 Launch"产品包。
-
-## 核心差异
-
-| 传统 PM 工具 | Zero-to-Launch |
-|:-----------|:--------------|
-| 假设你已经想清楚了 | **帮你想清楚** |
-| 深度优先：按固定顺序逐个追问 | **广度优先：展示全局，你选择从哪里开始** |
-| 聊完就完了 | **每轮都有可视化状态图 + 明确产出物** |
-| 面向企业 PM | **面向独立开发者、Vibe Coder、创业者** |
-
-## 可视化状态图
-
-每轮对话都会展示你的思考进度：
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  🗺️  产品思考地图                                            │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  [●] 问题洞察    ████████░░ 70%   你说了观察，还没说痛点强度   │
-│  [○] 目标用户    ░░░░░░░░░░ 0%    还没聊                      │
-│  [○] 市场机会    ░░░░░░░░░░ 0%    还没聊                      │
-│  [○] 竞品分析    ░░░░░░░░░░ 0%    还没聊                      │
-│  [◐] 解决方案    ████░░░░░░ 40%   你有模糊想法                │
-│  [○] 验证计划    ░░░░░░░░░░ 0%    还没聊                      │
-│  [○] MVP 定义    ░░░░░░░░░░ 0%    还没聊                      │
-│                                                             │
-│  💡 你想先聊哪个？直接说"聊用户"或"聊竞品"                     │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**你掌控节奏**——想先聊竞品？直接说。想跳到 MVP？没问题。
-
-## 最终产出物
-
-完成后你会得到：
-
-- ✅ **问题陈述** — 一段话说清楚你要解决什么
-- ✅ **3 份用户画像** — 知道第一批用户是谁
-- ✅ **市场规模估算** — TAM/SAM/SOM
-- ✅ **竞品分析矩阵** — 实时搜索生成
-- ✅ **用户访谈脚本** — 妈妈测试版，拿来就能用
-- ✅ **功能优先级清单** — Must/Should/Won't
-- ✅ **ASCII 原型草图** — 核心界面长什么样
-- ✅ **一页 PRD** — 直接开始 vibe coding
-
-## 目标用户
-
-- 🧑‍💻 有技术能力的**独立开发者**
-- 💡 想做副业或创业的**程序员**
-- ⚡ **Vibe coding** 人群：边做边想，需要快速验证
-- 🤔 有想法但没想清楚的 **Maker**
-
-## 快速开始
-
-### 方式 1：Claude Desktop
-
-1. 下载 `SKILL.md`
-2. 放到 Claude Desktop 的 Skills 目录
-3. 开始对话："我想做一个 XXX"
-
-### 方式 2：WorkBuddy
-
-1. 打开 WorkBuddy
-2. 输入 `/zero-to-launch`
-3. 开始对话
-
-### 方式 3：直接对话
-
-复制 `SKILL.md` 内容到对话开头，然后说出你的想法。
-
-## 示例对话
-
-**你**：我想做一个帮程序员管理 side project 的工具
-
-**Zero-to-Launch**：
-> 有意思！"side project 管理"——我自己也有一堆烂尾项目，太懂这个痛了。
-> 
-> [展示状态图]
-> 
-> 我有点好奇——你自己是不是也有过 side project 烂尾的经历？当时是什么让你没做下去的？
-> 
-> 或者你想先聊别的也行——比如"看看竞品"、"聊聊谁会用"都可以。你选。
-
-## 设计理念
-
-### 为什么是广度优先？
-
-用户反馈了一个核心问题：
-
-> "传统工具用的是深度优先，先从一个角度切入把这个东西挖深，再去第二个角度。这种方式很慢，有时候抓不住重点，导致我没有耐心，因为它提的问题我不是很想面对，或者我觉得不是最关键的，而最关键的问题它却迟迟不问。"
-
-**Zero-to-Launch 的解决方案**：
-1. **展示全貌** —— 用户始终知道总共要聊什么
-2. **显示进度** —— 知道哪些聊过了、聊到什么程度
-3. **用户主导** —— 随时跳到最想聊的话题
-4. **随时回来** —— 先跳走，再回来补完
-
-## License
-
-MIT
-
-## 作者
-
-[@viliawang-pm](https://github.com/viliawang-pm)
+<p align="center">
+  <a href="https://github.com/viliawang-pm/product-sense-coach/stargazers"><img src="https://img.shields.io/github/stars/viliawang-pm/product-sense-coach?style=social" alt="Stars"></a>
+  <a href="https://github.com/viliawang-pm/product-sense-coach/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Agent%20Skills-compatible-green" alt="Agent Skills Compatible"></a>
+</p>
 
 ---
 
-**有问题或建议？** 欢迎提 Issue 或 PR！
+## The Problem
 
-如果这个 Skill 帮到了你，给个 ⭐ 让更多人看到吧！
+You have a product idea. It feels right in your gut. But when you try to explain it:
+
+- **Investors** ask "what's the market size?" and you freeze
+- **Engineers** ask "what exactly should I build?" and you ramble
+- **Friends** nod politely but clearly don't get it
+
+**The idea is good. The articulation is the problem.**
+
+Most AI tools will immediately judge your idea or generate a business plan you didn't ask for. This skill does neither. Instead, it helps you **think out loud** — surfacing the real insight hidden in your intuition.
+
+---
+
+## What It Does
+
+When you share a product idea, the skill walks you through **five natural conversations**:
+
+| Conversation | Core Question | What You Get |
+|:------------|:-------------|:------------|
+| **The Origin Story** | "What did you observe that others missed?" | A clear articulation of your core insight |
+| **The Opportunity Space** | "How big could this be?" | A feel for the scale and shape of the market |
+| **The First 100 Users** | "Who shows up on Day 1?" | A tangible growth path starting from real people you know |
+| **The Movie Scene** | "Walk me through a user's Friday night" | Vivid, second-by-second usage scenarios |
+| **The Landscape** | "Who else has tried, and what can we learn?" | Competitive intelligence framed as learning |
+
+The output is a **Clarity Map** — not a judgment of whether your idea is good or bad, but a clear picture of what you already understand and where to dig deeper.
+
+---
+
+## See It in Action
+
+<details>
+<summary><strong>💬 Example: "I want to build a nightclub discovery mini-program"</strong></summary>
+
+**You say:**
+> I want to build a WeChat mini-program that shows nightclub events on a map, filterable by music genre. Help me think this through.
+
+**The skill responds:**
+> I love that you're combining location and music taste — those are two deeply personal things that most apps treat as generic. What made you think of this? Was there a specific night where you wished this existed?
+
+**You reveal:**
+> Last Saturday I wanted to hear techno but ended up at a club playing hip-hop. My friend said "you should have checked their Instagram" but honestly who has time to check 20 club Instagrams every weekend?
+
+**Together you arrive at:**
+> I noticed that people who care about music genre — not just "going out" — have no reliable way to find tonight's vibe without checking multiple fragmented sources (Instagram stories, WeChat groups, word of mouth). There's an opportunity to become the single source of truth for "what's playing where tonight."
+
+**The skill continues:**
+> Let's make this concrete. Pick one person — give them a name — and walk me through their Friday night from 9pm to midnight. Where does your product appear in that story?
+
+**You describe:**
+> Okay, let's call her Mia. She's 26, works in advertising, loves house music. It's Friday 9pm, she just finished dinner with coworkers. Someone says "should we go somewhere?" Mia opens the mini-program, filters for "House" and "Techno", sees three clubs with events tonight, taps one to see the DJ lineup and a 10-second vibe video. She screenshots it, sends to the group chat. Decision made in 90 seconds.
+
+**The skill reflects:**
+> That's powerful — the "screenshot to group chat" moment is your viral loop. The product's job is to make Mia look like the friend who always knows where to go. What's the minimum you'd need to build to test if this 90-second flow actually works?
+
+---
+
+**Clarity Map (excerpt):**
+
+| Dimension | Clarity | Current Understanding |
+|:----------|:-------:|:---------------------|
+| The Problem | ⬤⬤⬤⬤○ | Clear personal pain point; need to validate with 10+ strangers |
+| The Path to Users | ⬤⬤⬤○○ | Know the persona; need to identify specific WeChat groups to seed |
+| The Experience | ⬤⬤⬤⬤⬤ | Vivid scenario with clear "screenshot moment" |
+
+**Fastest Way to Learn More:**
+> This Friday, stand outside 3 different clubs at 11pm. Ask 10 people in line: "How did you decide to come here tonight?" Write down their exact words.
+
+</details>
+
+<details>
+<summary><strong>💬 Example: "I want to build an app where neighbors share homemade food"</strong></summary>
+
+**You say:**
+> I want to build an app where neighbors can share homemade food.
+
+**The skill responds:**
+> I love that you're thinking about food and community together — those are two deeply human things. What made you think of this? Was there a specific moment where you wished this existed?
+
+**You reveal:**
+> Last Sunday I made way too much curry and my neighbor mentioned she hates cooking for one person.
+
+**Together you arrive at:**
+> I noticed that single people living alone often cook too much or don't cook at all, while their neighbors are in the exact same situation. There's an opportunity to turn apartment buildings into informal dinner communities.
+
+**The skill then guides you through:**
+- Market sizing (how many single-person households in your city?)
+- Growth paths (which buildings have the highest density of young professionals?)
+- Usage scenarios (what does "ordering from your neighbor" actually look like at 7pm on a Tuesday?)
+- Competitive landscape (why haven't food delivery apps solved this?)
+
+</details>
+
+---
+
+## Philosophy
+
+Inspired by the product thinking of **Zhang Xiaolong** (creator of WeChat), this skill emphasizes:
+
+| Principle | What It Means |
+|:----------|:-------------|
+| **Human nature first** | Great products satisfy emotional needs, not just functional ones. Ask "how does the user *feel*?" before "what does the product *do*?" |
+| **Simplicity as discipline** | Find the "one-action moment" — the single interaction that captures the entire product's value |
+| **Trust the user** | Design simple rules and let behavior emerge. The "screenshot to group chat" moment wasn't designed — it was discovered |
+
+> "产品经理应该像上帝一样，了解人性，建立简单的规则，然后让用户在规则中自行演化。"
+
+---
+
+## Quick Start
+
+**30 seconds to get started:**
+
+```bash
+# Clone and install
+git clone https://github.com/viliawang-pm/product-sense-coach.git
+cp -r product-sense-coach ~/.codebuddy/skills/
+
+# Or for project-level install
+cp -r product-sense-coach .codebuddy/skills/
+```
+
+Then in any AI conversation:
+
+> "Use the product-sense-coach skill. I want to build [your idea]. Help me think this through."
+
+---
+
+## Install
+
+### Option 1: Global Install (Recommended)
+
+Works across all your projects:
+
+```bash
+git clone https://github.com/viliawang-pm/product-sense-coach.git
+cp -r product-sense-coach ~/.codebuddy/skills/
+```
+
+### Option 2: Project-Level Install
+
+Keep it scoped to one project:
+
+```bash
+git clone https://github.com/viliawang-pm/product-sense-coach.git
+cp -r product-sense-coach .codebuddy/skills/
+```
+
+### Option 3: Claude Desktop / Cursor
+
+Copy `SKILL.md` to wherever your AI tool looks for custom instructions or system prompts.
+
+---
+
+## Who Is This For?
+
+- **Solo founders** who need a thought partner at 2am
+- **PMs at companies** who want to pressure-test ideas before the roadmap meeting
+- **Side project builders** who have 10 ideas and need to pick the right one
+- **Anyone** who's ever said "I have this idea but I can't quite explain it"
+
+---
+
+## FAQ
+
+<details>
+<summary><strong>How is this different from asking ChatGPT about my idea?</strong></summary>
+
+ChatGPT will give you a generic SWOT analysis or immediately suggest features. This skill is designed to **ask better questions** — helping you articulate what you already intuitively know, rather than replacing your thinking with generated content.
+
+</details>
+
+<details>
+<summary><strong>Will this tell me if my idea is good or bad?</strong></summary>
+
+No. The skill produces a **Clarity Map**, not a verdict. It shows you where your thinking is sharp and where it needs more real-world input. A "good" idea with unclear execution is worse than a "small" idea with crystal clarity.
+
+</details>
+
+<details>
+<summary><strong>Can I use this with Claude / GPT-4 / other models?</strong></summary>
+
+Yes. The `SKILL.md` file contains the full system prompt. You can paste it into any AI tool that accepts custom instructions.
+
+</details>
+
+---
+
+## Contributing
+
+Found this useful? Here's how to help:
+
+- ⭐ **Star this repo** — it helps others discover it
+- 🐛 **Open an issue** if a conversation flow doesn't work well
+- 💡 **Submit a PR** with improvements to the prompts
+- 📣 **Share your Clarity Map** — tweet it with #ProductSenseCoach
+
+---
+
+## License
+
+MIT — use it, fork it, make it better.
+
+---
+
+<p align="center">
+  <strong>Built for PMs who think in intuition but need to speak in clarity.</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/viliawang-pm/product-sense-coach/stargazers">⭐ Star if this helped you think clearer</a>
+</p>
