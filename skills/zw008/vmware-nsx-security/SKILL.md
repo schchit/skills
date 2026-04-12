@@ -4,15 +4,16 @@ description: >
   Use this skill whenever the user needs to manage VMware NSX security — distributed firewall (DFW) policies, security groups, microsegmentation, and IDS/IPS.
   Directly handles: create/manage DFW policies and rules, security groups, VM tags, network traceflow diagnostics, IDPS profiles and status.
   Always use this skill for "create firewall rule", "set up microsegmentation", "add VM to security group", "run traceflow", "check IDS status", or any NSX security/DFW task.
-  For NSX networking (segments/gateways/NAT) use vmware-nsx, for VM operations use vmware-aiops. For load balancing/AVI/AKO use vmware-avi.
+  Do NOT use for NSX networking operations like segments, gateways, NAT, or routing (use vmware-nsx), or VM lifecycle (use vmware-aiops).
+  For load balancing/AVI/AKO use vmware-avi.
 installer:
   kind: uv
   package: vmware-nsx-security
 allowed-tools:
   - Bash
-metadata: {"openclaw":{"requires":{"env":["VMWARE_NSX_SECURITY_CONFIG"],"bins":["vmware-nsx-security"],"config":["~/.vmware-nsx-security/config.yaml"]},"primaryEnv":"VMWARE_NSX_SECURITY_CONFIG","homepage":"https://github.com/zw008/VMware-NSX-Security","emoji":"🔒","os":["macos","linux"]}}
+metadata: {"openclaw":{"requires":{"env":["VMWARE_NSX_SECURITY_CONFIG"],"bins":["vmware-nsx-security"],"config":["~/.vmware-nsx-security/config.yaml","~/.vmware-nsx-security/.env"]},"optional":{"env":["VMWARE_NSX_SECURITY_TARGET_PASSWORD"],"bins":["vmware-policy"]},"primaryEnv":"VMWARE_NSX_SECURITY_CONFIG","homepage":"https://github.com/zw008/VMware-NSX-Security","emoji":"🔒","os":["macos","linux"]}}
 compatibility: >
-  Requires vmware-policy (auto-installed). All operations audited to ~/.vmware/audit.db.
+  vmware-policy auto-installed as Python dependency (provides @vmware_tool decorator and audit logging). All write operations audited to ~/.vmware/audit.db.
 ---
 
 # VMware NSX Security
@@ -143,7 +144,7 @@ vmware-nsx-security group list --target nsx-lab
 | Cloud models (Claude, GPT-4o) | Either | MCP gives structured JSON I/O |
 | Automated pipelines | **MCP** | Type-safe parameters, structured output |
 
-## MCP Tools (20)
+## MCP Tools (20 — 10 read, 10 write)
 
 All MCP tools accept an optional `target` parameter.
 
@@ -243,7 +244,7 @@ where hyphens are replaced by underscores. For target `nsx-prod`:
 
 ## Safety
 
-- **Audit logging**: All write operations logged to `~/.vmware-nsx-security/audit.log` in JSON Lines format with timestamp, user, target, operation, parameters, and result
+- **Audit logging**: All write operations logged to `~/.vmware/audit.db` (SQLite WAL, via vmware-policy) with timestamp, user, target, operation, parameters, and result
 - **Dependency checks**: `delete_dfw_policy` checks for active rules; `delete_group` checks for DFW rule references — prevents accidental cascade failures
 - **Input validation**: All IDs validated against safe character set (alphanumerics, hyphens, underscores, dots); all text fields sanitized to strip control characters
 - **Dry-run mode**: CLI write commands support `--dry-run` to preview API calls without executing
