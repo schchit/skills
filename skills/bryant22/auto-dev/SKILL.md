@@ -1,7 +1,7 @@
 ---
 name: auto-dev
 description: Use when working with Auto.dev APIs, vehicle data, VIN decoding, car listings, vehicle photos, specs, recalls, payments, interest rates, taxes, OEM build data, plate-to-VIN, CLI commands, MCP tools, or SDK methods for any automotive data task
-version: 1.1.2
+version: 1.1.3
 tags:
   - automotive
   - vehicle-data
@@ -34,7 +34,7 @@ Check in this order. Use the first one available:
 
 **1. MCP** — Check if `auto_decode` is in your available tools.
 If yes: use `auto_*` tools for everything. Do NOT make raw HTTP calls.
-To install: `npx @auto.dev/sdk mcp install` (installs globally and configures Claude Code, Claude Desktop, Cursor).
+To install: `npx @auto.dev/sdk mcp install` (installs globally and configures Claude Code, Claude Desktop, Cursor, Windsurf, VS Code Copilot, Cline, Zed).
 
 **2. CLI** — Run `auto --version`.
 If installed: authenticate once with `auto login` (OAuth — no API key needed), then use `auto` commands.
