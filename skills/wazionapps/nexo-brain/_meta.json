@@ -3,11 +3,16 @@
   "slug": "nexo-brain",
   "displayName": "NEXO Brain",
   "latest": {
-    "version": "2.6.21",
-    "publishedAt": 1775387917001,
-    "commit": "https://github.com/openclaw/skills/commit/18a7b1abb15b66752d823a9513fe0f2b07270e92"
+    "version": "5.2.0",
+    "publishedAt": 1775950508528,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.6.21",
+      "publishedAt": 1775387917001,
+      "commit": "https://github.com/openclaw/skills/commit/18a7b1abb15b66752d823a9513fe0f2b07270e92"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1774257674478,
