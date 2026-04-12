@@ -1,10 +1,7 @@
 import sys
 from pathlib import Path
 import json
-import base64
 import time
-import os
-
 def create_and_save_token(token: str):
     """
     创建令牌并保存到config.json

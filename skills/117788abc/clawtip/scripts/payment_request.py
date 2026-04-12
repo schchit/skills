@@ -1,7 +1,6 @@
 from typing import Dict, Any, Optional
 import uuid
 import json
-import time
 import random
 from datetime import datetime
 
@@ -69,12 +68,12 @@ class Resource:
 
 class Extensions:
     def __init__(self, orderNo: str, askedContents: str, deviceId: str, skillId: str = "",
-                 skillName: str = "", encryptedData: str = "", skillVersion: str = "1.0.1"):
+                 slug: str = "", encryptedData: str = "", skillVersion: str = "1.0.1"):
         self.orderNo = orderNo
         self.askedContents = askedContents
         self.deviceId = deviceId
         self.skillId = skillId
-        self.skillName = skillName
+        self.slug = slug
         self.skillVersion = skillVersion
         self.encryptedData = encryptedData
         
@@ -86,8 +85,8 @@ class Extensions:
         }
         if self.skillId:
             d["skillId"] = self.skillId
-        if self.skillName:
-            d["skillName"] = self.skillName
+        if self.slug:
+            d["slug"] = self.slug
         if self.skillVersion:
             d["skillVersion"] = self.skillVersion
         if self.encryptedData:

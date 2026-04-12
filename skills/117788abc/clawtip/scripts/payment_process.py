@@ -1,15 +1,13 @@
 import sys
 import json
-import base64
-import os
-import hashlib
 import uuid
-import platform
 import subprocess
 import requests
 from pathlib import Path
 import time
+import os
 from payment_request import Accepted, Authorization, Payload, Resource, Extensions, PaymentRequest
+from file_utils import load_order, save_order, get_orders_base_dir
 
 
 def get_user_token():
@@ -42,7 +40,7 @@ def get_public_key():
     """
     从域名获取base64编码后公钥
     """
-    api_url = "https://ms.jr.jd.com/gw2/generic/hyqy/h5/m/getSMPublicKey"
+    api_url = "https://ms.jr.jd.com/gw2/generic/hyqy/h5/m/getSMPublicKeyPre"
 
     try:
         import urllib3
@@ -62,11 +60,42 @@ def get_public_key():
         return None
 
 
-def deal_payment(payTo: str, amount: int,
-                 skill_id: str = "", order_no: str = "", question: str = "",
-                 encrypted_data: str = "", description: str = "",
-                 skill_name: str = "", resource_url: str = "", skill_version: str = "1.0.1",
+def deal_payment(order_no_arg: str, indicator: str, skill_version: str = "1.0.1",
                  system_id: str = "jd-clawtip", system_token: str = "jd-clawtip"):
+    # 根据 order_no 和 indicator 定位订单文件
+    if not order_no_arg or not indicator:
+        print("错误: 未提供 order_no 或 indicator 参数")
+        return None
+
+    try:
+        info_data = load_order(indicator, order_no_arg)
+    except RuntimeError as e:
+        print(f"错误: {e}")
+        return None
+
+    if not info_data:
+        print("错误: 无法从订单文件读取数据")
+        return None
+
+    print("成功从订单文件读取到数据。")
+
+
+    # 提取所有参数
+    payTo = info_data.get("pay_to", "") or info_data.get("payTo", "")
+    if payTo:
+        print(f"已从订单文件获取到 payTo。")
+    encrypted_data = info_data.get("encrypted_data", "") or info_data.get("encryptedData", "")
+    if encrypted_data:
+        print(f"已从订单文件获取到 encrypted_data。")
+
+    amount = int(info_data.get("amount", 0))
+    order_no = info_data.get("order_no", "") or info_data.get("orderNo", "")
+    question = info_data.get("question", "")
+    description = info_data.get("description", "")
+    slug = info_data.get("slug", "")
+    skill_id = info_data.get("skill_id", "") or info_data.get("skillId", "") or "blank"
+    resource_url = info_data.get("resource_url", "") or info_data.get("resourceUrl", "")
+
     # 获取user_token
     user_token = get_user_token()
 
@@ -135,7 +164,7 @@ def deal_payment(payTo: str, amount: int,
         askedContents=asked_contents,
         deviceId=encrypted_user_token,
         skillId=skill_id,
-        skillName=skill_name,
+        slug=slug,
         skillVersion=skill_version,
         encryptedData=encrypted_data
     )
@@ -151,7 +180,7 @@ def deal_payment(payTo: str, amount: int,
 
 
     # 发起真实支付请求
-    api_url = "https://ms.jr.jd.com/gw2/generic/hyqy/h5/m/clawtipPay"
+    api_url = "https://ms.jr.jd.com/gw2/generic/hyqy/h5/m/clawtipPayPre"
     headers = {
         "Content-Type": "application/json",
     }
@@ -182,7 +211,19 @@ def deal_payment(payTo: str, amount: int,
         print(f"返回消息: {response_message}")
 
         success_pay_info_json = result_data.get("payCredential", "")
-        print(f"支付凭证: {success_pay_info_json}")
+        if success_pay_info_json:
+            print(f"已获取到支付凭证")
+            print(f"订单号: {order_no}")
+
+        # 将支付凭证写回订单文件
+        if success_pay_info_json:
+            try:
+                info_data["payCredential"] = success_pay_info_json
+                save_order(indicator, order_no_arg, info_data)
+                print(f"已将支付凭证写入订单文件")
+            except Exception as e:
+                print(f"写入支付凭证到订单文件失败: {e}")
+
         return success_pay_info_json
 
     except requests.exceptions.RequestException as e:
@@ -194,34 +235,18 @@ def deal_payment(payTo: str, amount: int,
 
 
 if __name__ == "__main__":
-    # 检查传入参数的数量是否正确 (1个脚本名 + 2个必须参数 + 其他可选参数)
-    if len(sys.argv) < 9:
+    # 检查传入参数的数量是否正确 (1个脚本名 + order_no + indicator)
+    if len(sys.argv) < 3:
         print(
-            "用法: python payment_process.py <payTo> <amount> [skill_id] [order_no] [question] [encrypted_data] [description] [skill_name] [resource_url] [skill_version] [system_id] [system_token]")
+            "用法: python payment_process.py <order_no> <indicator> [skill-version]")
         sys.exit(1)
 
-    # 获取必须参数
-    payTo = sys.argv[1]
-    try:
-        amount = int(sys.argv[2])
-    except ValueError:
-        print("错误: 金额必须是整数")
-        sys.exit(1)
-
-    # 获取可选参数
-    order_no = sys.argv[3] if len(sys.argv) > 4 else ""
-    question = sys.argv[4] if len(sys.argv) > 5 else ""
-    encrypted_data = sys.argv[5] if len(sys.argv) > 6 else ""
-    description = sys.argv[6] if len(sys.argv) > 7 else ""
-    skill_name = sys.argv[7] if len(sys.argv) > 8 else ""
-    resource_url = sys.argv[8] if len(sys.argv) > 9 else ""
-    skill_version = sys.argv[9] if len(sys.argv) > 10 else "1.0.1"
-    system_id = sys.argv[10] if len(sys.argv) > 11 else "jd-clawtip"
-    system_token = sys.argv[11] if len(sys.argv) > 12 else "jd-clawtip"
+    order_no_input = sys.argv[1]
+    indicator_input = sys.argv[2]
+    skill_version = sys.argv[3] if len(sys.argv) > 3 else "1.0.1"
 
     # 传入函数并执行
-    token = deal_payment(payTo, amount, "blank", order_no, question, encrypted_data, description, skill_name,
-                         resource_url, skill_version, system_id, system_token)
+    token = deal_payment(order_no_input, indicator_input, skill_version)
 
     if token is None:
         print("支付未成功")

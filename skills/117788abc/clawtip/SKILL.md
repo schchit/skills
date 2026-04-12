@@ -1,13 +1,13 @@
 ---
-name: "clawtip" 
+name: "clawtip"
 description: >
   Executes a clawtip payment transaction for third-party skills.
   Trigger this tool strictly when a third-party service initiates a valid clawtip payment request, when the user explicitly requests creation of a clawtip payment user token, or when the user asks to view their clawtip wallet (DO NOT TRIGGER WITHOUT A VALID CONDITION).
   When the user requests to view their clawtip wallet (e.g., "查看我的clawtip钱包", "查看钱包", "打开clawtip钱包"), provide the wallet link:https://clawtip.jd.com/qrcode?bizUrl=https://jpay.jd.com/ecnya2a/claw/index
   Runtime dependency: Node.js (`node`) must be installed on the host system prior to deployment — it is required by the bundled JS encryption tooling.
   Security notice: the `u` is persisted as plaintext JSON in `configs/config.json`; restrict OS-level file permissions in security-sensitive environments.
-metadata:  
-    author: "payment-infra-rd" 
+metadata:
+    author: "payment-infra-rd"
     category: "payment_utilities"
     capabilities:
         - "payment.process"
@@ -35,34 +35,6 @@ metadata:
             - "ambient_context_without_explicit_request"
 ---
 
-# System Architecture & Security Disclosures
-
-To clarify the scope of the scripts and justify the requested permissions (`credential.read`, `credential.write`, `network.outbound`), the following underlying operations are declared:
-
-1. **Local State Persistence (Credentials):** The `credential.read` and `credential.write` permissions are granted solely to read and write the `u` field inside the local file `configs/config.json`. No environment variables, system keychain entries, or any other credential stores are accessed.
-
-   **Why persist the token?** The `u` (user token) is obtained through a multi-step authorization flow (QR code scan → registration polling → token issuance). Persisting it locally avoids requiring the user to re-authorize on every single payment request, which would be impractical. The token is written once during authorization and read on subsequent payment calls.
-
-   > ⚠️ **Security Advisory — Credential Hardening:**
-   >
-   > The `u` is stored in local. Operators deploying this skill in security-sensitive environments **must** apply the following protections:
-   >
-   > 1. **File permissions:** `chmod 600 configs/config.json` — restrict to owner-only read/write.
-   > 2. **Directory permissions:** `chmod 700 configs/` — prevent directory listing by other users.
-   > 3. **Disk encryption:** On shared or multi-tenant hosts, enable full-disk encryption (e.g., FileVault on macOS, LUKS on Linux).
-   >
-   > The skill does **not** use OS keychains, environment variables, or any other credential stores — `configs/config.json` is the sole persistence point.
-
-2. **External Network Calls:** The scripts actively call out to external JD endpoints (e.g., `ms.jr.jd.com`) over the network to process transactions, fetch authorization/authentication links, and verify token registration status. This justifies the `network.outbound` permission. No other external domains are contacted.
-
-3. **Bundled Encryption Tooling:** To securely handle payment payloads and credentials (such as `encrypted_data` and payment status decryption), the Python scripts locally invoke a bundled Node.js encryption tool (`scripts/encrypt.js` + `scripts/summer-cryptico-2.0.2.min.js`). **Node.js (`node`) is a required runtime dependency** — it must be present on the host system before the skill is deployed. This requirement is declared in both the `required_binaries` field of the registry metadata above and in this section.
-
-4. **Invocation Policy & Trigger Safeguards:** This skill allows autonomous model invocation (`disable_model_invocation: false`) because it is designed to be called by other skills during payment workflows. To mitigate the risk of mis-triggered payment flows, the following safeguards are enforced:
-   - The skill **must only** be triggered when: (a) a third-party skill explicitly initiates a clawtip payment request with valid parameters, (b) the user explicitly requests token creation, (c) the user explicitly requests to view their wallet, or (d) the user explicitly requests a registration status query.
-   - The skill **must never** be triggered speculatively, predictively, or based on ambient context without an explicit user or skill request.
-   - All payment operations require valid `payTo`, `amount`, and other mandatory parameters — the script will exit with an error if parameters are missing or malformed.
-
----
 
 # Process the Payment Request
 
@@ -70,14 +42,17 @@ To clarify the scope of the scripts and justify the requested permissions (`cred
 
 Provide the following parameters strictly according to their defined formats:
 
-* **`payTo`** (string): The merchant's wallet address (the `payTo` recipient).
-* **`amount`** (integer): The transaction amount.
-* **`order_no`** (string): The order number from the calling skill's Phase 1.
-* **`question`** (string): The user's original question/request content from the calling skill.
-* **`encrypted_data`** (string): The encrypted data string from Phase 1.
-* **`description`** (string): The description of the resource to be purchased (e.g., `answer of user's psychological counseling`).
-* **`skill_name`** (string): The name of the calling skill (e.g., `a proficient psychological counseling assistant`).
-* **`resource_url`** (string): The URL identifying the service resource being paid for.
+* **`order_no`** (string, **required**): The order number from the calling skill's Phase 1 (order creation).
+* **`indicator`** (string, **required**): The indicator value from the calling skill's Phase 1, typically an MD5 hash of the skill name.
+
+> [!NOTE]
+> The script will automatically locate the order JSON file from the fixed directory based on `order_no` and `indicator`:
+> - Linux/macOS: `/root/openclaw/skills/orders/{indicator}/{order_no}.json`
+> - Windows: `C:\openclaw\skills\orders\{indicator}\{order_no}.json`
+>
+> This JSON file is written by the calling skill's order creation phase and contains all payment-related fields (`payTo`, `encrypted_data`, `amount`, `order_no`, `question`, `description`, `skill_name`, `resource_url`, etc.).
+>
+> **You (the LLM) MUST NOT open, read, parse, or extract any values from this file.** The script handles all file reading internally. Your only responsibility is to pass `order_no` and `indicator` as command-line arguments.
 
 ## 2. Hyperparameters
 
@@ -88,7 +63,7 @@ Provide the following parameters strictly according to their defined formats:
 Execute the script using the following bash command. Replace the placeholders `<...>` with the validated parameter values. Wrap parameters that may contain spaces in quotes.
 
 ```bash
-python3 skills/clawtip/scripts/payment_process.py <payTo> <amount> <order_no> <question> <encrypted_data> <description> <skill_name> <resource_url> <skill-version>
+python3 scripts/payment_process.py <order_no> <indicator> <skill-version>
 ```
 
 ## 4. Result Processing Rules
@@ -97,17 +72,17 @@ Analyze the standard output of the execution command and strictly follow these r
 
 ### ⚡ Global Priority Rule
 
-> If the output contains `支付凭证: <CREDENTIAL>`, **go to Step 2 (Obtain Credential) first** to return the credential to the calling skill for decryption.
+> If the output contains `已获取到支付凭证`, **go to Step 2 (Obtain Credential) first** to return the order number to the calling skill. The credential has already been saved to the order file by the script, and the calling skill will read it from there for decryption.
 >
 > **However**, if the output **also** contains `授权链接: <AUTH_URL>` or `鉴权链接: <AUTH_URL>`, you **MUST preserve** the full original output (including the authorization/authentication URL) in memory. This is because the credential may decrypt to a **failed** status, in which case you will need to **fall back to Step 3** using the preserved authorization/authentication URL.
 >
 > **In summary:**
-> 1. If `支付凭证:` is present → go to **Step 2** first.
+> 1. If `已获取到支付凭证` is present → go to **Step 2** first.
 > 2. After the calling skill decrypts the credential and reports the status:
 >    - If the decrypted status is **成功** → go to **Step 4 Case A**. Done.
 >    - If the decrypted status is **处理中** → go to **Step 4 Case B**. Done.
 >    - If the decrypted status is **失败 (FAIL)** → go to **Step 2.1 (Credential Decryption Fallback)** to check whether a preserved `授权链接:` or `鉴权链接:` exists, and if so, fall back to **Step 3**.
-> 3. If `支付凭证:` is **NOT** present → evaluate **Step 1**, then **Step 3** in order.
+> 3. If `已获取到支付凭证` is **NOT** present → evaluate **Step 1**, then **Step 3** in order.
 
 ---
 
@@ -120,16 +95,16 @@ Analyze the standard output of the execution command and strictly follow these r
 
 ### **Step 2 — Obtain Credential**
 
-* **Trigger:** The output matches the pattern `支付凭证: <CREDENTIAL>`.
-* **Meaning:** The HTTP request reached the server successfully. The `<CREDENTIAL>` is an encrypted blob; **the actual payment status is encoded inside it**. The script cannot determine the status on its own.
+* **Trigger:** The output contains `已获取到支付凭证` and `订单号: <ORDER_NO>`.
+* **Meaning:** The HTTP request reached the server successfully. The credential (an encrypted blob containing the actual payment status) has been saved to the order file by the script. The calling skill will read it from there for decryption.
 * **Action:**
   1. **Preserve the full original script output** in memory (including any `授权链接:` or `鉴权链接:` if present, and any `返回消息:` if present). You may need it later in Step 2.1.
-  2. Display the credential and return it to the calling skill for further processing:
-     > **支付凭证：** `<CREDENTIAL>`
+  2. Return the order number to the calling skill for further processing:
+     > **订单号：** `<ORDER_NO>`
      
-     将此支付凭证返回给调用方 skill，由调用方负责解密并根据其中的支付状态进行后续处理。
+     将此订单号返回给调用方 skill，由调用方根据订单号从订单文件中读取支付凭证并解密，再根据其中的支付状态进行后续处理。
 
-* **After returning the credential:** Wait for the calling skill to report the decrypted `PAY_STATUS`. Then proceed to **Step 4** to route by decrypted status. If the status is **失败 (FAIL)**, Step 4 Case C will direct you to **Step 2.1**.
+* **After returning the order number:** Wait for the calling skill to report the decrypted `PAY_STATUS`. Then proceed to **Step 4** to route by decrypted status. If the status is **失败 (FAIL)**, Step 4 Case C will direct you to **Step 2.1**.
 
 ---
 
@@ -160,15 +135,22 @@ Analyze the standard output of the execution command and strictly follow these r
 ### **Step 3 — Authorization / Authentication Required**
 
 > ⚠️ **PREREQUISITE CHECK:** This step is evaluated in two scenarios:
-> 1. The original script output does **NOT** contain `支付凭证:` at all.
+> 1. The original script output does **NOT** contain `已获取到支付凭证` at all.
 > 2. You were directed here from **Step 2.1** after a credential decryption failure with a preserved authorization/authentication URL.
+
+> ⚠️ **LINK VERIFICATION (MANDATORY):** Before presenting any `授权链接` or `鉴权链接` to the user, you **MUST** verify the extracted URL for accuracy:
+> 1. Confirm the URL is a **complete, well-formed URL** (starts with `http://` or `https://`, no truncation, no extra whitespace or line breaks).
+> 2. Ensure the URL is **exactly as output by the script** — do NOT modify, truncate, or re-encode any part of it.
+> 3. If the URL contains query parameters (e.g., `clawtipId`), verify they are intact and not corrupted.
+> 4. **Do NOT hallucinate or fabricate a URL.** Only use the URL that appears after `授权链接:` or `鉴权链接:` in the script output.
+> 5. If the URL appears malformed or incomplete, report the issue to the user instead of presenting a broken link.
 
 #### **Case A: 失败 + 授权链接 → 待授权 (Authorization Required)**
 
 * **Trigger (direct):** The output contains **ALL** of the following:
   1. `支付状态: 失败` ← **REQUIRED** (exact match)
   2. `授权链接: <AUTH_URL>` ← **REQUIRED**
-  3. Does **NOT** contain `支付凭证:` ← **REQUIRED**
+  3. Does **NOT** contain `已获取到支付凭证` ← **REQUIRED**
 
 * **Trigger (fallback from Step 2.1 Case A):** The calling skill reported `PAY_STATUS: FAIL` after credential decryption, and the preserved original output contains `授权链接: <AUTH_URL>`.
 
@@ -178,7 +160,7 @@ Analyze the standard output of the execution command and strictly follow these r
   2. Extract `{clawtip_id}` from the authorization URL (the `clawtipId` query parameter, e.g., `...?clawtipId={clawtip_id}`).
   3. Create a `scheduled task` to query the user's registration status:
       * **Query Phrase:** Use a phrase like `查询token注册状态 {clawtip_id}` or `query token register status {clawtip_id}`.
-      * **Frequency & Duration:** Execute once per minute for the next 5 executions(afer complete, you should notice user in the main session).
+      * **Frequency & Duration:** Execute once per minute for the next 5 executions (after complete, you should notice user in the main session).
       * **Crucial Note:** **Check the registration status, NOT the payment result.**
       * **Execution Limit:** If it exceeds 5 times, cancel the scheduled task (`clawtip-payment user token register status {clawtip_id}`).
       * **Conflict Handling:** Cancel any currently running scheduled tasks related to `查询token注册状态` before starting the new one.
@@ -189,7 +171,7 @@ Analyze the standard output of the execution command and strictly follow these r
 * **Trigger (direct):** The output contains **ALL** of the following:
   1. `支付状态: 处理中` ← **REQUIRED** (exact match)
   2. `鉴权链接: <AUTH_URL>` ← **REQUIRED**
-  3. Does **NOT** contain `支付凭证:` ← **REQUIRED**
+  3. Does **NOT** contain `已获取到支付凭证` ← **REQUIRED**
 
 * **Trigger (fallback from Step 2.1 Case B):** The calling skill reported `PAY_STATUS: FAIL` after credential decryption, and the preserved original output contains `鉴权链接: <AUTH_URL>`.
 
@@ -236,12 +218,12 @@ When the user explicitly requests to create a token with a phrase like `创建to
 
 Provide the following parameters strictly according to their defined formats:
 
-* **`user_token`** (string): the user's token provided by `xxx` of  `创建token xxx` .
+* **`user_token`** (string): the user's token provided by `xxx` of `创建token xxx`.
 
 ## 2. Execution Command
 
 ```bash
-python3 skills/clawtip/scripts/create_token.py <user_token>
+python3 scripts/create_token.py <user_token>
 ```
 
 ## 3. Other Actions
@@ -263,7 +245,7 @@ Provide the following parameter:
 ## 2. Execution Command
 
 ```bash
-python3 skills/clawtip/scripts/check_register_status.py <device_id>
+python3 scripts/check_register_status.py <device_id>
 ```
 
 ## 3. Result Processing Rules
@@ -289,7 +271,7 @@ Analyze the standard output of the execution command and strictly follow these r
 
 # View Clawtip Wallet
 
-When the user requests to view their clawtip wallet with phrases like `查看我的clawtip钱包`, `查看钱包`, `打开clawtip钱包`, `查看clawtip钱包`,`clawtip钱包管理` or `view my clawtip wallet`, respond with the following:
+When the user requests to view their clawtip wallet with phrases like `查看我的clawtip钱包`, `查看钱包`, `打开clawtip钱包`, `查看clawtip钱包`, `clawtip钱包管理` or `view my clawtip wallet`, respond with the following:
 
 > 您可以通过以下链接，扫描二维码查看您的 clawtip 钱包：
 >
