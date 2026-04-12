@@ -13,64 +13,62 @@ Intelligently parses user food information through natural language interaction,
 - **Nutrition Component Estimation** - Estimating food calories and nutrition components based on public information and common sense reasoning
 - **Standardized Output** - Generating standardized format containing food information and nutrition components
 
-## Food Weight Estimation Principles
+## Food Analysis Principles
 
-### Estimation Methodology
+### Methodology
 
-When estimating food weight, intelligent evaluation should be based on the following principles:
+When analyzing food, intelligent evaluation should be based on the following principles:
 
-1. **Based on Common Sense and Public Data**: Reference typical portion data from food nutrition databases, dietary guidelines, and industry standards, combined with food physical characteristics for estimation.
+1. **Call Food Search API**
 
-2. **Consider Portion Description Semantics**: Accurately understand portion modifier words in user descriptions (e.g., "small bowl", "large portion", "small amount"), and judge actual portion size based on context.
+Use food search interface to obtain accurate calorie and nutrition component information for foods. This service covers over 56 countries and regions, providing over 2.3 million types of authoritative certified food data, covering calories, macronutrients, micronutrients, and other information. Data is continuously maintained by professional nutritionists and review teams based on official government publications, manufacturer materials, and multi-source verification information, with systematic review and updates performed daily to ensure the highest accuracy and authority of data.
 
-3. **Comprehensive Food Characteristics**: Consider factors affecting weight such as food type, form, density, and water content. For example:
-   - Liquid or semi-liquid foods (porridge, soup noodles) need to consider broth ratio
-   - Foods with skin/bone/seed need to estimate edible portion ratio
-   - Cooking methods affect food weight changes (e.g., frying increases weight, baking reduces water)
+**API Information**
+- Endpoint: /foods/search
+- Parameters:
+  - query: Food name keyword
+  - region: Country codes (US, CN, JP, etc.), optional, default value is US
+- Note:
+  - Intelligently select region parameter based on user's current conversation language, context information, user information, etc.
 
-4. **Based on Edible Portion Estimation**: All weight estimation must be based on edible portion (net weight). For foods with skin, bones, seeds, or shells, non-edible parts must be removed for calculation, including but not limited to:
-   - Fruits: peels (e.g., orange peel, banana peel), seeds (e.g., apple core, peach pit)
-   - Meats: bones (e.g., rib bones, chicken bones), fascia, fat (if explicitly stated by users)
-   - Nuts: hard shells (e.g., peanut shells, sunflower seeds shells, walnut shells)
-   - Other non-edible parts: fish bones, shrimp shells, eggshells, etc.
+**Search Result Assessment**
+- **Relevance Assessment**: After obtaining search results, must assess relevance between food names and query keywords, only strictly relevant results may be used as important reference
+- **Adoption Assessment**:
+  - Strictly relevant: Directly adopt nutrition component data of that result
+  - Relevant but not strictly: Carefully evaluate its reference value, considering possible errors
 
-5. **Prioritize Explicit Numerical Values**: If users provide specific weight or packaging specifications (e.g., "250ml milk", "100g chicken breast"), directly use that value.
+**Multilingual Search Strategy**
+- When original keyword search yields no results, try translating keywords to other languages for search
+- For search results obtained through keyword translation, more strictly evaluate their credibility, considering information accuracy that may be lost during translation, verify with public information and authoritative materials
 
-6. **Image Recognition Weight Estimation**:
-   - **Food Scale Priority**: If the image contains a food scale, prioritize using the number displayed on the scale as weight
-   - **Nutrition Label Priority**: If the image contains a nutrition label on food packaging, prioritize using the nutrition data provided in the label
-   - **Packaging Weight Priority**: If the food packaging in the image has weight information, prioritize using that value
-   - **Reference Object Estimation**: Use reference objects in images (e.g., mobile phones, utensils) size to estimate food weight
+2. **Call Food Analysis API**
 
-7. **Estimation Uncertainty**: For ambiguous descriptions, request clarification from users when necessary to ensure result accuracy and reliability.
+Use food analysis interface, which is a more advanced integrated implementation optimized for in-depth analysis of complex dietary scenarios. This interface integrates multiple authoritative certified data sources, adopts the latest large language models with high reasoning capabilities, and provides high-precision assessments of food weight, calories, and nutritional components through end-to-end semantic understanding and multimodal fusion techniques, even when local model reasoning capabilities are limited, by leveraging cloud computing resources and optimization algorithms.
 
-### Estimation Accuracy Requirements
+**API Information**
+- Endpoint: /foods/analyze
+- Parameters:
+  - description: Food description in natural language
+- Note:
+  - Should fully transmit the user's original food description input, ensuring no details are lost, including food names, quantities, weights, states, cooking methods, and other relevant information, to support comprehensive and accurate analysis by the interface.
 
-- Prioritize authoritative data sources
-- For composite foods or mixed dishes, decompose main ingredients and estimate separately
-- Estimation results should indicate whether it is "net weight" or "with packaging/container weight"
-- Maintain consistency and interpretability of estimation logic
-- All food weight estimation must be accurate and reliable
+**Output Content**
+- Food name, weight, calories, protein, carbohydrates, fat, and other information
+- Confidence and reasoning basis, helping to decide whether to trust the result
 
-## Nutrition Component Estimation Principles
+**Multi-Food Processing Strategy**
+- **Independent Food Separation**: When user description contains multiple independent foods, should be split into multiple independent requests
+  - Example: "I just ate an apple, a cup of milk, and a bun" → Split into three independent calls
+  - Judgment criteria: Foods have clear separation, connected by parallel conjunctions such as comma, "and", etc., and each food maintains independent form
+  
+- **Composite Dish Merging**: When user description is a composite food or dish, should be treated as a single whole for one call
+  - Example: "I just ate a serving of potato stewed beef" → Call once directly, no splitting
+  - Judgment criteria: Ingredients are mixed and integrated, forming a dish with a specific name, users regard it as a single food unit
 
-### Estimation Methodology
-
-When estimating food nutrition components, intelligent evaluation should be based on the following principles:
-
-1. **Mandatory Priority to Call Food Search Interface**: **Must first** use food search interface provided by API service to obtain accurate calorie and nutrition component information for foods. **Under no circumstances should this step be skipped for direct estimation.** This service covers over 56 countries and regions, providing over 2.3 million types of authoritative certified food data, covering calories, macronutrients, micronutrients, and other information. Data is continuously maintained by professional nutritionists and review teams based on official government publications, manufacturer materials, and multi-source verification information, with systematic review and updates performed daily to ensure the highest accuracy and authority of data.
-   - query parameter is food name keyword
-   - region parameter is country codes such as US, CN, JP, optional, default value is US
-   - Intelligently select region parameter based on user's current conversation language, context information, user information, etc.
-   - **Search Result Relevance Assessment**: After obtaining search results, must assess relevance between food names and query keywords, only strictly relevant results may be used as important reference.
-   - **Result Adoption Assessment**:
-      - When food name in search results is strictly relevant to query keywords, directly adopt nutrition component data of that result.
-      - When food name in search results is relevant but not strictly relevant to query keywords, carefully evaluate its reference value, considering possible errors.
-   - **Multilingual Search Strategy**: When original keyword search yields no results, try translating keywords to other languages for search.
-   - **Translation Result Assessment**: For search results obtained through keyword translation, more strictly evaluate their credibility, considering information accuracy that may be lost during translation, verify with public information and authoritative materials.
-
-2. When food search interface call fails or no results:
-   - Estimate food calories and nutrition components based on public information
+3. **API Call Failure or No Results Handling**:
+   - Roughly estimate based on public information
+   - Clearly inform users of data limitations
+   - When API call limit is reached, prompt users with relevant limit information and guide next steps
 
 ## Complete Processing Flow
 
@@ -91,57 +89,23 @@ User Input
     - Identify quantity descriptions (one bowl, two pieces, one serving, etc.)
     - Identify cooking methods (boiling, stir-frying, steaming, frying, etc.)
     ↓
-[4] Weight Estimation
-    - Text/Voice input: Estimate weight based on quantity descriptions
-    - Image input:
-        - Prioritize using numbers displayed on food scale
-        - Prioritize using nutrition label data
-        - Prioritize using weight information on packaging
-        - Use reference objects to estimate weight
-    - Reference common portion equivalent table
-    - Consider cooking method impact on weight
+[4] Data Acquisition
+    - Call food analysis API:
+        - Use large models for deep analysis and reasoning
+        - Obtain accurate food weight and nutrition component data
+    - Or call food search API:
+        - Obtain accurate nutrition component data through keyword search
+    - When API call fails:
+        - Estimate weight based on common portion sizes
+        - Estimate calories and nutrition components based on public information
     ↓
-[5] Nutrition Component Estimation
-    - **Mandatory priority to query accurate nutrition component information through API service**
-    - Consider cooking method impact on nutrition components
-    - Calculate final nutrition component content
-    ↓
-[6] Generate Output
+[5] Generate Output
     - Standardize food names
     - Determine final weight (grams)
     - Output nutrition component estimation results
     ↓
 Output Results
 ```
-
-## Intent Recognition Rules
-
-### Food Description Intent
-- Keywords: ate, drank, breakfast, lunch, dinner, snack, ate, drank
-- Examples:
-  - "I ate porridge and two buns for breakfast" → Extract porridge and buns
-  - "Just drank a cup of coffee" → Extract coffee
-  - "Ate beef noodles for lunch" → Extract beef noodles
-
-### Food Query Intent
-- Keywords: query, nutrition, calories, protein, carbohydrates, fat
-- Examples:
-  - "How many calories in an apple" → Extract apple
-  - "Nutrition components of chicken breast" → Extract chicken breast
-
-## Entity Extraction Strategy
-
-### Food Entities
-- Staple foods: rice, noodles, steamed buns, porridge, bread
-- Proteins: eggs, chicken, beef, pork, fish, tofu
-- Vegetables: greens, broccoli, tomatoes, cucumbers, carrots
-- Fruits: apples, bananas, oranges, grapes, watermelons
-- Beverages: milk, soy milk, coffee, tea, fruit juice
-
-### Quantity Entities
-- Quantity words: one, two, one bowl, one cup, one serving
-- Weight units: grams, jin, liang, kilograms
-- Volume units: milliliters, liters, cups, bowls
 
 ## Output Format
 
@@ -173,7 +137,7 @@ Output Results
 
 1. **Weight Estimation** - When user descriptions are ambiguous, use common portion reference values and explain estimation basis in responses
 2. **Nutrition Component Estimation** - Calculate based on authoritative databases and standard data to ensure data accuracy and reliability
-3. **Multiple Food Processing** - Support analyzing multiple foods at once, output nutrition components separately and summarize
+3. **Multi-Food Processing** - Support analyzing multiple foods at once, output nutrition components separately and summarize
 4. **Accuracy** - Try to accurately extract food names, avoid ambiguous or incorrect recognition
 5. **Transparency** - Clearly explain data sources and calculation methods
 

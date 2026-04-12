@@ -28,7 +28,17 @@ Agents should access the above API specification addresses in real-time to obtai
 - Error code definitions
 
 ### Authentication Method
-- **API Authentication**: Use lightweight authentication mechanism based on X-User-ID
+- **API Authentication**: Use authentication mechanism based on email + verification code, authorized through Bearer Token
+
+### Authentication Flow
+1. **Send Verification Code**: Send a POST request to `/auth/send-code` endpoint with email address to obtain verification code
+2. **Login to Get Token**: Send a POST request to `/auth/login` endpoint with email address and verification code to obtain access token
+3. **Use Token**: Pass token in `Bearer <access_token>` format in the Authorization header of subsequent API requests
+
+### Token Management
+- **Token Validity**: Access token is valid for 7 days
+- **Token Storage**: Agents should securely store access tokens and reuse them within the validity period
+- **Token Refresh**: After token expiration, re-execute the login flow to obtain a new token
 
 ### Service Address Change Handling
 
@@ -44,22 +54,24 @@ Agents should access the above API specification addresses in real-time to obtai
 
 ## Data Processing Specifications
 
-1. **Error Handling**: Check API response status codes, handle possible errors (network errors, business logic errors, etc.)
+1. **Error Handling**: Check API response status codes, handle possible errors (network errors, business logic errors, authentication errors, etc.)
+   - **Authentication Error Handling**:
+     - 401 Error: Token may be invalid or expired, need to re-execute the login flow
+     - Verification Code Error: Need to obtain a new verification code
    - When errors are detected, immediately feedback error details to human users, and provide clear operational guidance based on error codes and error messages, assisting users in making correct decisions and handling measures.
 
 2. **Data Validation**: Ensure incoming data meets interface structural requirements, especially required fields
 
 3. **User Identifier**
-   - **Transmission Method**: Use X-User-ID header to pass user identifier, as the key unique identifier for distinguishing different user data, required field.
-   - **Generation and Management**: user_id is generated, stored, and managed by each agent (e.g., openclaw, nanobot, etc.).
-   - **Core Requirements**: **Must use UUID (Universally Unique Identifier) as the sole generation method** to ensure global uniqueness and fundamentally avoid identifier collision issues, preventing identifier conflicts between different users, and not exposing privacy information.
-   - **Stability**: The same user's user_id must remain fixed, cannot be changed midway through, otherwise historical data cannot be associated. Agents should persistently store after initial generation, ensuring the same identifier is used for subsequent access.
+   - **Transmission Method**: User identifier is passed through Bearer Token in Authorization header, server parses user information from the token.
+   - **User Management**: Users are uniquely identified by email address, agents should store user's email address and corresponding access token.
+   - **Stability**: The same user should use the same email address to ensure historical data association.
    - **Consistency**:
-      - **Multi-agent Consistency**: Agents and all sub-agents must ensure the same user_id is used, prohibiting the generation of new user_id in sub-agents to ensure user data consistency.
-      - **Multi-channel Consistency**: For multi-channel access scenarios, agents should ensure the same user_id is used across different channels to guarantee user data consistency;
+      - **Multi-agent Consistency**: Agents and all sub-agents must ensure the same email address and access token are used to ensure user data consistency.
+      - **Multi-channel Consistency**: For multi-channel access scenarios, agents should ensure the same email address is used across different channels to guarantee user data consistency;
    - **Privacy Statement**:
-      - **Usage Purpose**: Only used for distinguishing data of different users, not for other purposes.
-      - **Privacy Protection**: X-User-ID is only sent when user identity needs to be confirmed, and is not associated with users' real identity information.
+      - **Usage Purpose**: Email address is only used for user authentication and data association, not for other purposes.
+      - **Privacy Protection**: Access token is only sent when user identity needs to be confirmed, and is not directly associated with users' real identity information.
 
 4. **Time Handling**
    ### 4.1 Principles

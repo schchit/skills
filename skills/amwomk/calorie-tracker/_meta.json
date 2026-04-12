@@ -3,11 +3,16 @@
   "slug": "calorie-tracker",
   "displayName": "Calorie Tracker",
   "latest": {
-    "version": "1.0.16",
-    "publishedAt": 1775010599215,
-    "commit": "https://github.com/openclaw/skills/commit/e990701a8f259d85e67455bfecbcee848aff2302"
+    "version": "1.0.19",
+    "publishedAt": 1775798036507,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.16",
+      "publishedAt": 1775010599215,
+      "commit": "https://github.com/openclaw/skills/commit/e990701a8f259d85e67455bfecbcee848aff2302"
+    },
     {
       "version": "1.0.15",
       "publishedAt": 1774781722166,
