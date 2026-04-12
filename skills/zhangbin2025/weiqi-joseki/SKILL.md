@@ -1,43 +1,62 @@
 ---
 name: 围棋定式数据库
-description: weiqi-joseki 围棋定式数据库 - 支持定式录入、自动角位识别、8向变化生成、去重、冲突检测、棋谱定式识别。数据存储于 ~/.weiqi-joseki/database.json
+description: weiqi-joseki 围棋定式数据库 - 支持定式录入、自动角位识别、8向变化生成、去重、冲突检测、棋谱定式识别。模块化设计，支持从KataGo Archive自动导入。数据存储于 ~/.weiqi-joseki/database.json
 tags: ["围棋", "weiqi", "go", "定式", "joseki", "变化图", "SGF", "定式识别"]
 ---
 
 # 围棋定式数据库
 
-单文件版围棋定式数据库，支持自动角位识别、8向变化生成、冲突检测、定式识别。
+模块化围棋定式数据库，支持自动角位识别、8向变化生成、冲突检测、定式识别。代码采用模块化设计，便于维护和扩展。
+
+## 项目结构
+
+```
+weiqi-joseki/
+├── db.py                    # 兼容性入口（已弃用，保留向后兼容）
+├── SKILL.md                 # 技能文档
+└── scripts/                 # 核心模块目录
+    ├── __init__.py          # 包初始化
+    ├── cli.py               # 命令行入口
+    ├── sgf_parser.py        # SGF解析器
+    ├── joseki_extractor.py  # 定式提取器
+    ├── joseki_db.py         # 定式数据库核心
+    └── katago_downloader.py # KataGo棋谱下载器
+```
 
 ## 数据存储
 
 - **数据库路径**: `~/.weiqi-joseki/database.json`
 - 自动创建目录和文件
 
-## 核心文件
-
-```
-weiqi-joseki/
-├── db.py          # 单文件，包含所有功能
-└── SKILL.md       # 技能文档
-```
-
 ## CLI 命令
+
+### 全局选项
+
+```bash
+python3 scripts/cli.py [全局选项] [命令] [选项]
+```
+
+**全局选项：**
+- `--db <路径>` - 指定数据库路径（默认: ~/.weiqi-joseki/database.json）
 
 ### 初始化数据库
 ```bash
-python3 db.py init
+python3 scripts/cli.py init
 ```
 
 ### 添加定式
 ```bash
 # 从坐标添加
-python3 db.py add --name "星位小飞挂" --category "/星位/小飞挂" --moves "pd,qf,nc,rd"
+python3 scripts/cli.py add --name "星位小飞挂" --category "/星位/小飞挂" --moves "pd,qf,nc,rd"
 
 # 从SGF添加（自动识别角位并转换为右上角视角）
-python3 db.py add --name "定式名" --category "/分类" --sgf "(;B[pd];W[qf]...)"
+python3 scripts/cli.py add --name "定式名" --category "/分类" --sgf "(;B[pd];W[qf]...)"
 
 # 强制添加（跳过冲突检测）
-python3 db.py add ... --force
+python3 scripts/cli.py add ... --force
+
+# 添加标签和描述
+python3 scripts/cli.py add --name "定式名" --category "/分类" --moves "pd,qf" --tag "标签1" --tag "标签2" --description "描述"
 ```
 
 **入库流程：**
@@ -47,27 +66,40 @@ python3 db.py add ... --force
 
 ### 删除定式
 ```bash
-python3 db.py remove joseki_001
+python3 scripts/cli.py remove <定式ID>
 ```
 
 ### 清空数据库
 ```bash
-python3 db.py clear
+# 交互式确认
+python3 scripts/cli.py clear
+
+# 强制清空
+python3 scripts/cli.py clear --force
 ```
 
 ### 列出现式
 ```bash
-python3 db.py list
-python3 db.py list --category "/星位"
+# 列出所有
+python3 scripts/cli.py list
+
+# 按分类列出
+python3 scripts/cli.py list --category "/星位"
+
+# 限制数量
+python3 scripts/cli.py list --limit 20
 ```
 
 ### 生成8向变化SGF ⭐
 ```bash
 # 输出到控制台
-python3 db.py 8way joseki_001
+python3 scripts/cli.py 8way <定式ID>
 
 # 保存到文件
-python3 db.py 8way joseki_001 --output joseki_8way.sgf
+python3 scripts/cli.py 8way <定式ID> --output joseki_8way.sgf
+
+# 指定特定方向（逗号分隔）
+python3 scripts/cli.py 8way <定式ID> --direction "ruld,rudl"
 ```
 
 **8向SGF格式示例：**
@@ -79,37 +111,72 @@ python3 db.py 8way joseki_001 --output joseki_8way.sgf
 )
 ```
 
+**8个方向说明：**
+| 方向 | 位置 | 描述 |
+|------|------|------|
+| lurd | 左上 | 右→下 |
+| ludr | 左上 | 下→右 |
+| ldru | 左下 | 右→上 |
+| ldur | 左下 | 上→右 |
+| ruld | 右上 | 左→下 |
+| rudl | 右上 | 下→左 |
+| rdlu | 右下 | 左→上 |
+| rdul | 右下 | 上→左 |
+
 ### 匹配定式
 ```bash
-# 匹配SGF中的某个角
-python3 db.py match --sgf "(;B[pd];W[qf]...)" --corner tr
-python3 db.py match --sgf-file game.sgf --corner tl
+# 从文件匹配指定角
+python3 scripts/cli.py match --sgf-file game.sgf --corner tr --top-k 5
+
+# 从SGF字符串匹配
+python3 scripts/cli.py match --sgf "(;B[pd];W[qf]...)" --corner tl
+
+# 从stdin读取SGF
+python3 scripts/cli.py match < game.sgf
 ```
 
 ### 识别整盘棋
 ```bash
-python3 db.py identify --sgf-file game.sgf
-python3 db.py identify --sgf-file game.sgf --output json
+# 表格格式输出
+python3 scripts/cli.py identify --sgf-file game.sgf
+
+# JSON格式输出
+python3 scripts/cli.py identify --sgf-file game.sgf --output json
+
+# 指定返回匹配数量
+python3 scripts/cli.py identify --sgf-file game.sgf --top-k 3
+```
+
+**输出示例：**
+```
+======================================================================
+「定式识别结果」
+======================================================================
+  左上: 小目小飞挂 (相似度: 0.92) ✓ 高置信度
+  右上: 星位点三三 (相似度: 0.88)
+  左下: (无匹配)
+  右下: 星位小飞挂 (相似度: 0.95) ✓ 高置信度
+======================================================================
 ```
 
 ### 统计信息
 ```bash
-python3 db.py stats
+python3 scripts/cli.py stats
 ```
 
-### 从SGF提取定式 ⭐
+### 从SGF提取定式
 ```bash
 # 提取四角定式（输出MULTIGOGM格式）
-python3 db.py extract --sgf-file game.sgf
+python3 scripts/cli.py extract --sgf-file game.sgf
 
 # 只取前N手
-python3 db.py extract --sgf-file game.sgf --first-n 50
+python3 scripts/cli.py extract --sgf-file game.sgf --first-n 50
 
 # 只提取指定角（tl=左上, tr=右上, bl=左下, br=右下）
-python3 db.py extract --sgf-file game.sgf --corner tr
+python3 scripts/cli.py extract --sgf-file game.sgf --corner tr
 
 # 保存到文件
-python3 db.py extract --sgf-file game.sgf --output joseki.sgf
+python3 scripts/cli.py extract --sgf-file game.sgf --output joseki.sgf
 ```
 
 **输出格式：**
@@ -122,36 +189,30 @@ python3 db.py extract --sgf-file game.sgf --output joseki.sgf
 )
 ```
 
-**功能说明：**
-- 自动从四角提取定式变化
-- 所有坐标转换为视觉右上角（便于统一查看）
-- 白先定式自动转为黑先（颜色互换）
-- 支持脱先检测（用 `tt` 标记）
-
-### 批量导入定式 ⭐（自动提取+统计+入库）
+### 批量导入定式 ⭐
 ```bash
 # 从SGF目录批量导入（自动提取、统计频率、入库）
-python3 db.py import /path/to/sgf/dir
+python3 scripts/cli.py import /path/to/sgf/dir
 
 # 设置最少出现次数（默认10）
-python3 db.py import /path/to/sgf/dir --min-count 5
+python3 scripts/cli.py import /path/to/sgf/dir --min-count 5
 
 # 设置最少手数（默认4手）
-python3 db.py import /path/to/sgf/dir --min-moves 3
+python3 scripts/cli.py import /path/to/sgf/dir --min-moves 3
 
 # 设置最小出现概率%（默认0）
-python3 db.py import /path/to/sgf/dir --min-rate 1.0
+python3 scripts/cli.py import /path/to/sgf/dir --min-rate 1.0
 
 # 设置每谱提取前N手（默认50）
-python3 db.py import /path/to/sgf/dir --first-n 80
+python3 scripts/cli.py import /path/to/sgf/dir --first-n 80
 
 # 试运行（只统计不真入库）
-python3 db.py import /path/to/sgf/dir --dry-run
+python3 scripts/cli.py import /path/to/sgf/dir --dry-run
 ```
 
 **完整示例：**
 ```bash
-python3 db.py import /path/to/sgf/dir \
+python3 scripts/cli.py import /path/to/sgf/dir \
     --min-count 10 \
     --min-moves 4 \
     --min-rate 0.5 \
@@ -182,16 +243,23 @@ python3 db.py import /path/to/sgf/dir \
 🎉 完成！新增 13 个定式，跳过 11 个（已存在）
 ```
 
-**算法说明：**
-1. **Hash表去重**：使用Hash表统计定式出现次数（`count_map`），大幅减少内存占用（100万定式→1万唯一定式）
-2. **前缀频率统计**：排序唯一定式串，遍历检查前缀关系，累加后续定式的次数（如"pd qc"的频率包含所有以它为前缀的定式）
-3. **概率筛选**：`--min-rate` 按出现概率筛选（如1%表示只保留出现≥1%的定式）
-4. **筛选入库**：频率≥`--min-count`，手数≥`--min-moves`，概率≥`--min-rate`
+### 导出定式库 ⭐
+```bash
+# 导出全部到文件
+python3 scripts/cli.py export --output joseki_library.sgf
 
-**脱先定式检测：**
-- 检测当前角序列内的连续同色棋（如黑pd后直接黑qf）
-- 在连续的同色棋之间插入对方脱先标记 `tt`
-- 支持"角部下棋→脱先→其他→回角部继续"的完整序列
+# 按分类导出
+python3 scripts/cli.py export --category "/星位" --output star_joseki.sgf
+
+# 按手数范围导出
+python3 scripts/cli.py export --min-moves 4 --max-moves 10 --output short_joseki.sgf
+
+# 按标签导出
+python3 scripts/cli.py export --tag "常用" --export common.sgf
+
+# 指定定式ID导出
+python3 scripts/cli.py export --id "joseki_001,joseki_002" --output selected.sgf
+```
 
 ### 从KataGo棋谱库导入定式 ⭐⭐
 
@@ -201,28 +269,31 @@ python3 db.py import /path/to/sgf/dir \
 - 基础URL: https://katagoarchive.org/kata1/ratinggames/
 - 文件格式: YYYY-MM-DDrating.tar.bz2（每日一个压缩包，200KB-6MB）
 - 每个压缩包包含数百至数千局SGF棋谱
-- 数据更新至: 2022年底
+- 数据范围: 约2019年起 **持续更新中**（可获取最新日期数据）
 
 **基本用法：**
 ```bash
 # 下载一周的数据并提取定式
-python3 db.py katago --start-date 2022-12-17 --end-date 2022-12-23
+python3 scripts/cli.py katago --start-date 2026-03-01 --end-date 2026-03-07
 
 # 只统计不入库（试运行）
-python3 db.py katago --start-date 2022-12-17 --end-date 2022-12-23 --dry-run
+python3 scripts/cli.py katago --start-date 2026-03-01 --end-date 2026-03-07 --dry-run
 
 # 断点续传（中断后从上次位置继续）
-python3 db.py katago --start-date 2022-12-17 --end-date 2022-12-23 --resume
+python3 scripts/cli.py katago --start-date 2026-03-01 --end-date 2026-03-07 --resume
+
+# 导入整个月的数据（如2026年3月）
+python3 scripts/cli.py katago --start-date 2026-03-01 --end-date 2026-03-31 --min-count 5
 ```
 
 **完整参数：**
 ```bash
-python3 db.py katago \
-    --start-date 2022-12-17 \           # 起始日期（必需）
-    --end-date 2022-12-23 \             # 结束日期（必需）
+python3 scripts/cli.py katago \
+    --start-date 2026-03-01 \           # 起始日期（必需）
+    --end-date 2026-03-31 \             # 结束日期（必需）
     --cache-dir ~/.weiqi-joseki/katago-cache \  # 下载缓存目录
-    --keep-cache \                      # 保留缓存文件（默认删除）
-    --workers 3 \                       # 并行下载线程数（默认3）
+    --remove-cache \                    # 下载后删除缓存（默认保留）
+    --workers 3 \                       # 并行下载线程数（默认1）
     --max-memory-mb 512 \               # 内存上限MB（默认512）
     --resume \                          # 断点续传
     --min-count 10 \                    # 最少出现次数才入库（默认10）
@@ -234,26 +305,26 @@ python3 db.py katago \
 
 **输出示例：**
 ```
-📅 日期范围: 2022-12-17 至 2022-12-23（共7天）
+📅 日期范围: 2026-03-01 至 2026-03-31（共31天）
 💾 缓存目录: ~/.weiqi-joseki/katago-cache
 📊 进度文件: ~/.weiqi-joseki/katago-progress.json
 
 📥 开始下载（并行3线程）...
-📥 下载进度: 7/7 (100.0%) | 当前: 2022-12-23rating.tar.bz2 | 剩余时间: 0s
+📥 下载进度: 7/7 (100.0%) | 当前: 2026-03-07rating.tar.bz2 | 剩余时间: 0s
 ✅ 下载完成: 7/7 个文件
 
 ⚙️ 开始处理棋谱（前100手）...
-⚙️ 处理进度: 7/7 | 当前: 2022-12-23   | 棋谱: 2844 | 定式: 3358 | 内存: 0.0MB | 剩余: 0s
+⚙️ 处理进度: 7/7 | 当前: 2026-03-07   | 棋谱: 2844 | 定式: 3358 | 内存: 0.0MB | 剩余: 0s
 
 ⏳ 正在统计前缀频率...
 
 📊 统计结果（次数≥10，手数≥4，概率≥0.5%）：
-   总棋谱数: 2844，候选定式: 81
+   总棋谱数: 10375，候选定式: 290
 排名     频率       定式
 ------------------------------------------------------------
-1      647      pd qc qd pc od nb                        (6手)
-2      632      pd qc pc qd pe rf                        (6手)
-3      507      pd qc pc qd qf qe pe rf                  (8手)
+1      5225     pd qc pc qd                              (4手)
+2      5122     pd qc qd pc                              (4手)
+3      2669     pd qc pc qd pe                           (5手)
 ...
 
 ⏳ 开始入库（共81个候选）...
@@ -277,7 +348,7 @@ python3 db.py katago \
 ## Python API
 
 ```python
-from db import JosekiDB
+from scripts.joseki_db import JosekiDB
 
 # 初始化
 db = JosekiDB()  # 使用默认路径 ~/.weiqi-joseki/database.json
@@ -311,10 +382,31 @@ for corner, matches in results.items():
     print(f"{corner}: {matches[0].name if matches else '无匹配'}")
 
 # 从SGF提取四角定式
-from db import extract_joseki_from_sgf
+from scripts.joseki_extractor import extract_joseki_from_sgf
 sgf = open("game.sgf").read()
 result = extract_joseki_from_sgf(sgf, first_n=50)  # 输出MULTIGOGM格式
 print(result)
+
+# 批量导入定式
+added, skipped, candidates = db.import_from_sgfs(
+    sgf_sources=["/path/to/game1.sgf", "/path/to/game2.sgf"],
+    min_count=10,
+    min_moves=4,
+    min_rate=0.5,
+    first_n=50,
+    dry_run=False,
+    progress_callback=lambda c, t: print(f"{c}/{t}")
+)
+
+# 导出定式库
+sgf = db.export_to_sgf(
+    output_path="joseki_library.sgf",
+    category="/星位",
+    min_moves=4,
+    max_moves=20,
+    tags=["常用"],
+    ids=["joseki_001", "joseki_002"]
+)
 ```
 
 ## 数据格式
@@ -444,6 +536,28 @@ B[pd](右上) W[dp](右下) B[pp](右下) W[dd](左上) B[qf](右上) ...
 - 无第三方依赖（纯标准库）
 
 ## 版本更新
+
+### v1.2.0 (2026-04-10)
+- ✅ **代码重构**: 从单文件结构重构为模块化设计，代码更清晰、易于维护
+  - `sgf_parser.py` - 独立的SGF解析模块
+  - `joseki_extractor.py` - 定式提取逻辑
+  - `joseki_db.py` - 定式数据库核心
+  - `katago_downloader.py` - KataGo下载器
+  - `cli.py` - 统一的命令行入口
+- ✅ **向后兼容**: `db.py` 保留作为兼容性入口，原有命令仍然可用
+- ✅ **新增命令**: 
+  - `export` - 导出定式库到SGF，支持按分类、手数、标签、ID过滤
+  - `katago` - 从KataGo Archive自动下载棋谱并提取定式
+- ✅ **功能增强**:
+  - `8way` 新增 `--direction` 参数，可指定生成特定方向
+  - `import` 和 `katago` 新增 `--min-rate` 参数，按出现概率筛选
+  - 全局 `--db` 参数，可指定自定义数据库路径
+- ✅ **性能优化**: 修复内存溢出问题，优化KataGo下载缓存策略
+- ✅ **Bug修复**: 修复8向生成、SGF后缀解析等问题
+
+### v1.1.1 (2026-04-06)
+- ✅ **文档修正**: 更新KataGo Archive数据时间范围说明（支持2019-2026年最新数据）
+- ✅ **示例更新**: 将示例日期更新为2026年，与实际数据保持一致
 
 ### v1.1.0 (2026-03-31)
 - ✅ **内存优化**: Hash表统计+前缀累加，支持百万级棋谱处理
