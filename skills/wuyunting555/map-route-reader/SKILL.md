@@ -1,10 +1,35 @@
 ---
 name: map-route-reader
 description: |
-  Read public transit, driving, and walking routes from map sites such as Amap/Baidu Maps. Use when the user asks how to get from one place to another, how long it takes, what public transit route to take, or whether an alternative line/route would be better.
+  直接读取高德 / 百度地图上的真实路线结果，返回用户能照着走的公交、地铁、打车或步行方案。适用于用户问怎么从 A 到 B、哪条线路更快、哪条路线更省事、打车是不是更方便、是否有更优替代路线时使用。重点不是给模糊估计，而是尽量给真实可执行路线。
 ---
 
 # Map Route Reader
+
+## 产品定位
+把“地图路线查询”变成更像结果型产品的 skill：不是只说个大概时间，而是尽量把真实路线读出来，整理成用户可以立刻参考的出行方案。
+
+## 一句话卖点
+直接读取高德 / 百度地图上的真实路线结果，优先返回用户能照着走的公交、地铁、打车或步行方案。
+
+## 为什么更有下载欲望
+很多同类路线能力看起来很强，但实际要：
+- 配 API
+- 补配置
+- 自己拼接流程
+- 最后还不一定能直接给出可走路线
+
+这个 skill 主打的是：
+- **尽量直接可用**
+- **优先读真实地图结果**
+- **优先给可执行路线，不给空泛判断**
+- **用户问哪条线更好时，会真的把两条路线拉出来做对比**
+- **重点不是给模糊估计，而是给可直接拿去用的路线参考**
+
+## 你装它，想得到的是什么
+- 少一点“大概多久”的废话
+- 多一点“从哪上车、哪换乘、哪下车”的真实结果
+- 问打车 / 地铁 / 公交哪个更省事时，得到能直接参考的答案
 
 Use this skill when the user asks for:
 - how to get from A to B
