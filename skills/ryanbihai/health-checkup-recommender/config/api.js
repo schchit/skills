@@ -9,9 +9,18 @@ const envMap = {
   }
 }
 
-// 移除了 DEBUG_MODE 文件读取逻辑，以满足安全合规要求。
-// 现在完全通过标准环境变量控制环境
-const activeEnv = process.env.NODE_ENV === 'development' ? envMap.dev : envMap.prod
+const getEnv = () => {
+  const nodeEnv = process.env.NODE_ENV
+  if (nodeEnv === 'production') {
+    return 'prod'
+  }
+  if (nodeEnv === 'development') {
+    return 'dev'
+  }
+  return 'prod'
+}
+
+const activeEnv = envMap[getEnv()] || envMap.prod
 
 const config = {
   domain: activeEnv.domain,

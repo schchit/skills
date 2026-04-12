@@ -1,18 +1,3 @@
-#!/usr/bin/env node
-/**
- * 价格计算器 - 计算体检套餐总价
- *
- * 设计原则：价格计算必须由代码完成，禁止 LLM 手动计算！
- *
- * 用法:
- *   node calculate_prices.js Item029 Item131 Item173
- *
- * 或在代码中调用:
- *   const { calculateTotal, getPriceInfo } = require('./calculate_prices.js');
- *   const result = calculateTotal(['item029', 'item131', 'item173']);
- *   console.log(result.total); // 输出总价
- */
-
 const fs = require('fs');
 const path = require('path');
 const { checkConflicts } = require('./check_conflicts.js');
@@ -30,12 +15,18 @@ try {
 
 /**
  * 获取单个项目的价格信息
- * @param {string} itemId - 项目ID（如 'item029' 或 'Item029'）
+ * @param {string} itemId - 项目ID（如 'HaoLa01' 或 'haola01'）
  * @returns {{ id, name, price } | null}
  */
 function getPriceInfo(itemId) {
-  const norm = itemId.trim().toLowerCase();
-  const key = norm.startsWith('item') ? norm : `item${norm}`;
+  const trimmed = itemId.trim();
+  const lower = trimmed.toLowerCase();
+  let key;
+  if (lower.startsWith('haola')) {
+    key = 'HaoLa' + lower.slice(5);
+  } else {
+    key = 'HaoLa' + lower;
+  }
 
   if (ITEMS_DB[key]) {
     return {
@@ -119,9 +110,9 @@ if (require.main === module) {
 
   if (args.length === 0) {
     console.log('\n📌 用法:');
-    console.log('  node calculate_prices.js Item029 Item131 Item173 Item032');
+    console.log('  node calculate_prices.js HaoLa01 HaoLa12 HaoLa57 HaoLa104');
     console.log('\n💡 演示:');
-    const demo = ['Item029', 'Item131', 'Item173', 'Item032', 'Item154', 'Item035'];
+    const demo = ['HaoLa01', 'HaoLa12', 'HaoLa57', 'HaoLa104', 'HaoLa48', 'HaoLa105'];
     console.log(`  输入: ${demo.join(', ')}\n`);
     console.log(formatOutput(demo));
     process.exit(0);

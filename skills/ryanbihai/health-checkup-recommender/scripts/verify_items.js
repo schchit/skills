@@ -8,7 +8,7 @@
  * 3. 核查+去重后的套餐总价
  *
  * 用法:
- *   node verify_items.js Item029 Item035 Item154 Item016
+ *   node verify_items.js HaoLa01 HaoLa105 HaoLa48 HaoLa47
  */
 const { checkConflicts } = require('./check_conflicts.js');
 
@@ -38,7 +38,7 @@ function verifyOne(item) {
   const norm = item.trim();
   if (norm in ITEMS_DB)
     return { id: norm, name: ITEMS_DB[norm].name, price: ITEMS_DB[norm].price, status: '✅', from: 'ItemID' };
-  const lowerId = 'item' + norm.replace(/^item/i, '');
+  const lowerId = 'HaoLa' + norm.replace(/^HaoLa/i, '');
   if (lowerId in ITEMS_DB)
     return { id: lowerId, name: ITEMS_DB[lowerId].name, price: ITEMS_DB[lowerId].price, status: '✅', from: 'ItemID' };
   const normLower = norm.toLowerCase();
@@ -70,10 +70,10 @@ if (require.main === module) {
   const args = process.argv.slice(2);
 
   if (args.length === 0) {
-    console.log('用法: node verify_items.js Item029 Item035 Item154 Item016 Item083 Item071');
+    console.log('用法: node verify_items.js HaoLa01 HaoLa105 HaoLa48 HaoLa47');
     console.log('');
     console.log('--- 演示 ---');
-    const demo = ['Item029', 'Item030', 'Item154', 'Item016', 'Item155', 'Item083', 'Item071', 'Item173', 'Item176', 'Item107', 'Item105'];
+    const demo = ['HaoLa01', 'HaoLa12', 'HaoLa57', 'HaoLa104', 'HaoLa48', 'HaoLa105', 'HaoLa77', 'HaoLa51', 'HaoLa66', 'HaoLa100'];
     console.log('输入:', demo.join(', '));
     const { results, errors } = verifyAll(demo);
     const { resolved, removed, total } = checkConflicts(results.map(r => r.id));
@@ -88,7 +88,7 @@ if (require.main === module) {
     }
 
     console.log(`\n✅ 有效: ${results.length}  ❌ 无效: ${errors.length}  🔸 冲突移除: ${removed.length}`);
-    console.log(`💰 套餐总价: ¥${total}（仅供参考，以医院实际收费为准）`);
+    console.log(`💰 去重后 ${resolved.length} 项总价: ¥${total}`);
     console.log('\n去重后项目:', resolved.join(', '));
     process.exit(errors.length > 0 ? 1 : 0);
     return;
@@ -114,7 +114,7 @@ if (require.main === module) {
   }
 
   console.log(`\n✅ 有效: ${results.length}  ❌ 无效: ${errors.length}  🔸 冲突移除: ${removed.length}`);
-  if (results.length) console.log(`💰 套餐总价: ¥${total}（仅供参考，以医院实际收费为准）`);
+  if (results.length) console.log(`💰 去重后 ${resolved.length} 项总价: ¥${total}（仅供参考，以医院实际收费为准）`);
 
   if (errors.length > 0) {
     console.log('\n⚠️ 有无效项目，请修正后重新核查');
