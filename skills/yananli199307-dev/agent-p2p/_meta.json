@@ -3,11 +3,16 @@
   "slug": "agent-p2p",
   "displayName": "Agent P2P",
   "latest": {
-    "version": "0.6.3",
-    "publishedAt": 1775230334344,
-    "commit": "https://github.com/openclaw/skills/commit/4a277d939744601cf04d42dad19cb425341fdd78"
+    "version": "0.9.3",
+    "publishedAt": 1775922977136,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.6.3",
+      "publishedAt": 1775230334344,
+      "commit": "https://github.com/openclaw/skills/commit/4a277d939744601cf04d42dad19cb425341fdd78"
+    },
     {
       "version": "0.5.3",
       "publishedAt": 1775029559573,
