@@ -1,6 +1,6 @@
----
+﻿---
 name: tickerdb
-version: 0.1.0
+version: 0.1.2
 description: Query TickerDB.com for pre-computed categorical market intelligence — get single-asset summaries (with history and events built in), search for assets by categorical state, discover available fields via schema, and monitor a watchlist with webhooks. Use when the user asks about market conditions, stock signals, historical band transitions, portfolio checks, or any derived indicator data. Covers US stocks, crypto, and ETFs with daily/weekly timeframes.
 metadata:
   openclaw:
@@ -42,7 +42,7 @@ TickerDB provides pre-computed, categorical market data designed for LLMs and AI
 
 - **Asset classes:** US Stocks, Crypto (tickers require `USD` suffix, e.g. `BTCUSD`), ETFs
 - **Timeframes:** `daily` (default), `weekly`
-- **Update frequency:** End-of-day (~00:30 UTC)
+- **Update frequency:** End-of-day (~00:30 UTC). Responses expose `data_status` and `as_of_date`.
 - **Response format:** JSON
 - **Data is factual, not predictive** — no scores, no recommendations, no bias
 
@@ -62,12 +62,12 @@ Errors: `401` = missing/invalid token. `403` = endpoint requires higher tier (re
 https://api.tickerdb.com/v1
 ```
 
-## Common Parameters (all endpoints)
+## Common Parameters
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `ticker` | string | Asset symbol, uppercase. Crypto needs `USD` suffix (e.g. `BTCUSD`). Required on per-asset endpoints. Passed as a path parameter (e.g. `/v1/summary/AAPL`). |
-| `timeframe` | string | `daily` or `weekly`. Default: `daily`. |
+| `timeframe` | string | Supported on summary, search, and watchlist changes. `daily` or `weekly`. Default: `daily`. |
 
 ## Important: Asset Class Rules
 
@@ -127,20 +127,24 @@ Unified endpoint for single-asset intelligence. Supports 4 modes depending on wh
 | `ticker` | string | — | Required. Path param (e.g. `/v1/summary/AAPL`) |
 | `timeframe` | string | `daily` | `daily` or `weekly` |
 | `date` | string | latest | Point-in-time snapshot (YYYY-MM-DD). Plus: 2 years. Pro: 5 years. |
-| `start` | string | — | Range start date (YYYY-MM-DD). Use with `end` for historical series. |
+| `start` | string | — | Range start date (YYYY-MM-DD). Use with `end` for historical series. Sequential ranges must fit within your plan cap: Free 3 rows, Plus 10 rows, Pro 50 rows. |
 | `end` | string | latest | Range end date (YYYY-MM-DD). Use with `start`. |
-| `field` | string | — | Band field name for events (e.g. `rsi_zone`, `trend_direction`, `valuation_zone`). Switches to events mode. |
+| `fields` | string | full summary | Snapshot and history modes only. JSON array or comma-separated list of sections and dotted paths to return, such as `trend`, `momentum.rsi_zone`, `fundamentals.valuation_zone`, or `levels.support_levels`. |
+| `sample` | string | — | Date range mode only. Use `even` to evenly spread snapshots across the entire `start`/`end` range. |
+| `field` | string | — | Band field name for events. Prefer full schema/search names like `momentum_rsi_zone`, `extremes_condition`, `trend_direction`, or `fundamentals_valuation_zone`. Legacy short aliases like `rsi_zone` still work. Switches to events mode. |
 | `band` | string | all | Filter events to a specific band value (e.g. `deep_oversold`). Only with `field`. |
-| `limit` | int | 10 | Max event results (1-100). Only with `field`. |
+| `limit` | int | plan max (`sample=even`) / 10 (events) | With `sample=even`, requested sampled rows up to your plan cap. With `field`, max event results (1-100). |
 | `before` | string | — | Return events before this date (YYYY-MM-DD). Only with `field`. |
 | `after` | string | — | Return events after this date (YYYY-MM-DD). Only with `field`. |
 | `context_ticker` | string | — | Cross-asset correlation: second ticker (e.g. `SPY`). Requires `context_field` + `context_band`. Plus/Pro only. 2 credits. |
 | `context_field` | string | — | Band field to check on context ticker (e.g. `trend_direction`). |
 | `context_band` | string | — | Required band on context ticker (e.g. `downtrend`). |
 
-**Tier access:** Free gets core technical (performance, trend, momentum, extremes, volatility, volume). Plus adds support/resistance, basic fundamentals, band stability metadata (`_meta` sibling objects), aftermath data on events, and cross-asset correlation. Pro adds sector_context and advanced fundamentals. Date range limits: Free 3 months, Plus 2 years, Pro 5 years. Events lookback: Free 90 days, Plus 2 years, Pro 5 years.
+**Tier access:** Free gets core technical (performance, trend, momentum, extremes, volatility, volume). Plus adds support/resistance, basic fundamentals, band stability metadata (`_meta` sibling objects), aftermath data on events, and cross-asset correlation. Pro adds sector_context and advanced fundamentals. Date lookback limits: Free 30 days, Plus 2 years, Pro 5 years. Sequential date-range caps: Free 3 rows, Plus 10 rows, Pro 50 rows. Events lookback: Free 30 days, Plus 2 years, Pro 5 years.
 
 **Band stability metadata (Plus/Pro only):** Each categorical band field (e.g. `rsi_zone`, `trend_direction`) may include a sibling `_meta` object (e.g. `rsi_zone_meta`) with: `stability` (`fresh`/`holding`/`established`/`volatile`), `periods_in_current_state` (int), `flips_recent` (int), `flips_lookback` (e.g. `"30d"`), `timeframe`. Only appears when transition history exists for the field.
+
+**Field selection:** Use `fields` when you want smaller, more LLM-friendly summary payloads. The API always keeps identity keys like `ticker` and `timeframe`, then returns only the requested sections or dotted paths. In historical range mode, the duplicate top-level `levels` block is only returned when you explicitly request `levels` or a child path like `levels.support_levels`.
 
 **Response sections (snapshot/historical modes):**
 
@@ -152,7 +156,7 @@ Unified endpoint for single-asset intelligence. Supports 4 modes depending on wh
 - `volume` — `ratio_band`, `percentile`, `accumulation_state`, `climax_detected`, `climax_type` (`buying_climax`/`selling_climax`/null)
 - `support_level` / `resistance_level` (Plus+) — `level_price`, `status` (`intact`/`approaching`/`breached`), `distance_band`, `touch_count`, `held_count`, `broke_count`, `consecutive_closes_beyond`, `last_tested_days_ago`, `type` (`horizontal`/`ma_derived`), `volume_at_tests_band`
 - `range_position` — `lower_third`, `mid_range`, or `upper_third`
-- `sector_context` (Pro) — `sector_rsi_zone`, `sector_trend`, `asset_vs_sector_rsi`, `asset_vs_sector_trend`, `sector_oversold_count`, `sector_total_count`
+- `sector_context` (Pro) — `rsi_zone`, `trend`, `asset_vs_sector_rsi`, `asset_vs_sector_trend`, `oversold_count`, `total_count`
 - `fundamentals` (stocks only, Plus+) — Plus: `valuation_zone`, `growth_zone`, `earnings_proximity`, `analyst_consensus`. Pro adds: `valuation_percentile`, `pe_vs_historical_zone`, `pe_vs_sector_zone`, `pb_vs_historical_zone`, `revenue_growth_direction`, `eps_growth_direction`, `last_earnings_surprise`, `analyst_consensus_direction`
 
 **Events mode response:** `ticker`, `field`, `timeframe`, `events` array, `total_occurrences`, `query_range`. Each event includes: `date`, `band`, `prev_band`, `duration_days` (or `duration_weeks`), `aftermath` object with lookahead performance bands (5d/10d/20d/50d/100d for daily, 2w/4w/8w/12w/16w for weekly). Plus/Pro also get `stability_at_entry`, `flips_recent_at_entry`, and `flips_lookback`. When cross-asset correlation is used, also includes `context` object.
@@ -167,19 +171,37 @@ curl "https://api.tickerdb.com/v1/summary/NVDA" \
 
 Historical series:
 ```
-curl "https://api.tickerdb.com/v1/summary/AAPL?start=2026-01-01&end=2026-03-31" \
+curl "https://api.tickerdb.com/v1/summary/AAPL?start=2026-01-05&end=2026-01-16" \
+  -H "Authorization: Bearer $TICKERDB_KEY"
+```
+
+Evenly sampled historical series:
+```
+curl "https://api.tickerdb.com/v1/summary/AAPL?start=2026-01-01&end=2026-12-31&sample=even&limit=10" \
+  -H "Authorization: Bearer $TICKERDB_KEY"
+```
+
+LLM-friendly sampled series with selected fields:
+```
+curl "https://api.tickerdb.com/v1/summary/AAPL?start=2026-01-01&end=2026-12-31&sample=even&limit=10&fields=[\"trend.direction\",\"momentum.rsi_zone\",\"fundamentals.valuation_zone\"]" \
   -H "Authorization: Bearer $TICKERDB_KEY"
 ```
 
 Events (band transition history):
 ```
-curl "https://api.tickerdb.com/v1/summary/AAPL?field=rsi_zone&band=deep_oversold&limit=5" \
+curl "https://api.tickerdb.com/v1/summary/AAPL?field=momentum_rsi_zone&band=deep_oversold&limit=5" \
+  -H "Authorization: Bearer $TICKERDB_KEY"
+```
+
+Events (extreme-state entries):
+```
+curl "https://api.tickerdb.com/v1/summary/AAPL?field=extremes_condition&band=deep_oversold&limit=5" \
   -H "Authorization: Bearer $TICKERDB_KEY"
 ```
 
 Events with cross-asset correlation:
 ```
-curl "https://api.tickerdb.com/v1/summary/AAPL?field=rsi_zone&band=deep_oversold&context_ticker=SPY&context_field=trend_direction&context_band=downtrend&limit=5" \
+curl "https://api.tickerdb.com/v1/summary/AAPL?field=momentum_rsi_zone&band=deep_oversold&context_ticker=SPY&context_field=trend_direction&context_band=downtrend&limit=5" \
   -H "Authorization: Bearer $TICKERDB_KEY"
 ```
 
@@ -189,13 +211,11 @@ curl "https://api.tickerdb.com/v1/summary/AAPL?field=rsi_zone&band=deep_oversold
 
 The watchlist is a **persistent, server-side** list of tickers. Users save tickers once and then retrieve live data for them on demand. The saved watchlist is also what webhooks monitor — `watchlist.changes` events fire for tickers on the user's saved watchlist.
 
-**Tier limits:** Free: 5 tickers. Plus: 50 tickers. Pro: 100 tickers.
+**Tier limits:** Free: 10 tickers. Plus: 50 tickers. Pro: 100 tickers.
 
 #### GET /v1/watchlist — Retrieve saved watchlist with live data
 
 Returns live snapshot data for all saved tickers.
-
-**Query params:** `timeframe` (optional) — `daily` (default) or `weekly`.
 
 **Response:**
 ```json
@@ -204,6 +224,7 @@ Returns live snapshot data for all saved tickers.
     {
       "ticker": "AAPL",
       "asset_class": "stock",
+      "as_of_date": "2026-04-11",
       "performance": "slight_gain",
       "trend_direction": "uptrend",
       "rsi_zone": "neutral_high",
@@ -225,7 +246,8 @@ Returns live snapshot data for all saved tickers.
   "tickers_saved": 1,
   "tickers_found": 1,
   "watchlist_limit": 50,
-  "data_status": "eod"
+  "data_status": "eod",
+  "as_of_date": "2026-04-11"
 }
 ```
 
@@ -340,7 +362,7 @@ Search for assets matching categorical filter criteria. Use this when you need t
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `filters` | string | — | JSON-encoded filter object. Keys are field names, values are band values or arrays. |
+| `filters` | string | — | JSON-encoded array of `{field, op, value}` objects. Prefer canonical flat schema names from `/v1/schema/fields`, such as `momentum_rsi_zone` or `trend_direction`. |
 | `timeframe` | string | `daily` | `daily` or `weekly` |
 | `sort_by` | string | `ticker` | Column name to sort results by. Must be a valid field from the schema. |
 | `sort_direction` | string | `desc` | `asc` or `desc` |
@@ -350,23 +372,24 @@ Search for assets matching categorical filter criteria. Use this when you need t
 
 **Filter examples:**
 ```json
-{"rsi_zone": "deep_oversold"}
-{"trend_direction": ["uptrend", "strong_uptrend"], "volume_ratio_band": "high"}
-{"sector": "Technology", "rsi_zone": "oversold"}
+[{"field":"momentum_rsi_zone","op":"eq","value":"deep_oversold"}]
+[{"field":"trend_direction","op":"in","value":["uptrend","strong_uptrend"]},{"field":"volume_ratio_band","op":"eq","value":"high"}]
+[{"field":"sector","op":"eq","value":"Technology"},{"field":"momentum_rsi_zone","op":"eq","value":"oversold"}]
 ```
 
 **Examples:**
 
 Basic search:
 ```
-curl "https://api.tickerdb.com/v1/search?filters=%7B%22rsi_zone%22%3A%22deep_oversold%22%7D" \
+curl -G "https://api.tickerdb.com/v1/search" \
+  --data-urlencode 'filters=[{"field":"momentum_rsi_zone","op":"eq","value":"deep_oversold"}]' \
   -H "Authorization: Bearer $TICKERDB_KEY"
 ```
 
 Return only specific fields (reduces token usage):
 ```
 curl -G "https://api.tickerdb.com/v1/search" \
-  --data-urlencode 'filters=[{"field":"rsi_zone","op":"eq","value":"oversold"}]' \
+  --data-urlencode 'filters=[{"field":"momentum_rsi_zone","op":"eq","value":"oversold"}]' \
   --data-urlencode 'fields=["ticker","sector","momentum_rsi_zone"]' \
   -H "Authorization: Bearer $TICKERDB_KEY"
 ```
@@ -569,7 +592,7 @@ When you get a 403, tell the user which tier they need and share the upgrade URL
 
 | Tier | Daily | Hourly |
 |------|-------|--------|
-| Free | 100 | 50 |
+| Free | 250 | 100 |
 | Plus (Individual) | 50,000 | 5,000 |
 | Pro (Individual) | 100,000 | 10,000 |
 | Plus (Commercial) | 250,000 | 25,000 |
@@ -590,11 +613,11 @@ TickerDB has three tiers: **Free**, **Plus**, and **Pro**. Each tier unlocks mor
 |---------|------|------|-----|
 | **Band stability metadata** | None | Full (`_meta` objects, event/change stability) | Full |
 | **Asset summary depth** | Technical only | + support/resistance, basic fundamentals | + sector context, advanced fundamentals |
-| **Watchlist tickers** | 5 | 50 | 100 |
-| **Historical snapshots** | 3 months lookback | 2 years lookback | 5 years lookback |
+| **Watchlist tickers** | 10 | 50 | 100 |
+| **Historical snapshots** | 30 days lookback | 2 years lookback | 5 years lookback |
 | **Cross-asset correlation** | No | Yes | Yes |
-| **Webhooks** | None | 1 URL, all events | 1 URL, all events |
-| **Daily request limit** | 100 | 50,000 | 100,000 |
+| **Webhooks** | None | 1 URL, all events | 3 URLs, all events |
+| **Daily request limit** | 250 | 50,000 | 100,000 |
 | **Support** | None | Email (48hr) | Email (48hr) |
 
 ### Key Plus-only features (not available on Free)
@@ -602,7 +625,7 @@ TickerDB has three tiers: **Free**, **Plus**, and **Pro**. Each tier unlocks mor
 - Support/resistance levels on summaries
 - Fundamental data on summaries (valuation, growth, earnings, analyst consensus)
 - Cross-asset event correlation (`context_ticker`, `context_field`, `context_band` on events endpoint)
-- Historical date snapshots beyond 3 months (`date` parameter — Free gets 3 months, Plus gets 2 years)
+- Historical date snapshots beyond 30 days (`date` parameter — Free gets 30 days, Plus gets 2 years)
 - Hourly rate limit bucket (5,000/hr vs 50/hr on Free)
 
 ### Key Pro-only features (not available on Plus)
@@ -623,7 +646,7 @@ Plus and Pro each have a Commercial variant with higher request limits (250k–5
 
 ## Caching
 
-All data is pre-computed after market close. Daily timeframe refreshes ~5:15 PM ET. Weekly refreshes after Friday close. Responses are edge-cached with `Cache-Control` and `ETag` headers.
+All data is pre-computed after market close. Daily refreshes publish around 00:30 UTC, and responses include `as_of_date` so you can see which session date the snapshot represents. Weekly refreshes occur after Friday close. Responses are edge-cached with `Cache-Control` and `ETag` headers.
 
 ## Usage Guidelines
 
@@ -631,12 +654,12 @@ All data is pre-computed after market close. Daily timeframe refreshes ~5:15 PM 
 2. **Always use uppercase tickers.** Crypto must include `USD` suffix.
 3. **Use `/summary/TICKER` for current snapshots** — deep dive on any single ticker's categorical state.
 4. **Use `/summary/TICKER?start=...&end=...` for historical snapshots** — see how categorical bands evolved over a date range.
-5. **Use `/summary/TICKER?field=...` for band transition history** — find when a ticker entered a specific band, how long it stayed, and what happened afterward. Add `&band=...` to filter. Supports cross-asset correlation with `context_*` params.
-6. **Use `/search` to find assets by state** — pass filter criteria as JSON to discover tickers matching categorical conditions (e.g. oversold stocks, strong uptrends).
+5. **Use `/summary/TICKER?field=...` for band transition history** — use the same full field names returned by `/v1/schema/fields` (for example `momentum_rsi_zone` or `extremes_condition`) to find when a ticker entered a specific band, how long it stayed, and what happened afterward. Add `&band=...` to filter. Supports cross-asset correlation with `context_*` params.
+6. **Use `/search` to find assets by state** — pass a JSON array of `{field, op, value}` filters using canonical flat schema names from `/v1/schema/fields` (for example `momentum_rsi_zone`) to discover tickers matching categorical conditions.
 7. **Use `/schema/fields` to discover fields and bands** — get the full list of available fields, valid band values, and sectors.
 8. **Use `/watchlist` for portfolio monitoring** — save tickers once with POST, then GET for live snapshots with `notable_changes`. Use `/watchlist/changes` for structured field-level diffs (day-over-day or week-over-week). The saved watchlist is also what webhooks track.
 9. **Fundamental fields only exist for stocks** — don't expect valuation/growth/earnings on crypto or ETFs.
-10. **Historical snapshots** — Free tier gets 3 months of lookback. Plus gets 2 years. Pro gets 5 years.
+10. **Historical snapshots** — Free tier gets 30 days of lookback. Plus gets 2 years. Pro gets 5 years.
 11. **Data refreshes EOD** — don't poll for intraday changes.
 12. **Link to https://tickerdb.com/pricing when users ask about upgrading, plans, or hit tier/rate limits.** Don't guess at prices — just send the link.
 13. **Band stability metadata (Plus/Pro)** tells you how much to trust a band value: `fresh` = just changed, `holding` = recent change that's staying, `established` = held a long time, `volatile` = flipping frequently. Use this to qualify signals (e.g. "AAPL entered oversold, but this field has been volatile with 5 flips in 30 days").
@@ -645,11 +668,12 @@ All data is pre-computed after market close. Daily timeframe refreshes ~5:15 PM 
     - "How's AAPL?" -> `/summary/AAPL`
     - "Show me AAPL's history this year" -> `/summary/AAPL?start=2026-01-01`
     - "Check my portfolio" -> GET `/watchlist` (if they have a saved watchlist)
-    - "When was AAPL last oversold?" -> `/summary/AAPL?field=rsi_zone&band=oversold`
-    - "How many times has TSLA been deep_oversold?" -> `/summary/TSLA?field=rsi_zone&band=deep_oversold`
+    - "When was AAPL last oversold?" -> `/summary/AAPL?field=momentum_rsi_zone&band=oversold`
+    - "When did AAPL enter deep oversold as an extreme condition?" -> `/summary/AAPL?field=extremes_condition&band=deep_oversold`
+    - "How many times has TSLA been deep_oversold?" -> `/summary/TSLA?field=momentum_rsi_zone&band=deep_oversold`
     - "What happened after NVDA entered strong_uptrend?" -> `/summary/NVDA?field=trend_direction&band=strong_uptrend`
-    - "When was AAPL oversold while SPY was in downtrend?" -> `/summary/AAPL?field=rsi_zone&band=oversold&context_ticker=SPY&context_field=trend_direction&context_band=downtrend`
-    - "Which stocks are oversold?" -> `/search?filters={"rsi_zone":"deep_oversold"}`
+    - "When was AAPL oversold while SPY was in downtrend?" -> `/summary/AAPL?field=momentum_rsi_zone&band=oversold&context_ticker=SPY&context_field=trend_direction&context_band=downtrend`
+    - "Which stocks are oversold?" -> `/search?filters=[{"field":"momentum_rsi_zone","op":"eq","value":"deep_oversold"}]`
     - "What fields are available?" -> `/schema/fields`
     - "Add AAPL to my watchlist" -> POST `/watchlist` with `{"tickers": ["AAPL"]}`
     - "Remove TSLA from my watchlist" -> DELETE `/watchlist` with `{"tickers": ["TSLA"]}`
@@ -694,8 +718,8 @@ Users can invoke this skill directly with `/tickerdb` followed by a command:
   > **Lookup**
   > `/tickerdb AAPL` — full summary for any ticker
   > `/tickerdb summary AAPL 2026-01-01 2026-03-31` — historical categorical snapshots over a date range
-  > `/tickerdb summary AAPL rsi_zone deep_oversold` — band transition history with aftermath data
-  > `/tickerdb search rsi_zone=deep_oversold` — find assets matching filter criteria
+  > `/tickerdb summary AAPL momentum_rsi_zone deep_oversold` — band transition history with aftermath data
+  > `/tickerdb search momentum_rsi_zone=deep_oversold` — find assets matching filter criteria
   > `/tickerdb schema` — list all available fields, bands, and sectors
   > `/tickerdb watchlist` — check your saved watchlist with live data
   > `/tickerdb watchlist add AAPL,TSLA,BTCUSD` — add tickers to your saved watchlist
@@ -742,10 +766,10 @@ Users can invoke this skill directly with `/tickerdb` followed by a command:
 ### Market Data Commands
 - `/tickerdb AAPL` — full summary for AAPL
 - `/tickerdb summary AAPL 2026-01-01 2026-03-31` — historical snapshots over a date range
-- `/tickerdb summary AAPL rsi_zone` — band transition history for a field
-- `/tickerdb summary AAPL rsi_zone deep_oversold` — when was it last deep_oversold?
-- `/tickerdb summary AAPL rsi_zone deep_oversold --context SPY trend_direction downtrend` — AAPL oversold while SPY was in downtrend
-- `/tickerdb search rsi_zone=deep_oversold` — find assets matching filters
+- `/tickerdb summary AAPL momentum_rsi_zone` — band transition history for a field
+- `/tickerdb summary AAPL momentum_rsi_zone deep_oversold` — when was it last deep_oversold?
+- `/tickerdb summary AAPL momentum_rsi_zone deep_oversold --context SPY trend_direction downtrend` — AAPL oversold while SPY was in downtrend
+- `/tickerdb search momentum_rsi_zone=deep_oversold` — find assets matching filters
 - `/tickerdb search trend_direction=strong_uptrend,sector=Technology` — combined filters
 - `/tickerdb schema` — list all available fields, bands, and sectors
 - `/tickerdb watchlist` — check saved watchlist with live data (GET)
@@ -764,7 +788,7 @@ When a slash command is used, skip confirmation and go straight to the API call.
 TickerDB pairs with the [TickerArena](https://tickerarena.com) skill for paper trading. Same API key works for both — install `tickerarena` with `/install tickerarena` to start executing trades based on TickerDB signals.
 
 1. Use `/tickerdb AAPL` to evaluate before trading -> check trend, momentum, extremes, and valuation before committing
-2. Use `/tickerdb summary AAPL rsi_zone deep_oversold` to check historical aftermath of oversold conditions -> then `/tickerarena buy <ticker> <percent>` if the pattern is favorable
+2. Use `/tickerdb summary AAPL momentum_rsi_zone deep_oversold` to check historical aftermath of oversold conditions -> then `/tickerarena buy <ticker> <percent>` if the pattern is favorable
 3. Use `/tickerdb watchlist add` to save your open position tickers, then `/tickerdb watchlist` to monitor for exit signals like `entered overbought` or `bearish_reversal`
 4. Use `/tickerdb watchlist changes` to see overnight state changes and identify tickers that need attention
 
@@ -774,7 +798,7 @@ TickerDB pairs with the [TickerArena](https://tickerarena.com) skill for paper t
 
 ## Cron Job Examples
 
-TickerDB's EOD data refresh (~00:30 UTC / ~5:15 PM ET) makes it ideal for daily scheduled checks. Recommended cron patterns:
+TickerDB's EOD data refresh (~00:30 UTC) makes it ideal for daily scheduled checks. Recommended cron patterns:
 
 ### Morning watchlist check (weekdays 9:35 AM ET — 5 min after market open)
 ```
@@ -805,3 +829,4 @@ openclaw cron add \
 - **Batch calls in one job** — combine multiple `/tickerdb` calls in a single cron message to save LLM tokens.
 - **Use a cheaper model** — routine checks don't need Opus. Add `--model sonnet` to save costs.
 - **TickerDB is pre-computed** — each call completes instantly (no request-time computation), so cron jobs finish fast.
+
