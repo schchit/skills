@@ -15,11 +15,13 @@ What it does:
     5. Creates the dreams/ directory
     6. Merges heartbeat config into openclaw.json
     7. Validates the installation
+
+Note: The optional live dream viewer (tools/viewer/) is installed separately.
+      See tools/viewer/README.md for instructions.
 """
 
 import json
 import shutil
-import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -211,36 +213,6 @@ def merge_gateway_config(workspace: Path) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Viewer dependencies
-# ---------------------------------------------------------------------------
-
-VIEWER_DEPS = ["aiohttp", "watchdog"]
-
-
-def install_viewer_deps() -> bool:
-    """Install Python dependencies for the dream viewer server."""
-    try:
-        import aiohttp, watchdog  # noqa: F401
-        info("aiohttp and watchdog already installed")
-        return True
-    except ImportError:
-        pass
-
-    try:
-        subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", *VIEWER_DEPS],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE,
-        )
-        info("Installed aiohttp and watchdog")
-        return True
-    except subprocess.CalledProcessError as e:
-        warn(f"Failed to install viewer deps: {e}")
-        warn(f"Run manually: pip install {' '.join(VIEWER_DEPS)}")
-        return False
-
-
-# ---------------------------------------------------------------------------
 # Validation
 # ---------------------------------------------------------------------------
 
@@ -340,24 +312,20 @@ def main():
             fail(f"Missing required asset ({name}): {asset}")
 
     # Step 1: HEARTBEAT.md
-    print("  [1/5] HEARTBEAT.md")
+    print("  [1/4] HEARTBEAT.md")
     merge_heartbeat(workspace)
 
     # Step 2: SOUL.md
-    print("  [2/5] SOUL.md")
+    print("  [2/4] SOUL.md")
     merge_soul(workspace)
 
     # Step 3: dreams/ directory
-    print("  [3/5] dreams/ directory")
+    print("  [3/4] dreams/ directory")
     create_dreams_dir(workspace)
 
     # Step 4: Gateway config
-    print("  [4/5] Gateway config (openclaw.json)")
+    print("  [4/4] Gateway config (openclaw.json)")
     merge_gateway_config(workspace)
-
-    # Step 5: Python dependencies for dream viewer
-    print("  [5/5] Viewer dependencies (aiohttp, watchdog)")
-    install_viewer_deps()
 
     # Validate
     print("\n  --- Validation ---\n")
