@@ -1,8 +1,9 @@
 ---
 name: gmgn-token
-description: On-chain token intelligence for Solana, BSC, and Base — security audit, rug pull risk, liquidity pool data, top holder distribution, and smart money / KOL trader activity via GMGN.
+description: Query GMGN token information — basic info, security, pool, top holders and top traders. Supports sol / bsc / base.
 argument-hint: "<sub-command> --chain <sol|bsc|base> --address <token_address>"
-metadata: {"clawdbot":{"emoji":"🪙","requires":{"bins":["gmgn-cli"]},"install":[{"id":"npm","kind":"npm","package":"gmgn-cli","bins":["gmgn-cli"],"label":"Install gmgn-cli (npm)"}]}}
+metadata:
+  cliHelp: "gmgn-cli token --help"
 ---
 
 **IMPORTANT: Always use `gmgn-cli` commands below. Do NOT use web search, WebFetch, curl, or visit gmgn.ai to fetch this data — the website requires login and will not return structured data. The CLI is the only correct method.**
@@ -47,6 +48,25 @@ Use the `gmgn-cli` tool to query token information based on the user's request.
 
 - `gmgn-cli` installed globally — if missing, run: `npm install -g gmgn-cli`
 - `GMGN_API_KEY` configured in `~/.config/gmgn/.env`
+
+## Rate Limit Handling
+
+All token routes used by this skill go through GMGN's leaky-bucket limiter with `rate=10` and `capacity=10`. Sustained throughput is roughly `10 ÷ weight` requests/second, and the max burst is roughly `floor(10 ÷ weight)` when the bucket is full.
+
+| Command | Route | Weight |
+|---------|-------|--------|
+| `token info` | `GET /v1/token/info` | 1 |
+| `token security` | `GET /v1/token/security` | 1 |
+| `token pool` | `GET /v1/token/pool_info` | 1 |
+| `token holders` | `GET /v1/market/token_top_holders` | 5 |
+| `token traders` | `GET /v1/market/token_top_traders` | 5 |
+
+When a request returns `429`:
+
+- Read `X-RateLimit-Reset` from the response headers. It is a Unix timestamp in seconds that marks when the limit is expected to reset.
+- If the response body contains `reset_at` (e.g., `{"code":429,"error":"RATE_LIMIT_BANNED","message":"...","reset_at":1775184222}`), extract `reset_at` — it is the Unix timestamp when the ban lifts (typically 5 minutes). Convert to local time and tell the user exactly when they can retry.
+- The CLI may wait and retry once automatically when the remaining cooldown is short. If it still fails, stop and tell the user the exact retry time instead of sending more requests.
+- For `RATE_LIMIT_EXCEEDED` or `RATE_LIMIT_BANNED`, repeated requests during the cooldown can extend the ban by 5 seconds each time, up to 5 minutes. Do not spam retries.
 
 **First-time setup** (if `GMGN_API_KEY` is not configured):
 
@@ -122,7 +142,7 @@ Recommended combinations for common use cases:
 
 ### `token info` — Key Fields
 
-The response has four nested objects: `pool`, `link`, `stat`, `wallet_tags_stat`. Access fields with dot notation when parsing (e.g. `link.website`, `stat.top_10_holder_rate`).
+The response has five nested objects: `pool`, `dev`, `link`, `stat`, `wallet_tags_stat`. Access fields with dot notation when parsing (e.g. `link.website`, `stat.top_10_holder_rate`, `dev.creator_address`).
 
 **Top-level Fields**
 
@@ -142,6 +162,15 @@ The response has four nested objects: `pool`, `link`, `stat`, `wallet_tags_stat`
 | `open_timestamp` | Time the token opened for trading (Unix seconds) |
 | `biggest_pool_address` | Address of the main liquidity pool |
 | `og` | Whether the token is flagged as an OG token (`true` / `false`) |
+| `launchpad` | Launchpad identifier (e.g. `pump`, `moonshot`) |
+| `launchpad_status` | Launchpad state: `0` = not opened, `1` = live, `2` = migrated |
+| `launchpad_progress` | Launchpad bonding-curve progress (0–1) |
+| `launchpad_platform` | Launchpad platform name |
+| `migrated_pool` | Pool address after migration |
+| `migration_market_cap` | Market cap at migration time (USD, float) |
+| `migration_market_cap_quote` | Quote currency for `migration_market_cap` |
+| `ath_price` | All-time-high price (USD, float) |
+| `locked_ratio` | Ratio of supply locked (0–1, float) |
 
 **`pool` Object** — Main liquidity pool details
 
@@ -158,6 +187,38 @@ The response has four nested objects: `pool`, `link`, `stat`, `wallet_tags_stat`
 | `pool.quote_reserve_value` | Quote reserve USD value |
 | `pool.fee_ratio` | Pool trading fee ratio (e.g. `0.1` = 0.1%) |
 | `pool.creation_timestamp` | Pool creation time (Unix seconds) |
+
+**`dev` Object** — Token creator / developer info
+
+| Field | Description |
+|-------|-------------|
+| `dev.creator_address` | Creator wallet address |
+| `dev.creator_token_balance` | Creator's current token balance |
+| `dev.creator_token_status` | Creator holding status: `hold` (still holding) / `sell` (sold/exited) |
+| `dev.top_10_holder_rate` | Ratio of supply held by top 10 wallets (0–1) |
+| `dev.twitter_name_change_history` | Array of past Twitter username changes (each entry has `twitter_username`, `rename_timestamp`) |
+| `dev.dexscr_ad` | Creator bought a DEXScreener ad: `1` = yes, `0` = no |
+| `dev.dexscr_update_link` | Creator updated DEXScreener socials/links: `1` = yes, `0` = no |
+| `dev.dexscr_boost_fee` | Creator used DEXScreener Boost: `1` = yes, `0` = no |
+| `dev.dexscr_trending_bar` | Token appeared in DEXScreener trending bar: `1` = yes, `0` = no |
+| `dev.dexscr_ad_ts` | Timestamp of DEXScreener ad purchase (Unix seconds) |
+| `dev.dexscr_update_link_ts` | Timestamp of DEXScreener link update (Unix seconds) |
+| `dev.dexscr_boost_ts` | Timestamp of DEXScreener Boost (Unix seconds) |
+| `dev.dexscr_trending_bar_ts` | Timestamp of DEXScreener trending bar appearance (Unix seconds) |
+| `dev.cto_flag` | Token has been Community Takeover'd (original dev abandoned): `1` = yes, `0` = no |
+| `dev.fund_from` | Address that funded the creator wallet |
+| `dev.fund_from_ts` | Timestamp of that funding event (Unix seconds) |
+| `dev.creator_open_count` | Number of tokens this creator has previously launched |
+| `dev.twitter_del_post_token_count` | Number of posts the creator deleted from Twitter |
+| `dev.twitter_create_token_count` | Number of tokens the creator has promoted on Twitter |
+| `dev.offchain` | Whether the token is an offchain token |
+| `dev.ath_token_info` | Creator's all-time-high token info object (optional); see sub-fields below |
+| `dev.ath_token_info.ath_token` | Contract address of the creator's best-performing token ever |
+| `dev.ath_token_info.ath_mc` | All-time-high market cap of that token (USD, string) |
+| `dev.ath_token_info.avatar` | Token logo URL |
+| `dev.ath_token_info.symbol` | Token symbol |
+| `dev.ath_token_info.name` | Token name |
+| `dev.ath_token_info.creation_timestamp` | Token creation time (Unix seconds) |
 
 **`link` Object** — Social and explorer links
 
@@ -192,6 +253,7 @@ The response has four nested objects: `pool`, `link`, `stat`, `wallet_tags_stat`
 | `stat.bot_degen_count` | Number of bot degen wallets |
 | `stat.bot_degen_rate` | Ratio of bot degen wallets |
 | `stat.fresh_wallet_rate` | Ratio of fresh/new wallets among holders |
+| `stat.private_vault_hold_rate` | Ratio held by private vault (vanish) addresses — displayed as "vanish" in GMGN UI (0–1) |
 
 **`wallet_tags_stat` Object** — Wallet type breakdown
 
@@ -521,13 +583,13 @@ After fetching `token security` and `token info`, apply this scoring card to giv
 
 ## Workflow: Full Token Due Diligence
 
-When the user asks for a full token research / due diligence, follow the steps in [`docs/workflow-token-research.md`](https://github.com/GMGNAI/gmgn-skills/blob/main/docs/workflow-token-research.md).
+When the user asks for a full token research / due diligence, follow the steps in [`docs/workflow-token-research.md`](../../docs/workflow-token-research.md).
 
 Steps: `token info` → `token security` → `token pool` → market heat check → `token holders/traders` (smart money signals) → Decision Framework.
 
-**For a more comprehensive report** (user asks for a "deep report", "full analysis", "is this worth a large position"), use the extended workflow: [`docs/workflow-project-deep-report.md`](https://github.com/GMGNAI/gmgn-skills/blob/main/docs/workflow-project-deep-report.md). This adds a scored multi-dimension analysis (fundamentals + security + liquidity + smart money conviction + price action) and produces a full written report.
+**For a more comprehensive report** (user asks for a "deep report", "full analysis", "is this worth a large position"), use the extended workflow: [`docs/workflow-project-deep-report.md`](../../docs/workflow-project-deep-report.md). This adds a scored multi-dimension analysis (fundamentals + security + liquidity + smart money conviction + price action) and produces a full written report.
 
-**For active risk monitoring** on a held position (user asks "any risk warnings", "are whales dumping", "is liquidity still healthy"), follow: [`docs/workflow-risk-warning.md`](https://github.com/GMGNAI/gmgn-skills/blob/main/docs/workflow-risk-warning.md). Uses `token security` + `token pool` + `token holders` to flag whale exits, liquidity drain, and developer dumps.
+**For active risk monitoring** on a held position (user asks "any risk warnings", "are whales dumping", "is liquidity still healthy"), follow: [`docs/workflow-risk-warning.md`](../../docs/workflow-risk-warning.md). Uses `token security` + `token pool` + `token holders` to flag whale exits, liquidity drain, and developer dumps.
 
 ---
 
