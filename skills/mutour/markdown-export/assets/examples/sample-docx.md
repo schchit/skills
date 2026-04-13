@@ -1,6 +1,6 @@
-# Markdown to Word Example
+# Markdown Export DOCX Example
 
-This is a sample document to verify the `markdown-to-word` skill.
+This is a sample document to verify the `markdown-export` skill in `docx` mode.
 
 ## Features
 
@@ -21,7 +21,8 @@ This is a sample document to verify the `markdown-to-word` skill.
 ## Code
 
 ```bash
-python3 scripts/markdown_to_docx.py \
+python3 scripts/export_markdown.py \
+  --format docx \
   --input-file sample.md \
   --output sample.docx \
   --builtin-template modern-blue \

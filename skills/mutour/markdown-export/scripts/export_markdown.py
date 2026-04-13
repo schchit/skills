@@ -202,6 +202,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--toc", action="store_true", help="Insert a table of contents.")
     parser.add_argument("--number-sections", action="store_true", help="Number document headings.")
     parser.add_argument(
+        "--no-body-background",
+        action="store_true",
+        help="Remove the background, border, and shadow behind the rendered HTML article body.",
+    )
+    parser.add_argument(
         "--embed-assets",
         action="store_true",
         help="Embed CSS, images, and other resources into HTML when possible.",
@@ -543,6 +548,8 @@ def extend_common_command(command: list[str], args: argparse.Namespace) -> None:
         command.extend(["--metadata", f"author={args.author}"])
     if args.date:
         command.extend(["--metadata", f"date={args.date}"])
+    if args.no_body_background:
+        command.extend(["--metadata", "plain_content=true"])
     resource_path = base_resource_path(args)
     if resource_path:
         command.extend(["--resource-path", resource_path])

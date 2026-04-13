@@ -1,6 +1,6 @@
-# Markdown to HTML Example
+# Markdown Export HTML Example
 
-This is a sample document to verify the `markdown-to-html` skill.
+This is a sample document to verify the `markdown-export` skill in `html` mode.
 
 ## Supported Capabilities
 
@@ -26,10 +26,34 @@ This is a sample document to verify the `markdown-to-html` skill.
 ## Code
 
 ```bash
-python3 scripts/markdown_to_html.py \
+python3 scripts/export_markdown.py \
+  --format html \
   --input-file sample.md \
   --output sample.html \
   --builtin-template docs-slate \
   --toc \
   --embed-assets
+```
+
+## Full-Width Article Without TOC
+
+```bash
+python3 scripts/export_markdown.py \
+  --format html \
+  --input-file sample.md \
+  --output sample-no-toc.html \
+  --builtin-template docs-slate \
+  --embed-assets
+```
+
+## Plain Body Without Article Card Background
+
+```bash
+python3 scripts/export_markdown.py \
+  --format html \
+  --input-file sample.md \
+  --output sample-plain.html \
+  --builtin-template docs-slate \
+  --embed-assets \
+  --no-body-background
 ```

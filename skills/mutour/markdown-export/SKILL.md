@@ -14,6 +14,7 @@ Use this skill when the user wants one Markdown source exported into `docx`, `ht
 - Built-in templates for both output formats
 - Custom template support for both output formats
 - Optional table of contents, numbered headings, metadata, and resource-path support
+- HTML layout controls for optional TOC panel and plain article body rendering
 
 ## Formats
 
@@ -76,6 +77,18 @@ python3 scripts/export_markdown.py \
   --embed-assets
 ```
 
+### Markdown to HTML Without TOC Background Card
+
+```bash
+python3 scripts/export_markdown.py \
+  --format html \
+  --input-file /abs/path/source.md \
+  --output /abs/path/output.html \
+  --builtin-template docs-slate \
+  --embed-assets \
+  --no-body-background
+```
+
 ### Raw string
 
 ```bash
@@ -95,6 +108,8 @@ python3 scripts/export_markdown.py \
   `--template` must point to a Pandoc HTML template that contains `$body$`
 - For HTML, built-in CSS is automatically applied when using a built-in template
 - For HTML, extra `--css` files are appended after built-in CSS
+- For HTML, omitting `--toc` removes the TOC panel and expands the article body to full width
+- For HTML, `--no-body-background` removes the article panel background, border, and shadow while keeping the page theme
 
 ## Bundled files
 
