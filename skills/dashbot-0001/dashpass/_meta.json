@@ -3,9 +3,15 @@
   "slug": "dashpass",
   "displayName": "DashPass",
   "latest": {
-    "version": "0.5.1",
-    "publishedAt": 1775532661901,
-    "commit": "https://github.com/openclaw/skills/commit/f1d2cd832b34381bd5ab21d0f4c36a4f0a1c19ba"
+    "version": "0.8.0",
+    "publishedAt": 1775956537017,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.5.1",
+      "publishedAt": 1775532661901,
+      "commit": "https://github.com/openclaw/skills/commit/f1d2cd832b34381bd5ab21d0f4c36a4f0a1c19ba"
+    }
+  ]
 }

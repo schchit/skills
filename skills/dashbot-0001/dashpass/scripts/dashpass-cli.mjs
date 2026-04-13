@@ -2,7 +2,7 @@
  * dashpass-cli.mjs
  * DashPass Vault v2 CLI — credential CRUD for AI agents on Dash Platform
  *
- * Commands: put, get, list, rotate, check, status, delete
+ * Commands: put, get, list, rotate, check, status, delete, env
  * Encryption: Scheme C (ECDH self-sign + HKDF-SHA256 + AES-256-GCM)
  * Contract: GCeh2gnvtiHrujq37ZcKnhZ64xpzDC1LMCLhrUJzKDQF (v2)
  *
@@ -14,6 +14,10 @@
  *   node dashpass-cli.mjs check  --expiring-within <dur>
  *   node dashpass-cli.mjs status
  *   node dashpass-cli.mjs delete --service <svc>
+ *   node dashpass-cli.mjs env    --services <svc1,svc2,...> [--prefix <pfx>] [--null-if-missing]
+ *
+ * Global options:
+ *   --identity-id <id>     Override DASHPASS_IDENTITY_ID env var
  *
  * Environment:
  *   CRITICAL_WIF          — wallet private key (WIF format)
@@ -38,10 +42,8 @@ import { EvoSDK, Document, Identifier, IdentitySigner } from '@dashevo/evo-sdk';
 const DEFAULT_CONTRACT_ID = 'GCeh2gnvtiHrujq37ZcKnhZ64xpzDC1LMCLhrUJzKDQF';
 
 const CONTRACT_ID  = process.env.DASHPASS_CONTRACT_ID || DEFAULT_CONTRACT_ID;
-const IDENTITY_ID  = process.env.DASHPASS_IDENTITY_ID || (() => {
-  console.error('[fatal] DASHPASS_IDENTITY_ID not set. Export it before running DashPass.');
-  process.exit(1);
-})();
+// IDENTITY_ID resolved after arg parsing (--identity-id can override env)
+let IDENTITY_ID = process.env.DASHPASS_IDENTITY_ID;
 const CRITICAL_WIF = process.env.CRITICAL_WIF;
 const CACHE_DIR    = join(homedir(), '.dashpass', 'cache');
 const CACHE_FILE   = join(CACHE_DIR, 'credentials.enc');
@@ -851,13 +853,151 @@ async function cmdDelete(args) {
   cacheInvalidate(service);
 }
 
+// ── Command: env ───────────────────────────────────────────────────────────
+
+/**
+ * Service name → env var name lookup table.
+ * Covers common services; unknown services fall back to uppercase with
+ * hyphens/dots replaced by underscores.
+ */
+const SERVICE_ENV_MAP = {
+  'anthropic-api':    'ANTHROPIC_API_KEY',
+  'xai-api':          'XAI_API_KEY',
+  'openai-api':       'OPENAI_API_KEY',
+  'brave-search-api': 'BRAVE_API_KEY',
+  'github-token':     'GITHUB_TOKEN',
+  'slack-token':      'SLACK_TOKEN',
+  'discord-token':    'DISCORD_TOKEN',
+  'aws-access-key':   'AWS_ACCESS_KEY_ID',
+  'aws-secret-key':   'AWS_SECRET_ACCESS_KEY',
+  'database-url':     'DATABASE_URL',
+  'redis-url':        'REDIS_URL',
+  'dashpass-wif':     'CRITICAL_WIF',
+};
+
+function serviceToEnvVar(service, prefix) {
+  let varName = SERVICE_ENV_MAP[service];
+  if (!varName) {
+    varName = service.toUpperCase().replace(/[-. ]/g, '_');
+  }
+  if (prefix) {
+    varName = prefix + varName;
+  }
+  // Validate: must be a legal shell variable name
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(varName)) {
+    throw new Error(`Invalid env var name "${varName}" derived from service="${service}"`);
+  }
+  return varName;
+}
+
+async function cmdEnv(args) {
+  const servicesRaw   = args.services;
+  const prefix        = args.prefix || '';
+  const nullIfMissing = args['null-if-missing'] === true;
+
+  if (!servicesRaw) {
+    console.error('Usage: env --services <svc1,svc2,...> [--prefix <pfx>] [--null-if-missing]');
+    console.error('');
+    console.error('Outputs `export VAR="value"` lines for eval $(...).');
+    console.error('Service names are mapped to env var names via a lookup table.');
+    console.error('Unknown services use uppercase with hyphens replaced by underscores.');
+    process.exit(1);
+  }
+
+  const services = servicesRaw.split(',').map(s => s.trim()).filter(Boolean);
+  if (services.length === 0) {
+    console.error('[env] No services specified');
+    process.exit(1);
+  }
+
+  const { sdk } = await connectSDK();
+
+  for (const service of services) {
+    const varName = serviceToEnvVar(service, prefix);
+
+    try {
+      // Check cache first
+      const cached = cacheGet(service);
+      let decrypted;
+
+      if (cached) {
+        try {
+          decrypted = decrypt(
+            CRITICAL_WIF,
+            Buffer.from(cached.encryptedBlob, 'base64'),
+            Buffer.from(cached.salt, 'base64'),
+            Buffer.from(cached.nonce, 'base64'),
+          );
+        } catch { /* cache miss, fall through */ }
+      }
+
+      if (!decrypted) {
+        const docs = await queryCredentials(sdk,
+          [['service', '==', service]],
+          [['service', 'asc']],
+        );
+
+        if (docs.length === 0) {
+          if (nullIfMissing) {
+            console.log(`unset ${varName}`);
+          } else {
+            console.error(`[env] warning: no credential found for service="${service}", skipping ${varName}`);
+          }
+          continue;
+        }
+
+        const best = docs.sort((a, b) => (b.data.version ?? 1) - (a.data.version ?? 1))[0];
+        decrypted = decryptDoc(best.data);
+
+        // Populate cache
+        const cacheEntry = {
+          id:        best.id,
+          service:   best.data.service,
+          label:     best.data.label,
+          credType:  best.data.credType,
+          level:     best.data.level,
+          status:    best.data.status,
+          version:   best.data.version ?? 1,
+          expiresAt: best.data.expiresAt ?? 0,
+          encryptedBlob: decodeByteArray(best.data.encryptedBlob).toString('base64'),
+          salt:          decodeByteArray(best.data.salt).toString('base64'),
+          nonce:         decodeByteArray(best.data.nonce).toString('base64'),
+        };
+        cacheSet(service, cacheEntry);
+      }
+
+      // Escape for safe use inside double-quoted shell string
+      const escaped = decrypted.value
+        .replace(/\\/g, '\\\\')
+        .replace(/`/g, '\\`')
+        .replace(/\$/g, '\\$')
+        .replace(/"/g, '\\"');
+      console.log(`export ${varName}="${escaped}"`);
+    } catch (err) {
+      console.error(`[env] warning: failed to fetch service="${service}": ${err?.message?.slice(0, 150)}`);
+      if (nullIfMissing) {
+        console.log(`unset ${varName}`);
+      }
+    }
+  }
+}
+
 // ── Entry point ─────────────────────────────────────────────────────────────
 
-const COMMANDS = { put: cmdPut, get: cmdGet, list: cmdList, rotate: cmdRotate, check: cmdCheck, status: cmdStatus, delete: cmdDelete };
+const COMMANDS = { put: cmdPut, get: cmdGet, list: cmdList, rotate: cmdRotate, check: cmdCheck, status: cmdStatus, delete: cmdDelete, env: cmdEnv };
 
 async function main() {
   const [,, command, ...rest] = process.argv;
   const args = parseArgs(rest);
+
+  // --identity-id flag overrides env var (available to all commands)
+  if (args['identity-id']) {
+    IDENTITY_ID = args['identity-id'];
+  }
+  if (!IDENTITY_ID) {
+    console.error('[fatal] DASHPASS_IDENTITY_ID not set. Use --identity-id or export DASHPASS_IDENTITY_ID.');
+    process.exit(1);
+  }
 
   if (!command || !COMMANDS[command]) {
     console.error('DashPass Vault v2 CLI');
@@ -870,6 +1010,10 @@ async function main() {
     console.error('  check  --expiring-within <dur>');
     console.error('  status');
     console.error('  delete --service <svc>');
+    console.error('  env    --services <svc1,svc2,...> [--prefix <pfx>] [--null-if-missing]');
+    console.error('');
+    console.error('Global options:');
+    console.error('  --identity-id <id>  Override DASHPASS_IDENTITY_ID env var');
     process.exit(1);
   }
 
