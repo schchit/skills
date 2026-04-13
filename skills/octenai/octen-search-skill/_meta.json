@@ -1,0 +1,11 @@
+{
+  "owner": "octenai",
+  "slug": "octen-search-skill",
+  "displayName": "octen web search",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775701279200,
+    "commit": null
+  },
+  "history": []
+}
