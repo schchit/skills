@@ -1,41 +1,61 @@
 ---
 name: openclaw-audit
-description: "Audit your OpenClaw configuration against 12 production primitives. Read-only analysis — no files are modified, no secrets are extracted, no external calls are made. Returns a structured assessment with severity-ranked findings and actionable fixes."
-version: "1.1.0"
+description: "Audit an OpenClaw installation against 12 production primitives using local configuration and workspace files. Use for read-only OpenClaw config reviews, hardening checks, cost-control reviews, heartbeat/runbook audits, and migration readiness checks. Default to an offline audit from local files only."
+metadata:
+  openclaw:
+    requires:
+      bins: ["openclaw"]
 ---
 
 # OpenClaw Config Audit
 
-Audit your OpenClaw configuration against 12 production primitives.
+Audit an OpenClaw installation against 12 production primitives.
 
 ## Safety
 
-This skill is **read-only**. It:
-- Does NOT modify any files or configuration
-- Does NOT extract, log, or transmit API keys, tokens, or secrets
-- Does NOT make external network requests
-- Does NOT install or remove anything
-- Only reads local config files and runs read-only OpenClaw CLI status commands
+This skill is read-only. It:
+- does not modify files or configuration
+- does not install or remove anything
+- does not reveal secrets in output
+- defaults to local file inspection only
 
-When reading openclaw.json, **redact all secret values** in your output. Replace tokens, API keys, and passwords with `[REDACTED]`. Never include raw secret values in audit findings.
+Treat `~/.openclaw/openclaw.json`, secrets providers, and any CLI output as sensitive.
+Redact tokens, API keys, passwords, auth headers, cookies, webhook secrets, gateway tokens, and long opaque identifiers as `[REDACTED]`.
+Do not quote raw secret values, even partially.
+
+## Runtime assumptions
+
+- Primary path: inspect local files only, no network required.
+- Do not run `openclaw` CLI commands during the default audit flow.
+- If the user explicitly asks for live runtime verification, state that the `openclaw` CLI is required and that some status or probe commands may contact the local gateway or configured services.
+- If you perform any optional live checks, label them separately as `Live runtime checks`, describe the exact command used, and note that results may differ from the offline config audit.
 
 ## When to use
-- After initial setup or onboarding
-- After major config changes
-- Before machine migration
-- When costs or behavior feel off but you can't pinpoint why
-- Periodic health check (monthly recommended)
+- after initial setup or onboarding
+- after major config changes
+- before machine migration
+- when costs or behavior feel off but you cannot pinpoint why
+- periodic health check (monthly recommended)
 
-## Process
+## Default process
 
-1. Read the user's `~/.openclaw/openclaw.json` (redact secrets in output)
-2. Read `~/.openclaw/workspace/AGENTS.md` if it exists
-3. Read `~/.openclaw/workspace/HEARTBEAT.md` if it exists
-4. Check loaded plugins: `openclaw status 2>&1 | head -30`
-5. Check channel health: `openclaw channels status --probe 2>&1`
-6. Assess against each of the 12 primitives below
-7. Return findings ranked by severity (critical > warning > info)
-8. Include specific fix recommendations with config snippets for each finding
+1. Read the user's `~/.openclaw/openclaw.json` and redact sensitive values in your output.
+2. Read `~/.openclaw/workspace/AGENTS.md` if it exists.
+3. Read `~/.openclaw/workspace/HEARTBEAT.md` if it exists.
+4. Optionally inspect local workspace structure relevant to operations, for example `skills/`, `memory/`, or hook directories.
+5. Assess against each of the 12 primitives below using local evidence only.
+6. Return findings ranked by severity (critical > warning > info).
+7. Include specific fix recommendations with config snippets for each finding.
+
+## Optional live runtime checks
+
+Only perform these if the user explicitly asks for runtime validation in addition to the offline audit.
+Before running them, say that they require the `openclaw` CLI and may contact the local gateway or configured services.
+
+Examples:
+- `openclaw gateway status`
+- `openclaw status`
+- `openclaw channels status --probe`
 
 ## The 12 Production Primitives
 

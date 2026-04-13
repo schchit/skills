@@ -1,11 +1,17 @@
 {
   "owner": "shawnpetros",
   "slug": "openclaw-audit",
-  "displayName": "Openclaw Audit",
+  "displayName": "OpenClaw Audit",
   "latest": {
-    "version": "1.1.0",
-    "publishedAt": 1775450378949,
-    "commit": "https://github.com/openclaw/skills/commit/42e87a2aa2552013a33e6bcb2e2965d5e883ba3f"
+    "version": "1.1.1",
+    "publishedAt": 1775632770877,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1775450378949,
+      "commit": "https://github.com/openclaw/skills/commit/42e87a2aa2552013a33e6bcb2e2965d5e883ba3f"
+    }
+  ]
 }
