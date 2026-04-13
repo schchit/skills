@@ -3,9 +3,15 @@
   "slug": "execution-loop",
   "displayName": "Execution Loop",
   "latest": {
-    "version": "2.1.0",
-    "publishedAt": 1775620008814,
-    "commit": "https://github.com/openclaw/skills/commit/0a6f77472ac5d5b4256ea6daba4a67de9225628f"
+    "version": "2.4.0",
+    "publishedAt": 1775634549053,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "2.1.0",
+      "publishedAt": 1775620008814,
+      "commit": "https://github.com/openclaw/skills/commit/0a6f77472ac5d5b4256ea6daba4a67de9225628f"
+    }
+  ]
 }
