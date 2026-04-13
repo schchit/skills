@@ -3,9 +3,15 @@
   "slug": "sahabat-bumil",
   "displayName": "Sahabat Bumil 🤰",
   "latest": {
-    "version": "1.1.1",
-    "publishedAt": 1775557429866,
-    "commit": "https://github.com/openclaw/skills/commit/0e00c28ca9986b9fbc6bf24c0004cc1024a9cbd2"
+    "version": "1.2.0",
+    "publishedAt": 1775710315555,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.1.1",
+      "publishedAt": 1775557429866,
+      "commit": "https://github.com/openclaw/skills/commit/0e00c28ca9986b9fbc6bf24c0004cc1024a9cbd2"
+    }
+  ]
 }

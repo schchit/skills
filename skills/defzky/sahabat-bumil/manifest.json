@@ -1,6 +1,6 @@
 {
   "name": "sahabat-bumil",
-  "version": "1.1.1",
+  "version": "1.0.0",
   "description": "Indonesian Pregnancy Guide - Nutrition, wellness, and support for Indonesian moms",
   "author": "Bowo (Fajrizky) <dev.fajrizky@gmail.com>",
   "category": "Health & Wellness",
@@ -60,11 +60,5 @@
         "Postpartum support"
       ]
     }
-  },
-  "homepage": "https://github.com/defzky/openclaw-sahabat-bumil#readme",
-  "security_notes": {
-    "network_access": "The skill uses the requests library ONLY for documentation examples. No actual HTTP calls are made in the code. The library is included for potential future features like fetching hospital data or nutrition APIs.",
-    "data_storage": "All data (contractions, kicks) is stored locally in ~/.openclaw/ directory. No data is sent to external servers.",
-    "medical_disclaimer": "This skill provides informational guidance only and explicitly states it is NOT a substitute for professional medical advice."
   }
 }

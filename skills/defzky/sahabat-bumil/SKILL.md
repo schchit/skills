@@ -63,7 +63,7 @@
 openclaw skill install sahabat-bumil
 
 # Or manual
-git clone https://github.com/defzky/sahabat-bumil.git ~/.openclaw/skills/sahabat-bumil
+git clone https://github.com/yourusername/sahabat-bumil.git ~/.openclaw/skills/sahabat-bumil
 pip3 install -r ~/.openclaw/skills/sahabat-bumil/requirements.txt
 ```
 
@@ -344,8 +344,8 @@ export SAHABAT_BUMIL_LANG="id"  # id or en
 
 ## 🤝 Support
 
-- **Documentation:** https://github.com/defzky/sahabat-bumil
-- **Issues:** https://github.com/defzky/sahabat-bumil/issues
+- **Documentation:** https://github.com/yourusername/sahabat-bumil
+- **Issues:** https://github.com/yourusername/sahabat-bumil/issues
 - **Email:** dev.fajrizky@gmail.com
 - **Community:** Indonesian Moms Facebook Group
 

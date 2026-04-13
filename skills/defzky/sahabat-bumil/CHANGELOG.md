@@ -1,28 +1,6 @@
 # Changelog
 
-## [1.1.1] - 2026-04-07
-
-### 🔒 Security Fixes
-- Removed unicode control characters from SKILL.md and README.md
-- Fixed placeholder URLs (yourusername → defzky)
-- Added SECURITY.md with comprehensive security documentation
-- Added network usage justification in manifest.json
-- Fixed repository URL consistency
-
-### 📝 Documentation
-- Added SECURITY.md file
-- Updated manifest.json with security notes
-- Cleaned all markdown files
-
-### 🐛 Bug Fixes
-- Removed .git folder from package
-- Removed __pycache__ directories
-- Removed binary .pyc files
-
----
-
 ## [1.1.0] - 2026-04-07
- - 2026-04-07
 
 ### ✨ New Features
 - **Contraction Timer** - Track labor contractions with timing and intensity
