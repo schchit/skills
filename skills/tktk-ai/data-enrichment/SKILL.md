@@ -1,11 +1,10 @@
 ---
 name: data-enrichment
+version: 1.0.1
 description: Enrich company and contact lists with public data — firmographics, technographics, social profiles, funding history, and employee count estimates. Clean, deduplicate, and score leads from raw CSV/JSON inputs.
-metadata:
-  version: 1.0.0
-  author: TKDigital
-  category: Data & Analytics
-  tags: [data enrichment, CRM, lead scoring, firmographics, B2B data, data cleaning]
+author: TKDigital
+category: Data & Analytics
+tags: [data enrichment, CRM, lead scoring, firmographics, B2B data, data cleaning]
 ---
 
 # Data Enrichment Skill
