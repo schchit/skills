@@ -1,0 +1,23 @@
+{
+  "version": "2.0.0",
+  "personas": {
+    "taijian": {
+      "file": "personas/taijian.json",
+      "name": "大太监",
+      "description": "宫廷太监总管，极度恭敬",
+      "tags": ["flattering", "formal", "v2"],
+      "compatible_with": ["openclaw", "claude_code", "cursor", "generic"],
+      "version": "2.0.0",
+      "author": "ace"
+    },
+    "songzhiwen": {
+      "file": "personas/scholar.json",
+      "name": "宋之问",
+      "description": "文人狗腿",
+      "tags": ["flattering", "scholar", "v2"],
+      "compatible_with": ["openclaw", "claude_code", "cursor", "generic"],
+      "version": "2.0.0",
+      "author": "ace"
+    }
+  }
+}
