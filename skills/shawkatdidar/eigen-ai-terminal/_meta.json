@@ -1,11 +1,17 @@
 {
   "owner": "shawkatdidar",
   "slug": "eigen-ai-terminal",
-  "displayName": "Eigen AI Terminal",
+  "displayName": "Eigen AI Terminal — Live Intelligence for Agents",
   "latest": {
-    "version": "0.9.0",
-    "publishedAt": 1775448901315,
-    "commit": "https://github.com/openclaw/skills/commit/4c5120fa6ed1f5fbf62c7c29d8551cc70fb85d4e"
+    "version": "1.1.1",
+    "publishedAt": 1775758225877,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.9.0",
+      "publishedAt": 1775448901315,
+      "commit": "https://github.com/openclaw/skills/commit/4c5120fa6ed1f5fbf62c7c29d8551cc70fb85d4e"
+    }
+  ]
 }
