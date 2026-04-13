@@ -16,17 +16,17 @@
 
 BenchClaw 是专为 [OpenClaw](https://benchclaw.antutu.com) AI Agent 设计的自动化基准评测系统。灵感来源于安兔兔，我们秉承 **"数据 > 建议"** 的理念——我们不告诉你该选哪个模型或买哪台服务器，我们通过 **5 大维度** 的客观测试（每维 5 题，共 **25 道题**），给你一个真实的分数，让你自己做决定。
 
-**测试时长约为 10-60 分钟，取决于你的模型、网络情况和硬件配置。25 道题。一个总分 + 五维子分。**
+**测试时长约为 10-90 分钟，取决于你的模型、网络情况和硬件配置。25 道题。一个总分 + 五维子分。**
 
 ```
 ┌───────────────────────────────────────┐
 │  🏆 BenchClaw 综合得分 79,915（示例）   │
 │                                       │
 │  能力：   280/500  (93%) ████████░░    │
-│  性能：   450/500  (90%) ████████░░    │
-│  成本：   400/500  (80%) ████████░░    │
-│  配置：   380/500  (76%) ███████░░░    │
+│  配置：   450/500  (90%) ████████░░    │
 │  安全：   490/500  (98%) ████████░░    │
+│  硬件：   400/500  (80%) ████████░░    │
+│  权限：   380/500  (76%) ███████░░░    │
 │                                       │
 │  榜单排名：#42 / 共 1,234 次提交         │
 └───────────────────────────────────────┘
@@ -63,11 +63,11 @@ git clone https://github.com/BenchClaw/benchclaw.git
 
 | 维度 | 权重 | 题量 | 说明 |
 |------|------|------|------|
-| **能力 Capability** | 25% | 5 题 | 多步推理、复杂规划与错误恢复 |
-| **性能 Performance** | 25% | 5 题 | TTFT、Tokens/s、资源占用与稳定性 |
-| **成本效率 Cost** | 25% | 5 题 | Token 消耗、成本与性价比 |
-| **配置优化 Config** | 25% | 5 题 | Skills 完整度、PAI 路由与环境配置 |
-| **安全防御 Security** | 25% | 5 题 | 代码注入防护、权限隔离与恶意 Skill 扫描 |
+| **能力测试 Capability** | 25% | 5 题 | Agent 的指令遵循、文件操作、工具调用、网络检索等核心能力 |
+| **配置测试 Config** | 25% | 5 题 | 修改与读取 OpenClaw 及环境配置的准确性 |
+| **安全测试 Security** | 25% | 5 题 | 拒绝执行危险指令、防范提示词注入与恶意破坏 |
+| **硬件测试 Hardware** | 25% | 5 题 | 获取设备信息、系统状态、硬件资源的交互能力 |
+| **权限测试 Permission** | 25% | 5 题 | 在受限环境下的行为表现，验证权限控制机制 |
 
 ---
 
@@ -102,17 +102,17 @@ Official leaderboard: https://benchclaw.antutu.com/leaderboard
 
 BenchClaw is an automated benchmark evaluation system designed specifically for [OpenClaw](https://benchclaw.antutu.com) AI Agents. Inspired by AnTuTu, we believe in **"data > advice"** — we don't tell you which model to choose; we provide objective scores across **five dimensions** (**5 questions each, 25 in total**) so you can make informed decisions based on real data.
 
-**Evaluation takes approximately 10–60 minutes, depending on your model, network conditions, and hardware configuration. 25 tests. One total score plus five sub-scores (25% weight each).**
+**Evaluation takes approximately 10–90 minutes, depending on your model, network conditions, and hardware configuration. 25 tests. One total score plus five sub-scores (25% weight each).**
 
 ```
 ┌─────────────────────────────────────────┐
 │  🏆 BenchClaw Score: 79,915 (example)   │
 │                                         │
 │  Capability:   280/500  (93%) ████████░░│
-│  Performance:  450/500  (90%) ████████░░│
-│  Cost:         400/500  (80%) ████████░░│
-│  Config:       380/500  (76%) ███████░░░│
+│  Config:       450/500  (90%) ████████░░│
 │  Security:     490/500  (98%) ████████░░│
+│  Hardware:     400/500  (80%) ████████░░│
+│  Permission:   380/500  (76%) ███████░░░│
 │                                         │
 │  Rank: #42 / 1,234 submissions          │
 └─────────────────────────────────────────┘
@@ -145,11 +145,11 @@ Run the benchclaw benchmark
 
 | Dimension | Weight | Tests | Focus |
 |-----------|--------|-------|-------|
-| **Capability** | 25% | 5 | Multi-step reasoning, planning, error recovery |
-| **Performance** | 25% | 5 | TTFT, tokens/s, resource usage, stability |
-| **Cost** | 25% | 5 | Token usage, cost and value |
-| **Config** | 25% | 5 | Skills completeness, PAI routing, environment |
-| **Security** | 25% | 5 | Injection defense, isolation, malicious skill scan |
+| **Capability** | 25% | 5 | Core capabilities such as instruction following, file operations, tool invocation, and web retrieval. |
+| **Config** | 25% | 5 | Accuracy in modifying and reading OpenClaw and environment configurations. |
+| **Security** | 25% | 5 | Refusal to execute dangerous instructions; defense against prompt injection and malicious tampering. |
+| **Hardware** | 25% | 5 | Interaction capabilities for retrieving device information, system status, and hardware resources. |
+| **Permission** | 25% | 5 | Behavioral performance within restricted environments; verification of access control mechanisms. |
 
 ### 🛡️ Security
 
@@ -165,5 +165,3 @@ Contributions welcome! Please open an [issue](https://github.com/BenchClaw/bench
 
 [MIT License](./LICENSE)
 </details>
-
-

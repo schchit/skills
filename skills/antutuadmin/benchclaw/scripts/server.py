@@ -8,17 +8,15 @@ BenchClaw 服务端 API 模块。
 """
 from __future__ import annotations
 
-import hashlib
-import hmac
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from typing import Any
-import base64
 
 from config import (
     CLIENT_VERSION,
@@ -27,10 +25,10 @@ from config import (
     UPLOAD_STDOUT_TRUNCATE_LENGTH,
     UPLOAD_STDERR_TRUNCATE_LENGTH,
 )
-from crypto import client_encrypt, client_decrypt, _get_key
+from crypto import hybrid_encrypt_json
 
-# 分类得分映射：按字母序固定对应 s1~s5
-CATEGORY_ORDER = ["capability", "config", "hardware", "permission", "security"]
+# 分类得分映射 → s1~s5：能力、配置、安全、硬件、权限（与官网/榜单列一致）
+CATEGORY_ORDER = ["capability", "config", "security", "hardware", "permission"]
 
 # 服务端要求固定 25 个 b/r 字段
 TOTAL_QUESTIONS = 25
@@ -40,6 +38,39 @@ TOTAL_QUESTIONS = 25
 # 工具函数
 # ─────────────────────────────────────────────
 
+_SANITIZE_RULES: list[tuple[re.Pattern[str], str]] = [
+    # Anthropic Claude API key（必须在 OpenAI sk- 规则之前）
+    (re.compile(r"sk-ant-[a-zA-Z0-9\-]{20,}"), "sk-ant-***"),
+    # OpenAI API key
+    (re.compile(r"sk-[a-zA-Z0-9]{20,}"), "sk-***"),
+    # Google Gemini API key
+    (re.compile(r"AIza[a-zA-Z0-9_\-]{35}"), "AIza***"),
+    # AWS Access Key ID
+    (re.compile(r"AKIA[A-Z0-9]{16}"), "AKIA***"),
+    # GitHub Personal Access Token
+    (re.compile(r"ghp_[a-zA-Z0-9]{36}"), "ghp_***"),
+    # ClaWHub token
+    (re.compile(r"clh_[a-zA-Z0-9]+"), "clh_***"),
+    # Feishu open_id
+    (re.compile(r"ou_[a-f0-9]{32}"), "ou_***"),
+    # Slack token
+    (re.compile(r"xox[bpsa]-[a-zA-Z0-9\-]+"), "xox-***"),
+    # 本地路径 /home/...
+    (re.compile(r"/home/[^\s\"']+"), "/home/***"),
+    # 本地路径 /root/...
+    (re.compile(r"/root/[^\s\"']+"), "/root/***"),
+    # 邮箱地址
+    (re.compile(r"\b[\w.\+\-]+@[\w.\-]+\.\w+\b"), "***@***"),
+]
+
+
+def _sanitize_output(text: str) -> str:
+    """对 stdout/stderr 文本进行正则脱敏，替换已知的敏感信息模式。"""
+    for pattern, replacement in _SANITIZE_RULES:
+        text = pattern.sub(replacement, text)
+    return text
+
+
 def _dump_to_temp(data: Any, filename: str) -> None:
     """将数据以 JSON 格式写入 tests 目录，便于调试查看。"""
     temp_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "temp")
@@ -48,14 +79,6 @@ def _dump_to_temp(data: Any, filename: str) -> None:
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-
-def _hmac_sign(gpv: str) -> str:
-    """
-    对 gpv 密文做 HMAC-SHA256 签名，密钥与 AES 加密密钥相同。
-    返回十六进制字符串。
-    """
-    key = _get_key()
-    return hmac.new(key, gpv.encode("utf-8"), hashlib.sha256).hexdigest()
 
 def _iso_time(ts: float) -> str:
     """将 Unix 时间戳（秒或毫秒）转为 ISO 8601 UTC 字符串。"""
@@ -78,11 +101,11 @@ def _post_json(
     Parameters
     ----------
     encrypt : bool
-        True 时将 body 加密后以 {"gpv": "<encrypted>"} 形式发送。
+        True 时 RSA+AES 混合加密为 {"key","gpv"}；响应 data 为明文 JSON（v2.9）。
     """
     if encrypt:
-        gpv = client_encrypt(body)
-        payload = json.dumps({"gpv": gpv}, ensure_ascii=False).encode("utf-8")
+        key_b64, gpv, _aes = hybrid_encrypt_json(body)
+        payload = json.dumps({"key": key_b64, "gpv": gpv}, ensure_ascii=False).encode("utf-8")
     else:
         payload = json.dumps(body, ensure_ascii=False).encode("utf-8")
 
@@ -101,30 +124,6 @@ def _post_json(
 # 下载题目
 # ─────────────────────────────────────────────
 
-def _measure_api_ping(openclaw_root: str) -> float | None:
-    """从 openclaw.json 读取模型 API baseUrl，测量到该地址的网络延迟（ms）。"""
-    try:
-        import time as _time, json as _json, urllib.request as _req
-        cfg_path = os.path.join(openclaw_root, "openclaw.json")
-        with open(cfg_path) as f:
-            cfg = _json.load(f)
-        providers = cfg.get("models", {}).get("providers", {})
-        # 取第一个有 baseUrl 的 provider
-        base_url = None
-        for provider in providers.values():
-            if isinstance(provider, dict) and provider.get("baseUrl"):
-                base_url = provider["baseUrl"].rstrip("/")
-                break
-        if not base_url:
-            return None
-        # ping baseUrl（HEAD 请求，轻量）
-        _t0 = _time.time()
-        _req.urlopen(base_url, timeout=5)
-        return round((_time.time() - _t0) * 1000, 1)
-    except Exception:
-        return None
-
-
 def fetch_questions(
     device_fingerprint: str,
     primary_model: str,
@@ -141,11 +140,7 @@ def fetch_questions(
       - session_id     : str
       - hash           : str
       - model_cost     : dict | None
-      - api_ping_ms    : float | None  (C2: 到模型 API 服务器的网络延迟)
     """
-    # C2: 测量到模型 API 服务器的网络延迟
-    api_ping_ms = _measure_api_ping(openclaw_root) if openclaw_root else None
-
     out = _post_json(
         api_url,
         body={"model_name": primary_model, "client_version": CLIENT_VERSION},
@@ -156,13 +151,9 @@ def fetch_questions(
     if not out.get("success"):
         raise RuntimeError(f"API returned success=false: {out.get('message', out)}")
 
-    # data 是 AES 加密后的 Base64 字符串，解密得到 JSON 题库数据
-    raw_data = out.get("data")
-    if not isinstance(raw_data, str):
-        raise RuntimeError(f"API data 格式错误：期望加密字符串，实际 {type(raw_data).__name__}")
-    data = client_decrypt(raw_data)
+    data = out.get("data")
     if not isinstance(data, dict):
-        raise RuntimeError("解密后的 data 不是 JSON 对象")
+        raise RuntimeError(f"API data 格式错误：期望题目包 JSON 对象，实际 {type(data).__name__}")
 
     # 仅供调试使用：将解密后的原始数据写入 tests 目录，便于调试查看
     # _dump_to_temp(data, "fetch_questions_data.json")
@@ -176,7 +167,6 @@ def fetch_questions(
         "session_id": data.get("session_id", ""),
         "hash": data.get("hash", ""),
         "model_cost": data.get("model_cost"),
-        "api_ping_ms": api_ping_ms,  # C2: 到模型 API 服务器的延迟（ms）
     }
 
 
@@ -232,15 +222,17 @@ def _build_upload_payload(data: dict[str, Any]) -> dict[str, Any]:
         r = results[idx - 1] if idx <= len(results) else None
         if r is None:
             payload[f"r{idx}"] = {
-                "start_time":    "",
-                "end_time":      "",
-                "total_tokens":  0,
-                "input_tokens":  0,
-                "output_tokens": 0,
-                "returncode":    -1,
-                "error":         "",
-                "stdout":        "",
-                "stderr":        "",
+                "start_time":         "",
+                "end_time":           "",
+                "total_tokens":       0,
+                "input_tokens":       0,
+                "output_tokens":      0,
+                "cache_read_tokens":  0,
+                "cache_write_tokens": 0,
+                "returncode":         -1,
+                "error":              "",
+                "stdout":             "",
+                "stderr":             "",
                 "accuracy_score":     0,
                 "real_accuracy_score": 0,
                 "tps_score":          0,
@@ -257,24 +249,28 @@ def _build_upload_payload(data: dict[str, Any]) -> dict[str, Any]:
         # 截断超长文本，避免 payload 过大
         if len(stdout_val) > UPLOAD_STDOUT_TRUNCATE_LENGTH:
             stdout_val = stdout_val[:UPLOAD_STDOUT_TRUNCATE_LENGTH] + "…(truncated)"
+        stdout_val = _sanitize_output(stdout_val)
 
         stderr_val = (r.get("stderr") or "")
         if len(stderr_val) > UPLOAD_STDERR_TRUNCATE_LENGTH:
             stderr_val = stderr_val[:UPLOAD_STDERR_TRUNCATE_LENGTH] + "…(truncated)"
+        stderr_val = _sanitize_output(stderr_val)
 
         payload[f"r{idx}"] = {
-            "start_time":     _iso_time(r.get("start_time")) if r.get("start_time") else "",
-            "end_time":       _iso_time(r.get("end_time"))   if r.get("end_time")   else "",
-            "total_tokens":   r.get("total_tokens") or 0,
-            "input_tokens":   r.get("input_tokens") or 0,
-            "output_tokens":  r.get("output_tokens") or 0,
-            "returncode":     r.get("returncode", -1),
-            "error":          r.get("error") or "",
-            "stdout":         stdout_val,
-            "stderr":         stderr_val,
-            "accuracy_score": r.get("accuracy_score") or 0,
+            "start_time":         _iso_time(r.get("start_time")) if r.get("start_time") else "",
+            "end_time":           _iso_time(r.get("end_time"))   if r.get("end_time")   else "",
+            "total_tokens":       r.get("total_tokens") or 0,
+            "input_tokens":       r.get("input_tokens") or 0,
+            "output_tokens":      r.get("output_tokens") or 0,
+            "cache_read_tokens":  r.get("cache_read_tokens") or 0,
+            "cache_write_tokens": r.get("cache_write_tokens") or 0,
+            "returncode":         r.get("returncode", -1),
+            "error":              r.get("error") or "",
+            "stdout":             stdout_val,
+            "stderr":             stderr_val,
+            "accuracy_score":     r.get("accuracy_score") or 0,
             "real_accuracy_score": r.get("real_accuracy_score") or 0,
-            "tps_score":      r.get("tps_score") or 0,
+            "tps_score":          r.get("tps_score") or 0,
         }
 
     return payload
@@ -443,9 +439,8 @@ def upload_results_from_dict(
     except Exception as e:
         print(f"保存 payload 到文件失败: {e}")
 
-    gpv = client_encrypt(payload)
-    hash = _hmac_sign(gpv)
-    body = json.dumps({"gpv": gpv, "hash": hash}, ensure_ascii=False).encode("utf-8")
+    key_b64, gpv, _aes = hybrid_encrypt_json(payload)
+    body = json.dumps({"key": key_b64, "gpv": gpv}, ensure_ascii=False).encode("utf-8")
 
     ok, msg = _do_post_body(body, fingerprint, upload_url)
     if ok:
@@ -506,5 +501,55 @@ def test_upload():
         return
 
 
+def test_sanitize():
+    """对 _sanitize_output 的各条脱敏规则进行验证。"""
+    cases = [
+        # (描述, 输入, 期望包含的替换结果)
+        ("Anthropic Claude API key", "token=sk-ant-abcdefghijklmnopqrst123456", "sk-ant-***"),
+        ("OpenAI API key",           "key: sk-abcdefghijklmnopqrstu",            "sk-***"),
+        ("Google Gemini API key",    "AIzaSyAbCdEfGhIjKlMnOpQrStUvWxYz12345678", "AIza***"),
+        ("AWS Access Key ID",        "access_key=AKIAIOSFODNN7EXAMPLE",           "AKIA***"),
+        ("GitHub PAT",               "ghp_" + "a" * 36,                           "ghp_***"),
+        ("ClaWHub token",            "auth: clh_MySecretToken123",                "clh_***"),
+        ("飞书 open_id",             "open_id: ou_" + "a1b2c3d4" * 4,             "ou_***"),
+        ("Slack bot token",          "xoxb-123456789-abcdefghij",                 "xox-***"),
+        ("Slack user token",         "xoxp-987654321-zyxwvutsrq",                 "xox-***"),
+        ("本地路径 /home/",           "reading /home/user/.bashrc failed",         "/home/***"),
+        ("本地路径 /root/",           "config at /root/.config/app.yaml",          "/root/***"),
+        ("邮箱地址",                  "contact admin@example.com for help",        "***@***"),
+        ("混合多条规则",
+         "key=sk-abcdefghijklmnopqrstu path=/home/ci/.env email=foo@bar.com",
+         None),  # None 表示只打印结果，不做单一断言
+    ]
+
+    passed = 0
+    failed = 0
+    for desc, text, expected in cases:
+        result = _sanitize_output(text)
+        if expected is None:
+            print(f"  [INFO] {desc}")
+            print(f"         输入  : {text}")
+            print(f"         输出  : {result}")
+            print()
+            continue
+        if expected in result and text != result:
+            print(f"  [PASS] {desc}")
+            print(f"         输入  : {text}")
+            print(f"         输出  : {result}")
+            passed += 1
+        else:
+            print(f"  [FAIL] {desc}")
+            print(f"         输入  : {text}")
+            print(f"         输出  : {result}")
+            print(f"         期望含: {expected}")
+            failed += 1
+        print()
+
+    print(f"结果: {passed} 通过, {failed} 失败")
+
+
 if __name__ == "__main__":
-    test_upload()
+    if len(sys.argv) > 1 and sys.argv[1] == "sanitize":
+        test_sanitize()
+    else:
+        test_upload()
