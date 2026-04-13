@@ -1,0 +1,11 @@
+{
+  "owner": "talkstream",
+  "slug": "ru-text",
+  "displayName": "ru-text",
+  "latest": {
+    "version": "1.6.0",
+    "publishedAt": 1775689077209,
+    "commit": null
+  },
+  "history": []
+}
