@@ -14,6 +14,12 @@ No completion claims without fresh verification evidence. If the verification co
 
 "Should pass", "probably works", and "looks correct" are not verification. Only command output confirming the claim counts (typically exit code 0). If pre-existing failures cause non-zero exits unrelated to your changes, see "When Verification Fails" below.
 
+## Pre-Verification Check
+
+Before running verification, check the working tree state: `git status --porcelain`. If there are uncommitted changes unrelated to the current task, handle them first (commit, stash, or acknowledge). Adding verification commits on top of a dirty tree creates tangled history.
+
+When verifying work delegated to a subagent, do not trust the implementer's own report. Read the actual code or test output independently. Spec compliance and quality are separate concerns -- verify both.
+
 ## Gate Function
 
 Before any success claim, run through these five steps:
@@ -104,31 +110,40 @@ If the output does not confirm the claim:
 
 ## Rationalization Prevention
 
-Stop and re-verify when you catch yourself thinking any of these:
+If you're reasoning about the outcome instead of running the command, the Gate is not satisfied. "Should work", "trivial change", "just a refactor", "new tests pass" (not "all tests pass"), "CI will catch it" -- these are all the same failure mode: substituting confidence for evidence. Any satisfaction expression ("looks good", "seems correct") triggers the Gate, spirit over letter.
 
-| Rationalization | Reality |
-|----------------|---------|
-| "Should work now" / "probably works" / "seems to" | "Should" is not evidence. Run it. |
-| "I'm confident this is correct" / feeling satisfied before running | Confidence is not evidence. Run it. |
-| "It's a trivial change" / "it's a small change" | Trivial changes still break builds. Run it. |
-| "I already verified something similar" / relying on a previous run | Similar is not identical. Run THIS verification now. |
-| "The logic is obviously correct" / claiming success from code reading | Obvious bugs ship to production daily. Run it. |
-| Verifying only part of the claim ("new tests pass") | "New tests pass" is not "all tests pass". Run the full suite. |
-| Trusting a subagent's report without checking | Subagent claims require independent verification. Run it yourself. |
-| "I'm tired" / wanting the task to be over | Exhaustion is not an excuse. The last verification matters most. |
-| Rephrasing a claim to dodge the rule ("looks good" instead of "tests pass") | Spirit over letter. Any satisfaction expression about work state triggers verification. |
-| "Just this once" / "This time it's different" | Every bypass weakens the habit. No exceptions. |
-| "The CI will catch it" | CI runs after you claim done. Verification happens before the claim, not after. CI catches what CI tests -- verify locally what CI doesn't cover. |
-| "It worked on my machine" | Environment differences are the #1 source of "works for me" bugs. Verify in the target environment. |
-| "The tests are slow, I'll check later" | Slow tests are still faster than debugging a broken deployment. Run them now. |
-| "It's just a refactor, behavior didn't change" | Refactors are the most common source of subtle regressions. Run the tests. |
+## Completion Report Format
 
-**Red flags that verification was skipped:**
+After verification passes, produce a structured report rather than an open-ended summary. This surfaces scope discipline explicitly and makes the agent's restraint visible to reviewers.
 
-- Using words like "should", "probably", "seems to" when describing outcomes
-- Expressing confidence without citing specific test output or command results
-- Claiming completion based on reasoning alone ("the logic is correct, so it should work")
-- Referencing a previous test run instead of a fresh one
+```
+## Completion report
+
+**Status**: DONE / DONE_WITH_CONCERNS / BLOCKED / NEEDS_CONTEXT
+
+**Changes made**
+- path/to/file.ts: [one-line description of what changed and why]
+- path/to/other.ts: [one-line description]
+
+**Things I didn't touch (intentionally)**
+- [thing noticed but out of scope, with one-line reason]
+- [adjacent issue deferred, with one-line reason]
+
+**Potential concerns**
+- [any risk, uncertainty, or open question the reviewer should know about]
+- [or "none"]
+
+**Verification evidence**
+- [command]: [exit code / result summary]
+```
+
+Status meanings:
+- **DONE** — task complete, all tests pass, no concerns
+- **DONE_WITH_CONCERNS** — complete but flagging risks; the `Potential concerns` section is mandatory
+- **BLOCKED** — cannot proceed. Name the blocker and what would unblock it
+- **NEEDS_CONTEXT** — missing information to start or continue. Name what's missing
+
+The `Things I didn't touch` section is not optional — if nothing was noticed, write "nothing noticed." The goal is to prove the agent considered scope, not to pad the report.
 
 ## References
 
