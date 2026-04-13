@@ -3,9 +3,15 @@
   "slug": "quant-github-resources",
   "displayName": "Quant Github Resources",
   "latest": {
-    "version": "1.4.1",
-    "publishedAt": 1775419679753,
-    "commit": "https://github.com/openclaw/skills/commit/666c90ed398a74c04b6dbf4c1c30877929534351"
+    "version": "1.4.2",
+    "publishedAt": 1775657226903,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.4.1",
+      "publishedAt": 1775419679753,
+      "commit": "https://github.com/openclaw/skills/commit/666c90ed398a74c04b6dbf4c1c30877929534351"
+    }
+  ]
 }
