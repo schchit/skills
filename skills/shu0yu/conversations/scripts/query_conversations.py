@@ -1,116 +1,123 @@
+# -*- coding: utf-8 -*-
 """
-查询 conversations.db
-所需环境变量:
-  OPENCLAW_WORKSPACE  - OpenClaw workspace 路径（默认从父级目录推断）
-  CONVERSATIONS_DB    - 数据库路径（默认 {workspace}/conversations.db）
-
-用法:
-  python query_conversations.py stats              # 总览统计
-  python query_conversations.py recent [n]         # 最近 n 条（默认10）
-  python query_conversations.py random [n]         # 随机 n 条（默认5）
-  python query_conversations.py search <关键词>     # 关键词搜索
-  python query_conversations.py session <key>      # 某 session 的消息
-  python query_conversations.py after <ts_ms>      # 某时间之后的记录
+查询对话历史
+支持 FTS5 MATCH（Python 3.9+）和 LIKE 降级（3.8）
 """
+import os, io, sys
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 import sqlite3
 import sys
-import os
 from pathlib import Path
-from datetime import datetime
 
-def get_workspace():
-    ws = os.environ.get("OPENCLAW_WORKSPACE")
-    if ws:
-        return Path(ws)
-    script_dir = Path(__file__).resolve().parent
-    # 常见 skill 安装路径: {workspace}/skills/conversations/scripts
-    for parent in [script_dir.parent, script_dir.parent.parent]:
-        if parent and (parent / "openclaw.json").exists():
-            return parent
-    # 常见 workspace 位置
+SESSION_KEY_RE = __import__("re").compile(r"agent:main:(?:session:)?(?P<key>[^:]+)")
+
+
+def get_db_path():
+    ws_env = os.environ.get("OPENCLAW_WORKSPACE")
+    if ws_env:
+        return Path(ws_env) / "conversations.db"
     home = Path.home()
+    # 优先找 workspace/conversations.db，不找 openclaw 根目录下的同名空文件
     for c in [home / ".openclaw" / "workspace", home / ".openclaw"]:
-        if (c / "openclaw.json").exists():
-            return c
-    raise RuntimeError("找不到 OpenClaw workspace，请设置 OPENCLAW_WORKSPACE 环境变量")
+        db = c / "conversations.db"
+        if db.exists() and db.stat().st_size > 0:
+            return db
+    return home / ".openclaw" / "conversations.db"
 
-workspace = get_workspace()
-DB_PATH = os.environ.get("CONVERSATIONS_DB", str(workspace / "conversations.db"))
 
-sys.stdout.reconfigure(encoding="utf-8")
-conn = sqlite3.connect(DB_PATH)
-c = conn.cursor()
+def detect_fts(conn):
+    try:
+        conn.execute("CREATE VIRTUAL TABLE IF NOT EXISTS _q_test USING fts5(content)")
+        conn.execute("DROP TABLE _q_test")
+        return True
+    except Exception:
+        return False
 
-def ts_to_str(ms):
-    return datetime.fromtimestamp(ms/1000).strftime("%m-%d %H:%M")
 
-def print_msg(role, content, ts, session_key=""):
-    prefix = f"[{ts_to_str(ts)}] {role}"
-    if session_key:
-        prefix += f" ({session_key[-8:]})"
-    print(f"{prefix}:")
-    print(f"  {content[:300]}{'...' if len(content) > 300 else ''}")
-    print()
+def search(conn, query, limit=10, use_fts=False):
+    pattern = f"%{query}%"
+    # LIKE 始终可用，作为主要搜索或 fallback
+    rows = conn.execute("""
+        SELECT session_key, role, content, created_at
+        FROM chunks
+        WHERE content LIKE :pattern
+        ORDER BY created_at DESC
+        LIMIT :limit
+    """, {"pattern": pattern, "limit": limit}).fetchall()
+    # 如果 FTS 找到更多结果，可以合并
+    if use_fts:
+        try:
+            fts_rows = conn.execute("""
+                SELECT c.session_key, c.role, c.content, c.created_at
+                FROM chunks c
+                WHERE c.rowid IN (
+                    SELECT rowid FROM chunks_fts WHERE chunks_fts MATCH :q
+                )
+                ORDER BY c.created_at DESC
+                LIMIT :limit
+            """, {"q": query, "limit": limit}).fetchall()
+            # 合并去重
+            seen = {(r[0], r[2][:50]) for r in rows}
+            for r in fts_rows:
+                key = (r[0], r[2][:50])
+                if key not in seen:
+                    rows.append(r)
+                    seen.add(key)
+            rows.sort(key=lambda x: x[3], reverse=True)
+            rows = rows[:limit]
+        except Exception:
+            pass
+    return rows
 
-action = sys.argv[1] if len(sys.argv) > 1 else "stats"
-arg = sys.argv[2] if len(sys.argv) > 2 else ""
 
-if action == "stats":
-    c.execute("SELECT COUNT(*), role FROM chunks GROUP BY role")
-    for count, role in c.fetchall():
-        print(f"  {role}: {count}")
-    c.execute("SELECT MIN(created_at), MAX(created_at) FROM chunks")
-    mn, mx = c.fetchone()
-    if mn:
-        print(f"  时间范围: {ts_to_str(mn)} ~ {ts_to_str(mx)}")
+def format_ts(ts_ms):
+    import datetime
+    if not ts_ms:
+        return "unknown"
+    try:
+        return datetime.datetime.fromtimestamp(ts_ms / 1000).strftime("%Y-%m-%d %H:%M")
+    except Exception:
+        return str(ts_ms)
 
-elif action == "recent":
-    n = int(arg) if arg else 10
-    c.execute("SELECT role, content, created_at, session_key FROM chunks ORDER BY created_at DESC LIMIT ?", (n,))
-    for role, content, ts, sk in c.fetchall():
-        print_msg(role, content, ts, sk)
 
-elif action == "search":
-    if not arg:
-        print("用法: search <关键词>")
-    else:
-        keyword = f"%{arg}%"
-        c.execute("SELECT role, content, created_at, session_key FROM chunks WHERE content LIKE ? ORDER BY created_at DESC LIMIT 20", (keyword,))
-        rows = c.fetchall()
-        print(f"找到 {len(rows)} 条:")
-        for role, content, ts, sk in rows:
-            print_msg(role, content, ts, sk)
+def main(query=None, limit=10):
+    if query is None:
+        if len(sys.argv) < 2:
+            print("用法: query_conversations.py <搜索内容> [limit]")
+            return
+        query = sys.argv[1]
+        if len(sys.argv) >= 3:
+            limit = int(sys.argv[2])
 
-elif action == "session":
-    if not arg:
-        print("用法: session <session_key>")
-    else:
-        key = arg if arg.startswith("agent:") else f"%{arg}%"
-        c.execute("SELECT role, content, created_at, session_key FROM chunks WHERE session_key LIKE ? ORDER BY seq", (key,))
-        rows = c.fetchall()
-        print(f"session [{arg}] 共 {len(rows)} 条:")
-        for role, content, ts, sk in rows:
-            print_msg(role, content, ts, sk)
+    db_path = get_db_path()
+    if not db_path.exists():
+        print(f"[!] 数据库不存在: {db_path}")
+        print(f"    请先运行: python import_sessions.py")
+        return
 
-elif action == "random":
-    n = int(arg) if arg else 5
-    c.execute("SELECT role, content, created_at, session_key FROM chunks ORDER BY RANDOM() LIMIT ?", (n,))
-    for role, content, ts, sk in c.fetchall():
-        print_msg(role, content, ts, sk)
+    conn = sqlite3.connect(db_path)
+    use_fts = detect_fts(conn)
 
-elif action == "after":
-    if not arg:
-        print("用法: after <timestamp_ms>")
-    else:
-        ts = int(arg)
-        c.execute("SELECT role, content, created_at, session_key FROM chunks WHERE created_at > ? ORDER BY created_at LIMIT 20", (ts,))
-        rows = c.fetchall()
-        print(f"{ts_to_str(ts)} 之后共 {len(rows)} 条:")
-        for role, content, ts, sk in rows:
-            print_msg(role, content, ts, sk)
+    rows = search(conn, query, limit=limit, use_fts=use_fts)
 
-else:
-    print(f"未知命令: {action}")
-    print(__doc__)
+    if not rows:
+        print("没有找到相关内容")
+        conn.close()
+        return
 
-conn.close()
+    print(f"找到 {len(rows)} 条结果:\n")
+    for i, (session_key, role, content, created_at) in enumerate(rows, 1):
+        ts = format_ts(created_at)
+        key_match = SESSION_KEY_RE.search(session_key)
+        key_short = key_match.group("key")[-8:] if key_match else session_key[-8:]
+        print(f"--- [{i}] {ts} ({key_short}) ---")
+        # 内容截断
+        preview = content[:300] + ("..." if len(content) > 300 else "")
+        print(preview)
+        print()
+
+    conn.close()
+
+
+if __name__ == "__main__":
+    main()

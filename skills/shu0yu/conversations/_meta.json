@@ -3,9 +3,15 @@
   "slug": "conversations",
   "displayName": "conversations",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1775553599493,
-    "commit": "https://github.com/openclaw/skills/commit/6b6eb4b5aa54415c72ad5280461345763eb468b7"
+    "version": "2.0.0",
+    "publishedAt": 1775659205048,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1775553599493,
+      "commit": "https://github.com/openclaw/skills/commit/6b6eb4b5aa54415c72ad5280461345763eb468b7"
+    }
+  ]
 }

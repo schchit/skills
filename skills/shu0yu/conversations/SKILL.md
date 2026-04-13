@@ -1,59 +1,72 @@
 ---
-name: conversations
-description: 管理对话历史存档。从 OpenClaw sessions/*.jsonl 导入对话到本地 SQLite 库，并提供查询能力。触发场景：(1) 用户要求导入历史对话、(2) 用户要求查看/搜索/读取历史对话、(3) 需要查询过去某次对话内容、(4) "我们的对话记录"、"历史对话"、"memos"、"conversations" 相关请求。
+name: conversations-universal
+description: 从 OpenClaw sessions/*.jsonl 导入对话历史到本地 SQLite，配合 FTS5 全文搜索。成为真正的记忆库，支持语义化查询历史对话，让整理和回顾更高效。装好后跑一次 import，之后随时可以 query。
 ---
 
-# Conversations
+# conversations-universal
 
-将 OpenClaw session 文件（JSONL）导入本地 SQLite 对话库，并提供查询工具。
+对话历史的本地记忆库。
 
-## 数据库
+## 使用方式
 
-- 路径：`{WORKSPACE}/conversations.db`（可通过环境变量 `CONVERSATIONS_DB` 覆盖）
-- 结构：`chunks`（user/assistant 对话）、`embeddings`（向量索引）
-- 详情见 `references/schema.md`
+### 第一次使用
+
+1. 运行导入脚本，把历史 session 读入本地库：
+```
+python {baseDir}/scripts/import_sessions.py
+```
+
+2. 之后每次想回顾历史，直接用 query 脚本：
+```
+python {baseDir}/scripts/query_conversations.py <搜索内容>
+```
+
+### 查询示例
+
+```bash
+# 查询某天的讨论
+python scripts/query_conversations.py "我们讨论过内存泄漏"
+
+# 查询某个话题
+python scripts/query_conversations.py "OpenClaw 配置"
+```
+
+### 自动导入
+
+建议配合 cron 定期导入新 session：
+```
+openclaw cron add \
+  --name "对话历史导入" \
+  --cron "0 */6 * * *" \
+  --session isolated \
+  --message "python {baseDir}/scripts/import_sessions.py" \
+  --announce
+```
+
+## 工作原理
+
+- **存储**：SQLite + FTS5 全文搜索，零外部依赖
+- **导入**：读取 `agents/main/sessions/*.jsonl`，解析 role/content，写入 chunks 表
+- **搜索**：FTS5 MATCH，支持自然语言查询
 
 ## 环境变量
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `OPENCLAW_WORKSPACE` | OpenClaw workspace 路径 | 自动推断 |
-| `CONVERSATIONS_DB` | 数据库路径 | `{WORKSPACE}/conversations.db` |
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| OPENCLAW_WORKSPACE | 自动推断 | session 文件所在目录 |
+| CONVERSATIONS_DB | `{workspace}/conversations.db` | 数据库路径 |
+| DRY_RUN | false | 试运行，不写入 |
 
-## 导入脚本
+## 依赖
 
-```bash
-# 预览（不写入）
-python3 {baseDir}/scripts/import_sessions.py --dry-run
+- Python 3.8+（内置 sqlite3，FTS5 需要 3.9+）
+- OpenClaw sessions 目录
 
-# 执行导入
-python3 {baseDir}/scripts/import_sessions.py
-```
+## 与 conversations 1.0 的区别
 
-- 自动跳过 `.deleted` 标记的 session 文件
-- 按 content_hash 去重，已导入的不重复写入
-- 只导入 user + assistant，跳过 toolResult
-
-## 查询脚本
-
-```bash
-python3 {baseDir}/scripts/query_conversations.py stats              # 统计总览
-python3 {baseDir}/scripts/query_conversations.py recent [n]       # 最近 n 条
-python3 {baseDir}/scripts/query_conversations.py random [n]        # 随机 n 条
-python3 {baseDir}/scripts/query_conversations.py search <关键词>   # 关键词搜索
-python3 {baseDir}/scripts/query_conversations.py session <key>     # 某 session 的消息
-python3 {baseDir}/scripts/query_conversations.py after <ts_ms>     # 某时间戳之后的记录
-```
-
-**时间戳换算**（Python）：
-```python
-from datetime import datetime, timezone
-ts = int(datetime(2026,4,7,0,0,0,tzinfo=timezone.utc).timestamp()*1000)
-# 例: 2026-04-07 00:00 GMT+8 = 1775520000000
-```
-
-## 工作流程
-
-1. **导入**：定期（每周/每月）或积累一批新对话后跑一次 `import_sessions.py`
-2. **查询**：用 `query_conversations.py` 按需查询（搜索、随机抽样、时间范围等）
-3. **深度分析**：直接写 Python 脚本操作 `conversations.db`
+| | conversations 1.0 | conversations-universal |
+|--|--|--|
+| 搜索方式 | Ollama 向量搜索 | SQLite FTS5 |
+| 外部依赖 | 需要 Ollama | 纯 Python |
+| 搜索质量 | 高（语义） | 中（关键词） |
+| 适用场景 | 已有 Ollama 的用户 | 所有人 |
