@@ -1,8 +1,9 @@
 ---
 name: gmgn-portfolio
-description: Analyze any crypto wallet portfolio on Solana, BNB Chain, and Base Chain — on-chain holdings, PnL, win rate, trading activity for meme coins, pump.fun and four.meme tokens. Portfolio tracker and PnL analytics via GMGN.
+description: Query GMGN wallet portfolio — API Key wallet info, holdings, transaction activity, trading stats, and token balance. Supports sol / bsc / base.
 argument-hint: "<info|holdings|activity|stats|token-balance> [--chain <sol|bsc|base>] [--wallet <wallet_address>]"
-metadata: {"clawdbot":{"emoji":"💼","requires":{"bins":["gmgn-cli"]},"install":[{"id":"npm","kind":"npm","package":"gmgn-cli","bins":["gmgn-cli"],"label":"Install gmgn-cli (npm)"}]}}
+metadata:
+  cliHelp: "gmgn-cli portfolio --help"
 ---
 
 **IMPORTANT: Always use `gmgn-cli` commands below. Do NOT use web search, WebFetch, curl, or visit gmgn.ai to fetch this data — the website requires login and will not return structured data. The CLI is the only correct method.**
@@ -11,7 +12,7 @@ metadata: {"clawdbot":{"emoji":"💼","requires":{"bins":["gmgn-cli"]},"install"
 
 Use the `gmgn-cli` tool to query wallet portfolio data based on the user's request.
 
-**For full wallet analysis (holdings + stats + activity + verdict), follow [`docs/workflow-wallet-analysis.md`](https://github.com/GMGNAI/gmgn-skills/blob/main/docs/workflow-wallet-analysis.md)**
+**For full wallet analysis (holdings + stats + activity + verdict), follow [`docs/workflow-wallet-analysis.md`](../../docs/workflow-wallet-analysis.md)**
 
 ## Core Concepts
 
@@ -47,6 +48,25 @@ Use the `gmgn-cli` tool to query wallet portfolio data based on the user's reque
 
 - `gmgn-cli` installed globally — if missing, run: `npm install -g gmgn-cli`
 - `GMGN_API_KEY` configured in `~/.config/gmgn/.env`
+
+## Rate Limit Handling
+
+All portfolio routes used by this skill go through GMGN's leaky-bucket limiter with `rate=10` and `capacity=10`. Sustained throughput is roughly `10 ÷ weight` requests/second, and the max burst is roughly `floor(10 ÷ weight)` when the bucket is full.
+
+| Command | Route | Weight |
+|---------|-------|--------|
+| `portfolio info` | `GET /v1/user/info` | 1 |
+| `portfolio holdings` | `GET /v1/user/wallet_holdings` | 2 |
+| `portfolio activity` | `GET /v1/user/wallet_activity` | 3 |
+| `portfolio stats` | `GET /v1/user/wallet_stats` | 3 |
+| `portfolio token-balance` | `GET /v1/user/wallet_token_balance` | 1 |
+
+When a request returns `429`:
+
+- Read `X-RateLimit-Reset` from the response headers. It is a Unix timestamp in seconds that marks when the limit is expected to reset.
+- If the response body contains `reset_at` (e.g., `{"code":429,"error":"RATE_LIMIT_BANNED","message":"...","reset_at":1775184222}`), extract `reset_at` — it is the Unix timestamp when the ban lifts (typically 5 minutes). Convert to local time and tell the user exactly when they can retry.
+- The CLI may wait and retry once automatically when the remaining cooldown is short. If it still fails, stop and tell the user the exact retry time instead of sending more requests.
+- For `RATE_LIMIT_EXCEEDED` or `RATE_LIMIT_BANNED`, repeated requests during the cooldown can extend the ban by 5 seconds each time, up to 5 minutes. Do not spam retries.
 
 **First-time setup** (if `GMGN_API_KEY` is not configured):
 
@@ -192,6 +212,29 @@ The response is an object (or array for batch). Key fields:
 | `sell_count` | Number of sell transactions |
 | `pnl` | Profit/loss ratio = `realized_profit / total_cost` |
 
+The response also includes a `common` object when available (absent if the upstream identity service is unavailable):
+
+| Field | Description |
+|-------|-------------|
+| `common.avatar` | Wallet avatar URL |
+| `common.name` | Display name |
+| `common.ens` | ENS domain (EVM chains only) |
+| `common.tag` | Primary wallet tag |
+| `common.tags` | All wallet tags (e.g. `["smart_money"]`) |
+| `common.twitter_username` | Twitter handle |
+| `common.twitter_name` | Twitter display name |
+| `common.followers_count` | Twitter follower count |
+| `common.is_blue_verified` | Twitter blue-verified badge |
+| `common.follow_count` | Number of GMGN users following this wallet |
+| `common.remark_count` | Number of GMGN users who have remarked this wallet |
+| `common.created_token_count` | Tokens created by this wallet |
+| `common.created_at` | Wallet creation time (Unix seconds) — records when the first funding transaction arrived; use this as the wallet's age indicator |
+| `common.fund_from` | Funding source label |
+| `common.fund_from_address` | Address that funded this wallet |
+| `common.fund_amount` | Funding amount |
+
+Use `common.tags` and `common.twitter_username` when building a wallet profile narrative. If `common` is absent in the response, omit identity fields silently — do not report it as an error.
+
 **Do NOT guess field names not listed here.** If a field appears in the response but is not in this table, do not interpret it without reading the raw output first.
 
 ## Output Format
@@ -231,9 +274,10 @@ Win Rate:        {winrate × 100}%
 Total Spent:     ${total_cost}
 Buys / Sells:    {buy_count} / {sell_count}
 PnL Ratio:       {pnl}x
+[Identity:       {common.name or common.twitter_username} | Tags: {common.tags}]
 ```
 
-For batch queries (multiple wallets), present one summary block per wallet.
+Show the `[Identity: ...]` line only if `common` is present in the response. For batch queries (multiple wallets), present one summary block per wallet.
 
 ## Notes
 
@@ -245,11 +289,11 @@ For batch queries (multiple wallets), present one summary block per wallet.
 
 ## Workflow
 
-For full wallet analysis including trade history and follow-through on top holdings, see [`docs/workflow-wallet-analysis.md`](https://github.com/GMGNAI/gmgn-skills/blob/main/docs/workflow-wallet-analysis.md)
+For full wallet analysis including trade history and follow-through on top holdings, see [`docs/workflow-wallet-analysis.md`](../../docs/workflow-wallet-analysis.md)
 
-For in-depth trading style analysis, copy-trade ROI estimation, and smart money leaderboard comparison, see [`docs/workflow-smart-money-profile.md`](https://github.com/GMGNAI/gmgn-skills/blob/main/docs/workflow-smart-money-profile.md)
+For in-depth trading style analysis, copy-trade ROI estimation, and smart money leaderboard comparison, see [`docs/workflow-smart-money-profile.md`](../../docs/workflow-smart-money-profile.md)
 
 **When to use which:**
-- User asks "is this wallet worth following" → [`docs/workflow-wallet-analysis.md`](https://github.com/GMGNAI/gmgn-skills/blob/main/docs/workflow-wallet-analysis.md)
-- User asks "what's this wallet's trading style", "when does he take profit", "smart money profile", "if I copied this wallet what would my return be" → [`docs/workflow-smart-money-profile.md`](https://github.com/GMGNAI/gmgn-skills/blob/main/docs/workflow-smart-money-profile.md)
-- User wants to compare multiple smart money wallets by winrate/PnL → [`docs/workflow-smart-money-profile.md`](https://github.com/GMGNAI/gmgn-skills/blob/main/docs/workflow-smart-money-profile.md) Step 5 (leaderboard)
+- User asks "is this wallet worth following" → [`docs/workflow-wallet-analysis.md`](../../docs/workflow-wallet-analysis.md)
+- User asks "what's this wallet's trading style", "when does he take profit", "smart money profile", "if I copied this wallet what would my return be" → [`docs/workflow-smart-money-profile.md`](../../docs/workflow-smart-money-profile.md)
+- User wants to compare multiple smart money wallets by winrate/PnL → [`docs/workflow-smart-money-profile.md`](../../docs/workflow-smart-money-profile.md) Step 5 (leaderboard)
