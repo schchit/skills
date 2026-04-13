@@ -50,7 +50,7 @@ The default site is named `default`.
 ## Dual-API Architecture
 
 unifly is unusual among UniFi tools because it speaks both the modern
-Integration API **and** the older Legacy API, reconciling data between them
+Integration API **and** the older Session API, reconciling data between them
 where necessary. Understanding which API handles which operation is the most
 important operational knowledge for agents.
 
@@ -66,9 +66,10 @@ important operational knowledge for agents.
 - **Best for:** Configuration CRUD (networks, WiFi, firewall, NAT, DNS, ACL,
   traffic lists, hotspot, WANs, RADIUS)
 
-### Legacy API
+### Session API
 
-- **Auth:** Session cookie plus CSRF token (username + password login)
+- **Auth:** Session cookie plus CSRF token for session login. On UniFi OS,
+  session HTTP endpoints also accept `X-API-KEY`; session WebSocket does not.
 - **Base path:** `/proxy/network/api/` and `/proxy/network/v2/api/`
 - **Format:** Envelope-wrapped JSON (`{"meta": {...}, "data": [...]}`)
 - **Returns:** Everything the controller web UI sees, including fields the
@@ -81,20 +82,21 @@ important operational knowledge for agents.
 
 Hybrid merges both clients at login time. On every `devices list` or
 `clients list`, unifly fetches the Integration API first, then supplements
-each record with Legacy fields: `tx_bytes`/`rx_bytes`, `hostname`,
-`wireless`, `uplink_device_mac`, `vlan`, `client_count` (mapped from Legacy
-`num_sta`). Without Hybrid, these fields are silently absent.
+each record with Session fields: `tx_bytes`/`rx_bytes`, `hostname`,
+`wireless`, `uplink_device_mac`, `vlan`, `client_count` (mapped from Session API
+`num_sta`). The same merge also works in API key mode on UniFi OS because
+the controller accepts `X-API-KEY` on session HTTP routes.
 
-Hybrid is the recommended default for agent use unless the task is
-strictly configuration CRUD and controller credentials are intentionally
-unavailable.
+Hybrid is still the safest default when you need live WebSocket features
+(`events watch`) or maximum compatibility across controller variants.
 
 ## Command Authentication Gate Matrix
 
-Each unifly command calls either `ensure_integration_access` or
-`ensure_legacy_access` (or both) before running. Commands in the wrong mode
-fail with `Unsupported { required: "..." }`. Use this matrix to pick the
-right `auth_mode`.
+Only Integration-only commands call `ensure_integration_access`. Session-backed
+commands fail naturally when the session client is unavailable. On UniFi OS,
+API key mode instantiates both the Integration client and a session HTTP
+client, so most HTTP commands work without username/password. Use this
+matrix to pick the right `auth_mode`.
 
 ### Integration API required (API key)
 
@@ -110,44 +112,92 @@ right `auth_mode`.
 - `wifi` (list/get/create/update/delete)
 - `countries`
 - `radius profiles`
+- `vpn servers` (list/get)
+- `vpn tunnels` (list/get)
 
-### Legacy API required (username + password)
+### Session HTTP-backed (username + password, or API key on UniFi OS)
 
 - `admin` (list/invite/revoke/update): `/rest/admin`
 - `alarms` (list/archive/archive-all)
 - `clients reservations`, `clients set-ip`, `clients remove-ip`: `/rest/user`
+- `clients roams <mac>`: `/v2/api/site/{site}/system-log/client-connection/{mac}`
+- `clients wifi <ip>`: `/v2/api/site/{site}/wifiman/{ip}/`
 - `devices` adopt, remove, restart, locate, port-cycle, upgrade, provision,
   speedtest (all route through `cmd/devmgr` and `cmd/stamgr`)
 - `clients` authorize, unauthorize, block, unblock, kick, forget (via
   `cmd/stamgr`)
 - `dpi status | enable | disable`: `/set/setting/dpi`
-- `events list`, `events watch`: `/stat/event` and WebSocket
+- `events list`: `/stat/event`
 - `sites create | delete`
 - `stats site | device | client | gateway | dpi`: `/stat/report/*`
 - `system health | sysinfo | backup | reboot | poweroff`
+- `vpn site-to-site` (list/get/create/update/delete): `/rest/networkconf`
+- `vpn remote-access` (list/get/create/update/delete/suggest-port/download-config): `/rest/networkconf`, `/v2/api/site/{site}/network/port-suggest`, `/v2/api/site/{site}/vpn/openvpn/{id}/configuration`
+- `vpn clients` (list/get/create/update/delete): `/rest/networkconf`
+- `vpn connections` (list/get/restart): `/v2/api/site/{site}/vpn/connections`
+- `vpn peers` (list/get/create/update/delete/subnets): `/v2/api/site/{site}/wireguard/*/users`
+- `vpn magic-site-to-site` (list/get): `/v2/api/site/{site}/magicsitetositevpn/configs`
+- `vpn settings` (list/get/set/patch): `/rest/setting`
+- `wifi neighbors`: `/stat/rogueap`
+- `wifi channels`: `/stat/current-channel`
+- `nat policies` (list/get/create/update/delete): Session v2 API
 
-### Hybrid-enriched (works in any mode, but richer in Hybrid)
+### Session WebSocket required (session-backed auth)
 
-- `clients list`: Integration fetch, Legacy fields merged by IP match
+- `events watch`
+
+The TUI can still launch without WebSocket auth, but live event streaming
+falls back to polling when no session cookie is available.
+
+### Session HTTP for VPN observability
+
+- `vpn status`: IPsec SA state via `/stat/ipsec-sa`
+- `vpn health`: VPN subsystem health from cached store (populated by session refresh)
+
+### Enriched when session HTTP is available
+
+- `clients list`: Integration fetch, Session fields merged by IP match
 - `clients find`: inherits the merged view
-- `devices list`: Integration fetch, Legacy `num_sta` merged by MAC
+- `devices list`: Integration fetch, Session API `num_sta` merged by MAC
 - `topology`: depends on merged `uplink_device_mac` for tree construction
 
 ### Raw API escape hatch
 
-- `api <path>`: Routes through the Legacy client (handles CSRF and session
-  automatically). Can reach Legacy, v2 (`v2/api/site/...`), and Integration
-  (`integration/v1/...`) endpoints regardless of auth mode.
+- `api <path>`: Routes through the Session client and handles auth
+  automatically (API key on UniFi OS, or CSRF/session for session login). Can
+  reach Session, v2 (`v2/api/site/...`), and Integration (`integration/v1/...`)
+  endpoints regardless of auth mode.
+
+### Session API Endpoint Quirks
+
+- **`stat/rogueap` uses epoch seconds**, not milliseconds. The `--within`
+  filter on `wifi neighbors` maps to this behavior directly, so passing
+  millisecond-style values silently returns empty data.
+- **`wifiman/{ip}/` band codes differ from `stat/sta`**. The Wi-Fi
+  experience endpoint uses `2.4g` / `5g` / `6g`, while station data often
+  uses `ng` / `na` / `6e`.
+- **`stat/report/*.ap` and `*.site` use different attribute prefixes**.
+  `.ap` expects bare fields like `ng-cu_total`, while `.site` uses
+  prefixed names such as `ap-ng-cu_total`.
+- **`system-log/client-connection/{mac}` duplicates the MAC in query
+  params**. Include the client MAC in both the path and `?mac=` or the
+  endpoint may return empty results.
+- **v2 endpoints return raw JSON**, not the `{meta, data}` envelope. Use
+  `get_raw()` / `raw_get()` patterns for `clients roams`, `clients wifi`,
+  and similar observability routes.
 
 ## Auth Mode Decision Tree
 
-1. **"I only have an API key"** → `auth_mode = "integration"`. Configuration
-   CRUD works. Events, stats, device commands will not.
-2. **"I have username + password only"** → `auth_mode = "legacy"`. Events,
+1. **"I only have an API key"** → `auth_mode = "integration"`. On UniFi OS,
+   most HTTP commands work, including stats, device commands, reservations,
+   Wi-Fi observability (`wifi neighbors`, `wifi channels`, `clients roams`,
+   `clients wifi`), admin operations, and enriched `clients list` /
+   `devices list`. Live `events watch` still will not.
+2. **"I have username + password only"** → `auth_mode = "session"`. Events,
    stats, device commands work. Modern entities (DNS policies, NAT policies,
    traffic lists, ACL) require Integration and will fail.
-3. **"I have both"** → `auth_mode = "hybrid"`. **Recommended default.**
-   Everything works, client and device records are enriched.
+3. **"I have both"** → `auth_mode = "hybrid"`. Recommended when the task
+   needs live WebSocket streaming or maximum controller compatibility.
 4. **"Agent will manage multiple sites/controllers"** → Use named profiles
    (`-p home`, `-p office`) with Hybrid on each. Credentials go in the OS
    keyring via `unifly config set-password --profile <name>`.
@@ -156,14 +206,14 @@ right `auth_mode`.
 
 ### Platform-Native Config Paths
 
-| OS      | Config File                                        |
-| ------- | -------------------------------------------------- |
-| Linux   | `~/.config/unifly/config.toml`                     |
-| macOS   | `~/Library/Application Support/unifly/config.toml` |
-| Windows | `%APPDATA%\unifly\config.toml`                     |
+| OS      | Config File                    |
+| ------- | ------------------------------ |
+| Linux   | `~/.config/unifly/config.toml` |
+| macOS   | `~/.config/unifly/config.toml` |
+| Windows | `%APPDATA%\unifly\config.toml` |
 
-The CLI uses `ProjectDirs` for per-OS resolution. Agents should not assume
-Linux paths on macOS or Windows.
+Unix platforms (Linux and macOS) use XDG-standard paths. Windows uses
+platform-native `%APPDATA%`. Agents should not assume Unix paths on Windows.
 
 ### Environment Variables
 
@@ -174,8 +224,8 @@ over CLI flags when running in automation contexts:
 | ---------------- | ---------------------------------------------------- |
 | `UNIFI_URL`      | Controller URL (overrides profile)                   |
 | `UNIFI_API_KEY`  | Integration API key                                  |
-| `UNIFI_USERNAME` | Legacy API username                                  |
-| `UNIFI_PASSWORD` | Legacy API password (prefer keyring in interactive)  |
+| `UNIFI_USERNAME` | Session API username                                 |
+| `UNIFI_PASSWORD` | Session API password (prefer keyring in interactive) |
 | `UNIFI_SITE`     | Target site name or UUID                             |
 | `UNIFI_PROFILE`  | Active profile                                       |
 | `UNIFI_OUTPUT`   | Default output format                                |
@@ -211,7 +261,7 @@ one-shot operations.
 
 ### Session Cache
 
-unifly caches the Legacy session cookie across commands for speed. To force
+unifly caches the session cookie across commands for speed. To force
 a fresh login (e.g. after password rotation):
 
 ```bash
@@ -327,7 +377,7 @@ archive-all`.
 
 ### Historical Stats
 
-`unifly stats` pulls from Legacy report endpoints. Supported intervals:
+`unifly stats` pulls from Session API report endpoints. Supported intervals:
 
 - `5minute`: High resolution, short retention window
 - `hourly`: Medium resolution
@@ -341,9 +391,9 @@ subcommand supports `--group-by by-app` or `--group-by by-cat`.
 
 - `unifly dpi apps`: List known applications (Integration API)
 - `unifly dpi categories`: List known categories (Integration API)
-- `unifly dpi status`: Current DPI enable state (Legacy API)
-- `unifly dpi enable`: Turn DPI on (Legacy API)
-- `unifly dpi disable`: Turn DPI off (Legacy API)
+- `unifly dpi status`: Current DPI enable state (Session API)
+- `unifly dpi enable`: Turn DPI on (Session API)
+- `unifly dpi disable`: Turn DPI off (Session API)
 - `unifly stats dpi`: Query DPI traffic breakdown
 
 ## Error Taxonomy
@@ -352,8 +402,8 @@ Common failures and how to diagnose them:
 
 | Error                                         | Root Cause                                               | Fix                                         |
 | --------------------------------------------- | -------------------------------------------------------- | ------------------------------------------- |
-| `Unsupported { required: "Integration API" }` | Command needs API key, running in `legacy` mode          | Switch to `hybrid` or `integration` mode    |
-| `Unsupported { required: "Legacy API" }`      | Command needs credentials, running in `integration` mode | Switch to `hybrid` or `legacy` mode         |
+| `Unsupported { required: "Integration API" }` | Command needs API key, running in `session` mode         | Switch to `hybrid` or `integration` mode    |
+| `Unsupported { required: "Session API" }`     | Command needs credentials, running in `integration` mode | Switch to `hybrid` or `session` mode        |
 | 403 on POST/PUT/DELETE via `/proxy/network/`  | Missing CSRF token                                       | Re-login (cache invalidated); `--no-cache`  |
 | `tls error: self-signed certificate`          | Controller uses self-signed TLS                          | Use `-k`/`--insecure` or `UNIFI_INSECURE=1` |
 | `profile 'foo' not found`                     | No matching profile in config                            | Run `unifly config profiles` to list        |
@@ -364,13 +414,23 @@ Common failures and how to diagnose them:
 
 ## Limits and Known Gaps
 
-- **Local controllers only.** The Site Manager cloud API (`api.ui.com/v1/`)
-  is not yet implemented. Do not attempt to use unifly against cloud-only
-  controllers.
-- **VPN mutations are not yet supported.** `unifly vpn servers` and
-  `unifly vpn tunnels` are read-only.
+- **Cloud support is Integration-only.** `unifly cloud ...` talks to the Site
+  Manager fleet API at `api.ui.com/v1/`, and `auth_mode = "cloud"` tunnels
+  Integration-backed commands through the cloud connector. Session-only
+  surfaces such as `events watch`, Wi-Fi observability, and admin/session
+  workflows still require direct controller access.
+- **VPN coverage is broad but split across two APIs.** Integration API
+  provides `unifly vpn servers` (with get/detail), `unifly vpn tunnels`
+  (with get/detail), `unifly vpn status` (IPsec SA), and
+  `unifly vpn health`. Session API provides full CRUD via
+  `unifly vpn site-to-site`, `unifly vpn remote-access` (including
+  suggest-port and download-config), `unifly vpn clients`,
+  `unifly vpn peers` (WireGuard), `unifly vpn connections`, and
+  `unifly vpn settings`. `unifly vpn magic-site-to-site` is read-only.
+  UniFi-to-UniFi auto flows are still not wrapped.
 - **Port forwarding** lives under `nat policies` with destination NAT, not
   a dedicated command.
-- **No `nat policies update`.** Delete and recreate to modify a NAT policy.
+- **`nat policies update`** is now available. It fetches the existing
+  rule and merges only the changed fields via the Session v2 API.
 - **DeviceFilter lacks a `BySite` variant.** Filter client-side after
   fetching if cross-site device filtering is required.

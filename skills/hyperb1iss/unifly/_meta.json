@@ -3,9 +3,15 @@
   "slug": "unifly",
   "displayName": "Unifly",
   "latest": {
-    "version": "0.8.0",
-    "publishedAt": 1775362301852,
-    "commit": "https://github.com/openclaw/skills/commit/19d030b5f4c603a64aa15f5a9b7ef08da4b4c411"
+    "version": "0.8.1",
+    "publishedAt": 1775799720693,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.8.0",
+      "publishedAt": 1775362301852,
+      "commit": "https://github.com/openclaw/skills/commit/19d030b5f4c603a64aa15f5a9b7ef08da4b4c411"
+    }
+  ]
 }

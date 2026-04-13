@@ -5,7 +5,7 @@ This file is a **gotchas-focused** reference. Every command accepts
 non-obvious flags, dual-API boundaries, correct argument forms, and the
 cross-cutting patterns listed at the end.
 
-**API legend:** **I** = Integration API required. **L** = Legacy API
+**API legend:** **I** = Integration API required. **L** = Session API
 required (username + password). **H** = Works in any mode, but enriched
 by Hybrid. Consult `concepts.md` for the full gate matrix.
 
@@ -28,6 +28,11 @@ by Hybrid. Consult `concepts.md` for the full gate matrix.
 
 All also accept the matching `UNIFI_*` environment variable (see
 concepts.md).
+
+Hidden but useful for cloud mode:
+
+- `--host-id <ID>` overrides the Site Manager console/host ID used for
+  connector-routed Integration commands.
 
 ## Devices `[H for list/get, L for commands]`
 
@@ -54,15 +59,17 @@ unifly devices tags [subcommands]
 - `upgrade --url` allows side-loading custom firmware URLs.
 - `port-cycle` port index is zero-based.
 - All device _commands_ (adopt, remove, restart, locate, port-cycle,
-  upgrade, provision, speedtest) require Legacy API. Only `list`/`get` are
+  upgrade, provision, speedtest) require Session API. Only `list`/`get` are
   Hybrid-safe.
 
-## Clients `[H]`
+## Clients `[H for list/find/get, L for roams/wifi + commands/reservations]`
 
 ```bash
 unifly clients list [--all] [--type wireless|wired|guest]
 unifly clients find <query>             # case-insensitive substring over IP, name, hostname, MAC
 unifly clients get <mac|id>
+unifly clients roams <client> [--limit N] # accepts name, hostname, IP, or MAC
+unifly clients wifi <client>             # accepts name, hostname, IP, or MAC; aliases: wifi-experience, wifiman
 unifly clients authorize <mac> [--minutes N] [--up-rate N] [--down-rate N]
 unifly clients unauthorize <mac>
 unifly clients block <mac>
@@ -80,11 +87,25 @@ unifly clients remove-ip <mac> [--network <name|id>]
   It matches substrings across IP, name, hostname, and MAC in a single
   pass, case-insensitive.
 - `reservations` (alias `res`) lists **all** DHCP reservations including
-  offline clients. It goes through Legacy `/rest/user`.
+  offline clients. It goes through Session API `/rest/user`.
+- `roams` accepts any client identifier (name, hostname, IP, or MAC). It
+  resolves to a MAC via the in-memory client snapshot before hitting
+  `GET /v2/api/site/{site}/system-log/client-connection/{mac}`.
+  Default limit is 50 events; override with `--limit`.
+- `roams` output includes From/To AP names, SSID, signal strength, channel,
+  and band for each event. Use it to diagnose sticky clients, ping-pong
+  roaming, and bad handoffs.
 - `set-ip` auto-detects the target network from the IP subnet unless
   `--network` is supplied explicitly.
 - `remove-ip` defaults to removing from all networks. Scope it with
   `--network` if the MAC has reservations in multiple networks.
+- `wifi` accepts any client identifier (name, hostname, IP, or MAC). It
+  resolves to an IP via the in-memory snapshot before hitting
+  `GET /v2/api/site/{site}/wifiman/{ip}/`. Shows wifi experience score,
+  signal/noise/channel, band, link rates, nearest neighbor APs with signal
+  strength, and the full uplink chain with per-hop experience scores.
+- `wifi` only works for wireless clients. Wired clients return a 404.
+- Band labels are normalized to human-readable: `2.4 GHz`, `5 GHz`, `6 GHz`.
 - `list` wireless/bytes/hostname fields are only populated in Hybrid mode.
 
 ## Networks `[I for CRUD]`
@@ -110,11 +131,13 @@ unifly networks refs <id>                # reverse references
   blast radius.
 - `--from-file` / `-F` accepts a full JSON payload (see examples/).
 
-## WiFi `[I]`
+## WiFi `[I for CRUD, L for neighbors/channels]`
 
 ```bash
 unifly wifi list
 unifly wifi get <id|name>
+unifly wifi neighbors [--within SECONDS] [--limit N] [--all] # alias: rogueap
+unifly wifi channels
 unifly wifi create --name SSID --security MODE --passphrase PASS --network ID \
   [--broadcast-type standard|iot-optimized] [--frequencies 2.4,5,6] [-F payload.json]
 unifly wifi update <id> [flags...]
@@ -127,6 +150,16 @@ unifly wifi delete <id>
   `wpa2-wpa3-personal`, `wpa2-enterprise`, `wpa3-enterprise`.
 - `--broadcast-type iot-optimized` enables IoT optimizations (2.4 GHz-only
   limits, lower beacon power).
+- `neighbors` uses `GET /api/s/{site}/stat/rogueap` and surfaces APs seen by
+  your own radios. Signal is from your AP's perspective, not the neighbor's.
+  Default display limit is 25; use `--all` or `--limit N` to see more.
+- `neighbors --within` is in seconds, and the underlying `stat/rogueap`
+  endpoint also uses seconds rather than the epoch milliseconds common in
+  other UniFi stats routes.
+- `channels` uses `GET /api/s/{site}/stat/current-channel` and shows
+  regulatory channel availability per band (2.4 GHz, 5 GHz, 5 GHz DFS,
+  6 GHz) for the controller's country. Useful for DFS planning and
+  verifying which 6 GHz channels are available in your region.
 - `--frequencies` is comma-separated: `2.4`, `5`, `6`. All three are valid
   on WiFi 6E and WiFi 7 APs.
 - `--from-file` accepts full payloads for complex SSID configurations
@@ -190,13 +223,20 @@ unifly nat policies create --name NAME --nat-type masquerade|source|destination 
   [--src-port N] [--dst-port N] \
   [--translated-address IP] [--translated-port N] \
   [--protocol tcp|udp|all] [-F payload.json]
+unifly nat policies update <id> [--name NAME | --description DESC] \
+  [--type masquerade|source|destination] [--protocol tcp|udp|all] \
+  [--enabled true|false] [--src-address CIDR] [--dst-address CIDR] \
+  [--src-port N] [--dst-port N] \
+  [--translated-address IP] [--translated-port N] [-F payload.json]
 unifly nat policies delete <id>
 ```
 
 **Gotchas:**
 
-- **There is no `update` subcommand for NAT policies.** Delete and
-  recreate to modify.
+- **`nat policies update <id>`** fetches the existing rule and merges
+  only the changed fields. Use `--name` or `--description` (mutually
+  exclusive) for the display label, plus any combination of `--type`,
+  `--protocol`, `--enabled`, address/port flags, or `--from-file`.
 - `masquerade` is source NAT using the outgoing interface address (most
   common for Internet-bound traffic).
 - `destination` is how port forwarding works on UniFi: specify
@@ -302,7 +342,7 @@ unifly stats dpi [--group-by by-app|by-cat] [--macs MAC1,MAC2]
 - `--attrs` limits the metrics returned; smaller payloads, faster queries.
 - `stats dpi` requires `--group-by`. `by-app` buckets by application,
   `by-cat` buckets by category.
-- Legacy API only; all commands fail without credentials.
+- Session API only; all commands fail without credentials.
 
 ## DPI `[I for apps/categories, L for status/enable/disable]`
 
@@ -317,9 +357,35 @@ unifly dpi disable
 **Gotchas:**
 
 - `apps` and `categories` are Integration API reference lookups.
-- `status`, `enable`, `disable` are Legacy API lifecycle controls for the
+- `status`, `enable`, `disable` are Session API lifecycle controls for the
   DPI subsystem itself. Use these to toggle DPI on/off without touching
   the web UI.
+
+## Settings `[L]`
+
+```bash
+unifly settings list
+unifly settings get <KEY>
+unifly settings set <KEY> <FIELD> <VALUE>
+unifly settings set <KEY> --data '{"field": "value"}'
+unifly settings export
+```
+
+**Gotchas:**
+
+- All subcommands use the Session API (`rest/setting` / `set/setting/{key}`).
+- `list` shows a summary table of all ~44 setting sections with key, field
+  count, enabled status, and notable values.
+- `get` masks `x_`-prefixed fields (credentials, internal secrets) in table
+  mode. Use `-o json` to see everything.
+- `set` performs a read-modify-write: fetches the current section, patches
+  the specified field, and PUTs the full section back. Values are parsed as
+  bool (`true`/`false`), number, or string fallback.
+- `set --data` merges a JSON object into the section. Mutually exclusive
+  with the positional `<FIELD> <VALUE>` form.
+- `export` always outputs full JSON regardless of `--output` flag.
+- The PUT endpoint replaces the entire section; the handler strips `_id`,
+  `site_id`, and `key` metadata before sending.
 
 ## System `[L]`
 
@@ -367,6 +433,75 @@ unifly sites delete <name>
 
 Site `create --description` is **required**.
 
+## VPN `[I for servers/tunnels, L for site-to-site/remote-access/clients/peers/settings, V2 for connections/magic-site-to-site]`
+
+```bash
+unifly vpn servers [--all] [-o json]
+unifly vpn tunnels [--all] [-o json]
+unifly vpn site-to-site list [--all] [-o json]
+unifly vpn site-to-site get <id> [-o json]
+unifly vpn site-to-site create -F payload.json
+unifly vpn site-to-site update <id> -F payload.json
+unifly vpn site-to-site delete <id>
+unifly vpn remote-access list [--all] [-o json]
+unifly vpn remote-access get <id> [-o json]
+unifly vpn remote-access create -F payload.json
+unifly vpn remote-access update <id> -F payload.json
+unifly vpn remote-access suggest-port [-o json]
+unifly vpn remote-access download-config <id> [--path PATH]
+unifly vpn remote-access delete <id>
+unifly vpn clients list [--all] [-o json]
+unifly vpn clients get <id> [-o json]
+unifly vpn clients create -F payload.json
+unifly vpn clients update <id> -F payload.json
+unifly vpn clients delete <id>
+unifly vpn connections list [--all] [-o json]
+unifly vpn connections get <id> [-o json]
+unifly vpn connections restart <id>
+unifly vpn peers list [server-id] [--all] [-o json]
+unifly vpn peers get <server-id> <id> [-o json]
+unifly vpn peers create <server-id> -F payload.json
+unifly vpn peers update <server-id> <id> -F payload.json
+unifly vpn peers delete <server-id> <id>
+unifly vpn peers subnets [-o json]
+unifly vpn magic-site-to-site list [--all] [-o json]
+unifly vpn magic-site-to-site get <id> [-o json]
+unifly vpn settings list [--all] [-o json]
+unifly vpn settings get <teleport|magic-site-to-site-vpn|openvpn|peer-to-peer> [-o json]
+unifly vpn settings set <key> --enabled true|false
+unifly vpn settings patch <key> -F payload.json
+```
+
+**Gotchas:**
+
+- `servers` and `tunnels` are Integration API inventory only.
+- `site-to-site` uses Session API `rest/networkconf` records filtered to
+  `purpose=site-vpn`.
+- `remote-access` uses Session API `rest/networkconf` records filtered to
+  `purpose=remote-user-vpn`.
+- `remote-access suggest-port` uses the Session v2 API
+  `network/port-suggest?service=openvpn` helper and returns
+  `available_ports`.
+- `remote-access download-config` fetches the Session v2 API
+  `vpn/openvpn/<id>/configuration` export and writes `<id>.ovpn` by
+  default.
+- `clients` uses Session API `rest/networkconf` records filtered to
+  `purpose=vpn-client`.
+- `connections` uses the Session v2 API `vpn/connections` inventory and
+  `vpn/<id>/restart` action.
+- `peers` uses Session v2 API `wireguard/*/users` batch endpoints. `create`,
+  `update`, and `delete` require the parent remote-access server ID.
+- `subnets` lists already-consumed subnets from
+  `v2/api/site/<site>/wireguard/users/existing-subnets`.
+- `magic-site-to-site` uses the Session v2 API
+  `magicsitetositevpn/configs` inventory endpoint and is read-only.
+- `settings` uses Session API `rest/setting` records for VPN feature toggles.
+- `patch` accepts either a raw session setting body or the wrapper emitted
+  by `get` (`{ "key": ..., "enabled": ..., "fields": { ... } }`).
+- Sensitive nested material such as private keys and PSKs is redacted from
+  `get` output. Reconstruct those fields explicitly before updating if the
+  controller requires them unchanged.
+
 ## Alarms `[L]`
 
 ```bash
@@ -378,20 +513,53 @@ unifly alarms archive-all
 ## API (raw passthrough) `[any mode]`
 
 ```bash
-unifly api <path> [-m get|post] [-d '<json-body>']
+unifly api <path> [-m get|post|put|patch|delete] [-d '<json-body>']
 ```
 
 **Gotchas:**
 
-- Routes through the Legacy client, so CSRF tokens and session caching
+- Routes through the Session client, so CSRF tokens and session caching
   are handled automatically.
 - Paths are relative to the controller base URL. Examples:
-  - Legacy v1: `api/s/default/stat/device`
-  - Legacy v2: `v2/api/site/default/traffic-flow-latest-statistics`
+  - Session v1: `api/s/default/stat/device`
+  - Session v2: `v2/api/site/default/traffic-flow-latest-statistics`
   - Integration v1: `integration/v1/sites/default/clients`
   - Commands: `cmd/stamgr`, `cmd/devmgr`
-- `-d '<json>'` is the POST body. Pair with `-m post`.
+- `-d '<json>'` is used for `post`, `put`, and `patch`.
+- `delete` does not require a body.
 - Essential when unifly does not wrap a specific endpoint yet.
+
+## Cloud `[cloud fleet API]`
+
+```bash
+unifly cloud hosts
+unifly cloud hosts get <id>
+unifly cloud sites
+unifly cloud switch <site>
+unifly cloud devices [--host <id>]...
+unifly cloud isp [--type 5m|1h]
+unifly cloud isp query --sites <site-1,site-2>
+unifly cloud sdwan
+unifly cloud sdwan get <id>
+unifly cloud sdwan status <id>
+```
+
+**Gotchas:**
+
+- `unifly cloud ...` talks directly to `api.ui.com/v1/`; it does **not**
+  create a `Controller` or use the local Session API.
+- `cloud devices --host` is repeatable. Omit it to list devices across all
+  accessible consoles.
+- `cloud isp query --sites` is comma-delimited and returns a warning if Site
+  Manager responds with `partialSuccess`.
+- `cloud switch <site>` updates the active cloud profile's `site` field using
+  the controller connector's site inventory. It accepts a site name, internal
+  reference, or UUID, and stores the controller-side internal reference.
+- `cloud` commands only need a Site Manager API key. They do **not** need
+  `host_id`.
+- Regular commands such as `networks list` or `firewall policies list` still
+  need `host_id` in cloud mode, but unifly will auto-resolve it when the API
+  key only exposes one console, or one owner console.
 
 ## Topology, TUI, Completions, Config, Countries
 
@@ -401,8 +569,10 @@ unifly api <path> [-m get|post] [-d '<json-body>']
   dashboard. `UNIFLY_THEME` env var also sets the theme.
 - `unifly completions bash|zsh|fish|powershell|elvish`: Emit completion
   script to stdout.
-- `unifly config init | show | set | profiles | use | set-password`:
-  Profile management. `set-password` stores in OS keyring.
+- `unifly config init | cloud-setup | show | set | profiles | use | set-password`:
+  Profile management. `cloud-setup` validates a Site Manager API key, lets
+  you pick a console and site interactively, and writes a cloud profile.
+  `set-password` stores secrets in the OS keyring.
 - `unifly countries`: List country codes for WiFi regulatory settings.
 
 ## Cross-Cutting Patterns
@@ -442,7 +612,7 @@ Combine with `&&` and `||`:
 unifly devices list --filter "state.eq('ONLINE') && model.startswith('U6')"
 ```
 
-Only Integration API commands respect `--filter`. Legacy commands filter
+Only Integration API commands respect `--filter`. Session commands filter
 client-side via `jq` after fetching.
 
 ### Default List Limit Is 25
