@@ -31,7 +31,7 @@ MIN_TRADE = float(os.environ.get("SIMMER_MIN_TRADE", "2"))
 MAX_SPREAD = float(os.environ.get("SIMMER_MAX_SPREAD", "0.15"))
 MIN_DAYS = int(os.environ.get("SIMMER_MIN_DAYS", "0"))
 MAX_POSITIONS = int(os.environ.get("SIMMER_MAX_POSITIONS", "10"))
-YES_THRESHOLD = float(os.environ.get("SIMMER_YES_THRESHOLD", "0.20"))
+YES_THRESHOLD = float(os.environ.get("SIMMER_YES_THRESHOLD", "0.40"))
 NO_THRESHOLD = float(os.environ.get("SIMMER_NO_THRESHOLD", "0.80"))
 MIN_TRADE = float(os.environ.get("SIMMER_MIN_TRADE", "2"))
 
@@ -54,6 +54,11 @@ CITIES = {
     "warsaw": {"lat": 52.2297, "lon": 21.0122, "unit": "C"},
     "helsinki": {"lat": 60.3172, "lon": 24.9633, "unit": "C"},
     "mexico city": {"lat": 19.4326, "lon": -99.1332, "unit": "C"},
+    "hong kong": {"lat": 22.3193, "lon": 114.1694, "unit": "C"},
+    "kuala lumpur": {"lat": 3.1390, "lon": 101.6869, "unit": "C"},
+    "tokyo": {"lat": 35.6762, "lon": 139.6503, "unit": "C"},
+    "singapore": {"lat": 1.3521, "lon": 103.8198, "unit": "C"},
+    "buenos aires": {"lat": -34.6037, "lon": -58.3816, "unit": "C"},
 }
 
 _client: SimmerClient | None = None
@@ -94,19 +99,24 @@ def get_client(live: bool = False) -> SimmerClient:
 # ---------------------------------------------------------------------------
 
 def get_forecast(city: str) -> dict[str, int]:
-    """Fetch weather forecast for a city. Uses NOAA for US, Open-Meteo globally.
+    """Fetch weather forecast for a city. Tries NOAA, Open-Meteo, then wttr.in.
     Returns {date_str: high_temp_int}."""
     info = CITIES.get(city.lower())
     if not info:
         return {}
 
-    # Try NOAA first (US only, more accurate)
+    # Try NOAA first (US only, most accurate)
     forecasts = _try_noaa(info, city)
     if forecasts:
         return forecasts
 
-    # Fallback: Open-Meteo (global, free, no API key)
-    return _try_open_meteo(info, city)
+    # Try Open-Meteo (global, free, no API key)
+    forecasts = _try_open_meteo(info, city)
+    if forecasts:
+        return forecasts
+
+    # Final fallback: wttr.in (also free, different provider)
+    return _try_wttr(city, info)
 
 
 def _try_noaa(info: dict, city: str) -> dict[str, int]:
@@ -143,6 +153,29 @@ def _try_open_meteo(info: dict, city: str) -> dict[str, int]:
         return {d: round(t) for d, t in zip(dates, temps) if t is not None}
     except Exception as e:
         safe_print(f"  [open-meteo] {city}: {e}")
+        return {}
+
+
+def _try_wttr(city: str, info: dict) -> dict[str, int]:
+    """wttr.in fallback. Returns Celsius by default; converts if city is F."""
+    try:
+        city_url = city.replace(" ", "+")
+        url = f"https://wttr.in/{city_url}?format=j1"
+        req = Request(url, headers={"User-Agent": "kladde-weather/1.0"})
+        with urlopen(req, timeout=15) as r:
+            data = json.loads(r.read())
+        forecasts = {}
+        for day in data.get("weather", [])[:7]:
+            date = day["date"]
+            temp_c = int(day["maxtempC"])
+            if info["unit"] == "F":
+                temp = round(temp_c * 9 / 5 + 32)
+            else:
+                temp = temp_c
+            forecasts[date] = temp
+        return forecasts
+    except Exception as e:
+        safe_print(f"  [wttr] {city}: {e}")
         return {}
 
 

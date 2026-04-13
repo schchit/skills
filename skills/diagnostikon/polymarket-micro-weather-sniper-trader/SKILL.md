@@ -48,7 +48,7 @@ Weather forecasts from NOAA and Open-Meteo are publicly available but not widely
 2. Parse each market question: extract city name, temperature range (bin), and resolution date
 3. Fetch NOAA forecast (US cities) or Open-Meteo forecast (global cities) for each relevant city
 4. For each market: check if the forecast temperature falls within the bin
-5. If forecast **matches** bin AND `p <= YES_THRESHOLD` (0.20): buy YES -- conviction = `(0.85 - p) / 0.85`, size = `max($2, conviction * $5)`
+5. If forecast **matches** bin AND `p <= YES_THRESHOLD` (0.40): buy YES -- conviction = `(0.85 - p) / 0.85`, size = `max($2, conviction * $5)`
 6. If forecast **disagrees** with bin AND `p >= NO_THRESHOLD` (0.80): sell NO -- conviction = `(p - 0.15) / 0.85`, size = `max($2, conviction * $5)`
 7. Spread gate: skip if spread > `MAX_SPREAD` (15%)
 8. Place up to `MAX_POSITIONS` (10) micro trades per run
@@ -91,7 +91,7 @@ All declared as `tunables` in `clawhub.json` and adjustable from the Simmer UI.
 | `SIMMER_MAX_SPREAD` | `0.15` | Max bid-ask spread (15%) |
 | `SIMMER_MIN_DAYS` | `0` | Min days until resolution (0 = allow same-day weather) |
 | `SIMMER_MAX_POSITIONS` | `10` | Max concurrent micro positions |
-| `SIMMER_YES_THRESHOLD` | `0.20` | Buy YES when NOAA/Open-Meteo matches bin and p <= this |
+| `SIMMER_YES_THRESHOLD` | `0.40` | Buy YES when forecast matches bin and p <= this |
 | `SIMMER_NO_THRESHOLD` | `0.80` | Sell NO when forecast disagrees with bin and p >= this |
 
 ## Dependency
