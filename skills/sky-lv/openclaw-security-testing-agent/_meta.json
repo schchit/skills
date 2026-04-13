@@ -1,0 +1,11 @@
+{
+  "owner": "sky-lv",
+  "slug": "openclaw-security-testing-agent",
+  "displayName": "Security Testing Agent",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775695576736,
+    "commit": null
+  },
+  "history": []
+}
