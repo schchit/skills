@@ -19,7 +19,7 @@ Use this skill to rummage through memory and surface something memorable, odd, o
 
 ## Source selection
 
-Prefer daily or session memory logs first.
+Prefer daily memory files or session transcripts/logs first.
 
 Supported pick modes:
 - `random`
@@ -48,7 +48,7 @@ Good selection patterns:
 - If the user asks for multiple blowers, vary era and tone.
 - If no mode is given, pick whatever seems most promising.
 
-Use long-term memory files only when the user explicitly wants long-term memory or when daily/session files are too thin.
+Use long-term memory only when the user explicitly wants long-term memory or when recent/daily/session sources are too thin.
 
 ## What counts as a mind blower
 
