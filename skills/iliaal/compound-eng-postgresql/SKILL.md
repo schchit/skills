@@ -36,6 +36,39 @@ paths: "**/*.sql"
 - `NULLS NOT DISTINCT` on unique indexes (PG15+) -- treats NULLs as equal for uniqueness
 - Revoke default public schema access: `REVOKE ALL ON SCHEMA public FROM public`
 
+## Migration Safety
+
+**Core rules:**
+- Every schema change is a migration. No ad-hoc DDL in production.
+- Migrations are immutable once deployed -- never edit a migration that has run in any shared environment.
+- Schema migrations and data migrations are separate files. Schema changes are fast and transactional; data backfills are slow and may need batching.
+- Forward-only in production. Rollback = a new forward migration that reverses the change.
+
+**Expand-contract pattern** for zero-downtime renames and removals:
+
+1. **Expand**: add the new column/table, backfill data, update writes to populate both old and new
+2. **Migrate**: switch reads to the new column/table, verify in production
+3. **Contract**: remove the old column/table in a later deploy
+
+Never rename or remove a column in a single migration -- callers reading the old name will break between deploy and code rollout.
+
+**Dangerous operations:**
+- `NOT NULL` without a `DEFAULT` on an existing table locks and rewrites every row. Add the column nullable first, backfill, then add the constraint.
+- `CREATE INDEX` (without `CONCURRENTLY`) locks writes for the duration. Always use `CONCURRENTLY`, which cannot run inside a transaction block -- keep it in its own migration.
+- Large data backfills: batch with `FOR UPDATE SKIP LOCKED` to avoid locking the entire table:
+
+```sql
+UPDATE target SET new_col = compute(old_col)
+WHERE id IN (
+  SELECT id FROM target
+  WHERE new_col IS NULL
+  LIMIT 1000
+  FOR UPDATE SKIP LOCKED
+);
+```
+
+Run in a loop until zero rows affected.
+
 ## Index Strategy
 
 | Type | Use When |
@@ -109,8 +142,7 @@ Always index columns referenced in RLS policies. For complex multi-table checks,
 ## Query Optimization
 
 - Always `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)` before optimizing
-- `pg_stat_statements` for slow query detection: `SELECT query, mean_exec_time, calls FROM pg_stat_statements WHERE mean_exec_time > 100 ORDER BY mean_exec_time DESC LIMIT 20`
-- Table bloat check: `SELECT relname, n_dead_tup, last_vacuum FROM pg_stat_user_tables WHERE n_dead_tup > 10000 ORDER BY n_dead_tup DESC`
+- Use `pg_stat_statements` for slow-query detection and `pg_stat_user_tables` for bloat (see Detection queries below for the full SQL)
 - Sequential scan on large table -> add index or check `WHERE` for function wrapping
 - High `rows removed by filter` -> index doesn't match predicate
 - CTEs are inlined by default; use `MATERIALIZED`/`NOT MATERIALIZED` hints to control optimization
