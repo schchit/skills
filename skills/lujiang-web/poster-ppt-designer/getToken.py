@@ -1,6 +1,7 @@
 import requests
 import json
 import os
+import base64
 
 
 # 默认 Logo URL（用户可自定义）
@@ -9,6 +10,26 @@ DEFAULT_LOGOS = {
     "logo_secondary": "",
     "logo_third": ""
 }
+
+# 简单的XOR加密（用于密码混淆，非安全加密）
+def encode_password(password):
+    if not password:
+        return ""
+    key = "pinza2026"
+    encoded = []
+    for i, char in enumerate(password):
+        encoded.append(chr(ord(char) ^ ord(key[i % len(key)])))
+    return base64.b64encode("".join(encoded).encode()).decode()
+
+def decode_password(encoded):
+    if not encoded:
+        return ""
+    key = "pinza2026"
+    try:
+        decoded = base64.b64decode(encoded.encode()).decode()
+        return "".join(chr(ord(char) ^ ord(key[i % len(key)])) for i, char in enumerate(decoded))
+    except:
+        return ""
 
 
 # 从环境变量或配置文件读取账号密码
@@ -25,9 +46,36 @@ def get_credentials():
     if os.path.exists(config_path):
         with open(config_path, 'r') as f:
             config = json.load(f)
-            return config.get('lingque_username'), config.get('lingque_password')
+            username = config.get('lingque_username')
+            # 解密密码
+            encoded_password = config.get('lingque_password_encoded')
+            if encoded_password:
+                password = decode_password(encoded_password)
+            else:
+                password = config.get('lingque_password')
+            return username, password
     
     return None, None
+
+
+# 保存账号密码到配置文件（加密存储）
+def save_credentials(username, password):
+    config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+    config = {}
+    
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+    
+    config['lingque_username'] = username
+    # 加密存储密码
+    config['lingque_password_encoded'] = encode_password(password)
+    # 移除明文密码（如果存在）
+    if 'lingque_password' in config:
+        del config['lingque_password']
+    
+    with open(config_path, 'w') as f:
+        json.dump(config, f, ensure_ascii=False, indent=2)
 
 
 # 读取自定义 Logo 配置
@@ -60,14 +108,11 @@ def get_access_token(username, password):
         "username": username,
         "password": password
     }
-    print(params)
     response = requests.post(url, data=params)
     response_data = response.json()
-    print(response_data)
     if response_data['code'] == "0":
         return response_data['data']
     else:
-        print(f"获取 access_token 失败: {response_data['errmsg']}")
         return None
     
 
@@ -88,13 +133,15 @@ if __name__ == "__main__":
         username, password = get_credentials()
         
     if not username or not password:
-        print("错误：请配置灵雀AI账号密码")
+        print("请配置灵雀AI账号密码")
         print("方法1：设置环境变量 LINGQUE_USERNAME 和 LINGQUE_PASSWORD")
-        print("方法2：创建 config.json 文件，内容如下：")
-        print('{"lingque_username": "手机号", "lingque_password": "密码", "logo_main": "url", "logo_secondary": "url"}')
         exit(1)
     
-    print(username)
-    print(password)
     access_token = get_access_token(username, password)
-    print(access_token)
+    if access_token:
+        # 自动保存到配置文件（加密存储）
+        save_credentials(username, password)
+        print(access_token)
+    else:
+        print("获取token失败，请检查账号密码")
+        exit(1)
