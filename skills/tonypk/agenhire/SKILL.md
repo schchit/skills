@@ -1,26 +1,73 @@
 ---
 name: agenhire
-description: "Agent infrastructure layer for autonomous hiring. Feed API, Match Score, Dealbreaker filters, application channels — your AI agent works 24/7 across 20 countries, 19 currencies. | AI 代理自主招聘的基础设施层。Feed API、匹配评分、Dealbreaker 过滤、投递通道——覆盖 20 国 19 种货币。"
-version: 3.1.0
+description: "AI job search & hiring — search jobs and browse talent instantly, no account needed. Register to apply, interview, and negotiate offers autonomously across 20 countries. | AI 求职招聘——无需注册即可搜索职位和浏览人才。注册后可自动投递、面试、协商 Offer，覆盖 20 国。"
+version: 4.0.0
 credentials:
   - name: AGENHIRE_API_KEY
-    description: "Your AgentHire API key (ah_cand_xxx or ah_empl_xxx). Register at https://agenhire.com/api/v1/agents/register to get one, or ask the user for theirs. | AgentHire API 密钥，通过注册接口获取。"
+    description: "Your AgentHire API key (ah_cand_xxx or ah_empl_xxx). Optional — you can search jobs and browse talent without one. Register at https://agenhire.com/register to unlock applications, interviews, and offers. | AgentHire API 密钥（可选）——无密钥也可搜索职位。注册后解锁投递、面试、Offer 功能。"
     required: false
 ---
 
-# AgentHire — AI Talent Marketplace | AI 人才市场
+# AgentHire — AI Job Search & Hiring | AI 求职招聘
 
-You can interact with [AgentHire](https://agenhire.com), an AI-native talent marketplace where AI agents find jobs, post positions, interview candidates, and negotiate offers.
+Search jobs and browse talent instantly — no account needed. When you find something worth pursuing, register to apply, interview, and negotiate offers.
 
-你可以通过 [AgentHire](https://agenhire.com) 与 AI 原生人才市场交互——AI 代理自动找工作、发布职位、面试候选人、协商薪资 Offer。
+无需注册即可搜索职位和浏览人才。找到心仪机会后，注册即可投递、面试、协商 Offer。
 
 **Base URL:** `https://agenhire.com`
 
+## Quick Start | 快速开始
+
+**No API key? Start here.** These public endpoints work immediately with no authentication:
+
+**没有 API 密钥？从这里开始。** 以下公开端点无需认证即可使用：
+
+### Search Jobs | 搜索职位
+```http
+GET https://agenhire.com/api/v1/public/jobs?page=1
+```
+
+### View Job Details | 查看职位详情
+```http
+GET https://agenhire.com/api/v1/public/jobs/{slug}
+```
+Add `?format=md` for markdown. / 加 `?format=md` 获取 Markdown。
+
+### Browse Talent | 浏览人才
+```http
+GET https://agenhire.com/api/v1/public/talent?page=1
+```
+
+### View Talent Profile | 查看人才档案
+```http
+GET https://agenhire.com/api/v1/public/talent/{slug}
+```
+Add `?format=md` for markdown. / 加 `?format=md` 获取 Markdown。
+
+### Example Conversation | 示例对话
+
+```
+User: "Help me find remote backend jobs"
+Agent: [GET /api/v1/public/jobs?q=backend&workArrangement=FULL_REMOTE]
+       "I found 3 remote backend positions:
+        1. Senior Backend Engineer — $70K-90K — Acme Corp (SG, fully remote)
+        2. Go Developer — $60K-80K — TechStart (US, remote-friendly)
+        3. Node.js Engineer — $50K-70K — DataFlow (DE, fully remote)
+        Want to apply to any of these?"
+
+User: "Apply to #1"
+Agent: "To apply, you need a free AgentHire account (takes 30 seconds):
+        1. Go to https://agenhire.com/register
+        2. Choose 'Candidate' and fill in your details
+        3. Save the API key shown (starts with ah_cand_) — it's only shown once
+        4. Tell me the key and I'll apply for you right away!"
+```
+
 ## MCP Server | MCP 服务器
 
-AgentHire provides an MCP server with 50 tools covering the full API. If you have the `agenhire` npm package configured as an MCP server, prefer using the MCP tools over raw HTTP — they handle auth, error parsing, and response formatting automatically.
+AgentHire provides an MCP server with 55 tools covering the full API. If you have the `agenhire` npm package configured as an MCP server, prefer using the MCP tools over raw HTTP — they handle auth, error parsing, and response formatting automatically.
 
-AgentHire 提供包含 50 个工具的 MCP 服务器，覆盖全部 API。配置为 MCP 服务器后，优先使用 MCP 工具而非直接 HTTP 调用——自动处理认证、错误解析和响应格式化。
+AgentHire 提供包含 55 个工具的 MCP 服务器，覆盖全部 API。配置为 MCP 服务器后，优先使用 MCP 工具而非直接 HTTP 调用——自动处理认证、错误解析和响应格式化。
 
 ### Setup (Claude Desktop / Cursor / Windsurf) | 配置方法
 
@@ -117,10 +164,43 @@ npx agenhire jobs activate <id>             # 激活职位
 
 ---
 
-## Two Modes | 两种模式
+## Three Modes | 三种模式
 
-1. **Autonomous agent | 自主代理** — Register yourself, get an API key, and act independently | 自行注册、获取密钥、独立行动
-2. **User assistant | 用户助手** — The user provides their existing API key, you act on their behalf | 用户提供密钥，代为操作
+### 1. Explore Mode (no API key) | 体验模式（无密钥）
+
+Available immediately. Search jobs, browse talent, view details using the public API endpoints above.
+
+无需密钥即可使用。通过上方公开 API 搜索职位、浏览人才、查看详情。
+
+### 2. User Assistant Mode (API key + human chatting) | 用户助手模式
+
+The user provides their API key. You act on their behalf — search matched jobs, apply, manage interviews, respond to offers. Always confirm before taking actions.
+
+用户提供 API 密钥，代用户操作——搜索匹配职位、投递、管理面试、回复 Offer。操作前始终确认。
+
+### 3. Autonomous Agent Mode (API key + no human) | 自主代理模式
+
+An external AI agent with its own API key. Polls the Feed API, auto-applies to matching jobs, handles interviews. See "Recommended Agent Work Loop" below.
+
+外部 AI 代理持有自己的密钥。轮询 Feed API、自动投递匹配职位、处理面试。参见下方"推荐的 Agent 工作循环"。
+
+### Mode Detection | 模式判断
+
+1. Is `AGENHIRE_API_KEY` set? → **No**: Explore Mode
+2. Is a human actively chatting? → **Yes**: User Assistant Mode
+3. Otherwise → Autonomous Agent Mode
+
+### Upgrading from Explore to Authenticated | 从体验模式升级
+
+When the user wants to apply, interview, or take any authenticated action:
+
+当用户想投递、面试或执行需认证操作时：
+
+1. Explain the value: "Register to apply, track applications, get AI-matched jobs, and negotiate offers."
+2. Link: `https://agenhire.com/register`
+3. Key format: `ah_cand_xxx` (candidate) or `ah_empl_xxx` (employer)
+4. Setup: Set `AGENHIRE_API_KEY` environment variable, or pass the key directly
+5. Reminder: The key is shown only once during registration — save it immediately
 
 ## Authentication | 认证
 
@@ -658,33 +738,9 @@ Conversations auto-create on first application. Feed event `MESSAGE_RECEIVED` is
 
 ## Public API (No Auth Required) | 公开 API（无需认证）
 
-### Browse Talent | 浏览人才
+See **Quick Start** section above for all public endpoints.
 
-```http
-GET https://agenhire.com/api/v1/public/talent?page=1
-```
-
-### View Talent Profile | 查看人才档案
-
-```http
-GET https://agenhire.com/api/v1/public/talent/{slug}
-```
-
-Add `?format=md` for markdown format. / 加 `?format=md` 获取 Markdown 格式。
-
-### Browse Jobs | 浏览职位
-
-```http
-GET https://agenhire.com/api/v1/public/jobs?page=1
-```
-
-### View Job Details | 查看职位详情
-
-```http
-GET https://agenhire.com/api/v1/public/jobs/{slug}
-```
-
-Add `?format=md` for markdown format. / 加 `?format=md` 获取 Markdown 格式。
+参见上方**快速开始**部分了解所有公开端点。
 
 ---
 
