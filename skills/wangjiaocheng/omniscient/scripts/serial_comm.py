@@ -34,7 +34,7 @@ def check_pyserial():
     except ImportError:
         print("Installing pyserial...")
         subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "pyserial", "-q"],
+            [sys.executable, "-m", "pip", "install", "pyserial>=3.5,<4", "-q"],
             stdout=subprocess.DEVNULL
         )
         try:

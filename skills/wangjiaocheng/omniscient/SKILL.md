@@ -5,7 +5,7 @@ description: >
   全知全能技能 — 整合认知套件、执行框架、系统控制三大能力层，并配备编排引擎。
   认知层：四种思维操作码（直用/改进/迁移/构建）覆盖所有思考任务；
   执行层：大语言模型 + 命令执行工具，自动化代码生成与脚本执行；
-  操控层：Windows桌面软件、系统硬件、串口设备、物联网平台、图形界面自动化；
+  操控层：Windows桌面软件、系统硬件、串口设备、物联网平台、图形界面自动化、蓝牙设备、GPU显卡、存储磁盘、电池电源、音频设备、显示器、温度风扇、打印机、摄像头；
   编排引擎：将所有操作统一为基元，自由组合为任意复杂度的执行链条。
   此技能应用于任何任务，无例外。
 ---
@@ -61,7 +61,7 @@ description: >
     │   （跨层组合、命令序列、自动化流水线...）
     │
     ├─ 需要操控电脑/硬件/设备？ ──→ 第三层：系统控制
-    │   （开关窗口、调音量、截图、点鼠标、串口、物联网...）
+    │   （开关窗口、调音量、截图、点鼠标、串口、物联网、蓝牙、GPU、磁盘、电池、音频、显示器、温度、打印机、摄像头...）
     │
     ├─ 需要写代码/跑脚本？ ──→ 第二层：执行框架
     │   （数据处理、文件操作、接口调用、构建应用...）
@@ -89,7 +89,7 @@ description: >
 
 | 类别 | 来源 | 示例 |
 |------|------|------|
-| 脚本命令基元 | 第三层六大模块 | `window_manager.py list`、`process_manager.py start`、`hardware_controller.py volume set --level 50`、`serial_comm.py list`、`iot_controller.py homeassistant on --entity-id light.xxx`、`gui_controller.py screenshot full` |
+| 脚本命令基元 | 第三层十八大模块 | `window_manager.py list`、`process_manager.py start`、`hardware_controller.py volume set --level 50`、`network_controller.py adapter list`、`input_controller.py all`、`gpu_controller.py monitor`、`storage_controller.py list`、`battery_controller.py status`、`audio_controller.py devices`、`display_controller.py info`、`thermal_controller.py status`、`serial_comm.py list`、`bluetooth_controller.py info`、`iot_controller.py homeassistant on --entity-id light.xxx`、`printer_controller.py list`、`scanner_controller.py list`、`camera_controller.py list`、`gui_controller.py screenshot full` |
 | 代码执行基元 | 第二层执行框架 | 大语言模型即时生成的 Python 脚本、命令行指令 |
 | 工具调用基元 | 宿主环境内置工具 | 文件读写、命令执行、搜索、网页访问等 |
 | 技能插件基元 | 已安装的其他技能 | 通过 `use_skill` 加载的外部技能能力 |
@@ -249,18 +249,30 @@ description: >
 若虚拟环境不存在，先创建：
 ```
 python -m venv ~/.workbuddy/binaries/python/envs/default
-~/.workbuddy/binaries/python/envs/default/Scripts/pip install pyautogui pillow pyserial requests
+~/.workbuddy/binaries/python/envs/default/Scripts/pip install pyautogui pillow pyserial requests bleak pycaw sounddevice opencv-python-headless
 ```
 
-### 六大控制模块
+### 十八大控制模块
 
 | 模块 | 脚本 | 覆盖范围 |
 |------|------|----------|
 | 窗口管理 | `window_manager.py` | 桌面窗口控制：列表、激活、关闭、最小化、最大化、调整大小、发送按键 |
-| 进程管理 | `process_manager.py` | 系统进程：列表、终止、启动、详情、系统概览 |
-| 硬件控制 | `hardware_controller.py` | 音量/亮度/电源/网络/USB |
+| 进程管理 | `process_manager.py` | 系统进程：列表、启动、详情、终止、系统概览 |
+| 硬件控制 | `hardware_controller.py` | 音量/亮度/电源/USB |
+| 网络与WiFi管理 | `network_controller.py` | 网卡管理/WiFi扫描连接/DNS配置/代理设置/连通性测试 |
+| GPU监控与控制 | `gpu_controller.py` | GPU信息/实时监控/显存/温度/功耗/频率/进程占用/功耗模式设置（需nvidia-smi） |
+| 存储磁盘管理 | `storage_controller.py` | 磁盘列表/详情/健康/大文件扫描/文件夹分析/分区映射（自动安装 psutil） |
+| 电池与电源计划 | `battery_controller.py` | 电池状态/电量/健康度/电源计划切换/电池报告（自动安装 psutil） |
+| 音频设备管理 | `audio_controller.py` | 设备列表/输出输入切换/音量控制/麦克风录音（自动安装 pycaw+sounddevice） |
+| 显示器管理 | `display_controller.py` | 显示器信息/多屏布局/DPI缩放/夜间模式/屏幕方向 |
+| 温度与风扇监控 | `thermal_controller.py` | CPU/GPU温度/风扇转速/实时监控（自动安装 psutil；详细温度需 OpenHardwareMonitor） |
+| 输入设备枚举 | `input_controller.py` | 键盘/鼠标/游戏手柄设备列表 |
 | 串口通信 | `serial_comm.py` | Arduino/ESP32/串口设备（自动安装 pyserial） |
+| 蓝牙控制 | `bluetooth_controller.py` | 蓝牙适配器/已配对设备/BLE扫描/服务发现/连接管理（BLE需 bleak） |
 | 物联网控制 | `iot_controller.py` | Home Assistant/HTTP 接口/智能家居（自动安装 requests） |
+| 打印机管理 | `printer_controller.py` | 打印机列表/默认打印机/打印队列/取消任务/打印机能力 |
+| 扫描仪管理 | `scanner_controller.py` | 扫描仪列表/设备详情/WIA服务状态 |
+| 摄像头管理 | `camera_controller.py` | 摄像头列表/摄像头参数/拍照（自动安装 opencv-python-headless） |
 | 图形界面自动化 | `gui_controller.py` | 鼠标/键盘/截图/文字识别/图像识别（自动安装 pyautogui+pillow） |
 
 所有脚本独立运行，无互相依赖。
@@ -286,14 +298,65 @@ python -m venv ~/.workbuddy/binaries/python/envs/default
 **硬件控制**:
 - "把音量调到50" → `hardware_controller.py volume set --level 50`
 - "锁屏" → `hardware_controller.py power lock`
-- "扫描WiFi" → `hardware_controller.py network wifi`
+
+**网络管理**:
+- "扫描WiFi" → `network_controller.py wifi scan`
+- "连接WiFi" → `network_controller.py wifi connect --ssid "MyWiFi" --password "xxx"`
+- "设置DNS" → `network_controller.py dns set --adapter "WiFi" --servers "8.8.8.8,8.8.4.4"`
+- "网络延迟" → `network_controller.py connectivity ping --host baidu.com`
+
+**输入设备**:
+- "有哪些键盘" → `input_controller.py keyboards`
+- "鼠标设备" → `input_controller.py mice`
+- "游戏手柄" → `input_controller.py gamepads`
+
+**GPU监控**:
+- "显卡状态" → `gpu_controller.py info`
+- "实时监控GPU" → `gpu_controller.py monitor --interval 2 --count 5`
+- "切换高性能模式" → `gpu_controller.py set-power performance`
+
+**存储管理**:
+- "磁盘空间" → `storage_controller.py list`
+- "大文件" → `storage_controller.py big-files --top 30`
+- "文件夹大小" → `storage_controller.py usage --path "C:\Users"`
+
+**电池管理**:
+- "电池状态" → `battery_controller.py status`
+- "切换电源计划" → `battery_controller.py set-plan --name "高性能"`
+
+**音频控制**:
+- "切换耳机" → `audio_controller.py set-default --name "耳机"`
+- "音量调到70" → `audio_controller.py volume set --level 70`
+- "录音10秒" → `audio_controller.py record --duration 10`
+
+**显示器管理**:
+- "显示器信息" → `display_controller.py info`
+- "多屏布局" → `display_controller.py layout`
+- "夜间模式" → `display_controller.py night-light on`
+
+**温度监控**:
+- "系统温度" → `thermal_controller.py status`
+- "实时监控" → `thermal_controller.py monitor`
 
 **串口通信**:
 - "有哪些串口" → `serial_comm.py list`
 - "给Arduino发指令开灯" → `serial_comm.py send --port COM3 --data "LED_ON"`
 
+**蓝牙控制**:
+- "有哪些蓝牙设备" → `bluetooth_controller.py paired`
+- "扫描附近蓝牙" → `bluetooth_controller.py list --timeout 10`
+- "连接蓝牙耳机" → `bluetooth_controller.py connect AA:BB:CC:DD:EE:FF`
+
 **物联网控制**:
 - "打开客厅灯" → `iot_controller.py homeassistant --url ... --token ... on --entity-id light.living_room`
+
+**打印机管理**:
+- "查看打印机" → `printer_controller.py list`
+- "设置默认打印机" → `printer_controller.py set-default --name "HP"`
+
+**摄像头操作**:
+- "有哪些摄像头" → `camera_controller.py list`
+- "拍张照" → `camera_controller.py capture`
 
 **图形界面自动化**:
 - "截图" → `gui_controller.py screenshot full`
@@ -311,6 +374,8 @@ python -m venv ~/.workbuddy/binaries/python/envs/default
 6. 鼠标键盘直接操控 → `gui_controller.py mouse click`
 7. 检查是否有接口 → `iot_controller.py http`
 8. 检查 USB 连接 → `hardware_controller.py usb list` → `serial_comm.py list`
-9. 建议替代方案 → MCP 服务或自定义脚本
+9. 检查打印机 → `printer_controller.py list`
+10. 检查摄像头 → `camera_controller.py list`
+11. 建议替代方案 → MCP 服务或自定义脚本
 
-详细命令语法见 `references/command_reference.md`。
+详细命令语法见 `references/command_reference.md`。脚本安全审查清单见 `references/security_checklist.md`，当需要审计或新增脚本时参照执行。

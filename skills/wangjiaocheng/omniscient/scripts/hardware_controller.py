@@ -7,8 +7,6 @@ Capabilities:
   - Screen brightness (get/set)
   - Display settings (resolution, orientation)
   - Power management (sleep, hibernate, shutdown, restart, lock)
-  - Network adapters (list, enable, disable)
-  - WiFi (list networks)
   - USB devices (list)
 
 Requirements: Windows 10/11, PowerShell 5.1+
@@ -252,94 +250,6 @@ def cancel_shutdown():
     return stdout
 
 
-# ========== Network ==========
-
-def list_network_adapters():
-    """List all network adapters with status."""
-    script = r"""
-Get-NetAdapter | Select-Object Name, InterfaceDescription, Status, LinkSpeed, MacAddress |
-    ForEach-Object {
-        [PSCustomObject]@{
-            Name = $_.Name
-            Description = $_.InterfaceDescription
-            Status = $_.Status
-            Speed = $_.LinkSpeed
-            MAC = $_.MacAddress
-        }
-    } | ConvertTo-Json -Compress
-"""
-    stdout, _, _ = _run_ps(script)
-    return stdout
-
-
-def enable_adapter(name):
-    """Enable a network adapter."""
-    escaped = name.replace("'", "''")
-    script = f"""
-try {{
-    Enable-NetAdapter -Name '{escaped}' -Confirm:$false -ErrorAction Stop
-    Write-Output "OK: Adapter '{name}' enabled"
-}} catch {{
-    Write-Output "ERROR: $($_.Exception.Message)"
-}}
-"""
-    stdout, _, _ = _run_ps(script)
-    return stdout
-
-
-def disable_adapter(name):
-    """Disable a network adapter. Requires confirmation to prevent self-disconnect."""
-    # Safety: require explicit confirmation
-    err = _require_confirmation("disable_network")
-    if err:
-        return err
-    escaped = name.replace("'", "''")
-    script = f"""
-try {{
-    $adapter = Get-NetAdapter -Name '{escaped}' -ErrorAction Stop
-    if ($adapter.Status -eq 'Disabled') {{
-        Write-Output "INFO: Adapter '{name}' is already disabled"
-        return
-    }}
-    Disable-NetAdapter -Name '{escaped}' -Confirm:$false -ErrorAction Stop
-    Write-Output "OK: Adapter '{name}' disabled"
-}} catch {{
-    Write-Output "ERROR: $($_.Exception.Message)"
-}}
-"""
-    stdout, _, _ = _run_ps(script)
-    return stdout
-
-
-def list_wifi_networks():
-    """List available WiFi networks."""
-    script = r"""
-try {
-    netsh wlan show networks mode=bssid
-} catch {
-    Write-Output "ERROR: Could not scan WiFi networks."
-}
-"""
-    stdout, _, _ = _run_ps(script)
-    return stdout
-
-
-def get_network_info():
-    """Get current network configuration."""
-    script = r"""
-Get-NetIPConfiguration | ForEach-Object {
-    [PSCustomObject]@{
-        Interface = $_.InterfaceAlias
-        IPv4 = if ($_.IPv4Address) { $_.IPv4Address.IPAddress -join ', ' } else { '' }
-        IPv6 = if ($_.IPv6Address) { $_.IPv6Address.IPAddress -join ', ' } else { '' }
-        DNS = if ($_.DNSServer) { $_.DNSServer.ServerAddresses -join ', ' } else { '' }
-    }
-} | ConvertTo-Json -Compress
-"""
-    stdout, _, _ = _run_ps(script)
-    return stdout
-
-
 # ========== USB / Device ==========
 
 def list_usb_devices():
@@ -392,17 +302,6 @@ def main():
     pwr_rs.add_argument("--delay", type=int, default=60, help="Seconds")
     pwr_sub.add_parser("cancel", help="Cancel scheduled shutdown")
 
-    # Network
-    p_net = sub.add_parser("network", help="Network control")
-    net_sub = p_net.add_subparsers(dest="action")
-    net_sub.add_parser("adapters", help="List network adapters")
-    net_en = net_sub.add_parser("enable", help="Enable adapter")
-    net_en.add_argument("--name", type=str, required=True)
-    net_dis = net_sub.add_parser("disable", help="Disable adapter")
-    net_dis.add_argument("--name", type=str, required=True)
-    net_sub.add_parser("wifi", help="List WiFi networks")
-    net_sub.add_parser("info", help="Get network config")
-
     # USB
     p_usb = sub.add_parser("usb", help="USB devices")
     usb_sub = p_usb.add_subparsers(dest="action")
@@ -444,19 +343,6 @@ def main():
             print(cancel_shutdown())
         else:
             p_pwr.print_help()
-    elif args.category == "network":
-        if args.action == "adapters":
-            print(list_network_adapters())
-        elif args.action == "enable":
-            print(enable_adapter(args.name))
-        elif args.action == "disable":
-            print(disable_adapter(args.name))
-        elif args.action == "wifi":
-            print(list_wifi_networks())
-        elif args.action == "info":
-            print(get_network_info())
-        else:
-            p_net.print_help()
     elif args.category == "usb":
         if args.action == "list":
             print(list_usb_devices())

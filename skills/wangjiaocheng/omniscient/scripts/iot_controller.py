@@ -106,7 +106,7 @@ def check_requests():
     except ImportError:
         print("Installing requests...", file=sys.stderr)
         subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "requests", "-q"],
+            [sys.executable, "-m", "pip", "install", "requests>=2.31.0,<3", "-q"],
             stdout=subprocess.DEVNULL
         )
         import requests

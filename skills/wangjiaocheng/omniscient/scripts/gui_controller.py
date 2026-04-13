@@ -44,11 +44,11 @@ def _ensure_deps(modules=None):
             missing.append(mod)
     if not missing:
         return True
-    # Build pip install command
+    # Build pip install command with version constraints
     pkg_map = {
-        "pyautogui": "pyautogui",
-        "PIL": "pillow",
-        "pytesseract": "pytesseract",
+        "pyautogui": "pyautogui>=0.9.54,<1",
+        "PIL": "pillow>=10.0.0,<11",
+        "pytesseract": "pytesseract>=0.3.10,<1",
     }
     pkgs = []
     for m in missing:
