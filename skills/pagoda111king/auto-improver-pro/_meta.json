@@ -3,9 +3,15 @@
   "slug": "auto-improver-pro",
   "displayName": "Auto Improver Pro",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775082008763,
-    "commit": "https://github.com/openclaw/skills/commit/6ed73b17afb6333d47627b3d7590f7ae3c843207"
+    "version": "1.0.1",
+    "publishedAt": 1776045792108,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775082008763,
+      "commit": "https://github.com/openclaw/skills/commit/6ed73b17afb6333d47627b3d7590f7ae3c843207"
+    }
+  ]
 }
