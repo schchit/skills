@@ -3,9 +3,15 @@
   "slug": "catfee-agent-flow",
   "displayName": "Catfee AgentFlow工作流",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1775529106127,
-    "commit": "https://github.com/openclaw/skills/commit/bdabd54823198c86fb44f3abccac2eaab4f8ba0f"
+    "version": "1.9.0",
+    "publishedAt": 1775566863854,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1775529106127,
+      "commit": "https://github.com/openclaw/skills/commit/bdabd54823198c86fb44f3abccac2eaab4f8ba0f"
+    }
+  ]
 }
