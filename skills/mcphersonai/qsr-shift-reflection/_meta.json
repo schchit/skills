@@ -3,9 +3,15 @@
   "slug": "qsr-shift-reflection",
   "displayName": "QSR Shift Reflection",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775380614016,
-    "commit": "https://github.com/openclaw/skills/commit/8b647ab3f45ce18e6663f4f60c1b817113f55b4a"
+    "version": "2.0.1",
+    "publishedAt": 1776073926074,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775380614016,
+      "commit": "https://github.com/openclaw/skills/commit/8b647ab3f45ce18e6663f4f60c1b817113f55b4a"
+    }
+  ]
 }

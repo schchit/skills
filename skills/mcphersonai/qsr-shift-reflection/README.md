@@ -2,6 +2,8 @@
 
 End-of-shift knowledge capture for restaurant operators. Three fast questions at every shift change that prevent handoff failures, preserve institutional memory, and make sure urgent issues reach the next manager before they become tomorrow’s problem.
 
+**v1.1 update:** urgent handoffs now automatically resurface at the next relevant shift check-in until acknowledged.
+
 ## Overview
 
 QSR Shift Reflection is a lightweight operational memory skill for restaurant and franchise teams. At the end of each shift, it captures:
