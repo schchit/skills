@@ -1,0 +1,11 @@
+{
+  "owner": "adderwar-bot",
+  "slug": "item-manager",
+  "displayName": "Item manager",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775534498092,
+    "commit": null
+  },
+  "history": []
+}
