@@ -27,7 +27,7 @@ export async function authenticateWithEmail(usernameOrEmail: string, password: s
     }
   `;
 
-  const metaClient = new GraphQLClient("https://backend.functorz.com/api/graphql", {
+  const metaClient = new GraphQLClient("https://zionbackend.functorz.com/api/graphql", {
     headers: {
       "Content-Type": "application/json",
       "Origin": "https://auth.functorz.com",

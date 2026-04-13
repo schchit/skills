@@ -51,7 +51,7 @@ npm run auth:email <email> <password>
 ```
 
 ### 2. Querying the Meta API & Fetching Runtime Backend Token
-Use the developer JWT token as a Bearer token against the Meta API (`https://zionbackend-internal.functorz.com/api/graphql`) to get the schema or data visualizer tokens. The data visualizer token grants administrative access to the project's runtime backend (`zeroUrl`).
+Use the developer JWT token as a Bearer token against the Meta API (`https://zionbackend.functorz.com/api/graphql`) to get the schema or data visualizer tokens. The data visualizer token grants administrative access to the project's runtime backend (`zeroUrl`).
 
 You can run the bundled script to fetch the token. It requires the developer token to be present in `.zion/credentials.yaml`.
 
@@ -82,7 +82,7 @@ The credentials file must adhere to the following structure:
 ```yaml
 # .zion/credentials.yaml
 developer_token:
-  token: "<your_developer_jwt_token>" # Used to communicate with backend.functorz.com
+  token: "<your_developer_jwt_token>" # Used to communicate with zionbackend.functorz.com
   expiry: "<timestamp_or_date_of_expiry>"
 
 project:
@@ -100,7 +100,7 @@ project:
         expiry: "<timestamp_or_date_of_expiry>"
 ```
 
-- **`developer_token`**: The JWT token acquired via the OAuth flow, used against the Meta API (`backend.functorz.com`).
+- **`developer_token`**: The JWT token acquired via the OAuth flow, used against the Meta API (`zionbackend.functorz.com`).
 - **`project`**: Contains the core project identifiers (`exId`, `name`), the `admin_token` (data visualizer token) for the runtime backend, and `other_users`.
 - **`other_users`**: A list of authenticated users (e.g., test accounts) containing their `user_id`, helpful `user_tags` to identify their purpose, and their `token`.
 - **`expiry`**: All stored tokens must include an associated expiry.

@@ -40,7 +40,7 @@ export async function fetchRuntimeToken(projectExId: string, developerJwtToken: 
   `;
 
   // Meta API Endpoint
-  const metaClient = new GraphQLClient("https://backend.functorz.com/api/graphql", {
+  const metaClient = new GraphQLClient("https://zionbackend.functorz.com/api/graphql", {
     headers: {
       Authorization: `Bearer ${developerJwtToken}`,
       "x-zed-version": "2.0.5",

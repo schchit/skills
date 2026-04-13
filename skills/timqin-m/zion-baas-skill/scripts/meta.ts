@@ -79,7 +79,7 @@ async function run() {
     process.exit(1);
   }
 
-  const client = new GraphQLClient("https://backend.functorz.com/api/graphql", {
+  const client = new GraphQLClient("https://zionbackend.functorz.com/api/graphql", {
     headers: {
       Authorization: `Bearer ${developerToken}`,
       "x-zed-version": "2.0.5",
