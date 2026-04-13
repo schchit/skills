@@ -3,9 +3,15 @@
   "slug": "alibabacloud-dataworks-infra-manage",
   "displayName": "Alibabacloud Dataworks Infra Manage",
   "latest": {
-    "version": "0.0.2",
-    "publishedAt": 1775045954902,
-    "commit": "https://github.com/openclaw/skills/commit/34a29705d8c42a2d8ed9cde8dbcf12402d0dfbcc"
+    "version": "0.0.3",
+    "publishedAt": 1775806389418,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.0.2",
+      "publishedAt": 1775045954902,
+      "commit": "https://github.com/openclaw/skills/commit/34a29705d8c42a2d8ed9cde8dbcf12402d0dfbcc"
+    }
+  ]
 }
