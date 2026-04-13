@@ -1,11 +1,17 @@
 {
   "owner": "cloudyxuq",
   "slug": "sam-food-onboarding",
-  "displayName": "食品企业完成山姆超市产品流程指导",
+  "displayName": "samOnboarding山姆超市产品上架指导",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775037027355,
-    "commit": "https://github.com/openclaw/skills/commit/4c9e08c620c74585ff2101cd56123b19998e959a"
+    "version": "1.0.1",
+    "publishedAt": 1775715007182,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775037027355,
+      "commit": "https://github.com/openclaw/skills/commit/4c9e08c620c74585ff2101cd56123b19998e959a"
+    }
+  ]
 }
