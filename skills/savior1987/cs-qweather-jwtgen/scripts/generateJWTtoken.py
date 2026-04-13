@@ -2,7 +2,7 @@
 """
 生成和风天气 JWT Token 的工具。
 
-环境变量:
+环境变量（支持从 ~/.openclaw/.env 自动加载）：
     QWEATHER_SUB  和风账户的用户标识（sub 字段）
     QWEATHER_KID  和风账户的密钥 ID（kid 字段）
 
@@ -10,21 +10,30 @@ Token 输出到:
     ~/.myjwtkey/last-token.dat（每次生成后覆盖写入）
 
 日志输出到:
-    logs/generateJWTtoken-YYYYMMDD.log
+    /tmp/cslog/generateJWTtoken-YYYYMMDD.log
 """
 
 import sys
 import os
 import time
-import re
 import jwt
 from datetime import datetime
+
+# 尝试加载 dotenv（标准方式读取 .env 文件）
+try:
+    import dotenv
+    # 优先加载 ~/.openclaw/.env（OpenClaw 标准配置位置）
+    # 若 OpenClaw 已将 env 注入了当前进程，此调用不会覆盖已存在的变量
+    dotenv.load_dotenv(os.path.expanduser("~/.openclaw/.env"), override=True)
+except ImportError:
+    # 未安装 dotenv 时跳过，完全依赖环境继承
+    pass
 
 
 # ============ 脱敏工具 ============
 
 def _mask(s: str, show_front: int = 2, show_back: int = 2) -> str:
-    """只显示前 show_front 位和后 show_back 位，中间用 *** 代替。"""
+    """只显示前 show_front 位和后 show_back 位，其余用 *** 代替。"""
     if len(s) <= show_front + show_back + 3:
         return "***"
     return s[:show_front] + "***" + s[-show_back:]
@@ -55,11 +64,10 @@ def _log(msg: str) -> None:
 def _save_token_to_file(token: str) -> str:
     """将 token 写入 ~/.myjwtkey/last-token.dat，返回文件路径。"""
     token_file = os.path.expanduser("~/.myjwtkey/last-token.dat")
-    # 确保目录存在
     os.makedirs(os.path.dirname(token_file), exist_ok=True)
     with open(token_file, "w", encoding="utf-8") as f:
         f.write(token)
-    os.chmod(token_file, 0o600)  # 权限仅本人可读写
+    os.chmod(token_file, 0o600)
     return token_file
 
 
@@ -82,6 +90,7 @@ def main():
     sub = os.environ.get("QWEATHER_SUB")
     if not sub:
         _log("ERROR: QWEATHER_SUB environment variable is not set")
+        _log("Hint: set it in ~/.openclaw/.env or export to environment")
         sys.exit(1)
     _log(f"sub: {_mask(sub)}")
 
@@ -89,12 +98,13 @@ def main():
     kid = os.environ.get("QWEATHER_KID")
     if not kid:
         _log("ERROR: QWEATHER_KID environment variable is not set")
+        _log("Hint: set it in ~/.openclaw/.env or export to environment")
         sys.exit(1)
     _log(f"kid: {_mask(kid)}")
 
-    # 4. 生成 JWT
-    iat = int(time.time()) - 30
-    exp = int(time.time()) + 84000
+    # 4. 生成 JWT（EdDSA 算法）
+    iat = int(time.time()) - 30   # 提前30秒避免时钟误差
+    exp = iat + 84000             # 24小时后过期
 
     payload = {
         "iat": iat,
@@ -109,8 +119,7 @@ def main():
     _log("Generating JWT ...")
 
     encoded_jwt = jwt.encode(payload, private_key, algorithm="EdDSA", headers=headers)
-    masked_jwt = _mask(encoded_jwt)
-    _log(f"JWT generated [masked: {masked_jwt}]")
+    _log(f"JWT generated [masked: {_mask(encoded_jwt)}]")
 
     # 5. 写入 token 文件
     token_file = _save_token_to_file(encoded_jwt)
