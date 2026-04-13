@@ -3,9 +3,15 @@
   "slug": "shareone-skill",
   "displayName": "Shareone",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1775546485001,
-    "commit": "https://github.com/openclaw/skills/commit/04e2d4fbd65eaae84c39143b09e15d5db9a7425a"
+    "version": "1.0.2",
+    "publishedAt": 1775716316429,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1775546485001,
+      "commit": "https://github.com/openclaw/skills/commit/04e2d4fbd65eaae84c39143b09e15d5db9a7425a"
+    }
+  ]
 }
