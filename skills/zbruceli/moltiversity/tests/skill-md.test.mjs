@@ -12,9 +12,13 @@ describe("skill.md structure", () => {
     assert.ok(endIdx > 0, "should have closing ---");
     const frontmatter = skillMd.slice(4, endIdx);
     assert.ok(frontmatter.includes("name: moltiversity"));
-    assert.ok(frontmatter.includes("version: 1.2.0"));
+    assert.ok(frontmatter.includes("version: 3.0.1"));
     assert.ok(frontmatter.includes("description:"));
     assert.ok(frontmatter.includes("homepage: https://moltiversity.org"));
+    assert.ok(frontmatter.includes("env:"));
+    assert.ok(frontmatter.includes("MOLTIVERSITY_API_KEY:"));
+    assert.ok(frontmatter.includes("required: true"));
+    assert.ok(frontmatter.includes("sensitive: true"));
     assert.ok(frontmatter.includes("metadata:"));
   });
 
@@ -59,6 +63,7 @@ describe("skill.md structure", () => {
       "/courses",
       "/skills",
       "/categories",
+      "/skills-hub/skills",
     ];
 
     for (const ep of endpoints) {
@@ -84,14 +89,36 @@ describe("skill.md structure", () => {
     assert.ok(skillMd.includes("1200"));
   });
 
-  it("references the PoW solver script", () => {
-    assert.ok(skillMd.includes("scripts/solve-pow.mjs"));
-  });
-
   it("includes JSON response examples", () => {
     assert.ok(skillMd.includes('"data"'));
     assert.ok(skillMd.includes('"error"'));
     assert.ok(skillMd.includes('"api_key"'));
+  });
+
+  it("documents new v3 features", () => {
+    assert.ok(skillMd.includes("SAE Prep"), "should mention SAE Prep");
+    assert.ok(skillMd.includes("Skills Hub"), "should mention Skills Hub");
+    assert.ok(skillMd.includes("Agent Safety"), "should have Agent Safety category");
+    assert.ok(skillMd.includes("Reasoning"), "should have Reasoning category");
+    assert.ok(skillMd.includes("scenario"), "should document scenario quiz format");
+    assert.ok(skillMd.includes("safety_rubric"), "should document safety rubric grading");
+    assert.ok(skillMd.includes("/skills-hub/skills"), "should have Skills Hub API endpoints");
+  });
+
+  it("documents all skill categories", () => {
+    const categories = [
+      "Core", "Productivity", "Communication", "Development",
+      "Content", "Business", "Home", "Agent Safety", "Reasoning",
+    ];
+    for (const cat of categories) {
+      assert.ok(skillMd.includes(cat), `missing category: ${cat}`);
+    }
+  });
+
+  it("documents multi-format quiz types", () => {
+    for (const type of ["mcq", "json_response", "free_text", "scenario"]) {
+      assert.ok(skillMd.includes(type), `missing quiz type: ${type}`);
+    }
   });
 });
 
@@ -100,7 +127,7 @@ describe("clawhub.json manifest", () => {
 
   it("has required fields", () => {
     assert.equal(manifest.name, "moltiversity");
-    assert.equal(manifest.version, "1.2.0");
+    assert.equal(manifest.version, "3.0.1");
     assert.equal(manifest.skill, "SKILL.md");
     assert.ok(manifest.description);
     assert.equal(manifest.category, "education");
@@ -116,17 +143,19 @@ describe("clawhub.json manifest", () => {
     assert.equal(manifest.env.MOLTIVERSITY_API_BASE.required, false);
   });
 
-  it("only includes solve-pow script", () => {
-    assert.ok(manifest.scripts["solve-pow"]);
-    assert.equal(Object.keys(manifest.scripts).length, 1);
+  it("has no scripts section", () => {
+    assert.equal(manifest.scripts, undefined);
   });
 
   it("has valid metadata", () => {
-    assert.equal(manifest.metadata.total_skills, 30);
-    assert.equal(manifest.metadata.total_courses, 21);
+    assert.equal(manifest.metadata.total_skills, 41);
+    assert.equal(manifest.metadata.total_courses, 24);
     assert.ok(Array.isArray(manifest.metadata.trust_tiers));
     assert.equal(manifest.metadata.trust_tiers.length, 4);
     assert.ok(Array.isArray(manifest.metadata.skill_categories));
+    assert.equal(manifest.metadata.skill_categories.length, 9);
+    assert.ok(manifest.metadata.skill_categories.includes("agent-safety"));
+    assert.ok(manifest.metadata.skill_categories.includes("reasoning"));
   });
 });
 
@@ -138,9 +167,8 @@ describe("package.json", () => {
     assert.equal(pkg.type, "module");
   });
 
-  it("has test and solve-pow scripts only", () => {
+  it("has test script only", () => {
     assert.ok(pkg.scripts.test);
-    assert.ok(pkg.scripts["solve-pow"]);
-    assert.equal(Object.keys(pkg.scripts).length, 2);
+    assert.equal(Object.keys(pkg.scripts).length, 1);
   });
 });

@@ -1,11 +1,10 @@
 {
   "name": "moltiversity",
-  "version": "1.2.0",
+  "version": "3.0.1",
   "description": "ClawHub skill package for Moltiversity — the educational platform for OpenClaw bots",
   "type": "module",
   "scripts": {
-    "test": "node --test tests/*.test.mjs",
-    "solve-pow": "node scripts/solve-pow.mjs"
+    "test": "node --test tests/skill-md.test.mjs"
   },
   "keywords": [
     "openclaw",
