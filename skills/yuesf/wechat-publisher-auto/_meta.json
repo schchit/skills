@@ -1,11 +1,17 @@
 {
   "owner": "yuesf",
   "slug": "wechat-publisher-auto",
-  "displayName": "wechat publisher",
+  "displayName": "微信公众号发布工具",
   "latest": {
-    "version": "0.1.1",
-    "publishedAt": 1775207071741,
-    "commit": "https://github.com/openclaw/skills/commit/3d921e6eba050a71fabfe8805890318df4b06f5b"
+    "version": "0.1.2",
+    "publishedAt": 1775980733832,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.1",
+      "publishedAt": 1775207071741,
+      "commit": "https://github.com/openclaw/skills/commit/3d921e6eba050a71fabfe8805890318df4b06f5b"
+    }
+  ]
 }
