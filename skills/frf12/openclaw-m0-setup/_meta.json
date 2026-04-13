@@ -3,9 +3,15 @@
   "slug": "openclaw-m0-setup",
   "displayName": "SeekDB Memory Setup",
   "latest": {
-    "version": "0.2.1",
-    "publishedAt": 1775388945027,
-    "commit": "https://github.com/openclaw/skills/commit/9b9213da2894d595259525af3635938f66df0af8"
+    "version": "0.2.2",
+    "publishedAt": 1775716042606,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.2.1",
+      "publishedAt": 1775388945027,
+      "commit": "https://github.com/openclaw/skills/commit/9b9213da2894d595259525af3635938f66df0af8"
+    }
+  ]
 }

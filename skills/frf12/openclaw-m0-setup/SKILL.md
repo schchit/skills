@@ -1,7 +1,7 @@
 ---
 name: openclaw-m0-setup
 description: 为 OpenClaw 安装云端 m0 记忆插件。当用户提供 Access Key（以 ak_ 开头）或提到「配置云端记忆」「安装记忆插件」「setup memory」时使用此 skill。
-version: 0.2.1
+version: 0.2.2
 metadata: {"openclaw":{"emoji":"🧠","requires":{"env":[],"bins":["curl","node"]}}}
 ---
 
@@ -111,58 +111,27 @@ curl -s -X POST "{ENDPOINT}/api/instances/" \
 
 ---
 
-## Step 2 — 下载 m0 插件
+## Step 2 — 安装 m0 插件
 
-从 Cloud Memory 服务下载插件源码并链接宿主依赖：
-
-```bash
-CLAW_ROOT=$({CLAW_CMD} config file 2>/dev/null | grep '\.json' | xargs dirname | sed "s|~|$HOME|")
-PLUGIN_DEST="${CLAW_ROOT}/extensions/m0"
-DIST_BASE="{ENDPOINT}/extensions/m0"
-
-mkdir -p "${PLUGIN_DEST}/src"
-
-for f in index.ts package.json openclaw.plugin.json; do
-  curl -fsSL "${DIST_BASE}/${f}" -o "${PLUGIN_DEST}/${f}" && echo "  ${f} ✓"
-done
-
-for f in client.ts inject.ts extract.ts llm.ts; do
-  curl -fsSL "${DIST_BASE}/src/${f}" -o "${PLUGIN_DEST}/src/${f}" && echo "  src/${f} ✓"
-done
-```
-
-### 链接宿主依赖
-
-插件依赖 `@sinclair/typebox`，OpenClaw 宿主自带此模块，通过符号链接复用即可（无需 npm install）：
+通过 ClawHub 包管理器安装（插件已发布至 ClawHub registry）：
 
 ```bash
-CLAW_MODULES="$(dirname "$(dirname "$(which {CLAW_CMD})")")/lib/node_modules/{CLAW_CMD}/node_modules"
-if [ -d "${CLAW_MODULES}/@sinclair/typebox" ]; then
-  mkdir -p "${PLUGIN_DEST}/node_modules/@sinclair"
-  ln -sf "${CLAW_MODULES}/@sinclair/typebox" "${PLUGIN_DEST}/node_modules/@sinclair/typebox"
-  echo "  @sinclair/typebox ✓ (symlinked from host)"
-else
-  echo "  ⚠ @sinclair/typebox not found in host, falling back to npm install"
-  cd "${PLUGIN_DEST}" && npm install --no-audit --no-fund
-fi
-
-if [ -d "${CLAW_MODULES}/@mariozechner/pi-ai" ]; then
-  mkdir -p "${PLUGIN_DEST}/node_modules/@mariozechner"
-  ln -sf "${CLAW_MODULES}/@mariozechner/pi-ai" "${PLUGIN_DEST}/node_modules/@mariozechner/pi-ai"
-  echo "  @mariozechner/pi-ai ✓ (symlinked from host)"
-else
-  echo "  ⚠ @mariozechner/pi-ai not found in host, falling back to npm install"
-  cd "${PLUGIN_DEST}" && npm install --no-audit --no-fund
-fi
+clawhub install m0
 ```
 
-**验证文件完整性**：
+如果 `clawhub` 未安装，先安装 CLI：
 
 ```bash
-ls "${PLUGIN_DEST}/" "${PLUGIN_DEST}/src/"
+npm i -g clawhub
 ```
 
-应当看到：`index.ts`、`package.json`、`openclaw.plugin.json`、`node_modules/`、`src/client.ts`、`src/inject.ts`、`src/extract.ts`、`src/llm.ts`。
+**验证安装**：
+
+```bash
+clawhub list
+```
+
+应当看到 `m0` 出现在已安装列表中。
 
 ---
 
@@ -298,8 +267,7 @@ Gateway 检测到配置变更后约 30 秒内自动重启。重启后执行 BOOT
 | 症状 | 解决 |
 |------|------|
 | GET status 返回 404 | AK 无效，重新创建实例获取新 Key |
-| 插件未出现在 plugins list | 检查 `${CLAW_ROOT}/extensions/m0/` 文件完整性，重新下载 |
-| `Cannot find module '@sinclair/typebox'` | 符号链接失败，手动运行 `cd ${CLAW_ROOT}/extensions/m0 && npm install` |
+| 插件未出现在 plugins list | 运行 `clawhub install m0` 重新安装 |
 | `ltm health` 失败 | 确认服务地址 `{ENDPOINT}` 可访问；检查 `baseUrl` 配置 |
 | 搜索返回空 | 先写入一些记忆；确认实例状态为 ready |
 | 对话结束后无新记忆 | 检查 `autoCapture` 是否为 true；查看宿主工具日志 |
