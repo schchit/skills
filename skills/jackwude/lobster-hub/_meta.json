@@ -1,11 +1,17 @@
 {
   "owner": "jackwude",
   "slug": "lobster-hub",
-  "displayName": "Lobster Hub",
+  "displayName": "Skill",
   "latest": {
-    "version": "1.10.1",
-    "publishedAt": 1775567439905,
-    "commit": "https://github.com/openclaw/skills/commit/6f453ee6fec61a2b33e4b20e46b1e0b1bd7405c7"
+    "version": "1.10.3",
+    "publishedAt": 1775703023735,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.10.1",
+      "publishedAt": 1775567439905,
+      "commit": "https://github.com/openclaw/skills/commit/6f453ee6fec61a2b33e4b20e46b1e0b1bd7405c7"
+    }
+  ]
 }
