@@ -1,11 +1,17 @@
 {
   "owner": "nemovideonemo",
   "slug": "shopify-store-video",
-  "displayName": "Shopify Store Video",
+  "displayName": "Ecommerce Video",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775091055913,
-    "commit": "https://github.com/openclaw/skills/commit/9cd6d2e354da00f9d348d7c6449cc227c51d9efe"
+    "version": "1.0.1",
+    "publishedAt": 1775609314247,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775091055913,
+      "commit": "https://github.com/openclaw/skills/commit/9cd6d2e354da00f9d348d7c6449cc227c51d9efe"
+    }
+  ]
 }
