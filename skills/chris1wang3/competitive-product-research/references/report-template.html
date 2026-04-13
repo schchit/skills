@@ -120,26 +120,6 @@
     .cover-verdict.conditional { color:#ffd480; border-color:rgba(243,156,18,.55); background:rgba(243,156,18,.12); }
     .cover-verdict.risk { color:#ffb4b4; border-color:rgba(255,77,79,.55); background:rgba(255,77,79,.12); }
 
-    /* ---------- health score badge ---------- */
-    .health-badge {
-      display:inline-flex; flex-direction:column; align-items:center;
-      padding:10px 18px; border-radius:12px; border:2px solid; margin-top:8px;
-    }
-    .health-badge .grade { font-size:32px; font-weight:800; line-height:1; }
-    .health-badge .score { font-size:13px; font-weight:600; margin-top:2px; }
-    .health-badge .label { font-size:10px; color:var(--muted); margin-top:4px; letter-spacing:.06em; }
-    .health-badge.s { border-color:rgba(46,204,113,.6); background:rgba(46,204,113,.08); }
-    .health-badge.s .grade { color:var(--good); }
-    .health-badge.s .score { color:#b8f5cc; }
-    .health-badge.a { border-color:rgba(91,140,255,.6); background:rgba(91,140,255,.08); }
-    .health-badge.a .grade { color:var(--brand); }
-    .health-badge.a .score { color:#b9d0ff; }
-    .health-badge.b { border-color:rgba(243,156,18,.6); background:rgba(243,156,18,.08); }
-    .health-badge.b .grade { color:var(--warn); }
-    .health-badge.b .score { color:#ffd89a; }
-    .health-badge.c { border-color:rgba(255,77,79,.6); background:rgba(255,77,79,.08); }
-    .health-badge.c .grade { color:var(--bad); }
-    .health-badge.c .score { color:#ffb4b4; }
     .cover-metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:10px 0 0; }
     .cover-metric {
       border:1px solid var(--line); border-radius:10px; padding:8px 10px;
@@ -201,7 +181,6 @@
     .bench col.c-detail { width:30%; }
     .bench col.c-diff { width:25%; }
     .bench col.c-ev { width:8%; }
-    .bench col.c-verdict { width:10%; }
 
     /* ---------- finding ---------- */
     .finding { padding:10px 12px; border:1px dashed var(--line); border-radius:8px; margin:8px 0; font-size:14px; }
@@ -219,9 +198,9 @@
     .who { color:var(--accent); font-weight:600; }
     .when { color:#ffcf88; font-weight:600; }
     .pri { font-weight:700; }
-    .pri.p0 { color:var(--bad); }
-    .pri.p1 { color:var(--warn); }
-    .pri.p2 { color:var(--muted); }
+    .pri.high { color:var(--bad); }
+    .pri.medium { color:var(--warn); }
+    .pri.low { color:var(--muted); }
 
     /* ---------- evidence ---------- */
     .ev-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:10px; margin-top:8px; }
@@ -282,14 +261,6 @@
       </div>
       <div class="cover-side">
         <div class="ts">生成时间：{{生成时间}}</div>
-        <!-- 竞争力健康度徽章：仅在有我方锚点时显示。class 取 s/a/b/c -->
-        {{#健康度}}
-        <div class="health-badge {{健康度样式}}">
-          <div class="grade">{{健康度等级}}</div>
-          <div class="score">{{健康度分数}} 分</div>
-          <div class="label">竞争力健康度</div>
-        </div>
-        {{/健康度}}
         <div class="cover-verdict {{结论样式}}">{{调研结论}}</div>
       </div>
     </div>
@@ -298,7 +269,7 @@
     <div class="cover-metric"><div class="k">对标产品</div><div class="v">{{对标产品列表}}</div></div>
     <div class="cover-metric"><div class="k">信息来源</div><div class="v">{{信息来源概要}}</div></div>
     <div class="cover-metric"><div class="k">关键发现</div><div class="v">{{关键发现数量}}条</div></div>
-    <div class="cover-metric"><div class="k">落地建议</div><div class="v">P0×{{P0数量}} P1×{{P1数量}} P2×{{P2数量}}</div></div>
+      <div class="cover-metric"><div class="k">执行建议分组</div><div class="v">{{执行建议概要}}</div></div>
   </div>
 
   <!-- ==================== 摘要结论 ==================== -->
@@ -308,7 +279,7 @@
       {{#摘要列表}}<li style="margin:6px 0">{{结论}}</li>{{/摘要列表}}
     </ol>
     <div class="finding" style="margin-top:12px">
-      <strong>⚡ 最高优先行动：</strong>{{最高优先行动}}
+      <strong>⚡ 建议首要动作：</strong>{{首要行动}}
     </div>
   </div>
 
@@ -350,9 +321,9 @@
       <table>
         <colgroup>
           <col class="c-target"><col class="c-scene"><col class="c-detail">
-          <col class="c-diff"><col class="c-ev"><col class="c-verdict">
+          <col class="c-diff"><col class="c-ev">
         </colgroup>
-        <thead><tr><th>对标产品</th><th>场景/节点</th><th>做法与亮点</th><th>与我方差异</th><th>证据</th><th>判定</th></tr></thead>
+        <thead><tr><th>对标产品</th><th>场景/节点</th><th>做法与亮点</th><th>与我方差异</th><th>证据</th></tr></thead>
         <tbody>
           {{#对标总览列表}}<tr>
             <td>{{产品名}}</td>
@@ -360,12 +331,71 @@
             <td>{{做法与亮点}}</td>
             <td>{{与我方差异}}</td>
             <td><span class="pill neutral">{{证据ID}}</span></td>
-            <td><span class="pill {{判定样式}}">{{判定}}</span></td>
           </tr>{{/对标总览列表}}
         </tbody>
       </table>
     </div>
   </div>
+
+  <!-- ==================== 战略层分析（可选） ==================== -->
+  {{#战略层启用}}
+  <div class="card">
+    <h2>🧠 战略诊断（竞争格局 / SWOT / 五力 / PESTLE）</h2>
+
+    {{#竞争格局}}
+    <div class="finding" style="margin-bottom:10px">
+      <strong>竞争格局结论</strong>
+      <p style="margin-top:4px;color:var(--muted);font-size:13px">{{竞争格局摘要}}</p>
+      <div style="margin-top:6px"><span class="pill neutral">{{竞争格局证据}}</span></div>
+    </div>
+    {{/竞争格局}}
+
+    {{#SWOT}}
+    <h3 style="margin:8px 0 6px;font-size:14px">SWOT</h3>
+    <table>
+      <thead><tr><th>优势（S）</th><th>劣势（W）</th><th>机会（O）</th><th>威胁（T）</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>{{SWOT_S}}</td>
+          <td>{{SWOT_W}}</td>
+          <td>{{SWOT_O}}</td>
+          <td>{{SWOT_T}}</td>
+        </tr>
+      </tbody>
+    </table>
+    {{/SWOT}}
+
+    {{#五力}}
+    <h3 style="margin:10px 0 6px;font-size:14px">波特五力</h3>
+    <table>
+      <thead><tr><th>力量</th><th>现状与趋势</th><th>对我方影响</th><th>应对策略</th></tr></thead>
+      <tbody>
+        {{#五力列表}}<tr>
+          <td>{{力量名称}}</td>
+          <td>{{现状趋势}}</td>
+          <td>{{影响}}</td>
+          <td>{{策略}}</td>
+        </tr>{{/五力列表}}
+      </tbody>
+    </table>
+    {{/五力}}
+
+    {{#PESTLE}}
+    <h3 style="margin:10px 0 6px;font-size:14px">PESTLE</h3>
+    <table>
+      <thead><tr><th>维度</th><th>关键因素</th><th>影响</th><th>应对</th></tr></thead>
+      <tbody>
+        {{#PESTLE列表}}<tr>
+          <td>{{维度}}</td>
+          <td>{{关键因素}}</td>
+          <td>{{影响}}</td>
+          <td>{{应对}}</td>
+        </tr>{{/PESTLE列表}}
+      </tbody>
+    </table>
+    {{/PESTLE}}
+  </div>
+  {{/战略层启用}}
 
   <!-- ==================== 关键发现 ==================== -->
   <div class="card">
@@ -376,7 +406,7 @@
       <strong>{{发现标题}}</strong>
       <p style="margin-top:4px;color:var(--muted);font-size:13px">{{发现描述}}</p>
       <div style="margin-top:6px">
-        <span class="pill {{影响等级样式}}">影响：{{影响等级}}</span>
+        <span class="pill neutral">{{影响说明}}</span>
         <span class="pill neutral" style="margin-left:4px">{{证据ID}}</span>
       </div>
     </div>
@@ -409,33 +439,16 @@
   <div class="card">
     <h2>🚀 落地建议</h2>
     <table>
-      <thead><tr><th>优先级</th><th>建议项</th><th>预期影响</th><th>复杂度</th><th>依赖</th><th>Owner</th></tr></thead>
+      <thead><tr><th>执行级别</th><th>动作项</th><th>预期影响</th><th>复杂度</th><th>依赖</th><th>Owner</th></tr></thead>
       <tbody>
         {{#落地建议列表}}<tr>
-          <td><span class="pri {{优先级样式}}">{{优先级}}</span></td>
-          <td>{{建议项}}</td>
+          <td><span class="pri {{执行级别样式}}">{{执行级别}}</span></td>
+          <td>{{动作项}}</td>
           <td>{{预期影响}}</td>
           <td><span class="pill {{复杂度样式}}">{{复杂度}}</span></td>
           <td>{{依赖}}</td>
           <td><span class="who">{{Owner}}</span></td>
         </tr>{{/落地建议列表}}
-      </tbody>
-    </table>
-  </div>
-
-  <!-- ==================== 验证计划 ==================== -->
-  <div class="card demo-hide">
-    <h2>🧪 验证计划</h2>
-    <table>
-      <thead><tr><th>验证项</th><th>方法</th><th>所需资源</th><th>成功标准</th><th>时间窗口</th></tr></thead>
-      <tbody>
-        {{#验证计划列表}}<tr>
-          <td>{{验证项}}</td>
-          <td>{{方法}}</td>
-          <td>{{所需资源}}</td>
-          <td>{{成功标准}}</td>
-          <td><span class="when">{{时间窗口}}</span></td>
-        </tr>{{/验证计划列表}}
       </tbody>
     </table>
   </div>
