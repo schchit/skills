@@ -17,7 +17,7 @@ IS_MACOS = sys.platform == "darwin"
 def get_default_output_dir():
     workspace = os.environ.get("OPENCLAW_WORKSPACE",
                               os.path.join(os.path.expanduser("~"), ".openclaw", "workspace"))
-    return os.path.join(workspace, "projects", "tts", "output")
+    return os.path.join(workspace, "projects", "speech-synthesizer", "output")
 
 
 def get_skill_dir():

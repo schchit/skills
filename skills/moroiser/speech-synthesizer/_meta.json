@@ -1,13 +1,18 @@
 {
   "owner": "moroiser",
   "slug": "speech-synthesizer",
-  "displayName": "Speech Synthesizer | 语音合成器",
+  "displayName": "Speech Synthesizer",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1775401576034,
-    "commit": "https://github.com/openclaw/skills/commit/04735ff77e405962c664d4c6fcb98eb9ad2f09dd"
+    "version": "1.0.6",
+    "publishedAt": 1775987806781,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1775401576034,
+      "commit": "https://github.com/openclaw/skills/commit/04735ff77e405962c664d4c6fcb98eb9ad2f09dd"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1775096807898,

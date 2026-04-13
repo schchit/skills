@@ -2,16 +2,14 @@
 name: speech-synthesizer
 description: |
   文字转语音（Text-to-Speech）工具。
-  支持 edge-tts（微软神经网络 TTS，免费离线）和 OpenAI 兼容 API TTS。
+  支持 edge-tts（微软神经网络 TTS，在线合成）和 OpenAI 兼容 API TTS。
   触发词：语音回复、TTS、文字转语音、语音合成、语音对话。
   适用平台：Linux / Windows / macOS。
 ---
 
 # Speech Synthesizer | 语音合成器 🔊
 
-将文字转换为语音，支持微软神经网络 TTS（免费离线）和 OpenAI 兼容 API。
-
----
+将文字转换为语音，支持微软神经网络 TTS（联网合成）和 OpenAI 兼容 API。
 
 ## 目录
 
@@ -34,7 +32,7 @@ description: |
 
 | 引擎 | 说明 | 优点 | 缺点 |
 |------|------|------|------|
-| `edge` ⭐ | 微软神经网络 TTS | 免费、离线、高音质、支持中文 | 需网络下载初期 |
+| `edge` ⭐ | 微软神经网络 TTS | 免费、联网合成、高音质、支持中文 | 需访问微软服务 |
 | `api` | OpenAI 兼容 API | 质量高、可选声音多 | 需要 API Key |
 
 ### edge-tts 支持的声音（完整列表）
@@ -201,10 +199,10 @@ python3 scripts/tts_edge.py "test" --list-voices
 
 ## 输出目录
 
-运行结果保存在工作区的 `projects/tts/` 目录下：
+运行结果保存在工作区的 `projects/speech-synthesizer/` 目录下：
 
 ```
-~/.openclaw/workspace/projects/tts/
+~/.openclaw/workspace/projects/speech-synthesizer/
 └── output/
     └── tts_20260401_193000.ogg   # OGG/Opus 格式（飞书语音用这个）
 ```
@@ -254,7 +252,7 @@ unset all_proxy ALL_PROXY
 
 | 方案 | 成本 | 音质 | 中文支持 | 离线 | API Key |
 |------|------|------|---------|------|---------|
-| edge-tts | 免费 | 高 | 很好 | 部分 | 不需要 |
+| edge-tts | 免费 | 高 | 很好 | 否 | 不需要 |
 | OpenAI TTS | 按量计费 | 很高 | 一般 | 否 | 需要 |
 | pyttsx3 | 免费 | 低 | 一般 | 是 | 不需要 |
 
@@ -265,12 +263,28 @@ unset all_proxy ALL_PROXY
 
 ## 目录结构
 
+### 技能目录（发布用）
+
 ```
 speech-synthesizer/
 ├── SKILL.md                    # 本文档
+├── _meta.json                  # 元数据
+├── .clawhub/                   # ClawHub 源信息
 ├── requirements.txt            # Python 依赖
-├── scripts/
-│   ├── tts_simple.py          # 通用 TTS 脚本（⭐ 推荐）
-│   └── tts_edge.py            # edge-tts 专用脚本
-└── models/                    # 模型目录（如需本地模型）
+└── scripts/
+    ├── tts_simple.py          # 通用 TTS 脚本（⭐ 推荐）
+    └── tts_edge.py            # edge-tts 专用脚本
 ```
+
+### 项目目录（运行时数据）
+
+```
+~/.openclaw/workspace/projects/speech-synthesizer/
+├── output/                    # TTS 输出文件
+└── *.ogg                     # 历史语音文件
+```
+
+### 模型说明
+
+**edge-tts 无本地模型**，每次联网合成（微软服务器运行）。
+如需本地 GPU TTS（用你自己的显卡），需要额外安装 Coqui XTTS 等。
