@@ -277,21 +277,22 @@
   npx daxiapi-cli@latest stock pattern w
   ```
 
-### lps - LPS 最后供应点
+### lps - LPS 最后支撑点
 
-- **说明**：LPS（Last Point of Supply）最后供应点
+- **说明**：LPS（Last Point of Support）最后支撑点，出现在吸筹阶段（Accumulation），是上涨前最后一次回调测试支撑
 - **理论基础**：威科夫量价分析
-- **形态特征**：SOS 之后的 LPS
-- **适用场景**：趋势延续买入
+- **形态特征**：SOS 之后价格回调至支撑位，成交量萎缩，随后向上反转；LPS 创更高低点（区别于 Spring 的假破位）
+- **适用场景**：吸筹阶段末期买入，趋势启动前的低风险入场点
 - **使用示例**：
   ```bash
   npx daxiapi-cli@latest stock pattern lps
   ```
 
-### ibs - K 线实体较大
+### ibs - IBS 强势K线
 
-- **说明**：K 线实体较大（当日放量上涨收盘超昨日高点，实体长度超当日幅度 69%）
-- **适用场景**：强势K线确认
+- **说明**：IBS（Internal Bar Strength）内部K线强度，当日放量上涨收盘超昨日高点，K 线实体长度超当日振幅 69%，衡量收盘价在当日高低点区间内的相对位置
+- **理论基础**：价格行为学，收盘价越靠近当日最高点，买方力量越强
+- **适用场景**：强势K线确认，量价配合的短期买入信号
 - **使用示例**：
   ```bash
   npx daxiapi-cli@latest stock pattern ibs

@@ -1,11 +1,17 @@
 {
   "owner": "ksky521",
   "slug": "xiapi-screener",
-  "displayName": "基于技术形态筛选A股股票，获取VCP、RPS强势股、创新高、高股息等形态股票。触发词：股票筛选、选股、VCP形态、RPS强势股、创新高、技术形态、形态选股、自下而上选股。适用场景：技术形态选股、趋势跟踪、动量选股、价值选股。不适用场景：个股深度基本面分析、财报研究、估值建模。",
+  "displayName": "虾皮A股选股器",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775609245272,
-    "commit": "https://github.com/openclaw/skills/commit/86ae7a1259231cbd31ffb26286497fa27ff25dbc"
+    "version": "1.0.3",
+    "publishedAt": 1775985772971,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775609245272,
+      "commit": "https://github.com/openclaw/skills/commit/86ae7a1259231cbd31ffb26286497fa27ff25dbc"
+    }
+  ]
 }
