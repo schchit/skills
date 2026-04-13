@@ -212,8 +212,7 @@ Collect and organize work history into reports.
 
 - Report markdown
 - Key achievements summary (3-5 lines)
-
-````
+```
 
 ### 5. Explore Agent (Fast Search)
 
@@ -243,7 +242,7 @@ Quickly explore codebase to gather information.
 - Found file/code locations
 - Related context summary
 - Additional exploration suggestions (if needed)
-````
+```
 
 ### 6. Refactor Agent
 
