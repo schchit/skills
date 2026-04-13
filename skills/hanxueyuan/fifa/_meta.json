@@ -3,11 +3,16 @@
   "slug": "fifa",
   "displayName": "Fifa",
   "latest": {
-    "version": "0.1.1",
-    "publishedAt": 1775433160481,
-    "commit": "https://github.com/openclaw/skills/commit/d51be044e47e6f156ccd604f0da8d3ed994f6a21"
+    "version": "1.0.3",
+    "publishedAt": 1776043244009,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.1.1",
+      "publishedAt": 1775433160481,
+      "commit": "https://github.com/openclaw/skills/commit/d51be044e47e6f156ccd604f0da8d3ed994f6a21"
+    },
     {
       "version": "0.1.0",
       "publishedAt": 1774865267447,
