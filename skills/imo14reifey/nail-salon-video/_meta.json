@@ -3,9 +3,15 @@
   "slug": "nail-salon-video",
   "displayName": "Nail Salon Video",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775114185813,
-    "commit": "https://github.com/openclaw/skills/commit/473c8ad7b47372b75365b2806f2f9a362714d5eb"
+    "version": "1.0.2",
+    "publishedAt": 1775623884608,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775114185813,
+      "commit": "https://github.com/openclaw/skills/commit/473c8ad7b47372b75365b2806f2f9a362714d5eb"
+    }
+  ]
 }
