@@ -1,11 +1,17 @@
 {
   "owner": "siddylcon",
   "slug": "chiropractor-video",
-  "displayName": "Chiropractor Video",
+  "displayName": "Chiropractic Clinic Video",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775086509328,
-    "commit": "https://github.com/openclaw/skills/commit/63c1bec2b94496af6e4884ef85a9aca383d163c8"
+    "version": "1.0.1",
+    "publishedAt": 1775609293996,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775086509328,
+      "commit": "https://github.com/openclaw/skills/commit/63c1bec2b94496af6e4884ef85a9aca383d163c8"
+    }
+  ]
 }
