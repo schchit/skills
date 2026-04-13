@@ -1,0 +1,11 @@
+{
+  "owner": "sdk-team",
+  "slug": "alibabacloud-bailian-rag-knowledgebase",
+  "displayName": "Alibabacloud Bailian Rag Knowledgebase",
+  "latest": {
+    "version": "0.0.1",
+    "publishedAt": 1775716591093,
+    "commit": null
+  },
+  "history": []
+}
