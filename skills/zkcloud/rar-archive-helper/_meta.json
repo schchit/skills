@@ -1,0 +1,11 @@
+{
+  "owner": "zkcloud",
+  "slug": "rar-archive-helper",
+  "displayName": "Unzip Files with WinRAR",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1775653847589,
+    "commit": null
+  },
+  "history": []
+}
