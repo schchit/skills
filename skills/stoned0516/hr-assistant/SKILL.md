@@ -1,15 +1,14 @@
 ---
 name: hr-assistant
-version: 1.2.4
+version: 1.2.5
 author: ai-lab-hr
 description: |
-  Smart HR Assistant for Chinese businesses — Employee roster management, organizational structure,
-  payroll automation (individual income tax, social insurance, housing fund), year-end bonus tax optimization,
-  attendance tracking with auto-deduction, and HR report generation. All data stays local (Excel + JSON).
-  TRIGGER when: User mentions HR, employee, payroll, salary, tax, social insurance, housing fund,
-  year-end bonus, attendance, roster, organization chart, onboarding, resignation, promotion, transfer,
-  人力, 员工, 薪资, 工资, 个税, 社保, 公积金, 五险一金, 年终奖, 花名册, 考勤, 组织架构, 入职, 离职, 转正.
-  DO NOT TRIGGER when: Pure programming questions, non-HR general conversation.
+  Smart HR Assistant for Chinese small and medium businesses. Handles employee roster management,
+  organizational structure, monthly payroll calculation (individual income tax, social insurance,
+  housing fund, special deductions), year-end bonus tax optimization, attendance tracking with
+  automatic deductions, and HR report generation. All data is stored locally in Excel and JSON files.
+  Suitable for HR topics such as employee onboarding, resignation, promotion, transfer, salary adjustment,
+  department management, attendance records, and payroll reports.
 description_zh: |
   智能HR助手 — 专为中国中小企业设计。支持员工花名册管理、组织架构维护、考勤管理与自动扣减、
   月度薪资自动计算（个税累计预扣法/社保/公积金/专项附加扣除）、年终奖个税优化、

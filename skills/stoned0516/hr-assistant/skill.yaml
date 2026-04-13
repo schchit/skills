@@ -4,7 +4,7 @@
 name: hr-assistant
 displayName: HR助手
 description: 专为中国中小企业设计的智能HR助手 — 员工花名册管理、组织架构维护、考勤管理与自动扣减、薪资自动计算（个税累计预扣法/社保/公积金/专项附加扣除）、年终奖个税优化、HR报表生成与导出。数据本地存储，Excel一键绑定，5分钟完成初始化
-version: 1.2.4
+version: 1.2.5
 author: AI 实验室
 category: business
 

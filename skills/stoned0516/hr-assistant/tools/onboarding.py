@@ -349,6 +349,16 @@ class OnboardingManager:
         """
         from excel_adapter import ExcelAdapter
 
+        # 路径安全校验
+        if not os.path.exists(filePath):
+            return {"success": False, "message": f"文件不存在: {filePath}"}
+        filePath = os.path.realpath(filePath)
+        if not os.path.isfile(filePath):
+            return {"success": False, "message": f"路径不是文件: {filePath}，请提供 Excel 文件的直接路径"}
+        _, ext = os.path.splitext(filePath)
+        if ext.lower() not in ('.xls', '.xlsx', '.xlsm'):
+            return {"success": False, "message": f"不支持的文件格式: {ext}，请使用 .xls 或 .xlsx 格式的 Excel 文件"}
+
         try:
             adapter = ExcelAdapter(filePath)
             structure = adapter.analyzeStructure(sheetName)
@@ -508,6 +518,14 @@ class OnboardingManager:
     
     def exportConfiguration(self, exportPath: str) -> Dict[str, Any]:
         """导出配置"""
+        # 路径安全校验：仅允许写入合法目录，禁止路径遍历
+        exportPath = os.path.realpath(exportPath)
+        exportDir = os.path.dirname(exportPath)
+        if not os.path.isdir(exportDir):
+            return {"success": False, "message": f"目标目录不存在: {exportDir}"}
+        _, ext = os.path.splitext(exportPath)
+        if ext.lower() not in ('.json',):
+            return {"success": False, "message": "导出路径必须以 .json 结尾"}
         try:
             with open(exportPath, 'w', encoding='utf-8') as f:
                 json.dump(asdict(self.config), f, ensure_ascii=False, indent=2)
@@ -515,7 +533,7 @@ class OnboardingManager:
                 "success": True,
                 "message": f"配置已导出到: {exportPath}"
             }
-        except Exception as e:
+        except (IOError, OSError, TypeError) as e:
             return {
                 "success": False,
                 "message": f"导出失败: {str(e)}"
@@ -523,6 +541,15 @@ class OnboardingManager:
     
     def importConfiguration(self, importPath: str) -> Dict[str, Any]:
         """导入配置"""
+        # 路径安全校验
+        if not os.path.exists(importPath):
+            return {"success": False, "message": f"配置文件不存在: {importPath}"}
+        importPath = os.path.realpath(importPath)
+        if not os.path.isfile(importPath):
+            return {"success": False, "message": f"路径不是文件: {importPath}"}
+        _, ext = os.path.splitext(importPath)
+        if ext.lower() != '.json':
+            return {"success": False, "message": "仅支持导入 .json 格式的配置文件"}
         try:
             with open(importPath, 'r', encoding='utf-8') as f:
                 data = json.load(f)
@@ -532,7 +559,12 @@ class OnboardingManager:
                 "success": True,
                 "message": "配置已导入"
             }
-        except Exception as e:
+        except (json.JSONDecodeError, KeyError, TypeError) as e:
+            return {
+                "success": False,
+                "message": f"配置文件格式错误: {str(e)}"
+            }
+        except (IOError, OSError) as e:
             return {
                 "success": False,
                 "message": f"导入失败: {str(e)}"
