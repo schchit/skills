@@ -3,9 +3,15 @@
   "slug": "vipshop-product-detail",
   "displayName": "唯品会商品详情",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1775212815046,
-    "commit": "https://github.com/openclaw/skills/commit/f50b6fa068709da93bdb9aed4a18e015fb80ac32"
+    "version": "1.0.6",
+    "publishedAt": 1775741062293,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1775212815046,
+      "commit": "https://github.com/openclaw/skills/commit/f50b6fa068709da93bdb9aed4a18e015fb80ac32"
+    }
+  ]
 }
