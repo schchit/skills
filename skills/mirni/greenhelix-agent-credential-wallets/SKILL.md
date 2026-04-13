@@ -1,16 +1,26 @@
 ---
 name: greenhelix-agent-credential-wallets
-version: "1.0.0"
-description: "Agent Credential Wallets: Verifiable Intent & Delegation Chains. Build agent credential wallets with Verifiable Intent, SD-JWT delegation chains, cross-protocol presentation (AP2/UCP/ACP/x402), eIDAS 2.0 EUDI compliance, and reputation-bound credentials. Includes production-ready Python code for every pattern."
+version: "1.2.0"
+description: "Agent Credential Wallets: Verifiable Intent & Delegation Chains. Build agent credential wallets with Verifiable Intent, SD-JWT delegation chains, cross-protocol presentation (AP2/UCP/ACP/x402), eIDAS 2.0 EUDI compliance, and reputation-bound credentials. Includes detailed Python code examples for every pattern."
 license: MIT
 compatibility: [openclaw]
 author: felix-agent
 type: guide
 tags: [credentials, verifiable-intent, sd-jwt, eidas, delegation, identity, wallets, guide, greenhelix, openclaw, ai-agent]
-price_usd: 39.0
+price_usd: 0.0
 content_type: markdown
+executable: false
+install: none
+credentials: [AGENT_SIGNING_KEY]
 ---
 # Agent Credential Wallets: Verifiable Intent & Delegation Chains
+
+> **Notice**: This is an educational guide with illustrative code examples.
+> It does not execute code or install dependencies.
+> Code snippets are for learning purposes and require your own implementation environment.
+>
+> **Referenced credentials** (you supply these in your own environment):
+> - `AGENT_SIGNING_KEY`: Cryptographic signing key for agent identity (Ed25519 key pair for request signing)
 
 
 Your agent just tried to buy cloud compute on behalf of your company. The vendor's agent asked for proof of authorization. Your agent presented an API key. The vendor's agent rejected it -- not because the key was invalid, but because an API key proves nothing about delegation. It does not answer the question the vendor actually asked: "Can this agent spend up to $5,000 on GPU instances for Acme Corp, and did a human authorize that specific action?" An API key says "this entity has access." A verifiable credential says "this entity was authorized by this principal to perform these actions within these constraints, and here is the cryptographic proof chain from the human who approved it." That distinction is the entire difference between agents that can transact in the open economy and agents that remain trapped inside their owner's perimeter. On March 5, 2026, Mastercard open-sourced the Verifiable Intent specification alongside Google, Fiserv, IBM, and Checkout.com, defining exactly how agents prove delegated authority to spend. Prove launched Verified Agent targeting the $1.7 trillion agentic commerce market with carrier-grade identity verification for non-human entities. The EU finalized eIDAS 2.0 implementation rules mandating EUDI Wallets by December 2026. Google's Agent-to-Agent Protocol (AP2), the Universal Commerce Protocol (UCP), and OpenAI's Agent Commerce Protocol (ACP) all require verifiable agent identity as the foundation layer. The decentralized identity market hit $7.4 billion in 2026. The convergence is real, and it is happening on a twelve-month timeline. This guide walks you through building a production credential wallet for your agents: SD-JWT-VC issuance, delegation chains from human to agent, cross-protocol credential presentation, eIDAS 2.0 compliance, reputation binding, and fleet-wide deployment. Every implementation uses the GreenHelix A2A Commerce Gateway API. Every pattern is designed for the December 2026 deadline.
