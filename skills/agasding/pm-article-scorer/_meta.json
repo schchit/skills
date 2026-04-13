@@ -1,11 +1,17 @@
 {
   "owner": "agasding",
   "slug": "pm-article-scorer",
-  "displayName": "pm-article-scorer",
+  "displayName": "Pm Article Scorer",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1775493291659,
-    "commit": "https://github.com/openclaw/skills/commit/7bb21a08cfc0d9008052655a4cff48c8b70c0b38"
+    "version": "1.0.4",
+    "publishedAt": 1775644846682,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1775493291659,
+      "commit": "https://github.com/openclaw/skills/commit/7bb21a08cfc0d9008052655a4cff48c8b70c0b38"
+    }
+  ]
 }
