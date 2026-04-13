@@ -26,12 +26,42 @@ FOLDERS = [
     "feed/raw",
     "feed/assets",
     "content",
+    "content/drafts",
+    "content/published",
+    "content/images",
     "content-samples",
     "knowledge",
     "ideas",
+    "learn",
 ]
 
 TEMPLATES = {
+    "knowledge/index.md": """\
+# Knowledge Sources
+
+Long-form sources crawled by `/hum crawl` and `/hum refresh-feed`.
+Each table row defines a source with a Key (used as folder name), Handler, and Feed URL.
+
+Supported handlers: `rss`, `sitemap`, `youtube`, `podcast`
+
+## Blogs & Newsletters
+
+| Key | Handler | Feed URL |
+|-----|---------|----------|
+<!-- | example-blog | rss | https://example.com/feed.xml | -->
+
+## YouTube Channels (full transcripts)
+
+| Key | Handler | Feed URL |
+|-----|---------|----------|
+<!-- | example-channel | youtube | https://www.youtube.com/@example | -->
+
+## Podcasts
+
+| Key | Handler | Feed URL |
+|-----|---------|----------|
+<!-- | example-pod | podcast | https://feeds.example.com/podcast.xml | -->
+""",
     "VOICE.md": """\
 # Voice
 
@@ -194,6 +224,8 @@ def main():
 
     print(f"\nDone. Edit the files in {data_dir} to set up your profile.")
     print(f"Open {data_dir}/dashboard.html in Chrome or Edge to browse your feed.")
+    print(f"\nNext: install Python dependencies by running:")
+    print(f"  bash setup.sh")
 
 
 if __name__ == "__main__":

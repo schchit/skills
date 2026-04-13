@@ -3,18 +3,19 @@ name: hum
 description: Your AI content writer for X and LinkedIn. Hum handles the full content lifecycle: crawls your feed sources daily and sends a digest, brainstorms ideas grounded in real research across YouTube, X, Reddit, HN, and the web, then drafts posts in your voice using proven writing styles — from technical storytelling to contrarian takes. Every draft goes through a research → outline → approval loop before writing begins. Once approved, Hum publishes directly via API and manages engagement by drafting replies and suggesting accounts to follow.
 ---
 
-1. **Init** — `/hum init` sets up the data directory with template files (VOICE.md, CONTENT.md, AUDIENCE.md, CHANNELS.md) and folders
-3. **Refresh feed** — `/hum refresh-feed` crawls X/Twitter, YouTube, Hacker News, Product Hunt, and YC; ranks items; sends a digest to Telegram; saves aggregated data to `feeds.json`
-4. **Manage sources** — `/hum sources` adds, removes, and lists feed sources
+1. **Init** — `/hum init` sets up the data directory with template files (VOICE.md, CONTENT.md, AUDIENCE.md, CHANNELS.md, knowledge/index.md) and folders. After running init.py, also run `bash setup.sh` from the repo root to create the venv and install Python dependencies. All subsequent scripts require the venv (`venv/bin/python3`).
+3. **Refresh feed** — `/hum refresh-feed` fetches your X home feed (via Bird `filter:follows`), configured X profiles, Hacker News, YouTube, and knowledge sources (RSS, sitemaps, YouTube transcripts, podcasts from `knowledge/index.md`) — all via direct APIs with no browser automation. Ranks items, sends a digest to Telegram, saves aggregated data to `feeds.json`
+4. **Crawl knowledge** — `/hum crawl` independently crawls knowledge sources defined in `knowledge/index.md`. Saves full articles to `knowledge/<source>/`. Also runs as part of refresh-feed.
+5. **Manage sources** — `/hum sources` adds, removes, and lists social/ephemeral feed sources in `sources.json`
 5. **Brainstorm** — `/hum brainstorm` researches each content pillar across YouTube, X, Reddit, Hacker News, Polymarket, and web, then saves ideas to `ideas.json`
 6. **Learn** — `/hum learn` analyzes feed trends and platform algorithms, updates context files
-7. **Manage ideas** — `/hum ideas` shows the pipeline (pending → approved → drafted → published)
+7. **Manage ideas** — `/hum ideas` shows the pipeline as numbered plain text. Format: `1. ID · Title · platform · status`. One idea per line. No markdown tables, no bullet points, no code blocks.
 8. **Review drafts** — `/hum content` lists current saved draft files and generated assets
 ⚠️ **Always use /hum create and read `VOICE.md` + `content-samples/` when drafting posts. Follow the create flow: research → outline → approval → draft. Do not produce a draft without an approved outline.**
 9. **Draft posts** — `/hum create [platform] [type] [idea]` follows a strict 4-step process:
    - **Step 1 — Load context**: read VOICE.md, CHANNELS.md, content-samples/, knowledge/, the idea from ideas.json
    - **Step 2 — Research**: 3-5 web searches (core topic, stats, contrarian, examples, adjacents); build a fact base; present findings
-   - **Step 3 — Propose outline**: style selection + hook/angle/structure; **do NOT write prose yet**; get user approval first
+   - **Step 3 — Propose outline**: style selection (with rationale) + hook/angle/structure + research summary; **do NOT write prose yet**; get user approval first; style must be named and justified using STYLES.md
    - **Step 4 — Write**: only after outline is approved; match user's voice from content-samples/; present draft; iterate until approved
    - ⚠️ **Never skip to drafting without research + outline approval** — the full CREATE.md process is mandatory
 10. **Refine** — iterate on drafts until approved, then save
@@ -42,12 +43,15 @@ All user-owned data lives in `<data_dir>`:
 | `<data_dir>/CHANNELS.md` | Publishing platforms and rules |
 | `<data_dir>/CONTENT.md` | Content pillars with keywords for feed classification |
 | `<data_dir>/ideas/ideas.json` | Brainstormed content ideas and brainstorm config |
-| `<data_dir>/content/` | Generated drafts, images, diagrams, videos |
+| `<data_dir>/content/drafts/` | Unpublished drafts (outline → draft → ready) |
+| `<data_dir>/content/published/` | Drafts moved here after successful publish |
+| `<data_dir>/content/images/` | Generated images, cover art, diagrams |
 | `<data_dir>/content-samples/` | Real posts from the user's social media — primary voice reference |
-| `<data_dir>/knowledge/` | User-curated reference material (articles, notes, research) |
+| `<data_dir>/knowledge/` | Reference material — auto-crawled from `knowledge/index.md` sources (RSS, sitemaps, YouTube transcripts, podcasts) plus user-curated notes |
+| `<data_dir>/knowledge/index.md` | Knowledge source definitions (Key, Handler, Feed URL tables) |
 | `<data_dir>/feed/feeds.json` | Aggregated feed — single source of truth for brainstorming |
 | `<data_dir>/feed/raw/` | Per-source JSON crawl outputs |
-| `<data_dir>/feed/sources.json` | Feed sources (X accounts, YouTube creators, websites) |
+| `<data_dir>/feed/sources.json` | Social/ephemeral feed sources (X accounts, YouTube creators, websites) — managed via `/hum sources` |
 | `<data_dir>/feed/assets/` | Preference learning (rankings, feedback history, dedup tracker) |
 
 ## Writing Guidelines
@@ -65,6 +69,7 @@ Each post type has a defined structure. The `/hum create` command requires a pla
 |-----------|--------|
 | **Tweet** | Single tweet, under 280 chars, hook-driven. Optional media. |
 | **Thread** | Multiple numbered tweets, each under 280 chars. Hook in tweet 1. |
+| **Article** | Long-form post, up to 25,000 chars. Premium subscribers only. Rich text formatting, cover image, published directly to the X feed. Functions like a mini blog post. Requires cover image. Draft in full prose with H2 section headers. |
 
 ### LinkedIn
 | Post Type | Format |
@@ -98,7 +103,7 @@ Images for posts are generated using the bundled image-gen library at `scripts/l
 | **grok** | grok-2-image | `XAI_API_KEY` |
 | **minimax** | image-01 | `MINIMAX_API_KEY` |
 
-API keys are set as environment variables or in `openclaw.json` → `env.vars`. The active provider is configured in `openclaw.json` → `skills.entries.hum.config.image_model` (default: `gemini`).
+API keys are set as environment variables or in `openclaw.json` → `env.vars`. The active provider is configured in `openclaw.json` → `skills.entries.hum.config.image_model` (default: `gemini`) or via the `HUM_IMAGE_MODEL` env var.
 
 When drafting, add `image_prompt` to the post. Calling `validate(post)` auto-generates the image and sets `media_path`. If `VOICE.md` has a `## Visual Style` section, it is automatically appended to the image prompt.
 

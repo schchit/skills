@@ -3,9 +3,15 @@
   "slug": "hum-writer",
   "displayName": "hum",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1775553844825,
-    "commit": "https://github.com/openclaw/skills/commit/787f88961f9de450af98b193899bd501d3ebe7bc"
+    "version": "0.2.1",
+    "publishedAt": 1775992877314,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1775553844825,
+      "commit": "https://github.com/openclaw/skills/commit/787f88961f9de450af98b193899bd501d3ebe7bc"
+    }
+  ]
 }

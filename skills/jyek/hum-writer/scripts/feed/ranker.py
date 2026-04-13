@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 """
 ranker.py — Score and sort scraped posts using learned preferences.
 
@@ -19,6 +20,7 @@ from feed.utils import STOPWORDS, parse_likes
 _CFG = load_config()
 ASSETS_DIR = str(_CFG["feed_assets"])
 PREFS_FILE = os.path.join(ASSETS_DIR, "preferences.json")
+FEED_SOURCE_CONFIG_FILE = str(_CFG["feed_dir"] / "feed_source_config.json")
 
 def load_json(path, default):
     if os.path.exists(path):
@@ -35,14 +37,21 @@ def extract_keywords(text: str) -> list[str]:
             cleaned.append(w)
     return list(set(cleaned))
 
-def score_post(post: dict, prefs: dict) -> float:
+def _prefer_longform_for_post(post: dict, feed_config: dict) -> bool:
+    """Return True if prefer_longform is enabled for this post's source."""
+    source = post.get("source", "")
+    if source == "x":
+        return feed_config.get("x_feed", {}).get("prefer_longform", False)
+    return False
+
+
+def score_post(post: dict, prefs: dict, feed_config: dict | None = None) -> float:
     author = post.get("author", "")
     topics = post.get("topics", [])
-    text = post.get("text", "") or post.get("summary", "") or post.get("title", "")
+    text = post.get("content", "") or post.get("title", "")
     likes = parse_likes(post.get("likes", 0))
     if post.get("source") == "youtube":
-        engagement = post.get("engagement", {}) or {}
-        likes = int(engagement.get("views", post.get("views", likes)) or likes)
+        likes = int(post.get("views", likes) or likes)
 
     # Base score: log scale of likes
     base = math.log(likes + 2)
@@ -59,7 +68,40 @@ def score_post(post: dict, prefs: dict) -> float:
     kw_scores = [prefs["keywords"].get(kw, 1.0) for kw in keywords]
     kw_w = sum(kw_scores) / len(kw_scores) if kw_scores else 1.0
 
-    return base * author_w * topic_w * kw_w
+    score = base * author_w * topic_w * kw_w
+
+    # Article/thread preference: boost long-form, penalise short tweets
+    if feed_config and _prefer_longform_for_post(post, feed_config):
+        article_multiplier = 1.0
+        text_len = len(text)
+
+        # Boost thread-length content (>= 300 chars)
+        if text_len >= 300:
+            article_multiplier *= 1.5
+
+        # Boost posts ending with truncation markers (more content available)
+        text_stripped = text.rstrip()
+        text_lower = text_stripped.lower()
+        if (
+            text_stripped.endswith("…")
+            or text_stripped.endswith("...")
+            or text_lower.endswith("read more")
+            or text_lower.endswith("show more")
+        ):
+            article_multiplier *= 1.3
+
+        # Boost posts with multiple links (article-link heuristic)
+        link_count = text.count("http://") + text.count("https://")
+        if link_count >= 2:
+            article_multiplier *= 1.3
+
+        # Penalise plain short tweets (< 100 chars)
+        if text_len < 100:
+            article_multiplier *= 0.7
+
+        score *= article_multiplier
+
+    return score
 
 def main():
     parser = argparse.ArgumentParser()
@@ -69,13 +111,14 @@ def main():
     args = parser.parse_args()
 
     prefs = load_json(PREFS_FILE, {"authors": {}, "topics": {}, "keywords": {}})
+    feed_config = load_json(FEED_SOURCE_CONFIG_FILE, {})
 
     with open(args.input) as f:
         posts = json.load(f)
 
     scored = []
     for post in posts:
-        s = score_post(post, prefs)
+        s = score_post(post, prefs, feed_config)
         post["_score"] = round(s, 3)
         scored.append(post)
 
@@ -88,7 +131,7 @@ def main():
     if args.verbose:
         print(f"Ranked {len(scored)} posts:")
         for p in scored:
-            print(f"  [{p['_score']:.2f}] {p['author']}: {p['text'][:60]}...")
+            print(f"  [{p['_score']:.2f}] {p['author']}: {(p.get('content') or p.get('title', ''))[:60]}...")
 
     print(f"✅ Ranked {len(scored)} posts → {args.output}")
 

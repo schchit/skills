@@ -22,10 +22,11 @@ python3 skills/hum/scripts/init.py
 - `CONTENT.md` — content pillars with keywords for feed classification
 - `AUDIENCE.md` — target audience definition
 - `CHANNELS.md` — publishing platforms (LinkedIn, X), frequency, and engage settings
+- `knowledge/index.md` — knowledge source definitions (blogs, YouTube transcripts, podcasts)
 
 **Folders:**
 - `feed/`, `feed/raw/`, `feed/assets/`
-- `content/`, `content-samples/`, `knowledge/`, `ideas/`
+- `content/`, `content-samples/`, `knowledge/`, `ideas/`, `learn/`
 
 After running, edit each file to set up your profile. The content pillars in `CONTENT.md` drive feed classification and brainstorming.
 
@@ -36,35 +37,46 @@ After running, edit each file to set up your profile. The content pillars in `CO
 **What it does:**
 Runs the full daily morning workflow. Read `LOOP.md` in the skill root and follow every step.
 
-Use `/opt/homebrew/bin/python3` for all script calls.
-
 ---
 
 ## /hum refresh-feed
 
 **What it does:**
-Crawls X/Twitter, YouTube, Hacker News, Product Hunt, and YC — ranks items, sends a formatted digest via Telegram, and saves aggregated data to `<data_dir>/feed/feeds.json`.
+Fetches X home feed, X profiles, Hacker News, YouTube, and knowledge sources (RSS, sitemaps, YouTube transcripts, podcasts from `knowledge/index.md`) via direct APIs — ranks items, sends a formatted digest via Telegram, and saves aggregated data to `<data_dir>/feed/feeds.json`. No browser automation.
 
 **This command is also triggered automatically by the "Morning Digest" cron job at 6:00am SGT daily.**
 
-**Scrape sources:** See `<data_dir>/feed/sources.json` for all feed sources. Manage with `/hum sources`.
+**Scrape sources:** See `<data_dir>/feed/sources.json` for social/ephemeral feed sources. See `<data_dir>/knowledge/index.md` for knowledge sources (blogs, newsletters, YouTube transcripts, podcasts). Manage social sources with `/hum sources`.
 
-### Step 1 — Scrape X/Twitter feed
+### Step 1 — Fetch all sources
 
-Use browser tool to scroll Twitter home feed. Must be logged in on the browser profile.
+Runs the full refresh pipeline in a single command:
 
-```
-browser(action="navigate", url="https://x.com/home")
-# Scroll 5–6 times with 2s pause each to load ~40–60 posts
-# For each visible tweet: extract author handle, full text, likes, tweet URL
+```bash
+python3 skills/hum/scripts/feed/refresh.py --type all
 ```
 
-Run `scripts/feed/refresh.py` to see topic keyword lists. Save extracted posts as `<data_dir>/feed/feeds.json`:
+This fetches:
+- **X home feed**: via Bird `filter:follows since:<last_crawled>` — returns tweets from accounts you follow without any browser.
+- **X profiles**: per-handle `from:<handle> since:<last_crawled>` via Bird.
+- **Hacker News**: via Algolia public API (merged into `feeds.json`).
+- **Knowledge sources**: RSS, sitemaps, YouTube transcripts, and podcasts from `knowledge/index.md` — saves full articles to `knowledge/<source>/` and generates feed items into `feeds.json`.
+
+Requires `AUTH_TOKEN` and `CT0` session cookies in `~/.hum/credentials/x.json` (or the `HUM_X_AUTH_TOKEN` / `HUM_X_CT0` env vars). Extract them once from your browser devtools on x.com. If credentials are missing, the X fetch is skipped with a log message and the rest of the pipeline still runs.
+
+All items are merged into `feeds.json` with `source: "x" | "hn" | "knowledge"`, `topics: [...]`, and engagement counts:
 ```json
-[{"author": "@handle", "text": "...", "likes": 123, "url": "https://x.com/...", "topics": ["AI"]}]
+[{"source": "x", "author": "@handle", "text": "...", "likes": 123, "url": "https://x.com/...", "topics": ["AI"]}]
 ```
 
-### Step 2 — Pull YouTube creator updates
+You can also crawl knowledge sources independently:
+```bash
+python3 skills/hum/scripts/feed/refresh.py --type knowledge
+```
+
+### Step 2 — Pull YouTube creator updates (optional, for sources.json YouTube only)
+
+Only needed for YouTube channels defined in `sources.json` (short digest summaries via yt-dlp). YouTube channels in `knowledge/index.md` are crawled as full transcripts in Step 1.
 
 ```bash
 python3 skills/hum/scripts/feed/source/youtube.py \
@@ -81,7 +93,7 @@ python3 skills/hum/scripts/feed/ranker.py \
   --output <data_dir>/feed/raw/feed_ranked.json
 ```
 
-Merge all source outputs (X, YouTube, HN, PH, YC) into `feed/feeds.json` — a single aggregated JSON file that other commands (like `/hum brainstorm`) read from.
+Merge all source outputs (X, YouTube, HN, knowledge) into `feed/feeds.json` — a single aggregated JSON file that other commands (like `/hum brainstorm`) read from.
 
 ### Step 4 — Format & send digest
 
@@ -105,39 +117,67 @@ Append today's digest to `<data_dir>/feed/feeds.json` for historical reference. 
 
 **Telegram output format:**
 ```
-🌅 Morning Digest — [date]
+🗞 Morning Feed — [date]
 
-━━━━━━━━━━━━
-🐦 X
-━━━━━━━━━━━━
-AI
-1. @handle — [text] · [url]
+💰 AI Monetization
+1. @handle: [text]
+   [url]
 
-Startups
-1. @handle — [text] · [url]
+🤖 AI
+2. @handle: [text]
+   [url]
 
-Crypto
-1. @handle — [text] · [url]
+🚀 Startups
+3. @handle: [text]
+   [url]
 
-Within the AI / Startups / Crypto sections, YouTube items are prefixed with `▶`:
-1. ▶ [Channel] — [video title]
+🪙 Crypto
+4. @handle: [text]
+   [url]
+
+YouTube items are prefixed with ▶:
+5. ▶ [Channel]: [video title] ([date])
    [summary]
    [url]
 
-━━━━━━━━━━━━
-🔥 Hacker News
-━━━━━━━━━━━━
-1. [Title] — [points]pts · [url]
+📌 General
+6. @handle: [text]
+   [url]
+```
 
-━━━━━━━━━━━━
-🚀 Product Hunt
-━━━━━━━━━━━━
-1. [Name] — [tagline] · [upvotes]↑ · [url]
+Posts are grouped by content pillar topic (up to 3 per topic). Items not matching any topic appear in the General section. HN stories and knowledge items are mixed into topic sections based on their classified topics.
 
-━━━━━━━━━━━━
-🌱 YC Watch
-━━━━━━━━━━━━
-1. [Company] ([batch]) — [description] [url]
+---
+
+## /hum crawl [source_key | --all | --list]
+
+**What it does:**
+Crawls knowledge sources (blogs, newsletters, YouTube transcripts, podcasts) defined in `<data_dir>/knowledge/index.md`. Saves full articles as markdown files in `<data_dir>/knowledge/<source_key>/`. Also generates feed items for newly crawled articles.
+
+This is the same crawl that runs as part of `/hum refresh-feed`, but can be invoked independently for one-off crawls or testing.
+
+```bash
+# List all knowledge sources with file counts
+python3 -m feed.source.knowledge --list
+
+# Crawl a single source
+python3 -m feed.source.knowledge <source_key>
+
+# Crawl every source in index.md
+python3 -m feed.source.knowledge --all
+
+# Limit articles per source (useful for testing)
+python3 -m feed.source.knowledge <source_key> --max 5
+
+# Re-fetch everything, overwriting existing files
+python3 -m feed.source.knowledge <source_key> --recrawl
+```
+
+Run from `skills/hum/scripts/` directory. Sources are defined as markdown tables in `knowledge/index.md` with columns: Key, Handler (rss/sitemap/youtube/podcast), Feed URL.
+
+**Requirements:**
+```bash
+pip3 install trafilatura feedparser python-slugify requests lxml_html_clean youtube-transcript-api
 ```
 
 ---
@@ -299,40 +339,169 @@ Ask: "Want to refine any of these, change post types, or discard some?"
 ## /hum learn
 
 **What it does:**
-Analyzes the feed and researches current platform algorithms to improve content strategy. Updates context files in `<data_dir>` based on what it learns.
+Weekly strategy audit. Analyzes your own post engagement, studies how successful niche influencers write (formats, hooks, angles — not topics), and researches platform algorithm mechanics. Synthesizes into strategy-level recommendations and proposes context file updates.
+
+**Not a brainstorm.** Topic and idea generation is handled by `/hum brainstorm` (run daily), which already reads `knowledge/` and `feeds.json` for trending topics. Learn reads the same sources differently — for writing patterns, not topics — so there is no duplication.
 
 **When to use it:**
 - Weekly strategy refresh, especially on Saturdays
 - After a meaningful batch of new posts has been published
 - When content performance feels flat
 
-**Steps:**
-1. Read `<data_dir>/VOICE.md`, `<data_dir>/AUDIENCE.md`, `<data_dir>/CHANNELS.md`, and `<data_dir>/CONTENT.md`
-2. Read `feed/feeds.json` — analyze what topics are trending, which posts got high engagement, what formats are performing
-3. Research platform algorithms with web search:
-   - For each channel in `CHANNELS.md`, search for current algorithm priorities, favored formats, and distribution patterns
-   - e.g. `"LinkedIn algorithm 2026" what content gets reach`, `"X Twitter algorithm" post format engagement 2026`
-   - Focus on actionable signals: post length, format, timing, media usage, engagement patterns
-4. Review recent channel performance:
-   - Use any real performance data available (analytics, post metrics)
-   - Look for patterns by platform, format, hook type, topic, and media usage
-   - If performance data is limited, say so clearly and avoid fake precision
-5. Update context files in `<data_dir>`:
-   - Update `VOICE.md` if tone/style adjustments are supported by evidence
-   - Update `CHANNELS.md` with new platform-specific tactics or format guidance
-   - Update `CONTENT.md` if certain pillars are trending or underperforming
-   - Only make changes backed by evidence — do not speculate
-6. Present a concise summary:
-   - What's trending in the feed
-   - What the algorithms are currently favoring
-   - What changes were made to context files
-   - What to test next week
+---
+
+### Phase 1 — Load context
+
+Read: `<data_dir>/VOICE.md`, `<data_dir>/AUDIENCE.md`, `<data_dir>/CHANNELS.md`, `<data_dir>/CONTENT.md`
+
+---
+
+### Phase 2 — Own engagement analysis
+
+Scrape post performance via browser for each platform in `CHANNELS.md`:
+
+```bash
+python3 -m act.analyze --platform all --account <account>
+```
+
+This returns browser instructions — follow them to scrape your X and LinkedIn profiles.
+
+**Engagement table**
+Build a table per platform: post type (tweet / thread / LinkedIn post / article) → total posts scraped → avg. reactions → avg. reposts → avg. comments. Rank by avg. engagement.
+
+**Underperformers**
+Flag posts with below-average engagement. Note likely cause: weak hook, format mismatch, or pure product promo.
+
+If no posts are found or data is thin, note it clearly — do not fabricate.
+
+---
+
+### Phase 3 — Influencer format and pattern analysis
+
+**Goal:** Understand *how* successful niche influencers write — not what topics they cover (brainstorm handles that). Extract writing patterns, formats, and hooks from the already-crawled knowledge base.
+
+**Phase 3a — Knowledge: influencer format analysis**
+
+Read the most recent files (last 60 days, filter by `date` frontmatter) from `<data_dir>/knowledge/` subdirectories. Use `knowledge/index.md` to identify which sources are relevant to the user's content pillars (Finance, Fintech, AI, AI Monetization — cross-reference with `CONTENT.md` keywords).
+
+For each relevant source with recent content, extract:
+- **Format**: How is the piece structured? (essay, numbered list, how-to, data breakdown, contrarian argument, case study, Q&A)
+- **Hook style**: How does it open? (question, stat/number, bold claim, personal story, observation)
+- **Angle**: What POV does it take? (neutral, contrarian, practical, historical, predictive)
+- **Length/density**: Long-form with depth, or short and punchy?
+- **CTA pattern**: Does it end with a question, link, poll, or nothing?
+
+Group by source. Produce a compact profile per source:
+```
+[Source name] — [author] — [niche]
+Recent format: [list / essay / data breakdown / ...]
+Hook style: [question / stat / bold claim / ...]
+Angle: [contrarian / practical / predictive / ...]
+CTA: [question / link / none]
+```
+
+Then identify across sources:
+- **Formats that appear in 2+ niche sources** — these are the formats working in the niche
+- **Formats not represented in your `content-samples/`** — these are format gaps
+
+Do NOT extract topics — that's brainstorm's job.
+
+**Phase 3b — Feed: engagement signals (pillar-scoped)**
+
+Read `<data_dir>/feed/feeds.json`. Extract the top 10 items where `topics` matches your content pillars. Note:
+- Which X accounts from `sources.json` are generating the highest-engagement posts
+- Any cross-platform convergence: same topic appearing in both X feed and knowledge/ (signals elevated relevance)
+
+Do NOT cluster topics or generate ideas — that belongs in brainstorm.
+
+---
+
+### Phase 4 — Platform algorithm mechanics
+
+Run one web search per active platform in `CHANNELS.md`:
+- Search: `"[platform] algorithm" [current year] reach distribution`
+- Focus on actionable signals: timing, engagement velocity, format weighting, link penalties, reply behavior
+- Note any algorithm changes in the last 30–60 days
+
+---
+
+### Phase 5 — Synthesis
+
+Connect the data from Phases 2–4. Produce:
+
+**Format gap map**
+Formats that niche influencers use consistently (Phase 3a) that are absent from your `content-samples/`. Name the influencer and format: "OnlyCFO uses numbered data breakdowns with a bold claim opener — not in your samples." These are the format experiments worth running.
+
+**Strength map**
+Your highest-performing post type and engagement pattern from Phase 2. Identify 1–2 formats to double down on.
+
+**Opportunity matrix**
+Where format gap + your pillar + algorithm signal align. Example: "Contrarian essay format (Phase 3a: used by 3 niche sources) + AI Monetization pillar + LinkedIn algorithm rewards long comments = highest priority experiment." List 2–3 combinations.
+
+**Next 2 weeks**
+2–3 format experiments to try — not topic ideas. Brainstorm generates topics; Learn generates format direction. Example: "Try one contrarian thesis post on LinkedIn. Try one data-breakdown post with a question CTA."
+
+---
+
+### Phase 6 — Output and context updates
+
+**Save learning report**
+
+Save a dated report to `<data_dir>/learn/YYYY-MM-DD.md` with these sections:
+```
+# Learn Report — [date]
+
+## Engagement Summary
+[Per-platform tables from Phase 2]
+
+## Influencer Format Patterns
+[Source profiles from Phase 3a — format, hook style, angle, CTA per source]
+
+## Feed Signals
+[Top pillar-scoped items and cross-platform convergence from Phase 3b]
+
+## Platform Algorithm Mechanics
+[Algorithm signals from Phase 4]
+
+## Synthesis
+[Format gap map, strength map, opportunity matrix from Phase 5]
+
+## Recommendations
+[Next 2 weeks: 2–3 format experiments]
+```
+
+**Propose context file edits**
+
+List proposed changes to `VOICE.md`, `CHANNELS.md`, and `CONTENT.md` with the evidence that supports each. Do not edit the files yet. Show:
+
+```
+Proposed changes:
+
+CHANNELS.md — [what to change] — because [evidence]
+CONTENT.md — [what to change] — because [evidence]
+VOICE.md — [what to change] — because [evidence]
+```
+
+Ask: "Should I apply these changes?"
+
+Apply only on confirmation. Only make changes backed by evidence — do not speculate.
+
+**Present summary**
+
+After saving the report, show a brief summary (not a repeat of the full report):
+- Your top-performing format and what makes it work
+- 2–3 format patterns from niche influencers worth experimenting with
+- 1–2 platform algorithm signals to act on
+- The 2–3 format experiments to try in the next 2 weeks
+
+---
 
 **Rules:**
-- Use web search for current algorithm and trend research
-- Be specific with dates in trend observations
-- Only update context files when evidence supports it — don't make speculative changes
-- Prefer evidence from feed data and platform research over generic social-media advice
+- Phase 3 reads existing knowledge/ and feeds.json — no new scraping or web searches in this phase
+- Phase 4 uses web search for algorithm mechanics only — not content trends (brainstorm handles that)
+- Be specific: name the influencer source when citing a format pattern
+- Never edit context files without user approval
+- If knowledge/ has no recent files for a niche, note it clearly and reduce confidence on format claims for that niche
 
 ---
 
@@ -367,27 +536,31 @@ Always show count per status. End with: "Use `/hum create [platform] [post type]
 ## /hum content
 
 **What it does:**
-Lists the current saved draft files and generated assets in `<data_dir>/content/`.
+Lists drafts and assets across the content pipeline.
 
 **Steps:**
-1. Read all files in `<data_dir>/content/`
-2. Show them grouped by channel or asset type when possible
-3. Include draft status metadata if present in the file header
-4. If no drafts exist, say so plainly
+1. Read files in `<data_dir>/content/drafts/` (unPublished drafts)
+2. Read files in `<data_dir>/content/published/` (sent posts)
+3. Read files in `<data_dir>/content/images/` (generated images)
+4. Show them grouped by status and platform
+5. Include draft status metadata if present in the file header
+6. If no drafts exist, say so plainly
 
 **Output format:**
 ```
-🗂 Draft Posts
+🗂 Drafts
 
 LinkedIn
-- LinkedIn - The Finance Team of 2028.md · Draft v1 — 2026-03-24
+- LinkedIn - The Finance Team of 2028.md · outline — 2026-03-24
 
 X
-- X - AI Agents as Headcount.md · Draft v2 — 2026-03-25
+- X - AI Agents as Headcount.md · ready — 2026-03-25
 
-Assets
-- diagram-people.png
-- diagram-tools.png
+✅ Published
+- X - OpEx Structure with AI.md — published 2026-04-07
+
+🖼 Images
+- ai-math-trap-2026-04-08.png
 ```
 
 End with: "Use `/hum publish [draft file]` to publish or `/hum create [platform] [post type] [idea ID]` to draft something new."
@@ -433,13 +606,13 @@ Publishes an approved draft to X or LinkedIn via platform connectors (API-based)
 ### Shared steps
 
 **Steps:**
-1. Read the draft from `<data_dir>/content/`
+1. Read the draft from `<data_dir>/content/drafts/`
 2. Read connector docstrings in `skills/hum/scripts/act/connectors/` for credential shape and connector details
 3. Show the exact final text and ask: "Ready to publish to [platform]?"
 4. Run a preview first:
-   `python3 workspace/skills/hum/scripts/act/publish.py --draft "[draft path]"`
+   `python3 skills/hum/scripts/act/publish.py --draft "[draft path]"`
 5. On confirmation, publish using:
-   `python3 workspace/skills/hum/scripts/act/publish.py --draft "[draft path]" --account "[account]" --publish --update-draft`
+   `python3 skills/hum/scripts/act/publish.py --draft "[draft path]" --account "[account]" --publish --update-draft`
 6. If a LinkedIn image or X first-post image exists, include:
    `--image "/absolute/path/to/image.png"`
 7. Confirm success from the returned URL / ID
@@ -474,7 +647,7 @@ Use an image generation API (Gemini or MiniMax) to create a cover image for the 
 
 - **API key:** uses the configured image provider (see `/hum config`)
 - **Prompt:** generate a LinkedIn article cover image for the article title, matching the user's style preferences
-- **Save to:** `<data_dir>/content/LinkedIn Cover - [article title].png`
+- **Save to:** `<data_dir>/content/images/LinkedIn Cover - [article title].png`
 - Show the image to the user and ask for approval before proceeding
 
 #### Step 2 — Draft the intro feed post
@@ -483,7 +656,7 @@ Write a short LinkedIn feed post (100–150 words) to introduce the article:
 - Opens with the article's core tension or hook (not "I wrote an article")
 - 2–3 sentences of substance — what the reader will get
 - Ends with: "Full article 👇" or "Link in comments." (choose based on `CHANNELS.md` rules)
-- Save to: `<data_dir>/content/LinkedIn Post - [article title].md`
+- Save to: `<data_dir>/content/drafts/LinkedIn Post - [article title].md`
 - Show to user for approval before publishing
 
 #### Step 3 — Publish the article (browser)
@@ -503,7 +676,7 @@ Once the article URL is known:
 1. Append the URL to the intro feed post draft
 2. Publish via:
 ```bash
-cd workspace/skills/hum/scripts && python3 -m act.connectors.linkedin \
+cd skills/hum/scripts && python3 -m act.connectors.linkedin \
   --account <account> \
   --text "<intro post text>\n\n<article URL>"
 ```
@@ -548,23 +721,53 @@ Default: `all` (both platforms). Specify `x` or `linkedin` to scope.
 
 ### Part 2 — Suggest outbound replies (engagement plays)
 
-1. Open the relevant X account home feed for this user
-2. Scroll through the feed — look for posts from relevant accounts in the user's niche
-3. Pick 3–5 posts where a smart, insightful reply from the user's account would add value
-4. Draft a reply for each — 1–2 sentences, adds a specific insight or contrarian take, NOT generic
-5. Present as:
+**Goal:** Reply to recent posts from niche accounts in a way that feels authentic, adds real value, and builds visibility in the right circles.
+
+**Step 1 — Identify target accounts**
+
+Pull target accounts from two sources:
+1. `<data_dir>/feed/sources.json` — entries with `type: x_profile`
+2. `<data_dir>/knowledge/index.md` — the "Influencers & Thought Leaders" tables (Name + Platform columns)
+
+Combine into a single candidate list. Prioritise accounts that appear in both sources — these are most relevant to the user's niche.
+
+**Step 2 — Find recent posts worth replying to**
+
+For each candidate account (work through 8–12 to find 3–5 good matches):
+1. Navigate to their profile in the browser
+2. Find their most recent post from the **last 48 hours** — skip if nothing recent
+3. Read the full post text carefully
+
+A post is worth replying to if it:
+- Makes a specific claim, shares data, or argues a position
+- Is in the user's niche (check against `<data_dir>/CONTENT.md` content pillars)
+- Has some engagement already — signals the conversation is active
+- Is not a repost or share of someone else's content
+
+**Step 3 — Draft replies**
+
+Before drafting, read `<data_dir>/VOICE.md` for tone and style.
+
+For each selected post, draft a reply that:
+- **Anchors to something specific** in the post — a stat, a claim, a specific phrase. Never summarise generically.
+- **Does one of:** adds a related data point, offers a contrarian take with a concrete reason, or extends the argument with a specific example
+- **Feels like a person wrote it** — no filler openers ("Great point!", "Love this", "So true", "This is spot on"). Start with the substance.
+- **Is concise** — 1–2 sentences for X (under 280 chars), 2–3 sentences for LinkedIn
+- **Matches the user's voice** per VOICE.md — calm, direct, grounded in specifics
+
+**Step 4 — Present for approval**
 
 ```
-💬 Engagement Plays — suggested replies to other accounts
+💬 Engagement Plays — suggested replies
 
-1. @[account] — "[their post summary]"
-   → Suggested reply: [draft]
+1. @[account] on [platform] — "[exact quote or key claim from their post]"
+   → [drafted reply]
 
-2. @[account] — "[their post summary]"
-   → Suggested reply: [draft]
+2. @[account] on [platform] — "[exact quote or key claim from their post]"
+   → [drafted reply]
 ```
 
-6. Ask: "Which should I post?"
+Ask: "Which should I post? Any edits?"
 
 ---
 

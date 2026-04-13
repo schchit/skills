@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 """
 x.py — X/Twitter feed source: scrape home feed, threads, and tweets with media.
 
-This module outputs structured JSON instructions for browser automation.
-The actual scraping is performed by the agent using the browser tool.
+Profile scraping has two modes:
+  - Bird (direct): uses AUTH_TOKEN + CT0 session credentials to call X's
+    GraphQL API via the vendored bird-search.mjs. Returns feed items directly.
+  - Browser (fallback): returns structured JSON instructions for the browser
+    automation agent when credentials are not available.
+
+Home feed and thread/tweet scraping always use browser instructions.
 
 Usage:
     python3 -m feed.source.x home [--scrolls N] [--output PATH]
@@ -19,9 +25,70 @@ from pathlib import Path
 _SCRIPTS_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_SCRIPTS_ROOT))
 
-from config import load_config, load_topics
+from config import load_config, load_topics, load_x_credentials
+from lib import bird_x as _bird
 
 _CFG = load_config()
+
+# ── Bird credential bootstrap ──────────────────────────────────────────────
+
+def _init_bird() -> None:
+    """Inject X credentials into the Bird client (once per process)."""
+    if not hasattr(_init_bird, "_done"):
+        creds = load_x_credentials()
+        _bird.set_credentials(creds.get("auth_token"), creds.get("ct0"))
+        _init_bird._done = True
+
+
+# ── Profile scraping via Bird ──────────────────────────────────────────────
+
+def fetch_profile_via_bird(
+    handle: str,
+    since: str | None = None,
+    count: int = 20,
+) -> list[dict] | None:
+    """Fetch recent posts from an X profile directly using Bird (no browser needed).
+
+    Returns a list of hum feed items if Bird credentials are available and the
+    fetch succeeds, or None if Bird is not available (caller should fall back to
+    browser instructions).
+
+    Args:
+        handle: X handle (without @)
+        since: ISO 8601 timestamp — only return tweets posted after this date
+        count: Max number of tweets to fetch
+    """
+    _init_bird()
+    if not _bird.is_available():
+        return None
+    return _bird.fetch_profile(handle, since=since, count=count)
+
+
+def fetch_home_feed_via_bird(
+    since: str | None = None,
+    count: int = 40,
+) -> list[dict] | None:
+    """Fetch X home feed directly via Bird (filter:follows). No browser needed.
+
+    Returns feed items with topic classification applied, or None if Bird
+    credentials are not configured.
+
+    Args:
+        since: ISO 8601 timestamp — only return tweets posted after this date
+        count: Max number of tweets to fetch
+    """
+    _init_bird()
+    if not _bird.is_available():
+        return None
+
+    items = _bird.fetch_home_feed(since=since, count=count)
+    # Classify each item by topic so the ranker/digest see the same shape
+    # that HN items carry. The home feed is the broadest intake — topic
+    # tagging matters most here.
+    for item in items:
+        item["topics"] = classify(item.get("content", ""))
+    return items
+
 
 # ── Topic classification ───────────────────────────────────────────────────
 
@@ -53,14 +120,15 @@ MEDIA_SCHEMA = {
 TWEET_SCHEMA = {
     "author": "@handle",
     "display_name": "display name",
-    "text": "full tweet text (expand 'Show more' if truncated)",
-    "likes": "integer or null",
-    "retweets": "integer or null",
-    "replies": "integer or null",
-    "views": "integer or null",
-    "url": "https://x.com/<handle>/status/<id>",
+    "text": "full tweet text (expand 'Show more' if truncated); for threads, all tweets concatenated with '\\n\\n'",
+    "likes": "integer or null; for threads, sum across all tweets",
+    "retweets": "integer or null; for threads, sum across all tweets",
+    "replies": "integer or null; for threads, sum across all tweets",
+    "views": "integer or null; for threads, sum across all tweets",
+    "url": "https://x.com/<handle>/status/<id>; for threads, URL of first tweet",
     "timestamp": "ISO 8601 or relative time string",
     "media": [MEDIA_SCHEMA],
+    "is_thread": "boolean — true if this item represents a multi-tweet thread",
     "is_quote_tweet": "boolean",
     "quoted_tweet": "nested tweet object if quote tweet, else null",
 }
@@ -85,6 +153,13 @@ def home_feed_instructions(scrolls: int = 5, output: str | None = None) -> dict:
             "    - Videos: note the thumbnail URL and video URL if accessible",
             "    - GIFs: extract the video/mp4 URL",
             "  - If tweet is a quote tweet, also extract the quoted tweet content and media",
+            "  - Detect threads: if the tweet shows a thread indicator (vertical line connecting tweets, '🧵', '1/', numbered continuation, or 'Show this thread' link), it is a thread",
+            "    - For thread tweets: click the tweet URL to open the full thread page",
+            "    - Scroll through the thread and collect ALL tweets by the same author in the reply chain",
+            "    - Concatenate all tweet texts in order, separated by '\\n\\n'",
+            "    - Sum likes, retweets, replies, views across all tweets in the thread",
+            "    - Use the first tweet's URL as the canonical thread URL",
+            "    - Set is_thread=true on the item",
             "Filter to tweets matching at least one topic keyword (see topics below)",
             "Deduplicate by URL",
             "Set source='x' on every item",
@@ -136,6 +211,14 @@ def profile_instructions(
         "    - Videos: note the thumbnail URL and video URL if accessible",
         "    - GIFs: extract the video/mp4 URL",
         "  - If tweet is a quote tweet, also extract the quoted tweet content and media",
+        "  - Detect threads: if the tweet has a thread indicator (vertical connecting line, '🧵', '1/', numbered continuation, or 'Show this thread' link), it is a thread",
+        "    - Click the tweet URL to open the full thread page",
+        "    - Scroll through and collect ALL tweets by the same author in the reply chain",
+        "    - Concatenate all tweet texts in order, separated by '\\n\\n'",
+        "    - Sum likes, retweets, replies, views across all tweets in the thread",
+        "    - Use the first tweet's URL as the canonical thread URL",
+        "    - Set is_thread=true on the item",
+        "    - Treat the entire thread as a single feed item — do not add individual thread tweets separately",
     ]
     if since_step:
         steps.append(since_step)

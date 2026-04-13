@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 image_gen.py — Image generation wrapper for hum content creation.
 
