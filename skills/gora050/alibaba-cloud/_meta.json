@@ -1,0 +1,11 @@
+{
+  "owner": "gora050",
+  "slug": "alibaba-cloud",
+  "displayName": "Alibaba Cloud",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775470090559,
+    "commit": null
+  },
+  "history": []
+}
