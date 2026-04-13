@@ -3,9 +3,15 @@
   "slug": "priceclaw",
   "displayName": "PriceClaw",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1775618619747,
-    "commit": "https://github.com/openclaw/skills/commit/57605a8211e7a80a132acadd8f309812d2f8aec8"
+    "version": "1.0.3",
+    "publishedAt": 1775658965723,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1775618619747,
+      "commit": "https://github.com/openclaw/skills/commit/57605a8211e7a80a132acadd8f309812d2f8aec8"
+    }
+  ]
 }

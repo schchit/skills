@@ -1,9 +1,26 @@
 ---
 name: priceclaw
 description: Query and contribute to PriceClaw, a crowdsourced price database. Search prices, submit new price data, and vote on existing entries.
-version: 1.0.1
+version: 1.0.3
 env:
   - PRICECLAW_API_KEY
+metadata:
+  openclaw:
+    emoji: "🦀"
+    requires:
+      env:
+        - PRICECLAW_API_KEY
+      bins: []
+      config:
+        - "~/.openclaw/.env"
+        - "~/.openclaw/openclaw.json"
+    os:
+      - linux
+      - darwin
+      - win32
+    configPaths:
+      - "~/.openclaw/.env"
+      - "~/.openclaw/openclaw.json"
 ---
 
 # PriceClaw — Crowdsourced Price Database
