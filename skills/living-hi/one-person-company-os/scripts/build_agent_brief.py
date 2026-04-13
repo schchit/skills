@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from common import (
+    ensure_within_directory,
     emit_runtime_report,
     load_json,
     load_role_specs,
@@ -33,6 +34,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--include-optional", action="store_true", help="同时包含阶段可选角色")
     parser.add_argument("--language", default="zh-CN", help="工作语言")
     parser.add_argument("--company-name", default="未命名公司", help="公司名称")
+    parser.add_argument("--company-dir", help="可选，公司工作区目录；如果需要落盘 brief，则 output-dir 必须位于该目录内")
     parser.add_argument("--objective", default="推进当前阶段的关键回合", help="当前目标")
     parser.add_argument("--current-round", default="当前回合待定义", help="当前回合名称")
     parser.add_argument("--round-goal", default="待定义", help="当前回合目标")
@@ -218,10 +220,13 @@ def main() -> int:
         parser.error("use --role or --all-default-roles")
 
     stage_id = normalize_stage(args.stage)
-    output_dir = Path(args.output_dir).expanduser().resolve() if args.output_dir else None
+    company_dir = Path(args.company_dir).expanduser().resolve() if args.company_dir else None
+    output_dir = Path(args.output_dir).expanduser() if args.output_dir else None
+    if output_dir is not None and company_dir is not None and not output_dir.is_absolute():
+        output_dir = company_dir / output_dir
 
     print_step(2, 5, "preflight 与保存策略检查", stream=sys.stderr, language=language)
-    runtime = preflight_status(output_dir, language=language)
+    runtime = preflight_status(output_dir or company_dir, language=language)
     if not runtime["runnable"]:
         parser.error(f"runtime not runnable: {runtime['runtime_error']}")
     if output_dir is not None and not runtime["writable"]:
@@ -241,6 +246,13 @@ def main() -> int:
 
     if output_dir is None and len(role_ids) > 1:
         parser.error("multiple briefs require --output-dir")
+    if output_dir is not None and company_dir is None:
+        parser.error("persisted role briefs require --company-dir so the write boundary stays inside the workspace")
+    if output_dir is not None and company_dir is not None:
+        try:
+            output_dir = ensure_within_directory(output_dir, company_dir, label="output-dir")
+        except ValueError as exc:
+            parser.error(str(exc))
 
     print_step(3, 5, "草案 / 变更提议 / 当前状态装载", status=pick_text(language, "已完成（组装角色 Brief）", "Completed (assembled the role brief)"), stream=sys.stderr, language=language)
     saved_paths: list[Path] = []

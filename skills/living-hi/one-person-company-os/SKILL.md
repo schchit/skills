@@ -14,8 +14,17 @@ This skill is not a generic startup advisor. It is a business-loop operating sys
 
 - Chinese in -> Chinese runtime and materials by default.
 - English in -> English runtime and materials by default.
-- Keep canonical on-disk paths stable for automation.
+- Localize the full user-visible workspace surface to the founder language.
+- Keep only the hidden machine-state path stable at `.opcos/state/current-state.json`.
 - Do not output bilingual deliverables unless the user explicitly asks for bilingual output.
+
+## Runtime Requirements And Safety Boundary
+
+- Script mode expects an existing local `Python 3.7+`.
+- `scripts/ensure_python_runtime.py` inspects compatibility and prints manual install guidance only.
+- The marketplace build must not auto-install system packages.
+- Persist changes only inside the founder-approved workspace.
+- Do not request unrelated credentials or secrets.
 
 ## Primary Entry Intents
 
@@ -55,11 +64,34 @@ Every serious run should clarify:
 - the primary bottleneck
 - the primary arena: `sales / product / delivery / cash / asset`
 - the shortest action today
-- what changed on disk
+- what changed inside the approved workspace
+
+## Download-Friendly Reading Layer
+
+The workspace is not markdown-only anymore.
+After each real persistence run, also maintain a localized reading layer for direct download viewing:
+
+- Chinese founders: `阅读版/00-先看这里.html`
+- English founders: `reading/00-start-here.html`
+
+The reading layer should mirror the core workspace documents as HTML:
+
+- operating dashboard
+- founder constraints
+- value promise and pricing
+- opportunity and revenue pipeline
+- product and launch status
+- delivery and cash collection
+- cashflow and business health
+- assets and automation
+- deliverable directory overview
+
+Keep markdown as the editable working source.
+Keep numbered DOCX files under `产物/` or `artifacts/` for formal deliverables.
 
 ## Main Workspace Files
 
-The primary generated workspace should center on:
+The primary generated workspace should center on language-matched files:
 
 - `00-经营总盘.md`
 - `01-创始人约束.md`
@@ -74,6 +106,15 @@ The primary generated workspace should center on:
 - `10-今日最短动作.md`
 - `11-协作记忆.md`
 - `12-会话交接.md`
+
+English workspaces should use the matching English-visible names such as:
+
+- `00-operating-dashboard.md`
+- `01-founder-constraints.md`
+- `02-value-promise-and-pricing.md`
+- `03-opportunity-and-revenue-pipeline.md`
+- `04-product-and-launch-status.md`
+- `05-delivery-and-cash-collection.md`
 
 Legacy stage and round files may still exist for compatibility, but they are not the primary product surface.
 
@@ -109,8 +150,8 @@ Target runtime: `Python 3.7+`
 If the current interpreter is incompatible:
 
 1. prefer switching to a compatible installed Python
-2. otherwise run `scripts/ensure_python_runtime.py --apply`
-3. otherwise let the agent complete the task and persist manually
+2. otherwise inspect `scripts/ensure_python_runtime.py` and install Python manually if you trust the host
+3. otherwise let the agent complete the task and persist manually inside the approved workspace
 
 ## Non-Negotiable Rules
 
@@ -119,16 +160,14 @@ If the current interpreter is incompatible:
 - Do not pretend content is saved when it is still only in chat.
 - Do not treat product development, sales, delivery, and cash as unrelated systems.
 - Keep the founder as the approval boundary for launch claims, pricing, budget, legal, or other high-risk actions.
+- Do not auto-install system packages from this skill.
+- Do not write outside the approved workspace.
 
 ## Recommended Commands
 
 ```bash
-python3 scripts/init_business.py "北辰实验室" --path ./workspace --product-name "北辰助手" --stage 构建期
-python3 scripts/update_focus.py ./workspace/北辰实验室 --primary-goal "把 MVP 推到可演示并拿到第一批对话" --primary-arena product
-python3 scripts/advance_product.py ./workspace/北辰实验室 --state prototype --current-version "v0.1 hero"
-python3 scripts/advance_pipeline.py ./workspace/北辰实验室 --talking 3 --proposal 1
-python3 scripts/advance_delivery.py ./workspace/北辰实验室 --active-customers 1 --receivable 2999
-python3 scripts/update_cash.py ./workspace/北辰实验室 --cash-in 2999 --cash-out 500
-python3 scripts/record_asset.py ./workspace/北辰实验室 --kind templates --item "首位试用客户 onboarding 话术"
+python3 scripts/preflight_check.py --mode 创建公司
+python3 scripts/ensure_python_runtime.py
+python3 scripts/init_business.py "北辰实验室" --path ./workspace --product-name "北辰助手" --stage 构建期 --target-user "独立开发者" --core-problem "还没有一个真正能持续推进产品和成交的一人公司系统" --product-pitch "一个帮助独立开发者把产品做出来并卖出去的一人公司控制系统" --confirmed
 python3 scripts/validate_release.py
 ```

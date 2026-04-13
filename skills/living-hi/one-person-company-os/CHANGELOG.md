@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.6.7 - 2026-04-09
+
+- added a localized HTML reading layer so every generated workspace now includes `阅读版/00-先看这里.html` or `reading/00-start-here.html` for direct viewing after download
+- kept markdown as the editable workspace source while preserving numbered DOCX files for formal deliverables
+- updated validation, README, SKILL, release collateral, and sample outputs so the public contract matches the new three-layer output model
+
+## v0.6.6 - 2026-04-09
+
+- disabled automatic host-package installation in the marketplace-facing Python compatibility helper so `scripts/ensure_python_runtime.py` now stays in compatibility-guidance mode unless it is only rerunning a target script with an already-trusted interpreter
+- tightened persisted output boundaries by constraining generated artifact output and persisted role briefs to stay inside the approved company workspace
+- disabled implicit invocation in `agents/openai.yaml` and rewrote README, SKILL, security docs, listing copy, publishing notes, and release collateral so the public safety boundary matches the real runtime behavior
+
+## v0.6.5 - 2026-04-07
+
+- localized the entire founder-visible workspace surface so Chinese founders now get Chinese file and directory names while English founders get English-visible equivalents
+- moved machine state to the hidden internal path `.opcos/state/current-state.json` and removed the old visible state-file leak from founder workspaces
+- added path-layout helpers, migration-safe workspace harmonization, localized artifact names, and stricter release validation for Chinese and English workspace separation
+
+## v0.6.4 - 2026-04-07
+
+- removed the hard-coded leaked vertical case from generated founder-facing surfaces such as landing copy, interview board, trial intake, feedback capture, and demo HTML
+- enforced a direction-first bootstrap contract in `scripts/init_company.py` so workspace creation now requires confirmed founder inputs instead of placeholder defaults
+- updated validation, README, release collateral, prompt metadata, and first-run docs so the public surface matches the real runtime behavior
+
 ## v0.6.3 - 2026-04-04
 
 - removed leftover state lock artifacts from founder workspaces so merge-safe persistence no longer leaves `当前状态.json.lock` behind after script runs
@@ -19,7 +43,7 @@
 - stopped `update_cash.py` from forcibly overwriting the founder's primary arena
 - upgraded generated support work surfaces so `product/01-MVP与上线清单.md`, `sales/01-成交动作清单.md`, and `ops/01-上线检查清单.md` are now actionable checklists instead of duplicated root docs
 - tightened release validation to generate and verify deployment and production DOCX artifacts explicitly instead of relying on stage side effects
-- validated the improved workflow against a realistic regulated-market founder scenario around an AI medical assistant for Chinese clinicians pursuing Australia pathways
+- validated the improved workflow against a realistic narrow-founder scenario without binding the package to any leaked or hard-coded vertical case
 
 ## v0.6.0 - 2026-04-04
 

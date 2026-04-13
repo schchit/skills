@@ -7,6 +7,7 @@ import argparse
 from pathlib import Path
 
 from common import (
+    artifact_dir_path,
     default_role_ids_for_stage,
     emit_runtime_report,
     load_role_specs,
@@ -17,7 +18,9 @@ from common import (
     print_step,
     render_workspace,
     role_spec,
+    root_doc_path,
     save_state,
+    stage_artifact_specs,
     state_path,
     stage_label,
     write_record,
@@ -87,37 +90,16 @@ def main() -> int:
     save_state(company_dir, state)
     render_workspace(company_dir, state)
     stage_saved_paths = [
-        company_dir / "00-经营总盘.md",
-        company_dir / "04-产品与上线状态.md",
-        company_dir / "05-客户交付与回款.md",
-        company_dir / "08-风险与关键决策.md",
-        company_dir / "09-本周唯一主目标.md",
+        root_doc_path(company_dir, "dashboard", language),
+        root_doc_path(company_dir, "product_status", language),
+        root_doc_path(company_dir, "delivery_cash", language),
+        root_doc_path(company_dir, "risks", language),
+        root_doc_path(company_dir, "week_focus", language),
     ]
-    if new_stage_id == "launch":
-        stage_saved_paths.extend(
-            [
-                company_dir / "产物" / "04-部署与生产" / "01-部署与回滚清单.docx",
-                company_dir / "产物" / "04-部署与生产" / "02-生产观测与告警清单.docx",
-                company_dir / "产物" / "05-上线与增长" / "01-上线公告与反馈回收清单.docx",
-            ]
-        )
-    elif new_stage_id == "operate":
-        stage_saved_paths.extend(
-            [
-                company_dir / "产物" / "04-部署与生产" / "01-部署与回滚清单.docx",
-                company_dir / "产物" / "04-部署与生产" / "02-生产观测与告警清单.docx",
-                company_dir / "产物" / "04-部署与生产" / "03-事故响应与复盘记录.docx",
-                company_dir / "产物" / "05-上线与增长" / "01-上线公告与反馈回收清单.docx",
-            ]
-        )
-    elif new_stage_id == "grow":
-        stage_saved_paths.extend(
-            [
-                company_dir / "产物" / "04-部署与生产" / "01-部署与回滚清单.docx",
-                company_dir / "产物" / "04-部署与生产" / "02-生产观测与告警清单.docx",
-                company_dir / "产物" / "05-上线与增长" / "01-增长实验与经营复盘.docx",
-            ]
-        )
+    if new_stage_id in {"launch", "operate", "grow"}:
+        for spec in stage_artifact_specs(new_stage_id, language):
+            if spec["category"] in {"ops", "growth"}:
+                stage_saved_paths.append(artifact_dir_path(company_dir, spec["category"], language) / f"{spec['index']}-{spec['title']}.docx")
 
     record = write_record(
         company_dir,

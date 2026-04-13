@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from common import emit_runtime_report, load_state, preflight_status, print_step, render_workspace, save_state, state_path
+from common import emit_runtime_report, load_state, preflight_status, print_step, render_workspace, root_doc_path, save_state, state_path
 from localization import pick_text
 
 
@@ -44,7 +44,13 @@ def main() -> int:
         needs_confirmation=pick_text(language, "否", "No"),
         persistence_mode="script-execution",
         company_dir=company_dir,
-        saved_paths=[company_dir / "00-经营总盘.md", company_dir / "02-价值承诺与报价.md", company_dir / "04-产品与上线状态.md", company_dir / "05-客户交付与回款.md", state_path(company_dir)],
+        saved_paths=[
+            root_doc_path(company_dir, "dashboard", language),
+            root_doc_path(company_dir, "offer", language),
+            root_doc_path(company_dir, "product_status", language),
+            root_doc_path(company_dir, "delivery_cash", language),
+            state_path(company_dir),
+        ],
         changes=[pick_text(language, "已把旧工作区迁移到经营闭环骨架，并保留兼容资料到 records/legacy-root。", "Migrated the legacy workspace to the business-loop layout and preserved compatibility material under records/legacy-root.")],
         language=language,
     )

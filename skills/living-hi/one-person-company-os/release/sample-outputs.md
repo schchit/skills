@@ -1,57 +1,78 @@
 # Release Sample Outputs
 
-## 经营总盘
+## Chinese Workspace Example
 
 ```md
 # 经营总盘
 
-- 头号目标: 把 MVP 推到可演示并拿到第一批对话
+- 当前头号目标: 把 MVP 推到可演示并拿到第一批对话
 - 当前主瓶颈: 价值表达和产品演示都还不够可卖
 - 当前主战场: 产品
 - 今天最短动作: 先补 homepage hero 的价值表达和 CTA 路径
 - 本周唯一结果: 拿到可演示的首版首页与注册入口
 ```
 
-## 产品与上线状态
-
-```md
-# 产品与上线状态
-
-- 产品状态: 原型中
-- 当前版本: v0.1 hero
-- 上线阻塞: 还没有对外可演示链接
-- 仓库: workspace/北辰实验室
-```
-
-## 机会与成交管道
-
-```md
-# 机会与成交管道
-
-- 对话: 3
-- 报价: 1
-- 成交: 0
-- 下一条真实成交动作: 把首版 demo 发给 3 位独立开发者并约反馈
-```
-
-## 示例工作区
-
 ```text
 北辰实验室/
   00-经营总盘.md
+  01-创始人约束.md
   02-价值承诺与报价.md
   03-机会与成交管道.md
   04-产品与上线状态.md
   05-客户交付与回款.md
-  06-现金流与经营健康.md
-  07-资产与自动化.md
-  09-本周唯一主目标.md
-  10-今日最短动作.md
-  product/
-  sales/
-  delivery/
-  assets/
-  产物/01-实际交付/01-实际产出总表.docx
-  产物/02-软件与代码/03-首页首屏规范.docx
-  自动化/当前状态.json
+  阅读版/
+    00-先看这里.html
+    00-经营总盘.html
+  销售/
+  产品/
+  交付/
+  运营/
+  资产/
+  记录/
+  自动化/
+  产物/
+  角色智能体/
+  流程/
+  .opcos/state/current-state.json
 ```
+
+## English Workspace Example
+
+```md
+# Operating Dashboard
+
+- Primary goal: push the MVP to a demoable state and get the first real conversations
+- Main bottleneck: the value expression and demo are not sellable enough yet
+- Primary arena: product
+- Shortest action today: tighten the homepage hero and CTA path
+- Single result this week: ship a first demoable homepage and signup path
+```
+
+```text
+North Star Lab/
+  00-operating-dashboard.md
+  01-founder-constraints.md
+  02-value-promise-and-pricing.md
+  03-opportunity-and-revenue-pipeline.md
+  04-product-and-launch-status.md
+  05-delivery-and-cash-collection.md
+  reading/
+    00-start-here.html
+    00-operating-dashboard.html
+  sales/
+  product/
+  delivery/
+  operations/
+  assets/
+  records/
+  automation/
+  artifacts/
+  roles/
+  flows/
+  .opcos/state/current-state.json
+```
+
+## Reading Layer Entry
+
+- Chinese founders open `阅读版/00-先看这里.html` first after download
+- English founders open `reading/00-start-here.html` first after download

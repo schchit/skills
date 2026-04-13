@@ -31,7 +31,7 @@ python3 scripts/validate_release.py
 git init
 git checkout -b main
 git add .
-git commit -m "release: publish one-person-company-os v0.6.1"
+git commit -m "release: publish one-person-company-os v0.6.7"
 git remote add origin <YOUR_GITHUB_REPO_URL>
 git push -u origin main
 ```
@@ -51,13 +51,13 @@ python3 scripts/ensure_python_runtime.py
 python3 scripts/validate_release.py
 git status --short
 git add .
-git commit -m "release: improve support surfaces and stage inference"
+git commit -m "release: document one-person-company-os v0.6.7"
 git push origin main
 clawhub publish /home/living/.openclaw/workspace/skills/one-person-company-os \
   --slug one-person-company-os \
   --name "One Person Company OS" \
-  --version 0.6.1 \
-  --changelog "Fix stage inference, improve generated MVP/sales/launch work surfaces, and harden release validation for real founder execution."
+  --version 0.6.7 \
+  --changelog "Add a download-friendly HTML reading layer while keeping markdown as the working source and DOCX as the formal deliverable format."
 ```
 
 Replace the staged files, commit message, version, and changelog as needed.
@@ -72,9 +72,9 @@ Replace the staged files, commit message, version, and changelog as needed.
 
 ## Suggested Current Release
 
-- tag: `v0.6.1`
-- title: `v0.6.1: support-surface upgrade and stage-inference fix`
-- notes source: `CHANGELOG.md`, `RELEASE-NOTES.md`, and `release/v0.6.1-github-release.md`
+- tag: `v0.6.7`
+- title: `v0.6.7: download-friendly reading layer`
+- notes source: `CHANGELOG.md`, `RELEASE-NOTES.md`, and `release/v0.6.7-github-release.md`
 
 ## ClawHub Submission Prep
 
@@ -95,10 +95,10 @@ Use the materials in `release/`:
 - After any timeout, verify with the download endpoint before retrying:
 
 ```bash
-curl -L "https://clawhub.ai/api/v1/download?slug=one-person-company-os&version=0.6.1" -o /tmp/one-person-company-os-0.6.1.zip
-unzip -p /tmp/one-person-company-os-0.6.1.zip README.zh-CN.md | sed -n '1,80p'
-unzip -p /tmp/one-person-company-os-0.6.1.zip agents/openai.yaml
-unzip -p /tmp/one-person-company-os-0.6.1.zip scripts/init_business.py | sed -n '1,120p'
+curl -L "https://clawhub.ai/api/v1/download?slug=one-person-company-os&version=0.6.7" -o /tmp/one-person-company-os-0.6.7.zip
+unzip -p /tmp/one-person-company-os-0.6.7.zip README.zh-CN.md | sed -n '1,80p'
+unzip -p /tmp/one-person-company-os-0.6.7.zip agents/openai.yaml
+unzip -p /tmp/one-person-company-os-0.6.7.zip scripts/init_company.py | sed -n '1,160p'
 ```
 
 - The public listing page may lag behind the downloadable package version. Trust the download endpoint first.
@@ -108,4 +108,6 @@ unzip -p /tmp/one-person-company-os-0.6.1.zip scripts/init_business.py | sed -n 
 - Chinese prompt in, Chinese materials out by default
 - English prompt in, English materials out by default
 - bilingual output only when explicitly requested
-- repository path conventions stay stable even when user-facing runtime output changes language
+- founder-visible workspace files and directories localize to the founder language
+- hidden machine-state storage stays stable at `.opcos/state/current-state.json`
+- marketplace build does not auto-install system packages

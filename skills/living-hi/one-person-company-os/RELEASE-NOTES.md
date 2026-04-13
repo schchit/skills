@@ -1,5 +1,66 @@
 # Release Notes
 
+## v0.6.7 - Download-Friendly Reading Layer
+
+`v0.6.7` upgrades the generated workspace from a markdown-heavy working folder into a better download artifact.
+
+The new output model is:
+
+- markdown for continued editing and agent updates
+- localized HTML for direct reading after download
+- DOCX for formal external deliverables
+
+What changed:
+
+- every generated workspace now includes `阅读版/00-先看这里.html` or `reading/00-start-here.html`
+- the core dashboard, offer, pipeline, product, delivery, cash, asset, and deliverable-overview pages now export as localized HTML reading files
+- release validation and public docs now describe the reading layer explicitly instead of presenting the package as markdown-only
+
+## v0.6.6 - Marketplace Safety Boundary Hardening
+
+`v0.6.5` fixed the founder-visible workspace surface.
+
+`v0.6.6` fixes the next marketplace trust mismatch: the package behavior was coherent, but the public runtime contract still left too much ambiguity around host-environment changes and write scope.
+
+This release adds and updates:
+
+- a marketplace-safe `scripts/ensure_python_runtime.py` path that stays in compatibility-guidance mode instead of auto-installing system packages
+- tighter write-boundary checks so persisted artifact output and saved role briefs stay inside the approved company workspace
+- an explicit no-implicit-invocation policy in `agents/openai.yaml`
+- synchronized README, SKILL, security docs, listing copy, publishing notes, and release material so the public package surface matches the runtime safety boundary
+
+The result is a package that is easier to audit, easier to trust, and less likely to trigger marketplace review concerns while keeping the founder workflow intact.
+
+## v0.6.5 - Fully Localized Workspace Surface
+
+`v0.6.4` fixed the direction-first contract and neutralized leaked default cases.
+
+`v0.6.5` fixes the next serious product mismatch: the runtime could already speak Chinese or English, but the generated workspace still mixed Chinese and English paths and exposed the machine state file in the founder-visible surface.
+
+This release adds and updates:
+
+- fully localized Chinese-visible and English-visible workspace files and directories
+- a hidden stable machine-state path at `.opcos/state/current-state.json`
+- localized default artifact names, role brief filenames, support work surfaces, and flow files
+- stronger layout harmonization for migrated workspaces
+- release validation that explicitly checks Chinese and English workspace separation
+
+The result is a cleaner and more trustworthy product surface: founders now get a workspace that actually matches their language, while automation still has one hidden stable state path.
+
+## v0.6.4 - Direction-First Bootstrap And Vertical-Neutral Defaults
+
+`v0.6.3` cleaned the lock-file artifact left by safer persistence.
+
+`v0.6.4` fixes the deeper founder-trust problem exposed in the next audit: the package still looked direction-first in documentation, but the generated default surfaces were effectively bound to one leaked vertical case.
+
+This release adds and updates:
+
+- vertical-neutral landing-copy, interview-board, trial-intake, feedback, and demo templates
+- a confirmed-input gate in `scripts/init_company.py` so workspace creation requires real founder direction instead of placeholder defaults
+- updated README, release docs, ClawHub prompt copy, and validation so the public contract matches the actual runtime behavior
+
+The result is a cleaner product boundary: the system now asks for direction first, waits for confirmation, and only then writes a reusable one-person-company workspace.
+
 ## v0.6.3 - Lock-Artifact Cleanup
 
 `v0.6.2` added merge-safe locked persistence for overlapping founder actions.

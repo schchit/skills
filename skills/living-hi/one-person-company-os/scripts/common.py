@@ -13,6 +13,7 @@ import zipfile
 from collections.abc import Iterable
 from copy import deepcopy
 from datetime import datetime
+from html import escape as html_escape
 from pathlib import Path
 from typing import Any, Optional, TextIO
 from xml.sax.saxutils import escape
@@ -41,6 +42,24 @@ from localization import (
     template_text,
 )
 from state_v3 import read_state_any_version, sync_legacy_fields, write_state_v3
+from workspace_layout import (
+    CORE_WORKSPACE_FILE_KEYS,
+    ROOT_DOC_KEYS,
+    artifact_category_path,
+    candidate_container_paths,
+    candidate_user_file_paths,
+    existing_state_path,
+    legacy_container_path,
+    legacy_user_file_path,
+    legacy_state_paths,
+    record_dir_path,
+    role_brief_path,
+    reading_root_path,
+    reading_start_path,
+    state_path as layout_state_path,
+    user_container_path,
+    user_file_path,
+)
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -48,16 +67,6 @@ SCRIPT_DIR = ROOT / "scripts"
 TEMPLATE_DIR = ROOT / "assets" / "templates"
 ROLE_DIR = ROOT / "agents" / "roles"
 ORCHESTRATION_DIR = ROOT / "orchestration"
-STATE_PATH_PARTS = ("自动化", "当前状态.json")
-CORE_WORKSPACE_FILES = (
-    "00-经营总盘.md",
-    "02-价值承诺与报价.md",
-    "03-机会与成交管道.md",
-    "04-产品与上线状态.md",
-    "05-客户交付与回款.md",
-    "自动化/当前状态.json",
-)
-ARTIFACT_ROOT = "产物"
 REQUIRED_SCRIPT_NAMES = (
     "init_company.py",
     "init_business.py",
@@ -84,6 +93,7 @@ REQUIRED_SCRIPT_NAMES = (
 )
 MIN_SUPPORTED_PYTHON = (3, 7)
 STATE_BASE_KEY = "__opcos_base_state"
+READING_EXTRA_FILE_KEYS = ("delivery_directory",)
 PYTHON_CANDIDATE_COMMANDS = (
     "python3.13",
     "python3.12",
@@ -227,6 +237,16 @@ def display_path(path: Path, root: Optional[Path] = None) -> str:
     return str(path)
 
 
+def ensure_within_directory(path: Path, directory: Path, *, label: str = "path") -> Path:
+    resolved_directory = directory.expanduser().resolve()
+    resolved_path = path.expanduser().resolve()
+    try:
+        resolved_path.relative_to(resolved_directory)
+    except ValueError as exc:
+        raise ValueError(f"{label} must stay inside {resolved_directory}: {resolved_path}") from exc
+    return resolved_path
+
+
 def version_text(version: tuple[int, ...]) -> str:
     return ".".join(str(part) for part in version)
 
@@ -321,27 +341,27 @@ def build_agent_action(
             language,
             "优先让 OpenClaw 智能体运行 `scripts/ensure_python_runtime.py --run-script <目标脚本>`，改用兼容解释器 "
             f"{compatible_runtime['executable']} ({python_compatibility_label(compatible_runtime['version'])}) 重跑脚本；"
-            "若切换失败，再由智能体手动完成脚本任务。",
+            "若切换失败，再由智能体在已确认工作区里手动完成脚本任务。",
             "Prefer asking the OpenClaw agent to run `scripts/ensure_python_runtime.py --run-script <target-script>` "
             f"and retry with the compatible interpreter {compatible_runtime['executable']} "
-            f"({python_compatibility_label(compatible_runtime['version'])}); if switching fails, let the agent finish the task manually.",
+            f"({python_compatibility_label(compatible_runtime['version'])}); if switching fails, let the agent finish the task manually inside the approved workspace.",
         )
 
     if writable:
         return pick_text(
             language,
-            f"优先让 OpenClaw 智能体运行 `scripts/ensure_python_runtime.py --apply` 安装兼容解释器（目标 {minimum}+）；"
-            "若当前环境不便安装，则由智能体直接完成脚本任务并手动落盘。",
-            f"Prefer asking the OpenClaw agent to run `scripts/ensure_python_runtime.py --apply` to install a compatible interpreter (target {minimum}+); "
-            "if installing is not practical in this environment, let the agent finish the task and persist files manually.",
+            f"先查看 `scripts/ensure_python_runtime.py` 给出的兼容解释器与手动安装方案（目标 {minimum}+）；"
+            "marketplace 版不会自动安装系统依赖。若当前环境不便手动安装，则由智能体只在已确认工作区里手动落盘。",
+            f"Inspect the compatible-runtime and manual install guidance from `scripts/ensure_python_runtime.py` first (target {minimum}+); "
+            "the marketplace build will not auto-install system packages. If manual installation is not practical, let the agent persist files manually inside the approved workspace.",
         )
 
     return pick_text(
         language,
-        f"优先让 OpenClaw 智能体在宿主环境运行 `scripts/ensure_python_runtime.py --apply` 安装兼容解释器（目标 {minimum}+）；"
-        "若仍无法写文件，只能由智能体继续纯对话推进并明确未保存。",
-        f"Prefer asking the OpenClaw agent to run `scripts/ensure_python_runtime.py --apply` in the host environment to install a compatible interpreter (target {minimum}+); "
-        "if files still cannot be written, the agent can only continue in chat and must state clearly that nothing was persisted.",
+        f"先查看 `scripts/ensure_python_runtime.py` 的兼容解释器与手动安装方案（目标 {minimum}+）；"
+        "如果仍无法写文件，只能继续纯对话推进，并明确当前没有任何内容被保存。",
+        f"Review the compatible-runtime and manual install guidance from `scripts/ensure_python_runtime.py` first (target {minimum}+); "
+        "if files still cannot be written, continue in chat only and state clearly that nothing was persisted.",
     )
 
 
@@ -579,37 +599,191 @@ def stage_label(stage_id: str, language: str = "zh-CN") -> str:
 
 
 def state_path(company_dir: Path) -> Path:
-    return company_dir.joinpath(*STATE_PATH_PARTS)
+    return layout_state_path(company_dir)
 
 
-def workspace_core_paths(company_dir: Path) -> list[Path]:
-    return [company_dir / relative for relative in CORE_WORKSPACE_FILES]
+def root_doc_path(company_dir: Path, doc_key: str, language: str) -> Path:
+    return user_file_path(company_dir, doc_key, language)
 
 
-def ensure_workspace_dirs(company_dir: Path) -> None:
-    for relative in [
-        "",
-        "product",
+def workspace_file_path(company_dir: Path, file_key: str, language: str) -> Path:
+    return user_file_path(company_dir, file_key, language)
+
+
+def workspace_dir_path(company_dir: Path, dir_key: str, language: str) -> Path:
+    return user_container_path(company_dir, dir_key, language)
+
+
+def artifact_dir_path(company_dir: Path, category: str, language: str) -> Path:
+    return artifact_category_path(company_dir, category, language)
+
+
+def reading_dir_path(company_dir: Path, language: str) -> Path:
+    return reading_root_path(company_dir, language)
+
+
+def reading_entry_path(company_dir: Path, language: str) -> Path:
+    return reading_start_path(company_dir, language)
+
+
+def reading_export_path(company_dir: Path, source_path: Path, language: str) -> Path:
+    return reading_dir_path(company_dir, language) / f"{source_path.stem}.html"
+
+
+def workspace_core_paths(company_dir: Path, language: str) -> list[Path]:
+    paths = [root_doc_path(company_dir, key, language) for key in CORE_WORKSPACE_FILE_KEYS]
+    paths.append(state_path(company_dir))
+    return paths
+
+
+def _existing_language(company_dir: Path) -> Optional[str]:
+    path = existing_state_path(company_dir)
+    if path.is_file():
+        try:
+            return normalize_language(load_json(path).get("language"))
+        except (json.JSONDecodeError, OSError, ValueError, AttributeError):
+            return None
+    return None
+
+
+def workspace_persisted(company_dir: Optional[Path], language: Optional[str] = None) -> bool:
+    if company_dir is None:
+        return False
+    active_language = normalize_language(language, _existing_language(company_dir))
+    if all(path.is_file() for path in workspace_core_paths(company_dir, active_language)):
+        return True
+    legacy_core = [legacy_user_file_path(company_dir, key) for key in CORE_WORKSPACE_FILE_KEYS]
+    legacy_core.extend(path for path in legacy_state_paths(company_dir))
+    return all(path.is_file() for path in legacy_core)
+
+
+def _move_path(source: Path, target: Path) -> None:
+    if source == target or not source.exists():
+        return
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if target.exists():
+        if source.is_dir() and target.is_dir():
+            for child in sorted(source.iterdir()):
+                _move_path(child, target / child.name)
+            try:
+                source.rmdir()
+            except OSError:
+                pass
+        return
+    source.rename(target)
+
+
+def _cleanup_empty_dirs(paths: list[Path]) -> None:
+    for path in sorted(paths, key=lambda item: len(item.parts), reverse=True):
+        if path.is_dir():
+            try:
+                path.rmdir()
+            except OSError:
+                continue
+
+
+def harmonize_workspace_layout(company_dir: Path, language: str) -> None:
+    container_keys = [
+        "product_demo",
+        "records_progress",
+        "records_decision",
+        "records_calibration",
+        "records_checkpoint",
+        "legacy_root",
+        "reading_root",
+        "artifact_delivery",
+        "artifact_software",
+        "artifact_business",
+        "artifact_ops",
+        "artifact_growth",
         "sales",
+        "product",
         "delivery",
         "ops",
         "assets",
         "records",
-        "automation",
-        "角色智能体",
-        "流程",
-        "产物/01-实际交付",
-        "产物/02-软件与代码",
-        "产物/03-非软件与业务",
-        "产物/04-部署与生产",
-        "产物/05-上线与增长",
-        "记录/推进日志",
-        "记录/决策记录",
-        "记录/校准记录",
-        "记录/检查点",
-        "自动化",
-        ]:
-        (company_dir / relative).mkdir(parents=True, exist_ok=True)
+        "roles",
+        "flows",
+        "artifacts_root",
+    ]
+    touched_dirs: list[Path] = []
+    for key in container_keys:
+        target = workspace_dir_path(company_dir, key, language)
+        for candidate in candidate_container_paths(company_dir, key):
+            if candidate == target:
+                continue
+            _move_path(candidate, target)
+            touched_dirs.append(candidate)
+
+    for key in [
+        *ROOT_DOC_KEYS,
+        "record_snapshot",
+        "sales_actions",
+        "sales_landing",
+        "sales_interview",
+        "sales_trial_application",
+        "product_checklist",
+        "product_demo_index",
+        "delivery_tracker",
+        "delivery_directory",
+        "delivery_feedback",
+        "ops_launch_checklist",
+        "assets_inventory",
+        "automation_notes",
+        "role_index",
+        "flow_bootstrap",
+        "flow_round",
+        "flow_calibration",
+        "flow_stage",
+        "automation_reminders",
+        "automation_scheduler",
+    ]:
+        target = workspace_file_path(company_dir, key, language)
+        for candidate in candidate_user_file_paths(company_dir, key):
+            if candidate == target:
+                continue
+            _move_path(candidate, target)
+            touched_dirs.append(candidate.parent)
+
+    target_automation_dir = workspace_dir_path(company_dir, "automation", language)
+    legacy_automation_dir = legacy_container_path(company_dir, "automation")
+    if legacy_automation_dir != target_automation_dir:
+        for filename in ("提醒规则.md", "定时任务定义.md"):
+            _move_path(legacy_automation_dir / filename, target_automation_dir / filename)
+        touched_dirs.append(legacy_automation_dir)
+
+    _cleanup_empty_dirs(touched_dirs + [legacy_automation_dir])
+
+
+def ensure_workspace_dirs(company_dir: Path, language: str) -> None:
+    directories = [
+        company_dir,
+        workspace_dir_path(company_dir, "sales", language),
+        workspace_dir_path(company_dir, "product", language),
+        workspace_dir_path(company_dir, "product_demo", language),
+        workspace_dir_path(company_dir, "delivery", language),
+        workspace_dir_path(company_dir, "ops", language),
+        workspace_dir_path(company_dir, "assets", language),
+        workspace_dir_path(company_dir, "records", language),
+        workspace_dir_path(company_dir, "records_progress", language),
+        workspace_dir_path(company_dir, "records_decision", language),
+        workspace_dir_path(company_dir, "records_calibration", language),
+        workspace_dir_path(company_dir, "records_checkpoint", language),
+        workspace_dir_path(company_dir, "legacy_root", language),
+        workspace_dir_path(company_dir, "roles", language),
+        workspace_dir_path(company_dir, "flows", language),
+        workspace_dir_path(company_dir, "automation", language),
+        workspace_dir_path(company_dir, "reading_root", language),
+        workspace_dir_path(company_dir, "artifacts_root", language),
+        artifact_dir_path(company_dir, "delivery", language),
+        artifact_dir_path(company_dir, "software", language),
+        artifact_dir_path(company_dir, "business", language),
+        artifact_dir_path(company_dir, "ops", language),
+        artifact_dir_path(company_dir, "growth", language),
+        state_path(company_dir).parent,
+    ]
+    for path in directories:
+        path.mkdir(parents=True, exist_ok=True)
 
 
 def _strip_internal_state(value: Any) -> Any:
@@ -643,7 +817,9 @@ def _merge_state_changes(base: Any, updated: Any, latest: Any) -> Any:
 
 
 def save_state(company_dir: Path, state: dict[str, Any]) -> None:
-    ensure_workspace_dirs(company_dir)
+    language = normalize_language(state.get("language"))
+    harmonize_workspace_layout(company_dir, language)
+    ensure_workspace_dirs(company_dir, language)
     path = state_path(company_dir)
     lock_path = path.with_suffix(path.suffix + ".lock")
     lock_path.parent.mkdir(parents=True, exist_ok=True)
@@ -657,6 +833,9 @@ def save_state(company_dir: Path, state: dict[str, Any]) -> None:
         else:
             merged_state = prepared
         saved_state = write_state_v3(company_dir, merged_state)
+        for legacy_path in legacy_state_paths(company_dir):
+            if legacy_path != path and legacy_path.exists():
+                legacy_path.unlink()
         fcntl.flock(lock_handle.fileno(), fcntl.LOCK_UN)
     try:
         lock_path.unlink()
@@ -688,16 +867,32 @@ def role_spec(role_id: str, role_specs: dict[str, dict[str, Any]], language: str
 
 
 def write_record(company_dir: Path, subdir: str, suffix: str, title: str, lines: list[str]) -> Path:
+    language = _existing_language(company_dir) or "zh-CN"
+    record_aliases = {
+        "经营日志": "progress",
+        "business-log": "progress",
+        "推进日志": "progress",
+        "progress-log": "progress",
+        "经营决策": "decision",
+        "business-decision": "decision",
+        "决策记录": "decision",
+        "decision-log": "decision",
+        "校准记录": "calibration",
+        "calibration-log": "calibration",
+        "检查点": "checkpoint",
+        "checkpoints": "checkpoint",
+    }
+    record_key = record_aliases.get(subdir, subdir)
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    path = company_dir / "记录" / subdir / f"{timestamp}-{suffix}.md"
+    path = record_dir_path(company_dir, record_key, language) / f"{timestamp}-{suffix}.md"
     content = "\n".join([f"# {title}", "", *lines]) + "\n"
     write_text(path, content)
     return path
 
 
 def preflight_status(company_dir: Optional[Path] = None, language: Optional[str] = None) -> dict[str, Any]:
-    if company_dir and state_path(company_dir).is_file():
-        language = normalize_language(language, load_json(state_path(company_dir)).get("language"))
+    if company_dir and existing_state_path(company_dir).is_file():
+        language = normalize_language(language, load_json(existing_state_path(company_dir)).get("language"))
     language = normalize_language(language)
     current_version = tuple(sys.version_info[:3])
     current_supported = is_python_version_supported(current_version)
@@ -774,7 +969,7 @@ def preflight_status(company_dir: Optional[Path] = None, language: Optional[str]
         )
 
     workspace_created = bool(company_dir and company_dir.exists())
-    persisted = bool(company_dir and all(path.is_file() for path in workspace_core_paths(company_dir)))
+    persisted = workspace_persisted(company_dir, language)
 
     if runnable and writable:
         recommended_mode_id = "script-execution"
@@ -1157,115 +1352,44 @@ def build_matrix_values(role_specs: dict[str, dict[str, Any]], language: str) ->
     return values
 
 
-def stage_artifact_specs(stage_id: str) -> list[dict[str, str]]:
+def stage_artifact_specs(stage_id: str, language: str = "zh-CN") -> list[dict[str, str]]:
+    def spec(category: str, subdir: str, index: str, title_zh: str, title_en: str, template: str) -> dict[str, str]:
+        return {
+            "category": category,
+            "subdir": subdir,
+            "index": index,
+            "title": pick_text(language, title_zh, title_en),
+            "template": template,
+        }
+
     common_specs = [
-        {
-            "subdir": "01-实际交付",
-            "index": "01",
-            "title": "实际产出总表",
-            "template": "artifact-delivery-index-template.md",
-        },
-        {
-            "subdir": "02-软件与代码",
-            "index": "01",
-            "title": "代码与功能交付清单",
-            "template": "artifact-software-delivery-template.md",
-        },
-        {
-            "subdir": "03-非软件与业务",
-            "index": "01",
-            "title": "非软件交付清单",
-            "template": "artifact-non-software-delivery-template.md",
-        },
+        spec("delivery", "01-实际交付", "01", "实际产出总表", "actual-deliverables-index", "artifact-delivery-index-template.md"),
+        spec("software", "02-软件与代码", "01", "代码与功能交付清单", "software-and-code-delivery-checklist", "artifact-software-delivery-template.md"),
+        spec("business", "03-非软件与业务", "01", "非软件交付清单", "business-and-service-delivery-checklist", "artifact-non-software-delivery-template.md"),
     ]
     stage_specific = {
         "validate": [
-            {
-                "subdir": "01-实际交付",
-                "index": "02",
-                "title": "问题与用户证据包",
-                "template": "artifact-validate-evidence-template.md",
-            },
+            spec("delivery", "01-实际交付", "02", "问题与用户证据包", "problem-and-user-evidence-pack", "artifact-validate-evidence-template.md"),
         ],
         "build": [
-            {
-                "subdir": "02-软件与代码",
-                "index": "02",
-                "title": "测试与验收记录",
-                "template": "artifact-quality-template.md",
-            },
+            spec("software", "02-软件与代码", "02", "测试与验收记录", "test-and-acceptance-record", "artifact-quality-template.md"),
         ],
         "launch": [
-            {
-                "subdir": "02-软件与代码",
-                "index": "02",
-                "title": "测试与验收记录",
-                "template": "artifact-quality-template.md",
-            },
-            {
-                "subdir": "04-部署与生产",
-                "index": "01",
-                "title": "部署与回滚清单",
-                "template": "artifact-deployment-template.md",
-            },
-            {
-                "subdir": "04-部署与生产",
-                "index": "02",
-                "title": "生产观测与告警清单",
-                "template": "artifact-production-template.md",
-            },
-            {
-                "subdir": "05-上线与增长",
-                "index": "01",
-                "title": "上线公告与反馈回收清单",
-                "template": "artifact-launch-feedback-template.md",
-            },
+            spec("software", "02-软件与代码", "02", "测试与验收记录", "test-and-acceptance-record", "artifact-quality-template.md"),
+            spec("ops", "04-部署与生产", "01", "部署与回滚清单", "deployment-and-rollback-checklist", "artifact-deployment-template.md"),
+            spec("ops", "04-部署与生产", "02", "生产观测与告警清单", "production-observability-and-alerting-checklist", "artifact-production-template.md"),
+            spec("growth", "05-上线与增长", "01", "上线公告与反馈回收清单", "launch-announcement-and-feedback-capture-checklist", "artifact-launch-feedback-template.md"),
         ],
         "operate": [
-            {
-                "subdir": "04-部署与生产",
-                "index": "01",
-                "title": "部署与回滚清单",
-                "template": "artifact-deployment-template.md",
-            },
-            {
-                "subdir": "04-部署与生产",
-                "index": "02",
-                "title": "生产观测与告警清单",
-                "template": "artifact-production-template.md",
-            },
-            {
-                "subdir": "04-部署与生产",
-                "index": "03",
-                "title": "事故响应与复盘记录",
-                "template": "artifact-production-template.md",
-            },
-            {
-                "subdir": "05-上线与增长",
-                "index": "01",
-                "title": "上线公告与反馈回收清单",
-                "template": "artifact-launch-feedback-template.md",
-            },
+            spec("ops", "04-部署与生产", "01", "部署与回滚清单", "deployment-and-rollback-checklist", "artifact-deployment-template.md"),
+            spec("ops", "04-部署与生产", "02", "生产观测与告警清单", "production-observability-and-alerting-checklist", "artifact-production-template.md"),
+            spec("ops", "04-部署与生产", "03", "事故响应与复盘记录", "incident-response-and-retrospective-record", "artifact-production-template.md"),
+            spec("growth", "05-上线与增长", "01", "上线公告与反馈回收清单", "launch-announcement-and-feedback-capture-checklist", "artifact-launch-feedback-template.md"),
         ],
         "grow": [
-            {
-                "subdir": "04-部署与生产",
-                "index": "01",
-                "title": "部署与回滚清单",
-                "template": "artifact-deployment-template.md",
-            },
-            {
-                "subdir": "04-部署与生产",
-                "index": "02",
-                "title": "生产观测与告警清单",
-                "template": "artifact-production-template.md",
-            },
-            {
-                "subdir": "05-上线与增长",
-                "index": "01",
-                "title": "增长实验与经营复盘",
-                "template": "artifact-growth-template.md",
-            },
+            spec("ops", "04-部署与生产", "01", "部署与回滚清单", "deployment-and-rollback-checklist", "artifact-deployment-template.md"),
+            spec("ops", "04-部署与生产", "02", "生产观测与告警清单", "production-observability-and-alerting-checklist", "artifact-production-template.md"),
+            spec("growth", "05-上线与增长", "01", "增长实验与经营复盘", "growth-experiments-and-business-retrospective", "artifact-growth-template.md"),
         ],
     }
     return common_specs + stage_specific.get(stage_id, [])
@@ -1553,21 +1677,21 @@ def build_operating_dashboard(state: dict[str, Any], company_dir: Path) -> str:
         "",
         pick_text(language, "## 现在先看哪里", "## Where To Look Next"),
         "",
-        f"- [01-创始人约束.md]({display_path(company_dir / '01-创始人约束.md', company_dir)})",
-        f"- [02-价值承诺与报价.md]({display_path(company_dir / '02-价值承诺与报价.md', company_dir)})",
-        f"- [03-机会与成交管道.md]({display_path(company_dir / '03-机会与成交管道.md', company_dir)})",
-        f"- [04-产品与上线状态.md]({display_path(company_dir / '04-产品与上线状态.md', company_dir)})",
-        f"- [05-客户交付与回款.md]({display_path(company_dir / '05-客户交付与回款.md', company_dir)})",
+        f"- [{root_doc_path(company_dir, 'founder_constraints', language).name}]({display_path(root_doc_path(company_dir, 'founder_constraints', language), company_dir)})",
+        f"- [{root_doc_path(company_dir, 'offer', language).name}]({display_path(root_doc_path(company_dir, 'offer', language), company_dir)})",
+        f"- [{root_doc_path(company_dir, 'pipeline', language).name}]({display_path(root_doc_path(company_dir, 'pipeline', language), company_dir)})",
+        f"- [{root_doc_path(company_dir, 'product_status', language).name}]({display_path(root_doc_path(company_dir, 'product_status', language), company_dir)})",
+        f"- [{root_doc_path(company_dir, 'delivery_cash', language).name}]({display_path(root_doc_path(company_dir, 'delivery_cash', language), company_dir)})",
         "",
         pick_text(language, "## 关键支撑文档", "## Key Support Documents"),
         "",
-        f"- [{pick_text(language, '对外落地页文案', 'Landing Page Copy')}]({display_path(company_dir / 'sales' / '04-对外落地页文案.md', company_dir)})",
-        f"- [{pick_text(language, '访谈冲刺看板', 'Interview Sprint Board')}]({display_path(company_dir / 'sales' / '05-访谈冲刺看板.md', company_dir)})",
-        f"- [{pick_text(language, '试用申请问卷', 'Trial Application Form')}]({display_path(company_dir / 'sales' / '06-试用申请问卷.md', company_dir)})",
-        f"- [{pick_text(language, '可演示静态页', 'Demo Page')}]({display_path(company_dir / 'product' / 'demo' / 'index.html', company_dir)})",
-        f"- [{pick_text(language, 'MVP 与上线清单', 'MVP And Launch Checklist')}]({display_path(company_dir / 'product' / '01-MVP与上线清单.md', company_dir)})",
-        f"- [{pick_text(language, '上线检查清单', 'Launch Checklist')}]({display_path(company_dir / 'ops' / '01-上线检查清单.md', company_dir)})",
-        f"- [{pick_text(language, '试用反馈回收表', 'Trial Feedback Capture')}]({display_path(company_dir / 'delivery' / '04-试用反馈回收表.md', company_dir)})",
+        f"- [{pick_text(language, '对外落地页文案', 'Landing Page Copy')}]({display_path(workspace_file_path(company_dir, 'sales_landing', language), company_dir)})",
+        f"- [{pick_text(language, '访谈冲刺看板', 'Interview Sprint Board')}]({display_path(workspace_file_path(company_dir, 'sales_interview', language), company_dir)})",
+        f"- [{pick_text(language, '试用申请问卷', 'Trial Application Form')}]({display_path(workspace_file_path(company_dir, 'sales_trial_application', language), company_dir)})",
+        f"- [{pick_text(language, '可演示静态页', 'Demo Page')}]({display_path(workspace_file_path(company_dir, 'product_demo_index', language), company_dir)})",
+        f"- [{pick_text(language, 'MVP 与上线清单', 'MVP And Launch Checklist')}]({display_path(workspace_file_path(company_dir, 'product_checklist', language), company_dir)})",
+        f"- [{pick_text(language, '上线检查清单', 'Launch Checklist')}]({display_path(workspace_file_path(company_dir, 'ops_launch_checklist', language), company_dir)})",
+        f"- [{pick_text(language, '试用反馈回收表', 'Trial Feedback Capture')}]({display_path(workspace_file_path(company_dir, 'delivery_feedback', language), company_dir)})",
         "",
     ]
     return "\n".join(lines) + "\n"
@@ -1692,15 +1816,15 @@ def build_product_doc(state: dict[str, Any]) -> str:
         "",
         pick_text(language, "## 当前产品策略", "## Current Product Strategy"),
         "",
-        pick_text(language, "- 先做训练型助手，不做临床建议型助手。", "- Ship as a training assistant first, not a clinical recommendation assistant."),
-        pick_text(language, "- 先做单人可交付的 demo + 试用闭环，不先做全自动平台。", "- Start with a founder-deliverable demo and trial loop before building a fully automated platform."),
-        pick_text(language, "- 先验证医生端 willingness to pay，再决定是否扩到护士、机构和雇主端。", "- Validate doctor-side willingness to pay before expanding to nurses, institutions, or employers."),
+        pick_text(language, "- 先做一个端到端可证明价值的最小工作流，不先铺满全部功能。", "- Start with one end-to-end workflow that proves value before broadening scope."),
+        pick_text(language, "- 先做创始人可交付的 demo + 试用闭环，再决定哪些环节值得自动化。", "- Run a founder-deliverable demo and trial loop first, then decide what is worth automating."),
+        pick_text(language, "- 先验证首批买家的 willingness to pay，再考虑扩展到更多人群、渠道或套餐。", "- Validate willingness to pay with the first buyer segment before expanding to more audiences, channels, or plans."),
         "",
         pick_text(language, "## 现在直接打开", "## Open Next"),
         "",
-        f"- [product/01-MVP与上线清单.md](product/01-MVP与上线清单.md)",
-        f"- [product/demo/index.html](product/demo/index.html)",
-        f"- [ops/01-上线检查清单.md](ops/01-上线检查清单.md)",
+        f"- [{display_path(workspace_file_path(Path('.'), 'product_checklist', language), Path('.'))}]({display_path(workspace_file_path(Path('.'), 'product_checklist', language), Path('.'))})",
+        f"- [{display_path(workspace_file_path(Path('.'), 'product_demo_index', language), Path('.'))}]({display_path(workspace_file_path(Path('.'), 'product_demo_index', language), Path('.'))})",
+        f"- [{display_path(workspace_file_path(Path('.'), 'ops_launch_checklist', language), Path('.'))}]({display_path(workspace_file_path(Path('.'), 'ops_launch_checklist', language), Path('.'))})",
         "",
     ]
     return "\n".join(lines) + "\n"
@@ -1800,11 +1924,12 @@ def build_landing_copy_doc(state: dict[str, Any]) -> str:
     offer = state["offer"]
     product = state["product"]
     product_name = state["product_name"]
+    scenario = offer["scenario"]
     modules = product.get("core_capability", [])[:5]
     pains = [
-        pick_text(language, "英语标准是硬门槛，但备考、临床沟通和岗位准备是割裂的。", "Language standards are a hard gate, but exam prep, clinical communication, and job readiness are fragmented."),
-        pick_text(language, "医生常常会做临床判断，却很难用当地语境把病情解释、handover 和病历表达说清楚。", "Doctors may know the medicine, but still struggle to explain cases, handovers, and notes in the local context."),
-        pick_text(language, "现有替代方案分散在老师、社群、模板和零碎咨询里，缺连续训练闭环。", "Current substitutes are scattered across tutors, groups, templates, and ad hoc consulting instead of one continuous training loop."),
+        pick_text(language, "现有替代方案往往靠手工、碎片工具或零散服务拼起来，推进慢且质量不稳。", "Current alternatives are usually stitched together from manual work, fragmented tools, or ad hoc services, which makes execution slow and inconsistent."),
+        pick_text(language, f"{offer['target_customer']} 已经能感受到这个问题，但还缺一个能真正跑通结果的闭环。", f"{offer['target_customer']} already feels this pain, but still lacks one loop that reliably produces the desired outcome."),
+        pick_text(language, f"如果 {scenario} 继续靠临时方案处理，时间、机会和交付质量都会继续流失。", f"If {scenario} keeps being handled with temporary workarounds, time, opportunity, and delivery quality will keep leaking."),
     ]
     lines = [
         pick_text(language, "# 对外落地页文案", "# Landing Page Copy"),
@@ -1813,16 +1938,16 @@ def build_landing_copy_doc(state: dict[str, Any]) -> str:
         "",
         pick_text(language, "## Hero", "## Hero"),
         "",
-        f"- {pick_text(language, '标题', 'Headline')}: {product_name}：帮助中国医生更快完成赴澳执业前的语言、沟通与岗位准备",
+        f"- {pick_text(language, '标题', 'Headline')}: {product_name}：{offer['promise']}",
         f"- {pick_text(language, '副标题', 'Subheadline')}: {offer['promise']}",
-        f"- {pick_text(language, '主 CTA', 'Primary CTA')}: 预约 20 分钟演示",
-        f"- {pick_text(language, '次 CTA', 'Secondary CTA')}: 申请 14 天试用",
+        f"- {pick_text(language, '主 CTA', 'Primary CTA')}: {pick_text(language, '预约 20 分钟演示', 'Book a 20-minute demo')}",
+        f"- {pick_text(language, '次 CTA', 'Secondary CTA')}: {pick_text(language, '申请 14 天试用', 'Apply for a 14-day trial')}",
         "",
         pick_text(language, "## 适合谁", "## Who This Is For"),
         "",
         f"- {offer['target_customer']}",
-        pick_text(language, "- 已经确定澳洲是优先目标国家，希望在 6-18 个月内把准备推进到可投递、可面试、可试岗。", "- People who have already chosen Australia as their first target and want to become application-, interview-, and trial-shift-ready within 6-18 months."),
-        pick_text(language, "- 不想再靠零散备考、口语陪练和模板堆叠，而是希望把路径准备、临床英语和岗位训练连起来。", "- People who want one connected system for pathway prep, clinical English, and job readiness instead of fragmented prep tools."),
+        pick_text(language, f"- 当前正被 {scenario} 反复拖慢，希望先把一个高频关键动作跑顺。", f"- People currently slowed down by {scenario} and looking to make one high-frequency workflow reliable first."),
+        pick_text(language, "- 愿意先用一个更小、更快、更可验证的版本换取真实结果和反馈。", "- People willing to start with a smaller, faster, more testable version in exchange for real outcomes and feedback."),
         "",
         pick_text(language, "## 你现在为什么会卡住", "## Why You Are Stuck Today"),
         "",
@@ -1834,10 +1959,10 @@ def build_landing_copy_doc(state: dict[str, Any]) -> str:
         "",
         pick_text(language, "## 14 天试用里你会拿到什么", "## What The 14-Day Trial Delivers"),
         "",
-        pick_text(language, "- 第 1 天：创始人访谈，确认目标岗位、时间窗和当前最大弱项。", "- Day 1: founder interview to confirm target role, timeline, and biggest weakness."),
-        pick_text(language, "- 第 2-7 天：完成 1 次患者沟通训练、1 次面试模拟、1 次文书表达任务。", "- Days 2-7: complete one patient-communication drill, one interview simulation, and one documentation task."),
-        pick_text(language, "- 第 7 天：拿到中期反馈，知道最需要补的不是哪门考试，而是哪种真实执业表达能力。", "- Day 7: receive a midpoint review that highlights the real practice-expression gap, not just the exam gap."),
-        pick_text(language, "- 第 14 天：收到 readiness 复盘，决定继续月订阅、12 周冲刺营，还是暂停。", "- Day 14: receive a readiness recap and decide whether to continue with the monthly plan, the 12-week sprint, or pause."),
+        pick_text(language, f"- 第 1 天：创始人访谈，确认 {scenario}、成功指标和当前最大阻塞。", f"- Day 1: founder interview to confirm {scenario}, the success metric, and the biggest blocker."),
+        pick_text(language, "- 第 2-7 天：跑完 1 条端到端试用任务，记录真实使用行为、阻碍和价值感知。", "- Days 2-7: run one end-to-end trial workflow and record real behavior, blockers, and perceived value."),
+        pick_text(language, "- 第 7 天：拿到中期反馈，知道最需要补的是哪一步，而不是继续泛泛加功能。", "- Day 7: receive a midpoint review that shows which step needs work most instead of continuing with vague feature expansion."),
+        pick_text(language, "- 第 14 天：收到结果复盘，决定继续月付、项目制、顾问式服务，还是暂停。", "- Day 14: receive a result review and decide whether to continue via monthly plan, project engagement, concierge support, or pause."),
         "",
         pick_text(language, "## 定价", "## Pricing"),
         "",
@@ -1845,13 +1970,13 @@ def build_landing_copy_doc(state: dict[str, Any]) -> str:
         "",
         pick_text(language, "## 边界说明", "## Product Boundary"),
         "",
-        pick_text(language, "- 这不是诊断建议系统，也不替代医生的临床判断。", "- This is not a diagnostic advice system and does not replace a doctor's clinical judgment."),
-        pick_text(language, "- 首版定位在训练、准备、文书表达辅助和岗位适应。", "- The first version stays focused on training, preparation, documentation support, and job readiness."),
-        pick_text(language, "- 涉及真实患者诊疗时，最终医疗决策仍由持证医生和当地医疗机构承担。", "- For real patient care, final medical responsibility stays with the licensed clinician and local institution."),
+        pick_text(language, "- 首版只解决一个高频关键工作流，不承诺一次覆盖所有边缘场景。", "- The first version solves one high-frequency critical workflow rather than covering every edge case at once."),
+        pick_text(language, "- 需要人工判断、定制交付或高风险决策的环节，仍由创始人或客户明确确认。", "- Any step that still needs human judgment, custom delivery, or high-risk decisions stays behind explicit founder or customer confirmation."),
+        pick_text(language, "- 在真实付费和留存被验证前，不默认扩展到更重、更广、更复杂的产品边界。", "- Do not widen the product boundary by default until real payment and retention have been validated."),
         "",
         pick_text(language, "## 页尾 CTA", "## Footer CTA"),
         "",
-        pick_text(language, "- 想确认你离赴澳执业 readiness 还差哪一步？先约一次 20 分钟演示。", "- Want to know which step still blocks your Australia-readiness? Start with a 20-minute demo."),
+        pick_text(language, "- 想确认你离第一个可复用结果还差哪一步？先约一次 20 分钟演示。", "- Want to know which step still blocks your first repeatable result? Start with a 20-minute demo."),
         "",
     ]
     return "\n".join(lines) + "\n"
@@ -1859,6 +1984,8 @@ def build_landing_copy_doc(state: dict[str, Any]) -> str:
 
 def build_interview_sprint_doc(state: dict[str, Any]) -> str:
     language = state["language"]
+    target_customer = state["offer"]["target_customer"]
+    scenario = state["offer"]["scenario"]
     lines = [
         pick_text(language, "# 访谈冲刺看板", "# Interview Sprint Board"),
         "",
@@ -1870,20 +1997,20 @@ def build_interview_sprint_doc(state: dict[str, Any]) -> str:
         "",
         pick_text(language, "## 10 个目标席位", "## 10 Target Slots"),
         "",
-        pick_text(language, "1. 澳洲路径中国医生 | 来源: 医生社群 / 同学网络 | 条件: 6-18 个月内推进出海 | 下一步: 发首轮邀约", "1. Australia-path Chinese doctor | Source: doctor groups / alumni network | Criteria: planning to move in 6-18 months | Next: send first outreach"),
-        pick_text(language, "2. 澳洲路径中国医生 | 来源: OET / IELTS 培训班学员群 | 条件: 已在备考 | 下一步: 找班主任转介绍 2 人", "2. Australia-path Chinese doctor | Source: OET / IELTS class groups | Criteria: actively preparing | Next: ask class manager for 2 referrals"),
-        pick_text(language, "3. 澳洲路径中国医生 | 来源: AMC / PESCI 备考圈 | 条件: 已开始岗位申请 | 下一步: 约 20 分钟访谈", "3. Australia-path Chinese doctor | Source: AMC / PESCI prep circles | Criteria: already applying for roles | Next: book a 20-minute interview"),
-        pick_text(language, "4. 澳洲路径中国医生 | 来源: 海外临床导师 / 校友 | 条件: 已在澳工作 1-3 年 | 下一步: 验证真实沟通场景", "4. Australia-path Chinese doctor | Source: overseas clinical mentors / alumni | Criteria: already working in Australia for 1-3 years | Next: validate real communication scenarios"),
-        pick_text(language, "5. 澳洲路径中国医生 | 来源: 小红书 / 公众号出海内容评论区 | 条件: 公开表达过出海意向 | 下一步: 私信邀约", "5. Australia-path Chinese doctor | Source: public outbound-work content comments | Criteria: explicitly stated interest in moving abroad | Next: direct-message outreach"),
-        pick_text(language, "6. OET 培训机构负责人 | 来源: 官网 / 公开课程页 | 条件: 有医生学员 | 下一步: 约渠道访谈", "6. OET training provider lead | Source: official site / public course page | Criteria: serves doctors | Next: channel interview"),
-        pick_text(language, "7. 医学英语陪练负责人 | 来源: 公开课程页 | 条件: 有 1 对 1 服务 | 下一步: 讨论联合试用", "7. Medical-English coaching lead | Source: public course page | Criteria: offers 1:1 training | Next: discuss joint trial"),
-        pick_text(language, "8. 澳洲医疗招聘顾问 | 来源: 招聘机构官网 | 条件: 负责 IMG 或 rural doctor 招聘 | 下一步: 验证岗位适应痛点", "8. Australia medical recruiter | Source: agency website | Criteria: handles IMG or rural doctor hiring | Next: validate readiness pain points"),
-        pick_text(language, "9. 出海服务机构负责人 | 来源: 公开服务页 | 条件: 提供留学 / 移民 / 求职整合服务 | 下一步: 判断是否存在 B2B2C 试点", "9. Overseas-career service lead | Source: public service page | Criteria: offers study / migration / job support | Next: test B2B2C pilot potential"),
-        pick_text(language, "10. 澳洲在岗中国医生 KOL | 来源: 公开内容账号 | 条件: 持续分享求职或执业经验 | 下一步: 邀请做产品顾问访谈", "10. Chinese doctor creator in Australia | Source: public content account | Criteria: regularly shares work-abroad experience | Next: invite to advisor interview"),
+        pick_text(language, f"1. {target_customer} | 来源: 现有朋友 / 同事转介绍 | 条件: 现在就有 {scenario} | 下一步: 发首轮邀约", f"1. {target_customer} | Source: warm referrals from friends or colleagues | Criteria: already dealing with {scenario} | Next: send first outreach"),
+        pick_text(language, f"2. {target_customer} | 来源: 相关社群 / 群组 | 条件: 最近公开提过这个问题 | 下一步: 约 20 分钟访谈", f"2. {target_customer} | Source: relevant communities or groups | Criteria: publicly mentioned this problem recently | Next: book a 20-minute interview"),
+        pick_text(language, f"3. {target_customer} | 来源: 老客户 / 老同事 / 校友 | 条件: 你已有一定信任基础 | 下一步: 请求 2 个转介绍", f"3. {target_customer} | Source: ex-customers, former colleagues, or alumni | Criteria: you already have baseline trust | Next: ask for 2 referrals"),
+        pick_text(language, "4. 公开内容评论者 | 来源: 公众号 / 小红书 / LinkedIn / X | 条件: 明确表达过相关痛点 | 下一步: 私信邀约", "4. Public content commenters | Source: newsletters / social posts / LinkedIn / X | Criteria: explicitly described the same pain | Next: direct-message outreach"),
+        pick_text(language, "5. 邮件订阅者或表单线索 | 来源: 现有名单 | 条件: 点开过相关主题 | 下一步: 发试用申请链接", "5. Newsletter subscribers or form leads | Source: existing list | Criteria: already clicked related topics | Next: send the trial application link"),
+        pick_text(language, "6. 渠道伙伴 | 来源: 服务商 / 顾问 / 社群组织者 | 条件: 服务同类人群 | 下一步: 约渠道访谈", "6. Channel partners | Source: agencies / consultants / community operators | Criteria: already serve the same audience | Next: schedule a partner interview"),
+        pick_text(language, "7. 互补服务提供者 | 来源: 公开服务页 | 条件: 能补足你暂时不做的环节 | 下一步: 讨论联合试用", "7. Complementary service providers | Source: public service pages | Criteria: they cover adjacent steps you are not solving yet | Next: discuss a joint trial"),
+        pick_text(language, "8. 预算决策人 | 来源: 公开团队页 / 公司页 | 条件: 可能买单或推动试点 | 下一步: 验证预算与采购路径", "8. Budget owners | Source: public team or company pages | Criteria: likely to sponsor or approve a pilot | Next: validate budget and buying path"),
+        pick_text(language, "9. 行业内内容创作者 | 来源: 公开账号 | 条件: 持续分享该问题的经验 | 下一步: 邀请做顾问访谈", "9. Industry creators | Source: public accounts | Criteria: regularly share experience about this problem | Next: invite them to an advisor interview"),
+        pick_text(language, "10. 早期采用者候选 | 来源: 你自己的工作流或关系网 | 条件: 愿意接受不完美版本换更快结果 | 下一步: 约 demo", "10. Early adopter candidates | Source: your own workflow or network | Criteria: willing to trade polish for faster results | Next: book a demo"),
         "",
         pick_text(language, "## 每次访谈必须产出", "## Every Interview Must Produce"),
         "",
-        pick_text(language, "- 当前目标国家和时间窗", "- target country and time horizon"),
+        pick_text(language, "- 当前工作流和触发场景", "- the current workflow and triggering scenario"),
         pick_text(language, "- 最贵、最慢、最焦虑的一步", "- the most expensive, slowest, and most anxiety-inducing step"),
         pick_text(language, "- 是否愿意看 demo", "- whether they will watch the demo"),
         pick_text(language, "- 是否愿意试用或付订金", "- whether they will trial or place a deposit"),
@@ -1907,27 +2034,27 @@ def build_trial_application_doc(state: dict[str, Any]) -> str:
         "",
         pick_text(language, "## 开场说明", "## Intro"),
         "",
-        f"- {product_name} 当前只开放给明确计划赴澳执业、愿意在 14 天内完成训练任务的首批试用对象。",
+        f"- {product_name} 当前只开放给问题明确、愿意在 14 天内完成试用任务并给出真实反馈的首批对象。",
         pick_text(language, "- 目标不是广撒网，而是筛出 5-10 位最可能给出高质量反馈和转化信号的人。", "- The goal is not broad lead capture. It is to identify 5-10 early users who will generate strong feedback and conversion signals."),
         "",
         pick_text(language, "## 必填字段", "## Required Fields"),
         "",
         pick_text(language, "1. 姓名或称呼", "1. Name"),
-        pick_text(language, "2. 当前所在城市", "2. Current city"),
-        pick_text(language, "3. 当前执业年限与科室", "3. Years in practice and specialty"),
-        pick_text(language, "4. 目标国家与预计出海时间窗", "4. Target country and timing"),
-        pick_text(language, "5. 当前卡点排序：英语考试 / 患者沟通 / 面试 / 文书 / 注册材料", "5. Current blockers ranked: exam / patient communication / interview / documentation / registration"),
-        pick_text(language, "6. 最近 6 个月已经为此花了多少钱和多少时间", "6. Money and time spent in the last 6 months"),
-        pick_text(language, "7. 你最想先用试用解决哪个环节", "7. Which part you most want the trial to solve first"),
-        pick_text(language, "8. 是否愿意完成 14 天内 3 个固定训练任务", "8. Whether you will complete 3 fixed tasks in 14 days"),
+        pick_text(language, "2. 当前角色 / 团队 / 公司", "2. Current role / team / company"),
+        pick_text(language, "3. 你现在最想跑通的工作流是什么", "3. Which workflow you most want to fix right now"),
+        pick_text(language, "4. 这个问题现在有多紧急，为什么", "4. How urgent this problem is right now and why"),
+        pick_text(language, "5. 你当前最大的卡点排序", "5. Rank your biggest blockers"),
+        pick_text(language, "6. 最近 6 个月你已经为此花了多少钱和多少时间", "6. Money and time already spent in the last 6 months"),
+        pick_text(language, "7. 你希望 14 天试用先帮你解决哪一步", "7. Which step you want the 14-day trial to solve first"),
+        pick_text(language, "8. 是否愿意完成 14 天内的固定试用任务", "8. Whether you will complete the fixed tasks within 14 days"),
         pick_text(language, "9. 是否愿意接受 20 分钟访谈和第 14 天复盘", "9. Whether you accept a 20-minute interview and a day-14 review"),
         pick_text(language, "10. 联系方式", "10. Contact info"),
         "",
         pick_text(language, "## 筛选规则", "## Screening Rules"),
         "",
-        pick_text(language, "- 优先收：6-18 个月内会真实推进澳洲路径的人。", "- Prioritize applicants who will realistically pursue the Australia path within 6-18 months."),
-        pick_text(language, "- 优先收：已经为英语、岗位或材料投入过时间和金钱的人。", "- Prioritize people who have already invested real time or money in language, jobs, or documentation."),
-        pick_text(language, "- 延后收：只是泛泛咨询、没有时间窗、也不愿意完成训练任务的人。", "- Delay applicants who are only browsing, have no timeline, and will not complete the tasks."),
+        pick_text(language, "- 优先收：问题明确、时间窗明确、愿意在近期真的推进的人。", "- Prioritize applicants with a clear problem, clear timing, and real intent to move soon."),
+        pick_text(language, "- 优先收：已经为这个问题投入过时间、金钱或内部资源的人。", "- Prioritize people who have already invested real time, money, or internal resources into this problem."),
+        pick_text(language, "- 延后收：只是泛泛咨询、没有具体使用场景、也不愿完成试用任务的人。", "- Delay applicants who are only browsing, have no concrete use case, and will not complete the trial tasks."),
         "",
     ]
     return "\n".join(lines) + "\n"
@@ -1949,10 +2076,10 @@ def build_trial_feedback_doc(state: dict[str, Any]) -> str:
         "",
         pick_text(language, "## 第 14 天必须回收", "## Must Capture On Day 14"),
         "",
-        pick_text(language, "- readiness 哪一项最明显提升", "- Which readiness dimension improved the most"),
+        pick_text(language, "- 哪个结果指标最明显提升", "- Which outcome metric improved the most"),
         pick_text(language, "- 哪个环节仍然没有解决", "- Which part remains unsolved"),
         pick_text(language, "- 你觉得合理的付费方式是月订阅、训练营还是按次陪跑", "- Which payment mode feels right: monthly, cohort sprint, or concierge support"),
-        pick_text(language, "- 你愿不愿意推荐给另一个正在准备赴澳的医生", "- Whether you would recommend it to another doctor preparing for Australia"),
+        pick_text(language, "- 你愿不愿意推荐给另一个也有同类问题的人", "- Whether you would recommend it to another person with the same problem"),
         "",
         pick_text(language, "## 结果记录", "## Outcome Record"),
         "",
@@ -1972,12 +2099,63 @@ def build_demo_html(state: dict[str, Any]) -> str:
     promise = escape(offer["promise"])
     target = escape(offer["target_customer"])
     pricing = escape(offer["pricing"])
-    proof_items = "".join(f"<li>{escape(item)}</li>" for item in offer.get("proof", []))
+    proof_source = offer.get("proof", []) or [
+        pick_text(language, "已经明确首批买家与高频使用场景。", "The first buyer and high-frequency scenario are already defined."),
+        pick_text(language, "当前版本只承诺一个可验证结果，不承诺解决全部问题。", "The current version promises one testable result rather than everything at once."),
+        pick_text(language, "试用、反馈、成交动作会在同一个经营闭环里推进。", "Trial, feedback, and revenue actions move inside the same operating loop."),
+    ]
+    proof_items = "".join(f"<li>{escape(item)}</li>" for item in proof_source)
+    capability_source = product.get("core_capability", [])[:5] or [pick_text(language, "补充首个端到端能力描述", "Add the first end-to-end capability")]
     capability_cards = "".join(
-        f"<article class=\"card\"><h3>模块 {index + 1}</h3><p>{escape(item)}</p></article>"
-        for index, item in enumerate(product.get("core_capability", [])[:5])
+        f"<article class=\"card\"><h3>{escape(pick_text(language, '模块', 'Module'))} {index + 1}</h3><p>{escape(item)}</p></article>"
+        for index, item in enumerate(capability_source)
     )
-    gap_items = "".join(f"<li>{escape(item)}</li>" for item in product.get("current_gap", [])[:5])
+    gap_source = product.get("current_gap", [])[:5] or [pick_text(language, "补充当前最关键的上线阻塞", "Add the most important current launch blocker")]
+    gap_items = "".join(f"<li>{escape(item)}</li>" for item in gap_source)
+    eyebrow = escape(pick_text(language, "Founder Demo", "Founder Demo"))
+    audience_label = escape(pick_text(language, "面向人群：", "For:"))
+    primary_cta = escape(pick_text(language, "预约 20 分钟演示", "Book a 20-minute demo"))
+    secondary_cta = escape(pick_text(language, "申请 14 天试用", "Apply for a 14-day trial"))
+    metric_1_label = escape(pick_text(language, "条核心工作流先跑通", "core workflow first"))
+    metric_2_label = escape(pick_text(language, "首轮试用与反馈闭环", "trial and feedback loop"))
+    metric_3_label = escape(pick_text(language, "个区块先证明价值", "blocks to prove value"))
+    panel_title = escape(pick_text(language, "这不是另一个空泛工具壳", "This Is Not Another Vague Tool Shell"))
+    panel_body = escape(
+        pick_text(
+            language,
+            "它把价值承诺、产品体验、试用入口和反馈回收放进同一个闭环里。先帮创始人把一个高频关键动作跑顺，再决定要不要扩功能、扩渠道或扩交付。",
+            "It puts the promise, product experience, trial entry, and feedback capture into one loop. First help the founder make one high-frequency critical workflow reliable, then decide whether to expand features, channels, or delivery.",
+        )
+    )
+    panel_bullets = [
+        escape(pick_text(language, "首版先跑通一个高频关键工作流", "The first version proves one high-frequency critical workflow")),
+        escape(pick_text(language, "暂时需要人工补位的环节可以保留人工", "Human support can remain where automation is still premature")),
+        escape(pick_text(language, "先证明价值和回款，再扩大产品边界", "Prove value and revenue before widening the product boundary")),
+    ]
+    section_modules = escape(pick_text(language, "核心模块", "Core Modules"))
+    section_why = escape(pick_text(language, "为什么现在先做这个版本", "Why This Version Goes First"))
+    section_trial = escape(pick_text(language, "14 天试用路径", "14-Day Trial Path"))
+    section_pricing = escape(pick_text(language, "定价与当前阻塞", "Pricing And Current Blockers"))
+    pricing_label = escape(pick_text(language, "定价：", "Pricing:"))
+    blocker_label = escape(pick_text(language, "当前还要补齐：", "Still needs to close:"))
+    join_cta = escape(pick_text(language, "加入首批试用名单", "Join the first trial group"))
+    form_label_timing = escape(pick_text(language, "你希望多快把这个问题解决", "How quickly do you want to solve this"))
+    form_label_blocker = escape(pick_text(language, "你最卡的一步", "Your biggest blocker"))
+    form_label_goal = escape(pick_text(language, "你希望 14 天试用先帮你解决什么", "What should the 14-day trial solve first"))
+    form_default_blocker = escape(pick_text(language, "获客 / 转化 / 交付 / 上线 / 留存", "acquisition / conversion / delivery / launch / retention"))
+    form_default_goal = escape(pick_text(language, "我最想先把一个高频关键动作跑顺，并确认用户是否愿意继续付费。", "I want to make one high-frequency critical workflow reliable first and confirm whether users will keep paying."))
+    step_titles = [
+        escape(pick_text(language, "创始人访谈", "Founder Interview")),
+        escape(pick_text(language, "试用任务", "Trial Workflow")),
+        escape(pick_text(language, "中期反馈", "Midpoint Review")),
+        escape(pick_text(language, "结果复盘", "Outcome Review")),
+    ]
+    step_bodies = [
+        escape(pick_text(language, "确认当前工作流、成功指标和最大阻塞。", "Confirm the current workflow, success metric, and biggest blocker.")),
+        escape(pick_text(language, "跑完一条端到端任务，记录真实行为、问题和价值感知。", "Run one end-to-end workflow and capture behavior, blockers, and perceived value.")),
+        escape(pick_text(language, "第 7 天收口问题，明确最需要补的下一步。", "On day 7, tighten the problem and define the next fix with the highest leverage.")),
+        escape(pick_text(language, "第 14 天决定继续月付、项目制、顾问式支持，还是暂停。", "On day 14, decide whether to continue with monthly, project-based, concierge support, or pause.")),
+    ]
     return f"""<!doctype html>
 <html lang="{escape('zh-CN' if language == 'zh-CN' else 'en')}">
 <head>
@@ -2067,75 +2245,75 @@ def build_demo_html(state: dict[str, Any]) -> str:
   <div class="shell">
     <section class="hero">
       <div class="panel">
-        <span class="eyebrow">Australia Readiness Demo</span>
+        <span class="eyebrow">{eyebrow}</span>
         <h1>{product_name}</h1>
         <p>{promise}</p>
-        <p>面向人群：{target}</p>
+        <p>{audience_label} {target}</p>
         <div class="cta-row">
-          <a class="btn primary" href="#trial">预约 20 分钟演示</a>
-          <a class="btn" href="#pricing">申请 14 天试用</a>
+          <a class="btn primary" href="#trial">{primary_cta}</a>
+          <a class="btn" href="#pricing">{secondary_cta}</a>
         </div>
         <div class="metrics">
-          <div class="metric"><strong>12 周</strong><span>Readiness 冲刺周期</span></div>
-          <div class="metric"><strong>14 天</strong><span>首轮试用与反馈闭环</span></div>
-          <div class="metric"><strong>3 个模块</strong><span>沟通、面试、文书先跑通</span></div>
+          <div class="metric"><strong>1</strong><span>{metric_1_label}</span></div>
+          <div class="metric"><strong>14</strong><span>{metric_2_label}</span></div>
+          <div class="metric"><strong>3</strong><span>{metric_3_label}</span></div>
         </div>
       </div>
       <div class="panel">
-        <h2>这不是另一个备考资料包</h2>
-        <p>它把路径准备、患者沟通、PESCI / 面试模拟和临床文书表达放到同一个训练闭环里。先帮医生达到可解释、可面试、可试岗，而不是直接碰临床决策边界。</p>
+        <h2>{panel_title}</h2>
+        <p>{panel_body}</p>
         <ul>
-          <li>首版不做诊断建议或治疗推荐</li>
-          <li>首版重点是语言、沟通、岗位适应和材料准备</li>
-          <li>适合作为赴澳执业前的能力补充层</li>
+          <li>{panel_bullets[0]}</li>
+          <li>{panel_bullets[1]}</li>
+          <li>{panel_bullets[2]}</li>
         </ul>
-        <p class="footer-note">公司：{company_name}</p>
+        <p class="footer-note">{escape(pick_text(language, '公司：', 'Company:'))} {company_name}</p>
       </div>
     </section>
 
     <section class="grid">
       <div class="card">
-        <h2>核心模块</h2>
+        <h2>{section_modules}</h2>
         <div class="grid">{capability_cards}</div>
       </div>
       <div class="card">
-        <h2>为什么现在先做这个版本</h2>
+        <h2>{section_why}</h2>
         <ul>{proof_items}</ul>
       </div>
     </section>
 
     <section class="grid" id="trial">
       <div class="card">
-        <h2>14 天试用路径</h2>
+        <h2>{section_trial}</h2>
         <div class="steps">
-          <div class="card step"><h3>创始人访谈</h3><p>确认目标岗位、时间窗、语言与沟通弱项。</p></div>
-          <div class="card step"><h3>三项训练任务</h3><p>病史采集 / 患者解释、PESCI / 岗位面试、handover / note 改写。</p></div>
-          <div class="card step"><h3>中期反馈</h3><p>第 7 天输出薄弱点与训练优先级。</p></div>
-          <div class="card step"><h3>readiness 复盘</h3><p>第 14 天决定继续月订阅、冲刺营或机构试点。</p></div>
+          <div class="card step"><h3>{step_titles[0]}</h3><p>{step_bodies[0]}</p></div>
+          <div class="card step"><h3>{step_titles[1]}</h3><p>{step_bodies[1]}</p></div>
+          <div class="card step"><h3>{step_titles[2]}</h3><p>{step_bodies[2]}</p></div>
+          <div class="card step"><h3>{step_titles[3]}</h3><p>{step_bodies[3]}</p></div>
         </div>
       </div>
       <div class="card" id="pricing">
-        <h2>定价与当前阻塞</h2>
-        <p><strong>定价：</strong>{pricing}</p>
-        <p><strong>当前还要补齐：</strong></p>
+        <h2>{section_pricing}</h2>
+        <p><strong>{pricing_label}</strong>{pricing}</p>
+        <p><strong>{blocker_label}</strong></p>
         <ul>{gap_items}</ul>
         <div class="cta-row">
-          <a class="btn primary" href="#trial">加入首批试用名单</a>
+          <a class="btn primary" href="#trial">{join_cta}</a>
         </div>
         <form class="form">
-          <label>你的出海时间窗
+          <label>{form_label_timing}
             <select>
-              <option>3-6 个月</option>
-              <option>6-12 个月</option>
-              <option>12-18 个月</option>
-              <option>18 个月以上</option>
+              <option>{escape(pick_text(language, '1-2 周', '1-2 weeks'))}</option>
+              <option>{escape(pick_text(language, '30 天内', 'within 30 days'))}</option>
+              <option>{escape(pick_text(language, '90 天内', 'within 90 days'))}</option>
+              <option>{escape(pick_text(language, '只是先了解', 'just exploring'))}</option>
             </select>
           </label>
-          <label>你最卡的一步
-            <input type="text" value="英语考试 / 患者沟通 / 面试 / 文书 / 注册材料">
+          <label>{form_label_blocker}
+            <input type="text" value="{form_default_blocker}">
           </label>
-          <label>你希望 14 天试用先帮你解决什么
-            <textarea>我最想先解决患者沟通和岗位面试里的真实表达问题。</textarea>
+          <label>{form_label_goal}
+            <textarea>{form_default_goal}</textarea>
           </label>
         </form>
       </div>
@@ -2303,13 +2481,543 @@ def build_session_handoff_doc(state: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def reading_source_paths(company_dir: Path, language: str) -> list[Path]:
+    return [root_doc_path(company_dir, key, language) for key in ROOT_DOC_KEYS] + [
+        workspace_file_path(company_dir, file_key, language) for file_key in READING_EXTRA_FILE_KEYS
+    ]
+
+
+def relative_href(target: Path, current_dir: Path) -> str:
+    return os.path.relpath(target, start=current_dir).replace(os.sep, "/")
+
+
+def reading_export_map(company_dir: Path, language: str) -> dict[Path, Path]:
+    mapping: dict[Path, Path] = {}
+    for source in reading_source_paths(company_dir, language):
+        mapping[source.resolve()] = reading_export_path(company_dir, source, language)
+    return mapping
+
+
+def resolve_reading_href(
+    href: str,
+    *,
+    source_path: Path,
+    output_path: Path,
+    company_dir: Path,
+    language: str,
+) -> str:
+    if href.startswith(("http://", "https://", "mailto:", "#")):
+        return href
+
+    target_path = (source_path.parent / href).resolve()
+    export_target = reading_export_map(company_dir, language).get(target_path)
+    if export_target is not None:
+        return relative_href(export_target, output_path.parent)
+    if target_path == company_dir or company_dir in target_path.parents:
+        return relative_href(target_path, output_path.parent)
+    return href
+
+
+def render_inline_markdown(
+    text: str,
+    *,
+    source_path: Path,
+    output_path: Path,
+    company_dir: Path,
+    language: str,
+) -> str:
+    pattern = re.compile(r"\[([^\]]+)\]\(([^)]+)\)|`([^`]+)`|\*\*([^*]+)\*\*")
+    parts: list[str] = []
+    cursor = 0
+    for match in pattern.finditer(text):
+        start, end = match.span()
+        if start > cursor:
+            parts.append(html_escape(text[cursor:start]))
+        link_label, link_href, code_text, bold_text = match.groups()
+        if link_label is not None:
+            resolved_href = resolve_reading_href(
+                link_href,
+                source_path=source_path,
+                output_path=output_path,
+                company_dir=company_dir,
+                language=language,
+            )
+            parts.append(
+                f'<a href="{html_escape(resolved_href, quote=True)}">{html_escape(link_label)}</a>'
+            )
+        elif code_text is not None:
+            parts.append(f"<code>{html_escape(code_text)}</code>")
+        elif bold_text is not None:
+            parts.append(f"<strong>{html_escape(bold_text)}</strong>")
+        cursor = end
+    if cursor < len(text):
+        parts.append(html_escape(text[cursor:]))
+    return "".join(parts)
+
+
+def markdown_to_html_fragment(
+    markdown_text: str,
+    *,
+    source_path: Path,
+    output_path: Path,
+    company_dir: Path,
+    language: str,
+) -> str:
+    lines = markdown_text.splitlines()
+    blocks: list[str] = []
+    index = 0
+
+    def render_inline(text: str) -> str:
+        return render_inline_markdown(
+            text,
+            source_path=source_path,
+            output_path=output_path,
+            company_dir=company_dir,
+            language=language,
+        )
+
+    while index < len(lines):
+        line = lines[index].rstrip()
+        stripped = line.strip()
+        if not stripped:
+            index += 1
+            continue
+
+        if stripped.startswith("```"):
+            index += 1
+            code_lines: list[str] = []
+            while index < len(lines) and not lines[index].strip().startswith("```"):
+                code_lines.append(lines[index])
+                index += 1
+            if index < len(lines):
+                index += 1
+            blocks.append(f"<pre><code>{html_escape(chr(10).join(code_lines))}</code></pre>")
+            continue
+
+        heading = re.match(r"^(#{1,6})\s+(.+)$", stripped)
+        if heading:
+            level = len(heading.group(1))
+            blocks.append(f"<h{level}>{render_inline(heading.group(2))}</h{level}>")
+            index += 1
+            continue
+
+        if stripped.startswith("- "):
+            items: list[str] = []
+            while index < len(lines) and lines[index].strip().startswith("- "):
+                items.append(lines[index].strip()[2:].strip())
+                index += 1
+            blocks.append(
+                "<ul>\n"
+                + "\n".join(f"  <li>{render_inline(item)}</li>" for item in items)
+                + "\n</ul>"
+            )
+            continue
+
+        numbered = re.match(r"^\d+\.\s+(.+)$", stripped)
+        if numbered:
+            items: list[str] = []
+            while index < len(lines):
+                current = lines[index].strip()
+                match = re.match(r"^\d+\.\s+(.+)$", current)
+                if not match:
+                    break
+                items.append(match.group(1))
+                index += 1
+            blocks.append(
+                "<ol>\n"
+                + "\n".join(f"  <li>{render_inline(item)}</li>" for item in items)
+                + "\n</ol>"
+            )
+            continue
+
+        paragraph_lines = [stripped]
+        index += 1
+        while index < len(lines):
+            current = lines[index].strip()
+            if not current or current.startswith("- ") or current.startswith("```") or re.match(r"^(#{1,6})\s+", current) or re.match(r"^\d+\.\s+", current):
+                break
+            paragraph_lines.append(current)
+            index += 1
+        blocks.append(f"<p>{render_inline(' '.join(paragraph_lines))}</p>")
+
+    return "\n".join(blocks)
+
+
+def reading_navigation_items(company_dir: Path, language: str) -> list[tuple[str, Path]]:
+    items = [
+        (pick_text(language, "先看这里", "Start Here"), reading_entry_path(company_dir, language)),
+    ]
+    for key in ROOT_DOC_KEYS:
+        source = root_doc_path(company_dir, key, language)
+        items.append((source.stem, reading_export_path(company_dir, source, language)))
+    extra_source = workspace_file_path(company_dir, "delivery_directory", language)
+    items.append((extra_source.stem, reading_export_path(company_dir, extra_source, language)))
+    return items
+
+
+def render_reading_shell(
+    *,
+    title: str,
+    subtitle: str,
+    body_html: str,
+    language: str,
+    company_name: str,
+    current_path: Path,
+    navigation_items: list[tuple[str, Path]],
+) -> str:
+    nav_links = []
+    for label, path in navigation_items:
+        href = relative_href(path, current_path.parent)
+        is_current = path == current_path
+        class_name = "nav-link is-current" if is_current else "nav-link"
+        nav_links.append(
+            f'<a class="{class_name}" href="{html_escape(href, quote=True)}">{html_escape(label)}</a>'
+        )
+    language_tag = "zh-CN" if language == "zh-CN" else "en"
+    footer_text = pick_text(
+        language,
+        "阅读版适合下载直接查看；原始 Markdown 继续保留为工作底稿；正式对外交付仍以 DOCX 为准。",
+        "The reading layer is for direct viewing after download; the original markdown remains the working source; formal external deliverables still live in DOCX files.",
+    )
+    return f"""<!doctype html>
+<html lang="{html_escape(language_tag, quote=True)}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{html_escape(title)} - {html_escape(company_name)}</title>
+  <style>
+    :root {{
+      --bg: #f6f3ec;
+      --surface: rgba(255, 252, 247, 0.94);
+      --surface-strong: #fffdf8;
+      --line: #ded5c6;
+      --ink: #1f1a14;
+      --ink-soft: #5f5448;
+      --accent: #b85c38;
+      --accent-deep: #8d4024;
+      --success: #2f7d5b;
+      --shadow: 0 18px 44px rgba(57, 39, 22, 0.12);
+      --radius: 20px;
+      --radius-pill: 999px;
+      --max: 1120px;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(184, 92, 56, 0.16), transparent 34%),
+        radial-gradient(circle at top right, rgba(47, 125, 91, 0.11), transparent 26%),
+        linear-gradient(180deg, #faf7f1 0%, var(--bg) 100%);
+    }}
+    a {{ color: var(--accent-deep); text-decoration: none; }}
+    a:hover {{ text-decoration: underline; }}
+    code {{
+      border-radius: 8px;
+      padding: 0.12rem 0.38rem;
+      background: rgba(31, 26, 20, 0.07);
+      font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+      font-size: 0.92em;
+    }}
+    pre {{
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 1rem 1.1rem;
+      background: #f4efe5;
+    }}
+    .page {{
+      width: min(calc(100% - 32px), var(--max));
+      margin: 0 auto;
+      padding: 28px 0 48px;
+    }}
+    .hero {{
+      padding: 28px 30px;
+      border: 1px solid rgba(184, 92, 56, 0.18);
+      border-radius: 28px;
+      background:
+        linear-gradient(145deg, rgba(255, 251, 244, 0.96), rgba(250, 243, 233, 0.92)),
+        linear-gradient(120deg, rgba(184, 92, 56, 0.10), transparent 55%);
+      box-shadow: var(--shadow);
+    }}
+    .eyebrow {{
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      margin-bottom: 0.9rem;
+      border-radius: var(--radius-pill);
+      padding: 0.42rem 0.82rem;
+      background: rgba(184, 92, 56, 0.12);
+      color: var(--accent-deep);
+      font-size: 0.84rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }}
+    h1 {{
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      line-height: 1.03;
+      font-family: "Alegreya", Georgia, serif;
+      letter-spacing: -0.02em;
+    }}
+    .subtitle {{
+      margin: 0.9rem 0 0;
+      max-width: 760px;
+      color: var(--ink-soft);
+      font-size: 1rem;
+      line-height: 1.65;
+    }}
+    .nav {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.7rem;
+      margin: 1rem 0 0;
+    }}
+    .nav-link {{
+      display: inline-flex;
+      align-items: center;
+      min-height: 40px;
+      padding: 0.55rem 0.88rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-pill);
+      background: rgba(255, 253, 248, 0.88);
+      color: var(--ink-soft);
+      font-weight: 600;
+      text-decoration: none;
+    }}
+    .nav-link:hover {{
+      color: var(--ink);
+      text-decoration: none;
+    }}
+    .nav-link.is-current {{
+      border-color: rgba(184, 92, 56, 0.26);
+      background: rgba(184, 92, 56, 0.14);
+      color: var(--accent-deep);
+    }}
+    .content {{
+      margin-top: 22px;
+      padding: 28px 30px;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: var(--surface);
+      box-shadow: 0 10px 28px rgba(57, 39, 22, 0.08);
+    }}
+    .content h2, .content h3, .content h4 {{
+      margin: 1.4rem 0 0.7rem;
+      font-family: "Alegreya", Georgia, serif;
+      line-height: 1.16;
+    }}
+    .content h2:first-child,
+    .content h3:first-child,
+    .content h4:first-child {{
+      margin-top: 0;
+    }}
+    .content p, .content li {{
+      color: var(--ink);
+      line-height: 1.72;
+      font-size: 1rem;
+    }}
+    .content ul, .content ol {{
+      padding-left: 1.2rem;
+    }}
+    .footer {{
+      margin-top: 18px;
+      color: var(--ink-soft);
+      font-size: 0.95rem;
+      line-height: 1.65;
+    }}
+    .card-grid {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin: 1.2rem 0 0;
+    }}
+    .card {{
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--surface-strong);
+    }}
+    .card-label {{
+      display: block;
+      color: var(--ink-soft);
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }}
+    .card strong {{
+      display: block;
+      margin-top: 0.5rem;
+      font-size: 1rem;
+      line-height: 1.5;
+    }}
+    @media (max-width: 720px) {{
+      .page {{ width: min(calc(100% - 20px), var(--max)); padding-top: 14px; }}
+      .hero, .content {{ padding: 20px 18px; border-radius: 22px; }}
+    }}
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div class="eyebrow">{html_escape(pick_text(language, "下载阅读版", "Download Reading Layer"))}</div>
+      <h1>{html_escape(title)}</h1>
+      <p class="subtitle">{html_escape(subtitle)}</p>
+      <nav class="nav">
+        {"".join(nav_links)}
+      </nav>
+    </section>
+    <section class="content">
+      {body_html}
+    </section>
+    <p class="footer">{html_escape(footer_text)}</p>
+  </main>
+</body>
+</html>
+"""
+
+
+def render_markdown_reading_page(
+    markdown_text: str,
+    *,
+    source_path: Path,
+    output_path: Path,
+    company_dir: Path,
+    language: str,
+    state: dict[str, Any],
+) -> str:
+    title = source_path.stem
+    subtitle = pick_text(
+        language,
+        "这是面向下载查看的阅读版页面，对应的 Markdown 工作文件仍保留在原工作区中。",
+        "This is the download-friendly reading page. The original markdown working file remains in the workspace.",
+    )
+    body_html = markdown_to_html_fragment(
+        markdown_text,
+        source_path=source_path,
+        output_path=output_path,
+        company_dir=company_dir,
+        language=language,
+    )
+    return render_reading_shell(
+        title=title,
+        subtitle=subtitle,
+        body_html=body_html,
+        language=language,
+        company_name=state["company_name"],
+        current_path=output_path,
+        navigation_items=reading_navigation_items(company_dir, language),
+    )
+
+
+def build_reading_start_page(state: dict[str, Any], company_dir: Path) -> str:
+    language = state["language"]
+    focus = state["focus"]
+    offer = state["offer"]
+    product = state["product"]
+    delivery = state["delivery"]
+    cash = state["cash"]
+    body_parts = [
+        "<div class=\"card-grid\">",
+        f"<article class=\"card\"><span class=\"card-label\">{html_escape(pick_text(language, '当前主目标', 'Primary Goal'))}</span><strong>{html_escape(focus['primary_goal'])}</strong></article>",
+        f"<article class=\"card\"><span class=\"card-label\">{html_escape(pick_text(language, '当前主瓶颈', 'Primary Bottleneck'))}</span><strong>{html_escape(focus['primary_bottleneck'])}</strong></article>",
+        f"<article class=\"card\"><span class=\"card-label\">{html_escape(pick_text(language, '当前主战场', 'Primary Arena'))}</span><strong>{html_escape(primary_arena_label(focus['primary_arena'], language))}</strong></article>",
+        f"<article class=\"card\"><span class=\"card-label\">{html_escape(pick_text(language, '今天最短动作', 'Shortest Action Today'))}</span><strong>{html_escape(focus['today_action'])}</strong></article>",
+        "</div>",
+        f"<h2>{html_escape(pick_text(language, '下载后先怎么用', 'How To Use This Download'))}</h2>",
+        "<ul>",
+        f"<li>{html_escape(pick_text(language, '先从本页进入阅读版主工作面，快速理解当前经营状态。', 'Start from this page to open the reading layer and understand the current business state quickly.'))}</li>",
+        f"<li>{html_escape(pick_text(language, '如果只是查看，优先打开 HTML；如果要继续协作和更新，再回到原始 Markdown。', 'If you only want to review the workspace, open the HTML pages first. Return to the original markdown files when you need to keep editing or collaborating.'))}</li>",
+        f"<li>{html_escape(pick_text(language, '正式对外交付请看产物目录里的 DOCX 文件。', 'For formal external deliverables, use the DOCX files under the artifacts directory.'))}</li>",
+        "</ul>",
+        f"<h2>{html_escape(pick_text(language, '当前经营闭环', 'Current Business Loop'))}</h2>",
+        "<div class=\"card-grid\">",
+        f"<article class=\"card\"><span class=\"card-label\">{html_escape(pick_text(language, '价值承诺', 'Promise'))}</span><strong>{html_escape(offer['promise'])}</strong></article>",
+        f"<article class=\"card\"><span class=\"card-label\">{html_escape(pick_text(language, '买家', 'Buyer'))}</span><strong>{html_escape(offer['target_customer'])}</strong></article>",
+        f"<article class=\"card\"><span class=\"card-label\">{html_escape(pick_text(language, '产品能力', 'Product Capability'))}</span><strong>{html_escape(', '.join(product.get('core_capability', [])[:2]) or pick_text(language, '待补充', 'Add the core capability'))}</strong></article>",
+        f"<article class=\"card\"><span class=\"card-label\">{html_escape(pick_text(language, '交付', 'Delivery'))}</span><strong>{html_escape(delivery['delivery_status'])}</strong></article>",
+        f"<article class=\"card\"><span class=\"card-label\">{html_escape(pick_text(language, '回款', 'Cash Collection'))}</span><strong>{html_escape(str(cash['receivable']))}</strong></article>",
+        f"<article class=\"card\"><span class=\"card-label\">{html_escape(pick_text(language, '学习与资产', 'Learning And Assets'))}</span><strong>{html_escape(state['focus']['week_outcome'])}</strong></article>",
+        "</div>",
+        f"<h2>{html_escape(pick_text(language, '推荐先看的页面', 'Open These Pages First'))}</h2>",
+        "<ul>",
+    ]
+    preferred_keys = (
+        "dashboard",
+        "offer",
+        "pipeline",
+        "product_status",
+        "delivery_cash",
+        "cash_health",
+        "assets_automation",
+    )
+    for key in preferred_keys:
+        source = root_doc_path(company_dir, key, language)
+        target = reading_export_path(company_dir, source, language)
+        href = relative_href(target, reading_entry_path(company_dir, language).parent)
+        body_parts.append(
+            f"<li><a href=\"{html_escape(href, quote=True)}\">{html_escape(source.stem)}</a></li>"
+        )
+    deliverables_source = workspace_file_path(company_dir, "delivery_directory", language)
+    deliverables_target = reading_export_path(company_dir, deliverables_source, language)
+    deliverables_href = relative_href(deliverables_target, reading_entry_path(company_dir, language).parent)
+    body_parts.extend(
+        [
+            f"<li><a href=\"{html_escape(deliverables_href, quote=True)}\">{html_escape(deliverables_source.stem)}</a></li>",
+            "</ul>",
+            f"<h2>{html_escape(pick_text(language, '文件分层说明', 'Output Layer Guide'))}</h2>",
+            "<ul>",
+            f"<li>{html_escape(pick_text(language, '阅读版 HTML：适合下载后直接双击查看。', 'Reading HTML: open these first after download.'))}</li>",
+            f"<li>{html_escape(pick_text(language, '工作层 Markdown：适合继续修改、追踪和协作。', 'Working markdown: keep using these for editing, tracking, and collaboration.'))}</li>",
+            f"<li>{html_escape(pick_text(language, '正式交付 DOCX：适合发给客户、合作方或归档。', 'Formal DOCX deliverables: use these for customers, collaborators, or archival handoff.'))}</li>",
+            "</ul>",
+        ]
+    )
+    return render_reading_shell(
+        title=pick_text(language, "先看这里", "Start Here"),
+        subtitle=pick_text(
+            language,
+            "这是下载后的阅读入口页。它把工作区分成阅读层、工作层和正式交付层，帮助创始人先看懂，再继续推进。",
+            "This is the reading entry point after download. It separates the workspace into reading, working, and formal-deliverable layers so the founder can understand the current state before editing anything.",
+        ),
+        body_html="\n".join(body_parts),
+        language=language,
+        company_name=state["company_name"],
+        current_path=reading_entry_path(company_dir, language),
+        navigation_items=reading_navigation_items(company_dir, language),
+    )
+
+
+def render_reading_exports(company_dir: Path, state: dict[str, Any]) -> None:
+    language = state["language"]
+    reading_dir_path(company_dir, language).mkdir(parents=True, exist_ok=True)
+    for source_path in reading_source_paths(company_dir, language):
+        if not source_path.is_file() or source_path.suffix.lower() != ".md":
+            continue
+        output_path = reading_export_path(company_dir, source_path, language)
+        html_text = render_markdown_reading_page(
+            source_path.read_text(encoding="utf-8"),
+            source_path=source_path,
+            output_path=output_path,
+            company_dir=company_dir,
+            language=language,
+            state=state,
+        )
+        write_text(output_path, html_text)
+    write_text(reading_entry_path(company_dir, language), build_reading_start_page(state, company_dir))
+
+
 def artifact_status_summary_markdown(company_dir: Path, language: str) -> str:
     category_names = {
-        "01-实际交付": pick_text(language, "实际交付", "Actual Deliverables"),
-        "02-软件与代码": pick_text(language, "软件与代码", "Software And Code"),
-        "03-非软件与业务": pick_text(language, "非软件与业务", "Non-Software And Business"),
-        "04-部署与生产": pick_text(language, "部署与生产", "Deployment And Production"),
-        "05-上线与增长": pick_text(language, "上线与增长", "Launch And Growth"),
+        "delivery": pick_text(language, "实际交付", "Actual Deliverables"),
+        "software": pick_text(language, "软件与代码", "Software And Code"),
+        "business": pick_text(language, "非软件与业务", "Non-Software And Business"),
+        "ops": pick_text(language, "部署与生产", "Deployment And Production"),
+        "growth": pick_text(language, "上线与增长", "Launch And Growth"),
     }
     lines = [
         pick_text(language, "# 交付目录总览", "# Deliverable Directory Overview"),
@@ -2329,9 +3037,9 @@ def artifact_status_summary_markdown(company_dir: Path, language: str) -> str:
         "",
     ]
 
-    for subdir, label in category_names.items():
+    for category, label in category_names.items():
         lines.extend([f"## {label}", ""])
-        artifact_dir = company_dir / ARTIFACT_ROOT / subdir
+        artifact_dir = artifact_dir_path(company_dir, category, language)
         entries = []
         if artifact_dir.is_dir():
             for path in sorted(artifact_dir.glob("*.docx")):
@@ -2361,13 +3069,14 @@ def artifact_status_summary_markdown(company_dir: Path, language: str) -> str:
 
 
 def render_workspace(company_dir: Path, state: dict[str, Any]) -> None:
-    ensure_workspace_dirs(company_dir)
     role_specs = load_role_specs()
     language = normalize_language(state.get("language"), state.get("company_name"), state.get("product_name"))
     state["language"] = language
     state = sync_legacy_fields(state)
+    harmonize_workspace_layout(company_dir, language)
+    ensure_workspace_dirs(company_dir, language)
 
-    legacy_root_dir = company_dir / "records" / "legacy-root"
+    legacy_root_dir = workspace_dir_path(company_dir, "legacy_root", language)
     legacy_root_dir.mkdir(parents=True, exist_ok=True)
     for legacy_name in [
         "00-公司总览.md",
@@ -2394,7 +3103,7 @@ def render_workspace(company_dir: Path, state: dict[str, Any]) -> None:
             else:
                 legacy_path.rename(target)
 
-    artifact_dir = company_dir / ARTIFACT_ROOT
+    artifact_dir = workspace_dir_path(company_dir, "artifacts_root", language)
     if artifact_dir.is_dir():
         for path in sorted(artifact_dir.rglob("*.docx")):
             parsed = parse_planned_docx_name(path.name)
@@ -2445,34 +3154,33 @@ def render_workspace(company_dir: Path, state: dict[str, Any]) -> None:
         "ACTIVE_ROLE_INLINE": ("、".join(active_display) if language == "zh-CN" else ", ".join(active_display)) or pick_text(language, "无", "None"),
     }
 
-    write_text(company_dir / "00-经营总盘.md", build_operating_dashboard(state, company_dir))
-    write_text(company_dir / "01-创始人约束.md", build_founder_constraints_doc(state))
-    write_text(company_dir / "02-价值承诺与报价.md", build_offer_doc(state))
-    write_text(company_dir / "03-机会与成交管道.md", build_pipeline_doc(state))
-    write_text(company_dir / "04-产品与上线状态.md", build_product_doc(state))
-    write_text(company_dir / "05-客户交付与回款.md", build_delivery_doc(state))
-    write_text(company_dir / "06-现金流与经营健康.md", build_cash_doc(state))
-    write_text(company_dir / "07-资产与自动化.md", build_asset_doc(state))
-    write_text(company_dir / "08-风险与关键决策.md", build_risk_doc(state))
-    write_text(company_dir / "09-本周唯一主目标.md", build_week_focus_doc(state))
-    write_text(company_dir / "10-今日最短动作.md", build_today_action_doc(state))
-    write_text_if_missing(company_dir / "11-协作记忆.md", build_collaboration_memory_doc(state))
-    write_text_if_missing(company_dir / "12-会话交接.md", build_session_handoff_doc(state))
+    write_text(root_doc_path(company_dir, "dashboard", language), build_operating_dashboard(state, company_dir))
+    write_text(root_doc_path(company_dir, "founder_constraints", language), build_founder_constraints_doc(state))
+    write_text(root_doc_path(company_dir, "offer", language), build_offer_doc(state))
+    write_text(root_doc_path(company_dir, "pipeline", language), build_pipeline_doc(state))
+    write_text(root_doc_path(company_dir, "product_status", language), build_product_doc(state))
+    write_text(root_doc_path(company_dir, "delivery_cash", language), build_delivery_doc(state))
+    write_text(root_doc_path(company_dir, "cash_health", language), build_cash_doc(state))
+    write_text(root_doc_path(company_dir, "assets_automation", language), build_asset_doc(state))
+    write_text(root_doc_path(company_dir, "risks", language), build_risk_doc(state))
+    write_text(root_doc_path(company_dir, "week_focus", language), build_week_focus_doc(state))
+    write_text(root_doc_path(company_dir, "today_action", language), build_today_action_doc(state))
+    write_text_if_missing(root_doc_path(company_dir, "collaboration_memory", language), build_collaboration_memory_doc(state))
+    write_text_if_missing(root_doc_path(company_dir, "session_handoff", language), build_session_handoff_doc(state))
 
-    write_text(company_dir / "records" / "01-当前经营快照.md", build_operating_dashboard(state, company_dir))
-    write_text(company_dir / "sales" / "01-成交动作清单.md", build_sales_action_doc(state))
-    write_text(company_dir / "sales" / "04-对外落地页文案.md", build_landing_copy_doc(state))
-    write_text(company_dir / "sales" / "05-访谈冲刺看板.md", build_interview_sprint_doc(state))
-    write_text(company_dir / "sales" / "06-试用申请问卷.md", build_trial_application_doc(state))
-    write_text(company_dir / "product" / "01-MVP与上线清单.md", build_mvp_checklist_doc(state))
-    write_text(company_dir / "product" / "demo" / "index.html", build_demo_html(state))
-    write_text(company_dir / "delivery" / "01-客户交付追踪.md", build_delivery_doc(state))
-    write_text(company_dir / "delivery" / "02-交付目录总览.md", artifact_status_summary_markdown(company_dir, language))
-    write_text(company_dir / "delivery" / "04-试用反馈回收表.md", build_trial_feedback_doc(state))
-    write_text(company_dir / "ops" / "01-上线检查清单.md", build_launch_checklist_doc(state))
-    write_text(company_dir / "assets" / "01-资产沉淀清单.md", build_asset_doc(state))
+    write_text(workspace_file_path(company_dir, "record_snapshot", language), build_operating_dashboard(state, company_dir))
+    write_text(workspace_file_path(company_dir, "sales_actions", language), build_sales_action_doc(state))
+    write_text(workspace_file_path(company_dir, "sales_landing", language), build_landing_copy_doc(state))
+    write_text(workspace_file_path(company_dir, "sales_interview", language), build_interview_sprint_doc(state))
+    write_text(workspace_file_path(company_dir, "sales_trial_application", language), build_trial_application_doc(state))
+    write_text(workspace_file_path(company_dir, "product_checklist", language), build_mvp_checklist_doc(state))
+    write_text(workspace_file_path(company_dir, "product_demo_index", language), build_demo_html(state))
+    write_text(workspace_file_path(company_dir, "delivery_tracker", language), build_delivery_doc(state))
+    write_text(workspace_file_path(company_dir, "delivery_feedback", language), build_trial_feedback_doc(state))
+    write_text(workspace_file_path(company_dir, "ops_launch_checklist", language), build_launch_checklist_doc(state))
+    write_text(workspace_file_path(company_dir, "assets_inventory", language), build_asset_doc(state))
     write_text(
-        company_dir / "automation" / "01-状态说明.md",
+        workspace_file_path(company_dir, "automation_notes", language),
         "\n".join(
             [
                 pick_text(language, "# 状态说明", "# State Notes"),
@@ -2486,7 +3194,7 @@ def render_workspace(company_dir: Path, state: dict[str, Any]) -> None:
         + "\n",
     )
 
-    write_text(company_dir / "角色智能体" / "角色清单.md", render_template("role-index-template.md", common_values))
+    write_text(workspace_file_path(company_dir, "role_index", language), render_template("role-index-template.md", common_values))
     for role_id in active_roles:
         spec = role_spec(role_id, role_specs, language)
         role_values = {
@@ -2501,17 +3209,24 @@ def render_workspace(company_dir: Path, state: dict[str, Any]) -> None:
             "ROLE_HANDOFFS": format_list(role_display_names(spec["handoff_to"], role_specs, language), language),
         }
         filename = spec.get("workspace_filename", spec["display_name"])
-        write_text(company_dir / "角色智能体" / f"{filename}.md", render_template("role-brief-template.md", role_values))
+        target_role_path = role_brief_path(company_dir, filename, language)
+        write_text(target_role_path, render_template("role-brief-template.md", role_values))
+        for other_language in ("zh-CN", "en-US"):
+            other_spec = role_spec(role_id, role_specs, other_language)
+            other_filename = other_spec.get("workspace_filename", other_spec["display_name"])
+            other_path = role_brief_path(company_dir, other_filename, other_language)
+            if other_path != target_role_path and other_path.exists():
+                other_path.unlink()
 
-    write_text(company_dir / "流程" / "创建公司流程.md", render_template("bootstrap-flow-template.md", common_values))
-    write_text(company_dir / "流程" / "推进回合流程.md", render_template("round-flow-template.md", common_values))
-    write_text(company_dir / "流程" / "校准回合流程.md", render_template("calibration-flow-template.md", common_values))
-    write_text(company_dir / "流程" / "阶段切换流程.md", render_template("stage-flow-template.md", common_values))
-    write_text(company_dir / "自动化" / "提醒规则.md", render_template("reminder-rules-template.md", common_values))
-    write_text(company_dir / "自动化" / "定时任务定义.md", render_template("scheduler-spec-template.md", common_values))
+    write_text(workspace_file_path(company_dir, "flow_bootstrap", language), render_template("bootstrap-flow-template.md", common_values))
+    write_text(workspace_file_path(company_dir, "flow_round", language), render_template("round-flow-template.md", common_values))
+    write_text(workspace_file_path(company_dir, "flow_calibration", language), render_template("calibration-flow-template.md", common_values))
+    write_text(workspace_file_path(company_dir, "flow_stage", language), render_template("stage-flow-template.md", common_values))
+    write_text(workspace_file_path(company_dir, "automation_reminders", language), render_template("reminder-rules-template.md", common_values))
+    write_text(workspace_file_path(company_dir, "automation_scheduler", language), render_template("scheduler-spec-template.md", common_values))
 
-    for spec in stage_artifact_specs(stage_id):
-        output_dir = company_dir / ARTIFACT_ROOT / spec["subdir"]
+    for spec in stage_artifact_specs(stage_id, language):
+        output_dir = artifact_dir_path(company_dir, spec["category"], language)
         output_path = ensure_planned_docx_path(output_dir, int(spec["index"]), spec["title"], completed=False)
         docx_values = {
             **artifact_template_values(common_values, state),
@@ -2522,3 +3237,6 @@ def render_workspace(company_dir: Path, state: dict[str, Any]) -> None:
         }
         rendered = render_template(spec["template"], docx_values)
         write_docx(output_path, rendered, title=spec["title"])
+
+    write_text(workspace_file_path(company_dir, "delivery_directory", language), artifact_status_summary_markdown(company_dir, language))
+    render_reading_exports(company_dir, state)

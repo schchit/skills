@@ -438,6 +438,7 @@ ROLE_LOCALIZATION = {
     "en-US": {
         "control-tower": {
             "display_name": "Control Tower",
+            "workspace_filename": "control-tower",
             "mission": "Maintain the current stage, current round, role switching, and shortest next move so the company keeps advancing around the real bottleneck.",
             "owns": ["Current-round definition", "Round-state maintenance", "Role activation and switching", "Trigger evaluation", "Stage-transition recommendation"],
             "inputs_required": ["Founder objective", "Current stage status", "Previous round context", "Critical feedback or artifact"],
@@ -447,6 +448,7 @@ ROLE_LOCALIZATION = {
         },
         "customer-success": {
             "display_name": "Customer Success",
+            "workspace_filename": "customer-success",
             "mission": "Maintain feedback loops, onboarding quality, and continued-usage signals.",
             "owns": ["User onboarding", "Issue follow-up", "Feedback synthesis", "Retention signals"],
             "inputs_required": ["User feedback", "Current product status", "Common issues", "Growth and support context"],
@@ -456,6 +458,7 @@ ROLE_LOCALIZATION = {
         },
         "data-analyst": {
             "display_name": "Data Analyst",
+            "workspace_filename": "data-analyst",
             "mission": "Turn behavioral data and outcome signals into actionable judgment.",
             "owns": ["Metric definition", "Data interpretation", "Anomaly assessment", "Decision support"],
             "inputs_required": ["Tracking data", "Business goals", "Growth or operations results", "Historical comparison"],
@@ -465,6 +468,7 @@ ROLE_LOCALIZATION = {
         },
         "designer": {
             "display_name": "Design Lead",
+            "workspace_filename": "design-lead",
             "mission": "Turn product goals into clear information architecture, interaction design, and visual expression.",
             "owns": ["Information architecture", "Interaction design", "Interface expression", "Brand consistency"],
             "inputs_required": ["Product goals", "Current-round artifact", "Target-user context", "Brand constraints"],
@@ -474,6 +478,7 @@ ROLE_LOCALIZATION = {
         },
         "devops-sre": {
             "display_name": "DevOps / SRE",
+            "workspace_filename": "devops-sre",
             "mission": "Keep infrastructure, deployment, observability, and incident-response boundaries clear.",
             "owns": ["Environment readiness", "Deployment path", "Monitoring and alerting", "Production risk boundaries"],
             "inputs_required": ["Launch goal", "System architecture", "Critical dependencies", "Quality-risk notes"],
@@ -483,6 +488,7 @@ ROLE_LOCALIZATION = {
         },
         "engineer-tech-lead": {
             "display_name": "Engineering Lead",
+            "workspace_filename": "engineering-lead",
             "mission": "Turn product judgment into a deliverable implementation path, technical plan, and execution cadence.",
             "owns": ["Technical solution", "Implementation order", "Delivery feasibility", "Technical risk"],
             "inputs_required": ["Current-round goal", "Requirement scope", "Existing code context", "Launch constraints"],
@@ -492,6 +498,7 @@ ROLE_LOCALIZATION = {
         },
         "finance": {
             "display_name": "Finance",
+            "workspace_filename": "finance",
             "mission": "Maintain basic health across cash flow, pricing, and return-on-effort judgment.",
             "owns": ["Cash-flow assessment", "Pricing sanity checks", "Revenue and cost watchpoints"],
             "inputs_required": ["Revenue data", "Cost data", "Growth targets", "Pricing plan"],
@@ -501,6 +508,7 @@ ROLE_LOCALIZATION = {
         },
         "founder-ceo": {
             "display_name": "Founder",
+            "workspace_filename": "founder",
             "mission": "Set direction, priorities, budget, and risk boundaries, and give final approval on high-impact actions.",
             "owns": ["Direction setting", "Priority decisions", "Budget boundaries", "Risk boundaries", "Final approval"],
             "inputs_required": ["Current-round status", "Calibration findings", "Critical risks", "Critical artifact summary"],
@@ -510,6 +518,7 @@ ROLE_LOCALIZATION = {
         },
         "growth-sales": {
             "display_name": "Growth Lead",
+            "workspace_filename": "growth-lead",
             "mission": "Bring the product to target users and build loops across traffic, conversion, and feedback.",
             "owns": ["Distribution paths", "Acquisition actions", "Conversion copy", "Feedback collection"],
             "inputs_required": ["Product positioning", "Target user", "Current-stage goal", "Available channels"],
@@ -519,6 +528,7 @@ ROLE_LOCALIZATION = {
         },
         "legal-compliance": {
             "display_name": "Legal / Compliance",
+            "workspace_filename": "legal-compliance",
             "mission": "Identify high-risk legal, compliance, and external-communication boundaries.",
             "owns": ["Risk-boundary alerts", "Sensitive wording review", "Compliance notes"],
             "inputs_required": ["External-facing copy", "Pricing and terms details", "Customer promises", "Business context"],
@@ -528,6 +538,7 @@ ROLE_LOCALIZATION = {
         },
         "product-strategist": {
             "display_name": "Product Strategist",
+            "workspace_filename": "product-strategist",
             "mission": "Turn user problems and business goals into clear product judgment, scope, and artifacts.",
             "owns": ["Problem definition", "Target-user clarification", "Scope narrowing", "Product tradeoffs", "Critical artifact definition"],
             "inputs_required": ["Founder objective", "User feedback", "Market signals", "Engineering constraints"],
@@ -537,6 +548,7 @@ ROLE_LOCALIZATION = {
         },
         "qa-reliability": {
             "display_name": "QA / Reliability",
+            "workspace_filename": "qa-reliability",
             "mission": "Ensure the current-round artifact reaches a minimum verifiable quality bar and has clear risk boundaries.",
             "owns": ["Acceptance criteria", "Testing focus", "Regression risk", "Pre-launch quality judgment"],
             "inputs_required": ["Current-round goal", "Implementation notes", "Critical path", "Existing issue log"],

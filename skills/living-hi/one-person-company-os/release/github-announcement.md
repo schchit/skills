@@ -1,21 +1,17 @@
 # GitHub Announcement
 
-I upgraded `one-person-company-os` again.
+I upgraded `one-person-company-os` to `v0.6.7`.
 
-The previous release made the project easier to understand.
-This release makes the artifact system look and behave like real deliverables instead of placeholder management.
+The previous release fixed marketplace trust and safety boundaries.
+This release fixes the next usability gap: a downloaded workspace still looked too much like a pile of markdown source files.
 
-The main gaps were:
+What changed:
 
-- generated artifacts still carried too much placeholder and status-marker semantics
-- the workspace still exposed document-spec language instead of final-document language
-- file names looked like workflow state rather than real deliverables
+- every generated workspace now includes a localized HTML reading layer
+- Chinese founders now get `阅读版/00-先看这里.html`
+- English founders now get `reading/00-start-here.html`
+- the core dashboard, offer, pipeline, product, delivery, cash, asset, and deliverable-overview pages now export as reading-friendly HTML files
+- markdown remains the editable working source, while numbered DOCX files still carry the formal deliverables
 
-This release fixes that.
-
-This release includes:
-
-- final-named DOCX deliverables without `[待生成]` and `[已生成]`
-- a new deliverable map and deliverable directory overview inside the workspace
-- document maturity tracked inside the file content instead of the file name
-- updated release validation for the new final-document model
+This matters because a one-person-company operating system should not only be runnable.
+It should also be easy to download, open, and understand immediately.

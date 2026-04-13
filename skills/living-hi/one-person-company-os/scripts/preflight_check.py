@@ -8,6 +8,7 @@ from pathlib import Path
 
 from common import emit_runtime_report, load_state, preflight_status, print_step
 from localization import normalize_language, pick_text
+from workspace_layout import existing_state_path
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -22,7 +23,7 @@ def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
     company_dir = Path(args.company_dir).expanduser().resolve() if args.company_dir else None
-    state = load_state(company_dir) if company_dir and (company_dir / "自动化" / "当前状态.json").is_file() else None
+    state = load_state(company_dir) if company_dir and existing_state_path(company_dir).is_file() else None
     language = normalize_language(args.language, args.mode, state.get("language") if state else None)
 
     print_step(1, 5, "模式判定", language=language)
@@ -45,7 +46,7 @@ def main() -> int:
     if status["recommended_mode_id"] == "script-execution-switch-python":
         next_action = pick_text(language, "优先让 OpenClaw 智能体切换到兼容 Python 后重跑脚本", "Ask the OpenClaw agent to switch to a compatible Python runtime and rerun the script")
     elif status["recommended_mode_id"] == "manual-persistence" and not status["python_supported"] and status["writable"]:
-        next_action = pick_text(language, "优先让 OpenClaw 智能体运行 scripts/ensure_python_runtime.py --apply；若恢复失败，再切到手动落盘", "Ask the OpenClaw agent to run scripts/ensure_python_runtime.py --apply first; if recovery fails, switch to manual persistence")
+        next_action = pick_text(language, "先查看 scripts/ensure_python_runtime.py 给出的兼容解释器与手动安装方案；若当前环境不便安装，再切到手动落盘", "Review the compatible-runtime and manual-install guidance from scripts/ensure_python_runtime.py first; if installation is not practical, switch to manual persistence")
     elif status["recommended_mode_id"] == "manual-persistence":
         next_action = pick_text(language, "跳过脚本执行，直接手动写入 markdown/json 到工作区", "Skip script execution and write markdown/json into the workspace directly")
     if status["recommended_mode_id"] == "chat-only":

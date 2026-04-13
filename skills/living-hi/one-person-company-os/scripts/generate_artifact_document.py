@@ -7,8 +7,10 @@ import argparse
 from pathlib import Path
 
 from common import (
+    artifact_dir_path,
     artifact_status_summary_markdown,
     display_path,
+    ensure_within_directory,
     emit_runtime_report,
     load_state,
     now_string,
@@ -23,17 +25,9 @@ from common import (
     write_text,
     write_docx,
     write_record,
+    workspace_file_path,
 )
 from localization import pick_text
-
-
-CATEGORY_DIRS = {
-    "delivery": "产物/01-实际交付",
-    "software": "产物/02-软件与代码",
-    "business": "产物/03-非软件与业务",
-    "ops": "产物/04-部署与生产",
-    "growth": "产物/05-上线与增长",
-}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -62,7 +56,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--decision", action="append", default=[], help="关键决策，可重复")
     parser.add_argument("--risk", action="append", default=[], help="风险与待确认事项，可重复")
     parser.add_argument("--next-action", default="", help="下一步动作，默认读取当前回合")
-    parser.add_argument("--output-dir", help="可选，自定义输出目录")
+    parser.add_argument("--output-dir", help="可选，自定义输出目录，但必须位于当前公司工作区内")
     return parser
 
 
@@ -162,8 +156,17 @@ def main() -> int:
     }
 
     print_step(4, 5, "执行与落盘", language=language)
-    base_dir = Path(args.output_dir).expanduser().resolve() if args.output_dir else company_dir
-    output_dir = base_dir / CATEGORY_DIRS[category]
+    try:
+        if args.output_dir:
+            candidate_output_dir = Path(args.output_dir)
+            if not candidate_output_dir.is_absolute():
+                candidate_output_dir = company_dir / candidate_output_dir
+            base_dir = ensure_within_directory(candidate_output_dir, company_dir, label="output-dir")
+        else:
+            base_dir = company_dir
+    except ValueError as exc:
+        parser.error(str(exc))
+    output_dir = artifact_dir_path(base_dir, category, language)
     output_path = planned_docx_path(output_dir, args.title, completed=True)
     output_path_display = display_path(output_path, company_dir)
     values["ARTIFACT_FILE_PATH"] = output_path_display
@@ -178,7 +181,7 @@ def main() -> int:
         current_round["updated_at"] = now_string()
         save_state(company_dir, state)
         render_workspace(company_dir, state)
-    write_text(company_dir / "delivery" / "02-交付目录总览.md", artifact_status_summary_markdown(company_dir, language))
+    write_text(workspace_file_path(company_dir, "delivery_directory", language), artifact_status_summary_markdown(company_dir, language))
 
     record = write_record(
         company_dir,
@@ -209,7 +212,7 @@ def main() -> int:
         needs_confirmation=pick_text(language, "否", "No"),
         persistence_mode="script-execution",
         company_dir=company_dir,
-        saved_paths=[output_path, company_dir / "delivery" / "02-交付目录总览.md", record],
+        saved_paths=[output_path, workspace_file_path(company_dir, "delivery_directory", language), record],
         work_scope=[
             pick_text(language, "为关键产物生成带序号的正式 DOCX 文件。", "Generate a numbered formal DOCX file for the key artifact."),
             pick_text(language, "把软件产出、非软件产出、证据以及部署/生产资料写成可交付格式。", "Write software outputs, non-software outputs, evidence, and deployment or production material into a deliverable format."),

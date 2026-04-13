@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from common import emit_runtime_report, load_state, preflight_status, print_step, render_workspace, save_state, state_path, write_record
+from common import emit_runtime_report, load_state, preflight_status, print_step, render_workspace, root_doc_path, save_state, state_path, write_record
 from localization import pick_text
 
 
@@ -75,7 +75,7 @@ def main() -> int:
         needs_confirmation=pick_text(language, "否", "No"),
         persistence_mode="script-execution",
         company_dir=company_dir,
-        saved_paths=[company_dir / "05-客户交付与回款.md", company_dir / "06-现金流与经营健康.md", record, state_path(company_dir)],
+        saved_paths=[root_doc_path(company_dir, "delivery_cash", language), root_doc_path(company_dir, "cash_health", language), record, state_path(company_dir)],
         changes=[pick_text(language, "已刷新客户交付、待回款和下一步交付动作。", "Refreshed delivery, receivables, and the next delivery action.")],
         language=language,
     )

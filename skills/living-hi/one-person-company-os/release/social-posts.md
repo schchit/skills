@@ -2,41 +2,38 @@
 
 ## X / Short Post
 
-I rebuilt `one-person-company-os`.
+I upgraded `one-person-company-os` to `v0.6.7`.
 
-It is now a language-aware control system for AI-native solo companies:
+The workspace is no longer markdown-only after download:
 
-- validate demand
-- ship a small MVP
-- launch narrowly
-- improve from real feedback
+- localized HTML reading layer
+- markdown stays editable
+- DOCX stays formal
 
-Not a prompt bundle. Not a weekly review ritual.
+Chinese founders get `阅读版/00-先看这里.html`.
+English founders get `reading/00-start-here.html`.
 
 ## X / 中文短帖
 
-我把 `one-person-company-os` 重写了。
+我把 `one-person-company-os` 升级到 `v0.6.7`。
 
-现在它不是“按周复盘的一人公司文档包”，而是：
+这次补的是“下载回来直接看”的体验：
 
-- 先验证需求
-- 再做最小 MVP
-- 再小范围上线
-- 再根据反馈持续改进
+- 新增本地化 HTML 阅读层
+- Markdown 继续做工作底稿
+- DOCX 继续做正式交付件
 
-中文用户默认得到中文运行过程和中文资料。
-英文用户默认得到英文运行过程和英文资料。
+中文工作区现在会带 `阅读版/00-先看这里.html`。
+英文工作区会带 `reading/00-start-here.html`。
 
 ## LinkedIn / Longer Post
 
-`one-person-company-os` has been rebuilt around a faster loop:
+`one-person-company-os` now has a clearer output stack.
 
-- company setup draft first
-- fast validation
-- smallest useful MVP
-- narrow launch
-- feedback-driven iteration
+Instead of asking founders to inspect a markdown-heavy workspace first, the package now generates a reading layer for direct viewing after download:
 
-The result is much closer to how an AI-native solo company should actually run.
+- localized HTML reading pages
+- markdown working files for continued edits
+- DOCX formal deliverables for handoff
 
-It now serves both Chinese and English founders with language-matched runtime output and generated materials.
+This keeps the system runnable for the agent while making the download much more usable for the founder.

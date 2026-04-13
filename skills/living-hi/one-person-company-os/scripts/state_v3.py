@@ -9,11 +9,11 @@ from pathlib import Path
 from typing import Any
 
 from localization import normalize_language, pick_text, round_status_label, stage_label
+from workspace_layout import existing_state_path, state_path
 
 
 STATE_VERSION = "3.0"
-STATE_PATH_PARTS = ("自动化", "当前状态.json")
-STATE_FILE = Path(*STATE_PATH_PARTS)
+STATE_FILE = Path(".opcos", "state", "current-state.json")
 
 PRODUCT_STATE_ORDER = (
     "idea",
@@ -24,11 +24,6 @@ PRODUCT_STATE_ORDER = (
     "launchable",
     "live",
 )
-
-
-def state_path(company_dir: Path) -> Path:
-    return company_dir.joinpath(*STATE_PATH_PARTS)
-
 
 def default_round(language: str, owner_role_id: str = "control-tower") -> dict[str, Any]:
     owner_name = pick_text(language, "总控台", "Control Tower")
@@ -333,7 +328,7 @@ def upgrade_legacy_state(state: dict[str, Any]) -> dict[str, Any]:
 
 
 def read_state_any_version(company_dir: Path) -> dict[str, Any]:
-    path = state_path(company_dir)
+    path = existing_state_path(company_dir)
     payload = json.loads(path.read_text(encoding="utf-8"))
     return upgrade_legacy_state(payload)
 

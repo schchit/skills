@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from common import emit_runtime_report, load_state, preflight_status, print_step, render_workspace, save_state, state_path, write_record
+from common import emit_runtime_report, load_state, preflight_status, print_step, render_workspace, root_doc_path, save_state, state_path, write_record
 from localization import pick_text
 
 
@@ -71,7 +71,7 @@ def main() -> int:
         needs_confirmation=pick_text(language, "否", "No"),
         persistence_mode="script-execution",
         company_dir=company_dir,
-        saved_paths=[company_dir / "08-风险与关键决策.md", company_dir / "10-今日最短动作.md", record, state_path(company_dir)],
+        saved_paths=[root_doc_path(company_dir, "risks", language), root_doc_path(company_dir, "today_action", language), record, state_path(company_dir)],
         changes=[pick_text(language, "已把校准结论写入风险与关键决策，并刷新下一步动作。", "Wrote the calibration outcome into risks and key decisions, and refreshed the next action.")],
         language=language,
     )

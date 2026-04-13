@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from common import emit_runtime_report, load_state, preflight_status, print_step, render_workspace, save_state, state_path, write_record
+from common import emit_runtime_report, load_state, preflight_status, print_step, render_workspace, root_doc_path, save_state, state_path, workspace_file_path, write_record
 from localization import pick_text
 
 
@@ -60,7 +60,7 @@ def main() -> int:
         needs_confirmation=pick_text(language, "否", "No"),
         persistence_mode="script-execution",
         company_dir=company_dir,
-        saved_paths=[company_dir / "07-资产与自动化.md", company_dir / "assets" / "01-资产沉淀清单.md", record, state_path(company_dir)],
+        saved_paths=[root_doc_path(company_dir, "assets_automation", language), workspace_file_path(company_dir, "assets_inventory", language), record, state_path(company_dir)],
         changes=[pick_text(language, "已把新的 SOP、模板、案例、自动化或代码资产写入工作区。", "Wrote a new SOP, template, case, automation, or code asset into the workspace.")],
         language=language,
     )

@@ -20,7 +20,7 @@
 From the repository root:
 
 ```bash
-python3 scripts/init_company.py "北辰实验室" --path /tmp/opc-check --product-name "北辰助手" --stage 构建期
+python3 scripts/init_company.py "北辰实验室" --path /tmp/opc-check --product-name "北辰助手" --stage 构建期 --target-user "独立开发者" --core-problem "还没有一个真正能持续推进产品和成交的一人公司系统" --product-pitch "一个帮助独立开发者把产品做出来并卖出去的一人公司控制系统" --confirmed
 python3 scripts/start_round.py /tmp/opc-check/北辰实验室 --round-name "完成首页首屏" --goal "完成首页首屏结构与注册入口"
 python3 scripts/validate_release.py
 ```

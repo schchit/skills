@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from common import emit_runtime_report, load_state, now_string, preflight_status, print_step, render_workspace, save_state, state_path, write_record
+from common import emit_runtime_report, load_state, now_string, preflight_status, print_step, render_workspace, root_doc_path, save_state, state_path, write_record
 from localization import pick_text
 
 
@@ -80,8 +80,8 @@ def main() -> int:
         company_dir=company_dir,
         saved_paths=[
             checkpoint,
-            company_dir / "00-经营总盘.md",
-            company_dir / "10-今日最短动作.md",
+            root_doc_path(company_dir, "dashboard", language),
+            root_doc_path(company_dir, "today_action", language),
             state_path(company_dir),
         ],
         work_scope=[

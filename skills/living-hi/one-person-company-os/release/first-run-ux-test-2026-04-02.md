@@ -12,7 +12,7 @@ Simulate a realistic first-time founder path using the new V2 workflow:
 ## Test Commands
 
 ```bash
-python3 scripts/init_company.py "风帆实验室" --path /tmp/tmp.DwhmyBmvFv --product-name "风帆 Copilot" --stage 构建期 --target-user "独立开发者" --core-problem "缺少持续推进业务的一人公司系统" --product-pitch "一个帮助独立开发者按回合推进产品和业务的总控台"
+python3 scripts/init_company.py "风帆实验室" --path /tmp/tmp.DwhmyBmvFv --product-name "风帆 Copilot" --stage 构建期 --target-user "独立开发者" --core-problem "缺少持续推进业务的一人公司系统" --product-pitch "一个帮助独立开发者按回合推进产品和业务的总控台" --confirmed
 python3 scripts/start_round.py /tmp/tmp.DwhmyBmvFv/风帆实验室 --round-name "定义首屏价值主张" --goal "确定首页主标题、副标题和 CTA" --owner product-strategist --artifact "产物/产品/首页首屏草稿.md" --next-action "先明确用户是谁"
 python3 scripts/calibrate_round.py /tmp/tmp.DwhmyBmvFv/风帆实验室 --reason "30 分钟内无法确定首屏价值主张" --finding "目标用户太泛，需要先收窄" --next-action "把目标用户收窄为做 AI SaaS 的独立开发者"
 ```
