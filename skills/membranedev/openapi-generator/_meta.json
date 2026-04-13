@@ -1,0 +1,11 @@
+{
+  "owner": "membranedev",
+  "slug": "openapi-generator",
+  "displayName": "Openapi Generator",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775477109716,
+    "commit": null
+  },
+  "history": []
+}
