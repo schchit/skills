@@ -3,9 +3,15 @@
   "slug": "explore-maldives",
   "displayName": "Explore Maldives",
   "latest": {
-    "version": "3.2.0",
-    "publishedAt": 1775667950826,
-    "commit": "https://github.com/openclaw/skills/commit/5ef02029fdfdc5d72ee92ba6860da94c19e6591c"
+    "version": "3.2.1",
+    "publishedAt": 1775702009665,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "3.2.0",
+      "publishedAt": 1775667950826,
+      "commit": "https://github.com/openclaw/skills/commit/5ef02029fdfdc5d72ee92ba6860da94c19e6591c"
+    }
+  ]
 }
