@@ -1,4 +1,4 @@
-# super_memori v3 — Retrieval Pipeline
+# super_memori v4 — Retrieval Pipeline
 
 ## Default behavior
 Use `--mode auto` unless a more specific mode is clearly required.
@@ -12,10 +12,10 @@ All retrieval layers must work against the same chunking model.
 - Lexical and semantic indexes must refer to the same chunk granularity
 
 ## Embedding contract
-Full hybrid mode should standardize on one CPU-friendly embedding profile unless explicitly changed.
+The active v4 line standardizes on one CPU-friendly embedding profile unless explicitly changed.
 - Default model family: multilingual small embedding model
-- Expected vector size must be fixed per collection
-- Cosine-ready normalization must be consistent across all vectors
+- Expected vector size is fixed per collection
+- Cosine-ready normalization stays consistent across all vectors
 - Model changes require explicit reindex/rebuild
 
 ## Stage 1 — Hard filters
@@ -31,13 +31,12 @@ Default candidate budget: top 20.
 Semantic candidates below the chosen minimum score should be discarded.
 
 ## Stage 4 — Fusion
-Combine lexical and semantic candidates using reciprocal-rank fusion or equivalent weighted merging.
-Default recommendation: RRF.
-If semantic returns no usable candidates, continue lexical-only and surface a warning.
+The active runtime combines lexical and semantic candidates using reciprocal-rank fusion.
+If semantic returns no usable candidates, it continues lexical-only and surfaces a warning.
 
-## Stage 5 — Optional rerank
-Rerank only the short candidate list. Skip rerank for exact/path-heavy queries.
-Recommended rerank budget: top 10 fused candidates.
+## Stage 5 — Temporal / relation-aware rerank
+Rerank only the short candidate list. Skip heavy rerank behavior for exact/path-heavy queries when that would add no value.
+Current runtime uses temporal freshness, source confidence, conflict status, and relation metadata when available.
 
 ## Stage 6 — Diversity pass
 Prevent near-duplicate final results. Prefer a mix of exact, fresh, and authoritative matches.
@@ -51,17 +50,15 @@ Return snippets, source paths, scores, warnings, freshness state, and degraded f
 query
   → hard filters
   → lexical retrieval (always)
-  → semantic available?
-      yes → semantic retrieval → fusion
-      no  → warning → lexical-only
-  → reranker available and needed?
-      yes → rerank top fused candidates
-      no  → skip rerank
+  → semantic stack ready on this host?
+      yes → semantic retrieval → fusion → temporal/relation-aware rerank
+      no  → warning → lexical-only path
   → diversity pass
   → result bundle
 ```
 
 ## Degraded behavior
 - If semantic is unavailable but lexical works, return lexical results and say so.
+- If the host is `semantic-unbuilt`, keep lexical runtime authoritative and report that semantic/hybrid cannot activate yet.
 - If lexical is unavailable but emergency grep works, return grep fallback and say so.
 - Never silently downgrade quality.

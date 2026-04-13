@@ -1,6 +1,6 @@
 # Super Memory Skill (legacy archive note)
 
-Этот файл теперь относится к legacy/v2-этапу навыка. Актуальный v3-проектный контракт см. в `SKILL.md` и `references/`.
+Этот файл теперь относится к legacy/v2-этапу навыка. Актуальный v4.0.0-candidate.10 контракт см. в `SKILL.md` и `references/`.
 
 Навык семантического поиска по памяти. Пройден 3 раунда Dual Thinking с DeepSeek.
 

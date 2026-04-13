@@ -1,7 +1,7 @@
-# super_memori — Roadmap to 4.0.0
+# super_memori — Roadmap to stable 4.0.0
 
 ## Purpose
-This is the short instruction for turning the current `super_memori` release into a **true full-hybrid runtime release** later.
+This is the short instruction for turning the current `super_memori` `4.0.0 candidate` line into a **stable full-hybrid runtime release**.
 
 Use this roadmap when the goal is no longer documentation/spec quality, but an actual verified `4.0.0` runtime.
 
@@ -25,9 +25,10 @@ Confirm all of these:
 
 If any prerequisite fails, stop and fix it before moving on.
 
-### 3. Implement semantic indexing for canonical files
-Add a deterministic path from canonical memory files to vector upserts.
+### 3. Verify semantic indexing for canonical files
+The deterministic path from canonical memory files to vector upserts now exists in code.
 Do not move canonical truth out of markdown/files.
+Verify it on the target host by building vectors successfully.
 
 ### 4. Add semantic freshness + backlog visibility
 Track and surface:
@@ -36,11 +37,12 @@ Track and surface:
 - semantic queue backlog
 - semantic degraded state
 
-### 5. Implement hybrid retrieval inside `query-memory.sh`
-The runtime must do this internally:
+### 5. Verify hybrid retrieval inside `query-memory.sh`
+The runtime already does this internally:
 - lexical retrieve
 - semantic retrieve
 - candidate fusion
+- temporal / relation-aware rerank
 - unified result bundle
 
 Do not make weaker models choose the backend.
@@ -59,5 +61,5 @@ A release may be called `4.0.0` only if all are true:
 - documentation matches runtime reality
 
 ## Hard rule
-Do not call the skill full hybrid just because Qdrant is running.
-It is full hybrid only when retrieval, freshness, health, and docs all agree.
+Do not call the skill stable full hybrid just because the code path exists or Qdrant is running.
+It is stable full hybrid only when host validation, retrieval, freshness, audit semantics, and docs all agree.

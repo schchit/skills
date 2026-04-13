@@ -1,10 +1,10 @@
-# super_memori v3 — Migration Plan
+# super_memori v4 — Migration / Release-Line Plan
 
 ## Current state
-The root scripts in this skill folder now implement the v3 public command surface baseline. Older v2 behavior is preserved under `scripts/legacy/` and helper files for migration/reference.
+The root scripts in this skill folder now implement the v4 candidate runtime line: lexical search, semantic indexing/search, hybrid fusion, temporal-relational rerank, integrity audit, and relation-aware learning writes all exist in code. Older v2/v3 interpretations remain only as historical reference surfaces.
 
 ## Migration goal
-Move from a mixed grep/vector prototype to a hybrid local-memory subsystem with explicit contracts, freshness reporting, and weak-model-safe operation.
+Finish the shift from the frozen lexical-first historical line to a fully synced current-generation local-memory subsystem with explicit implemented-vs-host-state truth, canonical relation targeting, stronger eval coverage, and publish-honest release evidence.
 
 ## Recommended phases
 
@@ -18,11 +18,11 @@ Move from a mixed grep/vector prototype to a hybrid local-memory subsystem with 
 - Keep files canonical
 - Route exact/path/tag retrieval through lexical index
 
-### Phase 3 — Formalize semantic layer
+### Phase 3 — Finish semantic host-state discipline
 - Keep Qdrant as derived semantic backend
-- Add freshness reporting and degraded-mode warnings
-- Stop mixing backend claims in user-facing text
-- Meet the conditions described in `full-hybrid-mode.md`
+- Preserve freshness reporting and degraded-mode warnings
+- Distinguish semantic-unbuilt host state from true integrity drift
+- Keep user-facing text honest about implemented runtime vs current host state
 
 ### Phase 4 — Add quality/ops layer
 - Optional CPU reranker
@@ -32,4 +32,4 @@ Move from a mixed grep/vector prototype to a hybrid local-memory subsystem with 
 - Follow `implementation-order.md` exactly when weaker models finish the remaining work
 
 ## Rule during migration
-Never claim "v3 implemented" until scripts match the new command contracts and health model.
+Never claim a stable `v4.0.0 release` until scripts, contracts, health/audit semantics, and release evidence all match the current runtime truth.

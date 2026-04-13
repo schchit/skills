@@ -1,4 +1,4 @@
-# super_memori v3 — Health Model
+# super_memori v4 — Health Model
 
 ## Core health checks
 These determine `OK/WARN/FAIL`.
@@ -6,20 +6,23 @@ These determine `OK/WARN/FAIL`.
 2. lexical DB openable
 3. FTS query works
 4. semantic backend reachable
-5. embedding/rerank dependencies available
+5. local embedding model readiness
 6. queue backlog within threshold
-7. freshness age acceptable
+7. lexical freshness age acceptable
+8. integrity audit state acceptable for the current host profile
 
 ## Quality checks
-These are important, but should not alone define system health.
-8. orphaned metadata/chunks below threshold
-9. duplicate growth under control
-10. pending review load acceptable
+These are important, but do not alone define system health.
+9. orphaned metadata/chunks below threshold
+10. duplicate growth under control
+11. pending review load acceptable
+12. semantic-unbuilt vs stale-vectors vs orphan-vectors state differentiated correctly
 
 ## Health statuses
-- `OK` — core retrieval layers healthy
-- `WARN` — degraded but usable
-- `FAIL` — reliable retrieval is not available
+- `OK` — current host profile is healthy for the capabilities it can truthfully activate
+- `WARN` — degraded but usable, or semantic-ready features remain unavailable on this host
+- `FAIL` — reliable lexical retrieval is not available
+- `EQUIPPED` — host snapshot matches the local MAX PROFILE threshold; this is a truth surface, not a health status
 
 ## Freshness policy
 - lexical stale: canonical files changed after last lexical index time
@@ -36,4 +39,4 @@ These are important, but should not alone define system health.
 - last successful incremental update
 
 ## Rule
-If users or agents are likely to make wrong decisions because memory is stale or degraded, health must say so explicitly.
+If users or agents are likely to make wrong decisions because memory is stale, degraded, semantically unbuilt, structurally drifted, or running on a lower-than-target host profile, health must say so explicitly. Do not collapse semantic-unbuilt host state into fake corruption, do not collapse real orphan drift into a harmless degraded warning, and do not confuse `standard` host shaping with `max` host shaping.

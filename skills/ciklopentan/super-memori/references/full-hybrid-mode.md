@@ -1,19 +1,20 @@
 # super_memori — Full Hybrid Mode
 
 ## Purpose
-Define the **next complete target state** of `super_memori` where lexical, semantic, fusion, rerank, freshness, and health all operate as one coherent local-memory subsystem.
+Define the **stable full-hybrid target state** of `super_memori` where lexical, semantic, fusion, rerank, freshness, relation-aware scoring, repair semantics, and health all operate as one coherent local-memory subsystem.
 
-This file is intentionally a **design + implementation contract**, not a claim that the current host already runs all layers.
+This file is intentionally a **stable-release target contract**, not a claim that the current host already runs all layers. The current line may implement these features in code while still running in degraded host state.
 
 ## Full Hybrid Definition
-A full-hybrid `super_memori` run means:
+A stable full-hybrid `super_memori` run means:
 1. canonical files are readable
 2. lexical registry/index is healthy
 3. semantic backend is healthy
 4. embeddings can be generated locally
 5. lexical + semantic candidates are fused
-6. optional reranker can refine the final candidate set
+6. temporal / relation-aware rerank operates correctly
 7. degraded states are surfaced explicitly
+8. repair/audit semantics distinguish semantic-unbuilt from true drift
 
 ## Target runtime flow
 ```text
@@ -40,7 +41,7 @@ A host is only in full-hybrid mode if **all** are true:
 - `query-memory.sh --mode hybrid --json` returns `mode_used=hybrid` without semantic degradation warnings
 
 ## Semantic Layer Requirements
-The semantic layer must support:
+The semantic layer in the v4 candidate line supports:
 - local embeddings on CPU
 - vector upsert/update
 - vector search with payload filters
@@ -70,28 +71,27 @@ Rules:
 - do not block the whole query if reranker is unavailable
 - surface reranker degradation as a warning, not a silent failure
 
-## Weak-Model Implementation Order
-When a weaker model is asked to finish hybrid mode later, it should follow this exact order:
-1. run `health-check.sh`
+## Stable-release validation order
+Before promoting the current candidate line to a stable full-hybrid release:
+1. run `validate-release.sh`
 2. verify lexical baseline still passes
-3. verify semantic dependencies are installed
-4. verify vector collection exists
-5. implement semantic indexing path
-6. verify semantic freshness reporting
-7. implement hybrid candidate fusion
-8. verify hybrid query output
-9. only then add reranker
-10. re-run health and retrieval tests
+3. verify semantic dependencies/model are installed on at least one target host
+4. verify vector collection exists and is populated on that host
+5. verify semantic freshness reporting
+6. verify hybrid query output on the semantic-ready host
+7. verify temporal / relation-aware rerank on the semantic-ready host
+8. only then consider stable promotion
 
 ## Acceptance Criteria for Full Hybrid Mode
-A release can claim full hybrid mode only if all are true:
+A stable release can claim full hybrid mode only if all are true:
 - lexical search works
 - semantic search works
 - hybrid search works
-- health check distinguishes lexical-only vs hybrid-ready
+- health check distinguishes lexical-only, semantic-unbuilt, and hybrid-ready states
 - queue/backlog is monitored
 - stale semantic state is surfaced
-- at least one live test proves hybrid mode selected automatically
+- repair/audit semantics are validated
+- at least one live semantic-ready host proves hybrid mode selected automatically
 - documentation matches the actual runtime behavior
 
 ## Anti-Patterns
