@@ -3,9 +3,15 @@
   "slug": "mpa-wallet",
   "displayName": "Multi-Party Agent Wallet",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1775493648633,
-    "commit": "https://github.com/openclaw/skills/commit/a80a8b4ad99d5dc8d54b577ea2ac72fad59e5f8e"
+    "version": "1.0.7",
+    "publishedAt": 1776084267842,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1775493648633,
+      "commit": "https://github.com/openclaw/skills/commit/a80a8b4ad99d5dc8d54b577ea2ac72fad59e5f8e"
+    }
+  ]
 }
