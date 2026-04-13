@@ -1,7 +1,7 @@
 ---
 name: cross-asset-intelligence
-version: 1.0.1
-description: "Cross-asset financial analysis API combining crypto and traditional markets. BTC vs S&P500/NASDAQ/Nikkei225/DAX correlation, cross-market risk score (0-100), crypto news impact analysis, macroeconomic environment report, token safety and scam detection, daily market briefing. Pay-per-request with USDC micropayments via x402 on Base. No API key needed. Use when asked to 'check BTC correlation with stocks', 'what is the market risk level', 'is this token safe', 'crypto market analysis', 'macro outlook', 'morning market briefing', 'cross-asset analysis', 'BTC vs equities', 'risk score', 'token safety check', 'scam check contract address', 'daily market update', 'market sentiment', 'portfolio risk', 'VIX and crypto', 'correlation between bitcoin and stock market', 'financial analysis for trading', 'hedge fund briefing', 'institutional market report'. Bilingual: English and Japanese. Powered by Claude AI (Haiku/Sonnet/Opus). Data from CoinGecko, FRED, Twelve Data, RSS feeds. 4 pricing tiers: quick ($0.001, no AI, sub-second), insight ($0.03-0.15, Claude Haiku), analysis ($0.08-0.20, Claude Sonnet), pro ($0.80-1.00, Claude Opus institutional-grade)."
+version: 1.0.2
+description: "Cross-asset financial analysis API combining crypto and traditional markets. BTC vs S&P500/NASDAQ/Nikkei225/DAX correlation, cross-market risk score (0-100), crypto news impact analysis, macroeconomic environment report, token contract risk evaluation, daily market briefing. Pay-per-request with USDC micropayments via x402 on Base. No API key needed. Use when asked to 'check BTC correlation with stocks', 'what is the market risk level', 'is this token safe', 'crypto market analysis', 'macro outlook', 'morning market briefing', 'cross-asset analysis', 'BTC vs equities', 'risk score', 'token safety check', 'evaluate contract risk for address', 'daily market update', 'market sentiment', 'portfolio risk', 'VIX and crypto', 'correlation between bitcoin and stock market', 'financial analysis for trading', 'hedge fund briefing', 'institutional market report'. Bilingual: English and Japanese. Powered by Claude AI (Haiku/Sonnet/Opus). Data from CoinGecko, FRED, Twelve Data, RSS feeds. 4 pricing tiers: quick ($0.001, no AI, sub-second), insight ($0.03-0.15, Claude Haiku), analysis ($0.08-0.20, Claude Sonnet), pro ($0.80-1.00, Claude Opus institutional-grade)."
 author: suga_crypto
 license: MIT
 tags:
@@ -43,7 +43,7 @@ All endpoints use x402 micropayments (USDC on Base). Your agent's wallet pays au
 | Tier | Price Range | AI Model | Speed |
 |------|------------|----------|-------|
 | quick | $0.001-0.002 | None (pure math) | <500ms |
-| insight | $0.03-0.15 | Claude Haiku | <5s |
+| insight | $0.03-0.06 | Claude Haiku | <5s |
 | analysis | $0.08-0.20 | Claude Sonnet | <10s |
 | pro | $0.80-1.00 | Claude Opus | cached 2h |
 
@@ -51,7 +51,7 @@ All endpoints use x402 micropayments (USDC on Base). Your agent's wallet pays au
 
 Your agent needs a funded wallet (USDC on Base). Set your wallet's private key as an environment variable:
 
-- **Variable name:** `EVM_PRIVATE_KEY`
+- **Variable name:** `WALLET_SIGNING_KEY`
 - **Format:** hex (32-byte private key)
 - **Recommended:** Use a dedicated agent wallet with limited funds — not your main wallet
 
@@ -124,6 +124,10 @@ All responses include:
 ## Differentiators
 
 - Only x402 API offering crypto × traditional finance cross-asset AI analysis
-- Historical data analysis capabilities (coming soon)
+- Historical data analysis capabilities expanding
 - Claude Opus institutional-grade reports at pro tier
 - Sub-second quick tier for automated monitoring and alerts
+
+## Security & Privacy
+
+This skill contains no executable code. It is a pure markdown description of an external API. All data processing happens server-side on secured infrastructure. No local files are read, written, or executed.
