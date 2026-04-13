@@ -1,13 +1,18 @@
 {
   "owner": "ithou",
   "slug": "sn-work-record",
-  "displayName": "蜀宁OA工时记录",
+  "displayName": "蜀宁 OA 工时管理",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1775275118443,
-    "commit": "https://github.com/openclaw/skills/commit/1e9f485d781b8f0a8612014b378e418a6985d6f4"
+    "version": "1.4.3",
+    "publishedAt": 1775907358724,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1775275118443,
+      "commit": "https://github.com/openclaw/skills/commit/1e9f485d781b8f0a8612014b378e418a6985d6f4"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1775273231825,
