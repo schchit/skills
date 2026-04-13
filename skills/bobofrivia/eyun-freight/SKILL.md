@@ -4,11 +4,11 @@ description: "Query ocean freight rates and search shipping prices via the Eyun 
 version: 0.1.0
 metadata:
   openclaw:
-    primaryEnv: EYUN_WHALE_IDENTITY
+    primaryEnv: EYUN_COMPANY_ID
     requires:
       env:
         - EYUN_BASE_URL
-        - EYUN_WHALE_IDENTITY
+        - EYUN_COMPANY_ID
       bins:
         - curl
 ---
@@ -33,18 +33,18 @@ metadata:
 openclaw config get skills.entries.eyun_freight
 ```
 
-从返回结果中读取所有配置项，后续步骤中的 `EYUN_BASE_URL`、`EYUN_WHALE_IDENTITY` 等值均来自此配置，**禁止自行猜测或填充任何配置值**。
+从返回结果中读取所有配置项，后续步骤中的 `EYUN_BASE_URL`、`EYUN_COMPANY_ID` 等值均来自此配置，**禁止自行猜测或填充任何配置值**。
 
 ---
 
 ## 步骤一：调用接口
 
-使用 `exec` 执行以下命令，将 `EYUN_BASE_URL` 和 `EYUN_WHALE_IDENTITY` 替换为步骤零读取到的实际值，`<用户的原始问题>` 替换为经过 JSON 转义的用户原文：
+使用 `exec` 执行以下命令，将 `EYUN_BASE_URL` 和 `EYUN_COMPANY_ID` 替换为步骤零读取到的实际值，`<用户的原始问题>` 替换为经过 JSON 转义的用户原文：
 
 ```bash
 curl -s -X POST "EYUN_BASE_URL/chat/sync" \
   -H "Content-Type: application/json" \
-  -H "whale-identity: EYUN_WHALE_IDENTITY" \
+  -H "company-id: EYUN_COMPANY_ID" \
   -d "{\"message\": \"<用户的原始问题>\", \"session_id\": null, \"source\": \"im\"}"
 ```
 

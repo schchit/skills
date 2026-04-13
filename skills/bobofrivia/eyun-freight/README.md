@@ -19,8 +19,8 @@ cp -r eyun-freight/ /home/bobofrivia/.openclaw/workspace/skills/
       "eyun_freight": {
         "enabled": true,
         "env": {
-          "EYUN_BASE_URL": "http://<eyun-server-ip>:8000",
-          "EYUN_WHALE_IDENTITY": "<base64 字符串>"
+          "EYUN_BASE_URL": "http://<eyun-server-ip>:8010",
+          "EYUN_COMPANY_ID": "<企业 ID 数字>"
         }
       }
     }
@@ -34,8 +34,6 @@ cp -r eyun-freight/ /home/bobofrivia/.openclaw/workspace/skills/
 openclaw gateway restart
 ```
 
-## EYUN_WHALE_IDENTITY 获取方式
+## EYUN_COMPANY_ID 获取方式
 
-`whale-identity` 是固定的服务账号 token（base64 编码的 JSON）。
-
-> **TODO**：获取接口待定，后续由项目方提供，拿到 token 后填入 `env.EYUN_WHALE_IDENTITY` 即可。
+`EYUN_COMPANY_ID` 是该 Openclaw 实例对应的企业 ID（纯数字）。填入后，所有请求以该企业身份访问 Eyun 接口。
