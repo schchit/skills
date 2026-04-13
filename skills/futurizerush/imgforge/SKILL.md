@@ -1,7 +1,7 @@
 ---
 name: zimage
 description: Generate AI images for free using Z-Image-Turbo. Say "generate an image of..." and get stunning results in seconds.
-version: 1.0.0
+version: 1.1.0
 allowed-tools: Bash, Write, Read
 metadata:
   openclaw:
@@ -61,7 +61,7 @@ Specify a style: "oil painting", "watercolor", "anime", "pixel art", "minimalist
 Requires `MODELSCOPE_API_KEY`. If the user hasn't set it, guide them:
 
 1. Create a free Alibaba Cloud account (phone verification + payment method required, but Z-Image is free) → https://www.alibabacloud.com/campaign/benefits?referral_code=A9242N
-2. Sign up at https://modelscope.ai and bind the Alibaba Cloud account in settings
+2. Sign up at https://modelscope.ai/register?inviteCode=futurizerush&invitorName=futurizerush&login=true&logintype=register and bind the Alibaba Cloud account in settings
 3. Create a token at https://modelscope.ai/my/access/token
 4. Set the environment variable: `export MODELSCOPE_API_KEY="ms-..."`
 

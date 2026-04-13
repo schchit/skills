@@ -55,7 +55,7 @@ AI：   正在提交：一隻狐狸在圖書館看書
 
 ### 第二步 — ModelScope 帳號 + 綁定
 
-1. 到 **https://modelscope.ai** 註冊（支援 GitHub 登入）
+1. 到 **https://modelscope.ai/register?inviteCode=futurizerush&invitorName=futurizerush&login=true&logintype=register** 註冊（支援 GitHub 登入）
 2. 進入 **設定 → Bind Alibaba Cloud Account**，綁定第一步建立的阿里雲帳號
 
 > ⚠️ 請使用 **modelscope.ai**（國際站），不是 modelscope.cn（中國站）。

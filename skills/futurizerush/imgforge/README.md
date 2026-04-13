@@ -55,7 +55,7 @@ You'll need to verify your phone number and add a payment method during registra
 
 ### 2 — ModelScope account + binding
 
-1. Go to **https://modelscope.ai** → sign up (GitHub login works)
+1. Go to **https://modelscope.ai/register?inviteCode=futurizerush&invitorName=futurizerush&login=true&logintype=register** → sign up (GitHub login works)
 2. Open **Settings → Bind Alibaba Cloud Account** and link the account from step 1
 
 ### 3 — API token

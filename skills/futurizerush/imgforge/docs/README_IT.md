@@ -45,7 +45,7 @@ Registrati qui: **https://www.alibabacloud.com/campaign/benefits?referral_code=A
 
 ### 2 — Account ModelScope + collegamento
 
-1. Vai su **https://modelscope.ai** → registrati (login con GitHub disponibile)
+1. Vai su **https://modelscope.ai/register?inviteCode=futurizerush&invitorName=futurizerush&login=true&logintype=register** → registrati (login con GitHub disponibile)
 2. In **Impostazioni → Bind Alibaba Cloud Account**, collega il tuo account
 
 ### 3 — Token API

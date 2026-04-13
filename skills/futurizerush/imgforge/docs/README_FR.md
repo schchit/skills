@@ -45,7 +45,7 @@ Une vérification téléphonique et un moyen de paiement sont requis à l'inscri
 
 ### 2 — Compte ModelScope + liaison
 
-1. Allez sur **https://modelscope.ai** → inscrivez-vous (connexion GitHub possible)
+1. Allez sur **https://modelscope.ai/register?inviteCode=futurizerush&invitorName=futurizerush&login=true&logintype=register** → inscrivez-vous (connexion GitHub possible)
 2. Dans **Paramètres → Bind Alibaba Cloud Account**, liez votre compte
 
 ### 3 — Jeton API

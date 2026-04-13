@@ -55,7 +55,7 @@ AI：     送信中: 図書館で本を読んでいるキツネ
 
 ### ステップ2 — ModelScopeアカウント + 連携
 
-1. **https://modelscope.ai** でアカウント登録（GitHubログイン対応）
+1. **https://modelscope.ai/register?inviteCode=futurizerush&invitorName=futurizerush&login=true&logintype=register** でアカウント登録（GitHubログイン対応）
 2. **設定 → Bind Alibaba Cloud Account** からステップ1のアカウントを連携
 
 ### ステップ3 — APIトークン取得

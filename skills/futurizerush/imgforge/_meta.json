@@ -3,9 +3,15 @@
   "slug": "imgforge",
   "displayName": "imgforge — Free AI Image Generation",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775577811139,
-    "commit": "https://github.com/openclaw/skills/commit/b571d9022c2cc522c31da36cb8987955dc8c224d"
+    "version": "1.1.0",
+    "publishedAt": 1775666318654,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775577811139,
+      "commit": "https://github.com/openclaw/skills/commit/b571d9022c2cc522c31da36cb8987955dc8c224d"
+    }
+  ]
 }

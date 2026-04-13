@@ -45,7 +45,7 @@ Bei der Registrierung sind eine Telefonnummer-Verifizierung und eine Zahlungsmet
 
 ### 2 — ModelScope Konto + Verknüpfung
 
-1. Gehe zu **https://modelscope.ai** → registriere dich (GitHub-Login möglich)
+1. Gehe zu **https://modelscope.ai/register?inviteCode=futurizerush&invitorName=futurizerush&login=true&logintype=register** → registriere dich (GitHub-Login möglich)
 2. Unter **Einstellungen → Bind Alibaba Cloud Account** dein Konto verknüpfen
 
 ### 3 — API-Token

@@ -55,7 +55,7 @@ AI:     제출 중: 도서관에서 책을 읽는 여우
 
 ### 2단계 — ModelScope 계정 + 연동
 
-1. **https://modelscope.ai** 에서 가입 (GitHub 로그인 지원)
+1. **https://modelscope.ai/register?inviteCode=futurizerush&invitorName=futurizerush&login=true&logintype=register** 에서 가입 (GitHub 로그인 지원)
 2. **설정 → Bind Alibaba Cloud Account**에서 1단계 계정 연동
 
 ### 3단계 — API 토큰

@@ -99,7 +99,7 @@ def main() -> None:
             "MODELSCOPE_API_KEY is not set.\n\n"
             "Get a free token:\n"
             "  1. Alibaba Cloud  → https://www.alibabacloud.com/campaign/benefits?referral_code=A9242N\n"
-            "  2. ModelScope      → https://modelscope.ai  (bind Alibaba Cloud in settings)\n"
+            "  2. ModelScope      → https://modelscope.ai/register?inviteCode=futurizerush&invitorName=futurizerush&login=true&logintype=register\n"
             "  3. Create token    → https://modelscope.ai/my/access/token\n\n"
             "Then:  export MODELSCOPE_API_KEY='ms-...'"
         )
