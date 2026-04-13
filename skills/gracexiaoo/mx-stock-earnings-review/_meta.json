@@ -3,9 +3,15 @@
   "slug": "mx-stock-earnings-review",
   "displayName": "mx-业绩点评",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1775123132225,
-    "commit": "https://github.com/openclaw/skills/commit/110b0be2a5959e3f8104ba6d9689c4e5864bdc9b"
+    "version": "1.0.3",
+    "publishedAt": 1775653157461,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1775123132225,
+      "commit": "https://github.com/openclaw/skills/commit/110b0be2a5959e3f8104ba6d9689c4e5864bdc9b"
+    }
+  ]
 }
