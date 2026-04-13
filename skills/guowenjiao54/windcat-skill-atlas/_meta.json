@@ -3,9 +3,15 @@
   "slug": "windcat-skill-atlas",
   "displayName": "Skill Atlas",
   "latest": {
-    "version": "2.0.1",
-    "publishedAt": 1775325435804,
-    "commit": "https://github.com/openclaw/skills/commit/294d147f8ddb4ea616b348802acca2aa81590a66"
+    "version": "3.0.0",
+    "publishedAt": 1775805196839,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "2.0.1",
+      "publishedAt": 1775325435804,
+      "commit": "https://github.com/openclaw/skills/commit/294d147f8ddb4ea616b348802acca2aa81590a66"
+    }
+  ]
 }
