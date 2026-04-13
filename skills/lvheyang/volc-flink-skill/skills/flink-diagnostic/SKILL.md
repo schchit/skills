@@ -1,6 +1,17 @@
 ---
 name: flink-diagnostic
 description: Intelligent diagnostic tool for Serverless Flink applications. Use this skill when the user wants to diagnose a specific Flink job/application failure, analyze logs/events/exceptions for a concrete task, or locate the root cause of OOM, checkpoint timeout, restart failure, connectivity issues, or startup failure. Always trigger only when the request contains a troubleshooting intent + a target object/action, such as "诊断某个任务失败原因", "分析 checkpoint timeout", "排查 OOM", or "定位启动失败根因", rather than only generic words like "Flink" or "任务".
+required_binaries:
+  - volc_flink
+may_access_config_paths:
+  - ~/.volc_flink
+  - $VOLC_FLINK_CONFIG_DIR
+credentials:
+  primary: volc_flink_local_config
+  optional_env_vars:
+    - VOLCENGINE_ACCESS_KEY
+    - VOLCENGINE_SECRET_KEY
+    - VOLCENGINE_REGION
 ---
 
 # Flink 任务智能诊断技能
@@ -20,8 +31,32 @@ description: Intelligent diagnostic tool for Serverless Flink applications. Use 
 
 本技能只保留诊断差异化内容：采集信号、分类体系、证据汇总与报告模板，并遵循 `COMMON_READONLY.md` 中的查询收敛与只读输出规则。
 
+---
+
+## 指标查询前置规则（必须遵守）
+
+在执行任何 `volc_flink jobs metrics` 之前，必须先确认这 3 件事：
+
+1. 这条指标属于 `vcm_flink_metrics.md` 里的哪个一级标题
+2. 把该一级标题原样作为 `--sub-namespace` 传入
+3. 如果指标维度依赖 `task_name` / `operator_name` / `subtask_index`，补上对应的 `--group-by`
+
+最重要的约束：
+
+- 不允许先试错式查询，再回头补 `--sub-namespace`
+- 不允许把 `Checkpoint`、`Kafka`、`JVM`、`resource`、`overview`、`OperatorInfo` 混在一条命令里
+- 如果用户只给现象，不给指标名，先按现象映射：
+  - Checkpoint 失败/超时 -> `--sub-namespace Checkpoint`
+  - Kafka lag / source 堆积 -> `--sub-namespace Kafka`
+  - JVM / GC / Heap -> `--sub-namespace JVM`
+  - 反压 -> `--sub-namespace OperatorInfo`
+  - 吞吐 / 延迟 -> `--sub-namespace overview`
+  - 资源使用 -> `--sub-namespace resource`
+
 ### 2. 获取任务详细信息
 对于找到的任务，获取以下详细信息：
+
+**任务详情：**
 
 **任务详情：**
 ```bash
@@ -155,6 +190,37 @@ volc_flink jobs metrics -i <任务ID> \
   -m flink_taskmanager_job_task_operator_KafkaSourceReader_KafkaConsumer_records_lag_max \
   --group-by task_name \
   --sub-namespace Kafka
+```
+
+**标准回退流程：metric not found / 无数据 / 查空**
+
+当出现“metric not found”“empty series”“无返回数据”时，按以下顺序回退：
+
+1. 检查指标名是否确实存在于 `vcm_flink_metrics.md`
+2. 检查 `--sub-namespace` 是否与 markdown 一级标题完全一致
+3. 检查当前指标是否缺少 `--group-by task_name/operator_name`
+4. 对 Kafka 诊断，优先双查：
+   - `flink_taskmanager_job_task_operator_KafkaConsumer_records_lag_max`
+   - `flink_taskmanager_job_task_operator_KafkaSourceReader_KafkaConsumer_records_lag_max`
+5. 如果还是查不到，执行：
+   - `volc_flink jobs metrics list --sub-namespace <对应标题>`
+   重新从返回列表中选择合法指标名
+
+**Kafka 指标查询示例（标准版）**
+
+```bash
+# Kafka lag：先看 source 堆积
+volc_flink jobs metrics -i <任务ID> \
+  -m flink_taskmanager_job_task_operator_KafkaConsumer_records_lag_max \
+  -m flink_taskmanager_job_task_operator_KafkaSourceReader_KafkaConsumer_records_lag_max \
+  --group-by task_name \
+  --sub-namespace Kafka
+
+# 如果要判断 lag 是否已经传导成下游延迟，再补 overview 视角
+volc_flink jobs metrics -i <任务ID> \
+  -m flink_taskmanager_job_task_operator_currentEmitEventTimeLag \
+  --group-by operator_name \
+  --sub-namespace overview
 ```
 
 ---

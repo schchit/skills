@@ -1,6 +1,17 @@
 ---
 name: flink-auth
 description: Flink 认证与账号管理技能，用于检查 `volc_flink` 登录状态、登录/退出、账号切换与本地凭证安全口径（不输出明文 AK/SK）。优先使用 `volc_flink login status` 检查登录状态。Use this skill when the user needs auth/account actions for `volc_flink` (login status, login/logout, account switching) with strict secret-handling. Prefer `volc_flink login status` for status checks. Always trigger only when the request contains an auth/account intent + a concrete action/object.
+required_binaries:
+  - volc_flink
+may_access_config_paths:
+  - ~/.volc_flink
+  - $VOLC_FLINK_CONFIG_DIR
+credentials:
+  primary: volc_flink_local_config
+  optional_env_vars:
+    - VOLCENGINE_ACCESS_KEY
+    - VOLCENGINE_SECRET_KEY
+    - VOLCENGINE_REGION
 ---
 
 # Flink 认证与多账号管理技能

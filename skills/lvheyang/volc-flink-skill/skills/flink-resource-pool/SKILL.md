@@ -1,6 +1,17 @@
 ---
 name: flink-resource-pool
 description: Flink 资源池管理技能，用于管理 Flink 资源池，包括列举资源池、查看资源池详情、创建资源池等。Use this skill when the user wants to list, inspect, create, or compare concrete resource pools and their CPU/memory settings. Always trigger only when the request contains a resource-pool intent + a concrete pool action/object.
+required_binaries:
+  - volc_flink
+may_access_config_paths:
+  - ~/.volc_flink
+  - $VOLC_FLINK_CONFIG_DIR
+credentials:
+  primary: volc_flink_local_config
+  optional_env_vars:
+    - VOLCENGINE_ACCESS_KEY
+    - VOLCENGINE_SECRET_KEY
+    - VOLCENGINE_REGION
 ---
 
 # Flink 资源池管理技能

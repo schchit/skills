@@ -1,6 +1,17 @@
 ---
 name: flink-projects
 description: Flink 项目管理技能，用于列举和查看火山引擎 Flink 项目信息，包括项目列表、项目详情、配额和使用情况等。Use this skill when the user wants to list Flink projects, inspect project details/quotas, or choose a concrete project as the working scope. Always trigger only when the request contains a project intent + a concrete action/object.
+required_binaries:
+  - volc_flink
+may_access_config_paths:
+  - ~/.volc_flink
+  - $VOLC_FLINK_CONFIG_DIR
+credentials:
+  primary: volc_flink_local_config
+  optional_env_vars:
+    - VOLCENGINE_ACCESS_KEY
+    - VOLCENGINE_SECRET_KEY
+    - VOLCENGINE_REGION
 ---
 
 # Flink 项目管理技能

@@ -1,6 +1,17 @@
 ---
 name: flink-sql
 description: Flink SQL 任务开发和部署工具，用于创建、开发、部署和调试 Flink SQL 任务。Use this skill when the user wants to create, update, publish, start, or debug a concrete Flink SQL draft/job, or generate SQL for a clearly defined task. Always trigger only when the request contains a SQL-task intent + a concrete draft/job object/action.
+required_binaries:
+  - volc_flink
+may_access_config_paths:
+  - ~/.volc_flink
+  - $VOLC_FLINK_CONFIG_DIR
+credentials:
+  primary: volc_flink_local_config
+  optional_env_vars:
+    - VOLCENGINE_ACCESS_KEY
+    - VOLCENGINE_SECRET_KEY
+    - VOLCENGINE_REGION
 ---
 
 # Flink SQL 开发和部署技能

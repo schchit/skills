@@ -1,6 +1,17 @@
 ---
 name: flink-validate
 description: Flink SQL 语法校验技能，用于验证 SQL 草稿的语法正确性，在发布前进行预检查，避免语法错误导致的发布失败。Use this skill when the user wants to validate a concrete SQL draft, check syntax, or run pre-publish verification for a specific SQL task. Always trigger only when the request contains a validation intent + a concrete draft/SQL object/action.
+required_binaries:
+  - volc_flink
+may_access_config_paths:
+  - ~/.volc_flink
+  - $VOLC_FLINK_CONFIG_DIR
+credentials:
+  primary: volc_flink_local_config
+  optional_env_vars:
+    - VOLCENGINE_ACCESS_KEY
+    - VOLCENGINE_SECRET_KEY
+    - VOLCENGINE_REGION
 ---
 
 # Flink SQL 语法校验技能

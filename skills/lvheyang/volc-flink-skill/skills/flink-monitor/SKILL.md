@@ -1,6 +1,17 @@
 ---
 name: flink-monitor
 description: Flink 实时监控技能，用于实时监控任务运行状态、查询指标、查看事件和日志。Use this skill when the user wants to view logs, metrics, events, or current runtime status for a specific Flink task/job. Always trigger only when the request contains a monitoring intent + a concrete task/job object/action.
+required_binaries:
+  - volc_flink
+may_access_config_paths:
+  - ~/.volc_flink
+  - $VOLC_FLINK_CONFIG_DIR
+credentials:
+  primary: volc_flink_local_config
+  optional_env_vars:
+    - VOLCENGINE_ACCESS_KEY
+    - VOLCENGINE_SECRET_KEY
+    - VOLCENGINE_REGION
 ---
 
 # Flink 实时监控技能

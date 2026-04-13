@@ -1,6 +1,17 @@
 ---
 name: flink-dependency
 description: Flink 依赖管理技能，用于管理 Flink 任务的 JAR 包依赖和 UDF 库，包括 TOS 文件管理、添加依赖、删除依赖、查看依赖列表等。Use this skill when the user wants to add/remove/list concrete dependency jars, manage UDF libraries, or operate on TOS-backed dependency files for a specific draft or job. Always trigger only when the request contains a dependency/file-management intent + a concrete object/action.
+required_binaries:
+  - volc_flink
+may_access_config_paths:
+  - ~/.volc_flink
+  - $VOLC_FLINK_CONFIG_DIR
+credentials:
+  primary: volc_flink_local_config
+  optional_env_vars:
+    - VOLCENGINE_ACCESS_KEY
+    - VOLCENGINE_SECRET_KEY
+    - VOLCENGINE_REGION
 ---
 
 # Flink 依赖管理技能

@@ -1,6 +1,17 @@
 ---
 name: flink-conn
 description: Flink 上下游资源连接管理技能，用于管理 Kafka、数据库等上下游资源连接，包括实例管理、接入点配置、消息消费调试等。Use this skill when the user wants to configure or inspect concrete upstream/downstream connections, such as Kafka instances, endpoints, or sampled message reads. Always trigger only when the request contains a connection intent + a concrete connection object/action.
+required_binaries:
+  - volc_flink
+may_access_config_paths:
+  - ~/.volc_flink
+  - $VOLC_FLINK_CONFIG_DIR
+credentials:
+  primary: volc_flink_local_config
+  optional_env_vars:
+    - VOLCENGINE_ACCESS_KEY
+    - VOLCENGINE_SECRET_KEY
+    - VOLCENGINE_REGION
 ---
 
 # Flink 上下游资源连接管理技能

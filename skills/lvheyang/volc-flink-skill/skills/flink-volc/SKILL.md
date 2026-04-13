@@ -1,11 +1,28 @@
 ---
 name: flink-volc
 description: 火山引擎 Flink 版 (volc_flink) CLI 工具环境管理技能，用于安装、升级、诊断与修复本地 `volc_flink`（含虚拟环境/依赖/路径/版本检查）。不负责登录/退出/登录状态检查与账号切换（由 `flink-auth` 负责），也不负责默认项目/TOS 路径等配置项设置（由 `flink-config` 负责）。Use this skill when the user needs CLI/tooling environment work for `volc_flink` (install/upgrade/diagnose/fix local setup). Do NOT use it for login status/login/logout/account switching (use `flink-auth`) or config items like default project/TOS prefix (use `flink-config`). Always trigger only when the request contains a CLI/tooling intent + a concrete tool action/object.
+required_binaries:
+  - volc_flink
+may_access_config_paths:
+  - ~/.volc_flink
+  - $VOLC_FLINK_CONFIG_DIR
+credentials:
+  primary: volc_flink_local_config
+  optional_env_vars:
+    - VOLCENGINE_ACCESS_KEY
+    - VOLCENGINE_SECRET_KEY
+    - VOLCENGINE_REGION
 ---
 
 # 火山引擎 Flink 版 (volc_flink) 工具管理技能
 
 用于安装、更新、升级与修复 `volc_flink` 命令行工具环境，这是所有 Flink 相关操作的基础。
+
+安装策略默认优先级：
+
+1. `pipx` 安装独立 CLI 环境
+2. Python 虚拟环境（`venv`）
+3. 仅在用户明确接受风险且环境允许时，才讨论直接 `pip install`
 
 认证与账号相关（登录/退出/登录状态检查/账号切换）请使用 `flink-auth`。
 默认项目、TOS 路径等配置项设置请使用 `flink-config`。
@@ -44,25 +61,37 @@ volc_flink --version
 #### 1.2 安装 volc_flink
 根据用户的操作系统，提供相应的安装指引。
 
-**Linux / macOS 安装（推荐使用 Python 虚拟环境）**：
+**Linux / macOS 安装（推荐优先使用 `pipx`）**：
 
-**方式 1：从本地源代码安装（如果有 sf_cli 目录）**：
+⚠️ **重要说明**：
+
+- 在 root / system Python / externally-managed Python 环境下，直接执行 `pip install` 可能被禁止或不被允许
+- 这种场景下，不要优先要求用户创建虚拟环境再手动激活，优先使用 `pipx`
+- `volc-flink-cli` 已提供标准 console script：安装后可直接得到 `volc_flink` 命令
+
+**方式 1：使用 pipx 从 PyPI 安装（首选）**：
 ```bash
-# 创建 Python 虚拟环境
-python3 -m venv ~/flink-env
+# 如果系统未安装 pipx，优先使用操作系统包管理器安装
+# macOS (Homebrew)
+brew install pipx
+pipx ensurepath
 
-# 激活虚拟环境
-source ~/flink-env/bin/activate
+# Ubuntu / Debian
+sudo apt install -y pipx
+pipx ensurepath
 
-# 进入 sf_cli 目录并安装
-cd ~/sf_cli
-pip install -e .
+# Fedora
+sudo dnf install -y pipx
+pipx ensurepath
+
+# 使用清华镜像安装 volc-flink-cli
+pipx install volc-flink-cli --pip-args="--index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple"
 
 # 验证安装
 volc_flink --version
 ```
 
-**方式 2：从 PyPI 安装（推荐）**：
+**方式 2：使用 Python 虚拟环境安装（备选）**：
 
 ⚠️ **重要提示**：推荐使用国内镜像源以获得更快的下载速度！
 
@@ -107,7 +136,20 @@ volc_flink --version
 - 中科大：`https://pypi.mirrors.ustc.edu.cn/simple/`
 - 豆瓣：`https://pypi.douban.com/simple/`
 
-**Windows 安装（推荐使用 Python 虚拟环境）**：
+**Windows 安装（优先使用 `pipx`）**：
+```bash
+# 安装 pipx（如果未安装）
+py -m pip install --user pipx
+py -m pipx ensurepath
+
+# 安装 volc-flink-cli
+pipx install volc-flink-cli --pip-args="--index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple"
+
+# 验证安装
+volc_flink --version
+```
+
+**Windows 虚拟环境安装（备选）**：
 ```bash
 # 创建 Python 虚拟环境
 python -m venv %USERPROFILE%\flink-env
@@ -115,9 +157,8 @@ python -m venv %USERPROFILE%\flink-env
 # 激活虚拟环境
 %USERPROFILE%\flink-env\Scripts\activate
 
-# 进入 sf_cli 目录并安装
-cd %USERPROFILE%\sf_cli
-pip install -e .
+# 安装 volc-flink-cli
+pip install volc-flink-cli -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
 
 # 验证安装
 volc_flink --version
@@ -125,14 +166,12 @@ volc_flink --version
 
 **升级到最新版本**：
 ```bash
-# 确保虚拟环境已激活
-source ~/flink-env/bin/activate  # Linux/macOS
-# 或
-%USERPROFILE%\flink-env\Scripts\activate  # Windows
+# pipx 安装用户（推荐）
+pipx upgrade volc-flink-cli
 
-# 进入 sf_cli 目录并重新安装
-cd ~/sf_cli
-pip install -e .
+# 如果你确实使用的是 venv
+source ~/flink-env/bin/activate
+pip install --upgrade volc-flink-cli -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
 ```
 
 #### 1.3 查看版本信息
@@ -178,19 +217,15 @@ volc_flink login status
 
 #### 4.1 完整的首次使用流程（推荐）
 
-**步骤 1：安装 volc_flink（使用清华镜像源，推荐）**
+**步骤 1：安装 volc_flink（优先 pipx，使用清华镜像源）**
 ```bash
-# 创建 Python 虚拟环境
-python3 -m venv ~/flink-env
+# 优先安装 pipx
+brew install pipx  # macOS
+# 或 sudo apt install -y pipx  # Ubuntu / Debian
+# 或 sudo dnf install -y pipx  # Fedora
 
-# 激活虚拟环境
-source ~/flink-env/bin/activate
-
-# 先更新基础工具
-pip install --upgrade pip setuptools wheel -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
-
-# 使用清华镜像源安装 volc-flink-cli（速度快，稳定）
-pip install volc-flink-cli -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
+pipx ensurepath
+pipx install volc-flink-cli --pip-args="--index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple"
 
 # 验证安装
 volc_flink --version
@@ -211,12 +246,22 @@ volc_flink --version
 
 #### 4.2 日常使用提示
 
-**每次使用前记得激活虚拟环境**：
+**如果你使用的是 pipx，日常使用不需要激活虚拟环境**：
+```bash
+volc_flink --version
+```
+
+**只有在你明确使用 venv 安装时，才需要先激活虚拟环境**：
 ```bash
 source ~/flink-env/bin/activate
 ```
 
-**如果虚拟环境损坏，重新创建**：
+**如果 pipx 环境损坏，可直接重装**：
+```bash
+pipx reinstall volc-flink-cli
+```
+
+**如果虚拟环境损坏，重新创建（仅 venv 安装用户）**：
 ```bash
 # 删除旧的虚拟环境
 rm -rf ~/flink-env
@@ -275,8 +320,9 @@ cp ~/.volc_flink/config_account_a.json ~/.volc_flink/config.json
 
 ### 更新工具流程
 1. **检查当前版本** - `volc_flink --version`
-2. **执行升级** - `pip install --upgrade volc-flink-cli`
-3. **验证新版本** - `volc_flink --version`
+2. **识别安装方式** - 优先判断是 `pipx` 还是 `venv`
+3. **执行升级** - `pipx upgrade volc-flink-cli` 或在 venv 中 `pip install --upgrade volc-flink-cli`
+4. **验证新版本** - `volc_flink --version`
 
 ---
 
@@ -290,7 +336,13 @@ volc_flink --version
 # 查看帮助
 volc_flink --help
 
-# 安装/升级（推荐在虚拟环境中执行，使用清华镜像源）
+# 安装（首选 pipx）
+pipx install volc-flink-cli --pip-args="--index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple"
+
+# 升级（pipx）
+pipx upgrade volc-flink-cli
+
+# 备选：venv 安装/升级
 python3 -m venv ~/flink-env
 source ~/flink-env/bin/activate
 pip install --upgrade pip setuptools wheel -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
@@ -401,6 +453,15 @@ volc_flink projects detail <项目名>
 - 重新创建虚拟环境：`python3 -m venv ~/flink-env`
 - 然后重新激活并安装
 
+#### 错误 8：root / system Python 不允许直接 pip install
+**错误信息**：`externally-managed-environment` / `This environment is externally managed`
+
+**处理方式**：
+- 提示："当前 Python 环境不允许直接 pip install"
+- 优先改用 `pipx install volc-flink-cli`
+- 如果系统没有 pipx，优先使用操作系统包管理器安装 pipx
+- 仅在用户明确要求时，再讨论 `venv` 方案
+
 ---
 
 ## 注意事项
@@ -417,9 +478,10 @@ volc_flink projects detail <项目名>
 
 1. **先检测安装状态**：在执行任何操作前，先检测 volc_flink 是否已安装
 2. **认证与配置分工**：登录相关请转交 `flink-auth`，默认项目/TOS 前缀请转交 `flink-config`
-3. **引导用户使用子技能**：这个技能是入口，具体操作引导用户使用对应的子技能
-4. **提供清晰的指引**：用用户能理解的语言解释操作步骤
-5. **友好的错误处理**：如果操作失败，向用户说明失败原因，并提供解决方案
+3. **安装优先级**：默认优先 `pipx`，其次 `venv`，不要先假设用户必须激活虚拟环境
+4. **引导用户使用子技能**：这个技能是入口，具体操作引导用户使用对应的子技能
+5. **提供清晰的指引**：用用户能理解的语言解释操作步骤
+6. **友好的错误处理**：如果操作失败，向用户说明失败原因，并提供解决方案
 
 ---
 

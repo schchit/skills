@@ -1,6 +1,17 @@
 ---
 name: flink-jar
 description: Flink JAR 任务管理技能，用于创建、部署、配置和调试 JAR 类型的 Flink 任务。Use this skill when the user wants to create, publish, start, configure, or debug a concrete JAR-based Flink draft/job, including jar path, main class, and runtime parameters. Always trigger only when the request contains a JAR-task intent + a concrete draft/job object/action.
+required_binaries:
+  - volc_flink
+may_access_config_paths:
+  - ~/.volc_flink
+  - $VOLC_FLINK_CONFIG_DIR
+credentials:
+  primary: volc_flink_local_config
+  optional_env_vars:
+    - VOLCENGINE_ACCESS_KEY
+    - VOLCENGINE_SECRET_KEY
+    - VOLCENGINE_REGION
 ---
 
 # Flink JAR 任务管理技能

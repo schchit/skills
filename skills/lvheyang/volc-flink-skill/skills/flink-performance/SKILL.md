@@ -1,6 +1,17 @@
 ---
 name: flink-performance
 description: Flink 性能优化技能，用于分析和优化 Flink 任务的性能问题，包括反压检测、Checkpoint 优化、状态优化、并行度调优、内存配置优化等。Use this skill when the user wants to tune or analyze a specific Flink task for backpressure, checkpoint latency, state size, parallelism, memory, throughput, or latency issues. Always trigger only when the request contains a performance intent + a concrete task/job metric or tuning action.
+required_binaries:
+  - volc_flink
+may_access_config_paths:
+  - ~/.volc_flink
+  - $VOLC_FLINK_CONFIG_DIR
+credentials:
+  primary: volc_flink_local_config
+  optional_env_vars:
+    - VOLCENGINE_ACCESS_KEY
+    - VOLCENGINE_SECRET_KEY
+    - VOLCENGINE_REGION
 ---
 
 # Flink 性能优化技能
@@ -17,6 +28,28 @@ description: Flink 性能优化技能，用于分析和优化 Flink 任务的性
 - `../../COMMON_READONLY.md`
 
 本技能当前按只读层管理，用于性能问题分析、指标解释和优化建议，不直接执行参数修改或任务变更。
+
+---
+
+## 指标查询前置规则（必须遵守）
+
+在执行任何 `volc_flink jobs metrics` 之前，必须先确认这 3 件事：
+
+1. 这条指标属于 `vcm_flink_metrics.md` 里的哪个一级标题
+2. 把该一级标题原样作为 `--sub-namespace` 传入
+3. 如果指标维度依赖 `task_name` / `operator_name` / `subtask_index`，补上对应的 `--group-by`
+
+最重要的约束：
+
+- 不允许先拍脑袋查指标，再补 `--sub-namespace`
+- 不允许把不同一级标题下的指标混在同一条 `jobs metrics` 命令里
+- 如果用户只说“查一下 checkpoint / Kafka lag / JVM / 资源”，你要先在脑中完成：
+  - `Checkpoint` -> `--sub-namespace Checkpoint`
+  - `Kafka` -> `--sub-namespace Kafka`
+  - `JVM` -> `--sub-namespace JVM`
+  - `OperatorInfo` -> `--sub-namespace OperatorInfo`
+  - `overview` -> `--sub-namespace overview`
+  - `resource` -> `--sub-namespace resource`
 
 ---
 
@@ -171,6 +204,37 @@ volc_flink jobs metrics -i <任务ID> \
   -m job_resource_usage_cpu_all \
   -m job_resource_usage_memory_all \
   --sub-namespace resource
+```
+
+**标准回退流程：metric not found / 无数据 / 查空**
+
+当出现“metric not found”“empty series”“查不到数据”时，按以下顺序回退，不要直接判定“任务没问题”：
+
+1. 先检查指标名是否来自 `vcm_flink_metrics.md`
+2. 再检查 `--sub-namespace` 是否与 markdown 一级标题完全一致
+3. 再检查是否缺少 `--group-by task_name/operator_name`
+4. 对 Kafka 指标，优先同时尝试：
+   - `flink_taskmanager_job_task_operator_KafkaConsumer_records_lag_max`
+   - `flink_taskmanager_job_task_operator_KafkaSourceReader_KafkaConsumer_records_lag_max`
+5. 如果仍然失败，先执行：
+   - `volc_flink jobs metrics list --sub-namespace <对应标题>`
+   然后从返回列表中重新选择合法指标名再查
+
+**Kafka 指标查询示例（标准版）**
+
+```bash
+# Kafka lag：按 vcm_flink_metrics.md 的 Kafka 标题查询
+volc_flink jobs metrics -i <任务ID> \
+  -m flink_taskmanager_job_task_operator_KafkaConsumer_records_lag_max \
+  -m flink_taskmanager_job_task_operator_KafkaSourceReader_KafkaConsumer_records_lag_max \
+  --group-by task_name \
+  --sub-namespace Kafka
+
+# 如果用户要看 Kafka 导致的事件时间堆积，再补一个 overview/延迟视角
+volc_flink jobs metrics -i <任务ID> \
+  -m flink_taskmanager_job_task_operator_currentEmitEventTimeLag \
+  --group-by operator_name \
+  --sub-namespace overview
 ```
 
 #### 2.3 获取任务日志

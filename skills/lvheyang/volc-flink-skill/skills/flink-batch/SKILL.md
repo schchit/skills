@@ -1,6 +1,17 @@
 ---
 name: flink-batch
 description: Flink 批处理任务管理技能，用于创建、调度、监控和管理批处理类型的 Flink 任务。Use this skill when the user wants to create, schedule, start, rerun, or inspect a concrete batch SQL/JAR draft or job. Always trigger only when the request contains a batch-task intent + a concrete draft/job object/action.
+required_binaries:
+  - volc_flink
+may_access_config_paths:
+  - ~/.volc_flink
+  - $VOLC_FLINK_CONFIG_DIR
+credentials:
+  primary: volc_flink_local_config
+  optional_env_vars:
+    - VOLCENGINE_ACCESS_KEY
+    - VOLCENGINE_SECRET_KEY
+    - VOLCENGINE_REGION
 ---
 
 # Flink 批处理任务管理技能

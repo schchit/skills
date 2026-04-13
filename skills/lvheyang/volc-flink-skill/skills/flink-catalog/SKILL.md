@@ -1,6 +1,17 @@
 ---
 name: flink-catalog
 description: Flink Catalog 元数据管理工具，用于列举 Flink 的 catalog、database、table 和 table 的结构信息，并且可以基于这些库表信息进行 SQL 作业开发等工作。Use this skill when the user wants to inspect concrete metadata objects in Flink catalog, such as listing catalogs/databases/tables or viewing table schema/details for SQL development. Always trigger only when the request contains a metadata intent + a concrete catalog object/action.
+required_binaries:
+  - volc_flink
+may_access_config_paths:
+  - ~/.volc_flink
+  - $VOLC_FLINK_CONFIG_DIR
+credentials:
+  primary: volc_flink_local_config
+  optional_env_vars:
+    - VOLCENGINE_ACCESS_KEY
+    - VOLCENGINE_SECRET_KEY
+    - VOLCENGINE_REGION
 ---
 
 # Flink Catalog 元数据管理技能

@@ -1,6 +1,17 @@
 ---
 name: flink-config
 description: Flink 配置管理技能，用于设置与校验本地 `volc_flink` 关键配置项（如默认项目、TOS Jar 存储路径等）。不负责 `volc_flink` 的安装/升级（由 `flink-volc` 负责），也不负责登录/退出/登录状态检查/账号切换（由 `flink-auth` 负责，优先 `volc_flink login status`）。Use this skill when the user wants to view or change concrete local `volc_flink` configuration items (default project, TOS jar prefix, etc.). Do NOT use it for CLI install/upgrade (use `flink-volc`) or auth/account (use `flink-auth`). Always trigger only when the request contains a config intent + a concrete config object/action.
+required_binaries:
+  - volc_flink
+may_access_config_paths:
+  - ~/.volc_flink
+  - $VOLC_FLINK_CONFIG_DIR
+credentials:
+  primary: volc_flink_local_config
+  optional_env_vars:
+    - VOLCENGINE_ACCESS_KEY
+    - VOLCENGINE_SECRET_KEY
+    - VOLCENGINE_REGION
 ---
 
 # Flink 配置管理技能

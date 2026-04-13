@@ -1,6 +1,17 @@
 ---
 name: flink-conn-kafka
 description: Kafka 连接管理子技能，用于管理 Kafka 实例、接入点配置、消息消费调试等。Use this skill when the user wants to add/remove/update a Kafka instance, manage a Kafka endpoint, or consume/debug messages from a concrete Kafka topic/instance. Always trigger only when the request contains a Kafka-connection intent + a concrete object/action.
+required_binaries:
+  - volc_flink
+may_access_config_paths:
+  - ~/.volc_flink
+  - $VOLC_FLINK_CONFIG_DIR
+credentials:
+  primary: volc_flink_local_config
+  optional_env_vars:
+    - VOLCENGINE_ACCESS_KEY
+    - VOLCENGINE_SECRET_KEY
+    - VOLCENGINE_REGION
 ---
 
 # Kafka 连接管理子技能

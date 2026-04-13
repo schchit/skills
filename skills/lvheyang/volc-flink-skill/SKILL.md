@@ -1,6 +1,17 @@
 ---
 name: volc-flink-skill
 description: 火山引擎 Flink 版统一管理技能，智能路由到合适的子技能处理 Flink 相关问题。包括工具管理、项目配置、资源管理、连接管理、任务开发、任务运维、监控诊断等全流程功能。Use this skill as the entrypoint when the user expresses a concrete Flink intent on a concrete object, such as installing `volc_flink`, listing projects, inspecting catalog tables, configuring Kafka endpoints, creating SQL/JAR jobs, stopping/restarting jobs, checking logs/metrics, or diagnosing checkpoint/OOM failures. Always trigger when the request includes an action + target object in the Flink domain, rather than only generic words like "Flink" or "任务".
+required_binaries:
+  - volc_flink
+may_access_config_paths:
+  - ~/.volc_flink
+  - $VOLC_FLINK_CONFIG_DIR
+credentials:
+  primary: volc_flink_local_config
+  optional_env_vars:
+    - VOLCENGINE_ACCESS_KEY
+    - VOLCENGINE_SECRET_KEY
+    - VOLCENGINE_REGION
 ---
 
 # 火山引擎 Flink 版统一管理技能

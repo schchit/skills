@@ -1,6 +1,17 @@
 ---
 name: flink-savepoint
 description: Flink 快照（Savepoint）管理技能，用于创建、查询、恢复和删除 Flink 任务的快照。Use this skill when the user wants to create, list, restore, or delete savepoints for a specific Flink job/application. Always trigger only when the request contains a savepoint intent + a concrete job/savepoint object/action.
+required_binaries:
+  - volc_flink
+may_access_config_paths:
+  - ~/.volc_flink
+  - $VOLC_FLINK_CONFIG_DIR
+credentials:
+  primary: volc_flink_local_config
+  optional_env_vars:
+    - VOLCENGINE_ACCESS_KEY
+    - VOLCENGINE_SECRET_KEY
+    - VOLCENGINE_REGION
 ---
 
 # Flink 快照（Savepoint）管理技能

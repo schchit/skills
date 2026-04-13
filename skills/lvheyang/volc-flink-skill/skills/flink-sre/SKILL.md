@@ -1,6 +1,17 @@
 ---
 name: flink-sre
 description: Flink SRE 自动化运维工具，用于管理 Flink 任务的启动、停止、重启、扩容、缩容、配置修改等操作。Use this skill when the user wants to stop, restart, rescale, or update parameters for a specific running Flink job/application. Always trigger only when the request contains an operations intent + a concrete job/application object/action.
+required_binaries:
+  - volc_flink
+may_access_config_paths:
+  - ~/.volc_flink
+  - $VOLC_FLINK_CONFIG_DIR
+credentials:
+  primary: volc_flink_local_config
+  optional_env_vars:
+    - VOLCENGINE_ACCESS_KEY
+    - VOLCENGINE_SECRET_KEY
+    - VOLCENGINE_REGION
 ---
 
 # Flink SRE 自动化运维技能
