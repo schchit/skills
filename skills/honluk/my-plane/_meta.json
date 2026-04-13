@@ -1,0 +1,11 @@
+{
+  "owner": "honluk",
+  "slug": "my-plane",
+  "displayName": "My Plane",
+  "latest": {
+    "version": "1.0.2",
+    "publishedAt": 1775727618978,
+    "commit": null
+  },
+  "history": []
+}
