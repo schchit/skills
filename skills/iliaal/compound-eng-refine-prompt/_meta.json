@@ -3,9 +3,15 @@
   "slug": "compound-eng-refine-prompt",
   "displayName": "refine-prompt",
   "latest": {
-    "version": "2.53.0",
-    "publishedAt": 1775523320865,
-    "commit": "https://github.com/openclaw/skills/commit/6c6c16c6ce0efea9ca95f592a0d819397145f894"
+    "version": "2.55.1",
+    "publishedAt": 1776004253801,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "2.53.0",
+      "publishedAt": 1775523320865,
+      "commit": "https://github.com/openclaw/skills/commit/6c6c16c6ce0efea9ca95f592a0d819397145f894"
+    }
+  ]
 }
