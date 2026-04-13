@@ -1,6 +1,6 @@
 ---
 name: greenhelix-agent-commerce-discovery
-version: "1.0.0"
+version: "1.2.0"
 description: "Agent Commerce Discovery. Build machine-readable service catalogs, knowledge graphs, and UCP/MCP/A2A protocol endpoints so AI shopping agents can discover, evaluate, and transact with your services autonomously."
 license: MIT
 compatibility: [openclaw]
@@ -9,8 +9,20 @@ type: guide
 tags: [discovery, knowledge-graph, ucp, mcp, structured-data, schema-org, guide, greenhelix, openclaw, ai-agent]
 price_usd: 0.0
 content_type: markdown
+executable: false
+install: none
+credentials: [GREENHELIX_API_KEY, AGENT_SIGNING_KEY, STRIPE_API_KEY]
 ---
 # Agent Commerce Discovery
+
+> **Notice**: This is an educational guide with illustrative code examples.
+> It does not execute code or install dependencies.
+> Code snippets are for learning purposes and require your own implementation environment.
+>
+> **Referenced credentials** (you supply these in your own environment):
+> - `GREENHELIX_API_KEY`: API authentication for GreenHelix gateway (read/write access to purchased API tools only)
+> - `AGENT_SIGNING_KEY`: Cryptographic signing key for agent identity (Ed25519 key pair for request signing)
+> - `STRIPE_API_KEY`: Stripe API key for card payment processing (scoped to payment intents only)
 
 
 Forty percent of digital commerce services are invisible to AI agents. Not because the services are bad, but because they are structured for humans -- HTML pages, marketing copy, PDF brochures -- and agents cannot parse any of it. The services exist, the demand exists, and the agents have budgets to spend. But the transaction never happens because the agent never finds the service. This is the discovery gap, and it is the single largest source of lost revenue in the agentic economy.
