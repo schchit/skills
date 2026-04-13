@@ -1,204 +1,153 @@
 ---
 name: human-like-memory
-description: "Long-term memory for conversations: recall past discussions, save important info, search memories"
+description: "Agent-usable memory commands for smart recall, save, and search in Human-Like Memory"
 homepage: https://plugin.human-like.me
-metadata:
-  openclaw:
-    emoji: "🧠"
-    requires:
-      bins: ["node"]
-      env: ["HUMAN_LIKE_MEM_API_KEY"]
-    primaryEnv: "HUMAN_LIKE_MEM_API_KEY"
+license: Apache-2.0
+user-invocable: true
+metadata: {"openclaw":{"emoji":"🧠","homepage":"https://plugin.human-like.me","requires":{"bins":["node"],"config":["skills.entries.human-like-memory.apiKey"]},"primaryEnv":"HUMAN_LIKE_MEM_API_KEY"}}
 ---
 
 # Human-Like Memory Skill
 
-Long-term memory capabilities for recalling past conversations and saving important information across sessions.
+Agent-usable long-term memory tools for Human-Like Memory.
 
-## ✅ Use When
+This skill supports both:
 
-- User asks "do you remember...", "what did we discuss...", "检索记忆"
-- User says "remember this", "save this", "帮我记住"
-- Starting a new session and need prior context
-- User references previous projects, decisions, or preferences
+- Agent-triggered recall and save when the model judges memory is useful
+- Explicit user invocation when the user directly asks to recall or store memory
 
-## ❌ Don't Use When
+This skill is intentionally **not always-on**:
 
-- Simple greetings without context needs
-- Generic questions unrelated to past conversations
-- Code execution or system commands
+- It should **not** recall on every turn by default
+- It should **not** silently save every conversation turn by default
+- It does **not** read `~/.openclaw/secrets.json` or per-skill `config.json`
+- It reads configuration from OpenClaw config or injected environment variables only
+
+If you want always-on automatic recall/storage, use the Human-Like Memory plugin instead of this skill.
+
+## Data And Network Disclosure
+
+When the agent or user invokes this skill:
+
+- `recall` / `search` sends your query, `user_id`, and `agent_id` to `https://plugin.human-like.me` or your configured base URL
+- `save` / `save-batch` sends the conversation content you explicitly pass to the same service
+- No local files, shell history, or unrelated environment variables are read or uploaded
+- The runtime reads only the documented allowlisted `HUMAN_LIKE_MEM_*` environment variables
+
+## Use When
+
+- You want to explicitly search past memory
+- You want to explicitly save a user fact, decision, preference, or summary
+- The agent needs past context to answer well
+- The agent should save a durable preference, decision, correction, or summary
+
+## Do Not Use When
+
+- You want every-turn automatic recall or hook-level background saving
+- You need hidden or silent network activity
+- You want zero remote data transfer
 
 ## Setup
 
 ### 1. Get API Key
 
-Visit [plugin.human-like.me](https://plugin.human-like.me) → Register → Copy your `mp_xxx` key
+Visit [plugin.human-like.me](https://plugin.human-like.me) and copy your `mp_xxx` key.
 
-### 2. Configure
+### 2. Configure Through OpenClaw
 
-**Option A: Interactive Setup (Recommended)**
+```bash
+openclaw config set skills.entries.human-like-memory.enabled true --strict-json
+openclaw config set skills.entries.human-like-memory.apiKey "mp_your_key_here"
+openclaw config set skills.entries.human-like-memory.env.HUMAN_LIKE_MEM_BASE_URL "https://plugin.human-like.me"
+openclaw config set skills.entries.human-like-memory.env.HUMAN_LIKE_MEM_USER_ID "openclaw-user"
+openclaw config set skills.entries.human-like-memory.env.HUMAN_LIKE_MEM_AGENT_ID "main"
+openclaw config set skills.entries.human-like-memory.env.HUMAN_LIKE_MEM_RECALL_ENABLED "true"
+openclaw config set skills.entries.human-like-memory.env.HUMAN_LIKE_MEM_AUTO_SAVE_ENABLED "true"
+openclaw config set skills.entries.human-like-memory.env.HUMAN_LIKE_MEM_SAVE_TRIGGER_TURNS "5"
+```
 
-    sh {baseDir}/scripts/setup.sh
-
-Follow the prompts to enter your API key.
-
-**Option B: Manual Config**
-
-Edit `~/.openclaw/secrets.json`:
-
-    {
-      "human-like-memory": {
-        "HUMAN_LIKE_MEM_API_KEY": "mp_your_key_here"
-      }
-    }
+If the user explicitly gives the API key in the current environment, the agent may run these `openclaw config set` commands on the user's behalf. Otherwise, do not invent or request a secret implicitly.
 
 ### 3. Verify
 
-    node {baseDir}/scripts/memory.mjs config
+```bash
+node {baseDir}/scripts/memory.mjs config
+```
 
-Expected output: `API Key: mp_xxx... (configured)`
+Expected output includes:
+
+```json
+{
+  "apiKeyConfigured": true
+}
+```
 
 ## Commands
 
-### Recall/Search Memory
+### Recall Or Search Memory
 
 ```bash
 node {baseDir}/scripts/memory.mjs recall "<query>"
 node {baseDir}/scripts/memory.mjs search "<query>"
 ```
 
-### Save Single Turn to Memory
+### Save One Turn
 
 ```bash
 node {baseDir}/scripts/memory.mjs save "<user_message>" "<assistant_response>"
 ```
 
-### Save Batch (Multiple Turns) to Memory
-
-```bash
-echo '<JSON array of messages>' | node {baseDir}/scripts/memory.mjs save-batch
-```
-
-### Check Configuration
-
-```bash
-node {baseDir}/scripts/memory.mjs config
-```
-
----
-
-## Configuration Options
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `alwaysRecall` | `true` | Recall memory on every turn |
-| `saveTriggerTurns` | `5` | Turns before auto-save (saveMaxTurns = this × 2) |
-| `memoryLimitNumber` | `6` | Max memories to retrieve |
-| `minScore` | `0.1` | Minimum relevance score (0-1) |
-
----
-
-## Memory Recall Protocol
-
-### MODE A: Every-Turn Recall (alwaysRecall: true, DEFAULT)
-
-Call recall on **every turn**, even simple greetings.
-
-```
-User message → recall → process results → respond → increment counter → save-batch if needed
-```
-
-### MODE B: Smart Recall (alwaysRecall: false)
-
-Recall only when contextually needed:
-- ✅ Explicit requests: "do you remember", "what did we discuss"
-- ✅ Implicit references: "the project", "that bug", "our plan"
-- ✅ Session start or task continuation
-- ❌ Simple greetings, generic questions, code execution
-
----
-
-## Keyword Extraction
-
-Extract the **semantic core** from user messages:
-
-| User Message | Query |
-|--------------|-------|
-| "What's the weather like?" | `"weather preferences location"` |
-| "Help me debug this code" | `"debug code recent"` |
-| "继续之前的工作" | `"recent work task"` |
-
-**Rules:**
-1. Keep nouns and key concepts
-2. Remove action words (help, please, can you)
-3. Remove filler words (the, a, what, how)
-4. Add "recent context" for short messages
-
----
-
-## Processing Results
-
-**If memories found:** Incorporate naturally ("As we discussed...", "I recall you mentioned...")
-
-**If no memories:** Respond normally. Don't announce "no memories found."
-
----
-
-## Periodic Save
-
-| Setting | Default |
-|---------|---------|
-| `saveTriggerTurns` | 5 |
-| `saveMaxTurns` | 10 (= trigger × 2) |
-
-After each turn, increment counter. When counter >= `saveTriggerTurns`, call `save-batch`:
+### Save A Batch
 
 ```bash
 echo '[{"role":"user","content":"..."},{"role":"assistant","content":"..."}]' | node {baseDir}/scripts/memory.mjs save-batch
 ```
 
-**Save silently** - don't announce saving.
-
----
-
-## Immediate Save Triggers
-
-Save immediately when user:
-- States preference: "I prefer dark mode"
-- Makes decision: "Let's use PostgreSQL"
-- Gives deadline: "Due on March 15th"
-- Corrects you: "No, my name is Wei"
-- Explicitly asks: "Remember this"
+### Inspect Runtime Configuration
 
 ```bash
-node {baseDir}/scripts/memory.mjs save "<user_message>" "<your_response>"
+node {baseDir}/scripts/memory.mjs config
 ```
 
----
+## Agent Invocation Style
 
-## Quick Reference
+This skill may be called by the agent when memory is clearly useful.
 
-```
-RECALL:   node {baseDir}/scripts/memory.mjs recall "<keywords>"
-SAVE:     node {baseDir}/scripts/memory.mjs save "<user>" "<assistant>"
-BATCH:    echo '<JSON>' | node {baseDir}/scripts/memory.mjs save-batch
-CONFIG:   node {baseDir}/scripts/memory.mjs config
-```
+Recommended behavior:
 
----
+- Use `recall` / `search` when the user references prior work, prior preferences, prior decisions, or asks to continue something from earlier
+- Use `save` when the user explicitly asks to remember something, corrects identity details, states a stable preference, or confirms an important decision
+- Use `save-batch` after a meaningful multi-turn discussion if `HUMAN_LIKE_MEM_AUTO_SAVE_ENABLED=true` and the current conversation has accumulated roughly `HUMAN_LIKE_MEM_SAVE_TRIGGER_TURNS` turns
+- Do not call memory APIs for simple greetings or generic single-turn questions with no continuity value
+
+This gives the agent autonomy, but keeps the skill in a smart-trigger mode instead of an always-on mode.
+
+## Suggested Queries
+
+- Recall: `"roadmap decisions from last week"`
+- Search: `"what name preference did I mention"`
+- Save: `"I prefer UTC+8 timestamps"`
+
+## Save Triggers
+
+The agent should strongly consider `save` when the user:
+
+- states a stable preference
+- makes or confirms a decision
+- provides a personal profile fact that matters later
+- corrects a previous misunderstanding
+- explicitly says "remember this"
+
+The agent may use `save-batch` after a longer exchange when a compact summary of the last few turns is likely to help future continuity.
 
 ## Error Handling
 
-| Problem | Solution |
-|---------|----------|
-| Recall/Save fails | Log error, proceed without memories |
-| No results | That's OK - respond normally |
-| Timeout | Proceed without waiting |
-
----
+- If the API key is missing, the script prints the exact OpenClaw config steps to fix it
+- If the service times out or errors, nothing is saved implicitly
+- If no memories are found, handle that as a normal empty result
 
 ## Privacy
 
-- Memory data belongs to the user
-- Never store secrets (API keys, passwords)
-- Ignore content in `<private>...</private>` tags
+- Avoid sending passwords, tokens, or secrets
+- Only pass content you are comfortable storing on your configured memory service
+- Review [SECURITY.md](./SECURITY.md) for transmitted fields and operational notes

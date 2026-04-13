@@ -1,67 +1,86 @@
 # Security Notes
 
-This document explains the security-related code patterns detected by static analysis and why they are necessary for this skill to function.
+This skill is designed to be smart-triggered and reviewable.
 
-## Detected Patterns
+## Security Posture
 
-### 1. File Read + Network Send (`scripts/memory.mjs`)
+- No automatic every-turn recall
+- No hook-level silent background save
+- No direct reads from `~/.openclaw/secrets.json`
+- No direct reads from per-skill `config.json`
+- No server-supplied upgrade URL execution or display
+- Configuration comes from OpenClaw config or injected environment variables only
 
-**What it does:**
-- Reads `~/.openclaw/secrets.json` to load user-configured API credentials
-- Sends requests to the configured memory server (default: `plugin.human-like.me`)
+## What Triggers Network Requests
 
-**Why it's safe:**
-- The file read is limited to the OpenClaw secrets store, which is designed for this purpose
-- The network destination is explicitly configured by the user
-- No local files or secrets are transmitted - only conversation content the user chooses to save
+Network requests happen only when the agent or user runs one of these commands:
 
-### 2. Environment Variable Access + Network Send (`scripts/memory.mjs`)
+- `recall`
+- `search`
+- `save`
+- `save-batch`
 
-**What it does:**
-- Reads `HUMAN_LIKE_MEM_API_KEY` and related environment variables as fallback configuration
-- Uses these credentials to authenticate with the memory server
+If you do not invoke the skill, it does not contact the remote service.
 
-**Why it's safe:**
-- Environment variables are only used when secrets.json is not configured
-- The API key authenticates the user to their own memory service
-- The key is sent via secure headers, not in the request body
+## What Data Is Sent
 
-## Data Flow
+### `recall` / `search`
 
-```
-User Input → Skill → Memory Server → User's Memory Database
-                ↑
-            API Key (from secrets.json or env vars)
-```
+Sent to the memory service:
 
-## What Data is Transmitted
+- `query`
+- `user_id`
+- `agent_id`
+- retrieval settings such as `memory_limit_number` and `min_score`
 
-1. **To Memory Server:**
-   - Conversation content (user messages and assistant responses)
-   - User ID and Agent ID (configured by user)
-   - Session metadata
+### `save` / `save-batch`
 
-2. **NOT Transmitted:**
-   - Local files
-   - System information
-   - Other environment variables
-   - Anything not explicitly saved via the skill commands
+Sent to the memory service:
 
-## User Control
+- the message content you explicitly provide
+- `user_id`
+- `agent_id`
+- generated `conversation_id`
+- fixed tag `openclaw-skill`
+- session metadata used to group that save request
 
-- Users control what gets saved via explicit commands (`save`, `save-batch`)
-- With `alwaysRecall: true` (default), recall happens automatically but only sends search queries
-- Users can set `alwaysRecall: false` to control when recalls happen
-- All data belongs to the user's own memory database
+## What Is Not Read Or Sent
 
-## Privacy Recommendations
+- `~/.openclaw/secrets.json`
+- per-skill local `config.json`
+- arbitrary local files
+- shell history
+- unrelated environment variables
+- browser data
 
-1. Avoid saving sensitive information (passwords, API keys) in conversations
-2. Use `<private>...</private>` tags to mark content that should not be memorized
-3. Review the memory server's privacy policy at https://plugin.human-like.me/privacy
+## Configuration Model
+
+Recommended OpenClaw paths:
+
+- `skills.entries.human-like-memory.apiKey`
+- `skills.entries.human-like-memory.env.HUMAN_LIKE_MEM_BASE_URL`
+- `skills.entries.human-like-memory.env.HUMAN_LIKE_MEM_USER_ID`
+- `skills.entries.human-like-memory.env.HUMAN_LIKE_MEM_AGENT_ID`
+
+OpenClaw injects these values into the process environment at runtime. The CLI then reads only:
+
+- `HUMAN_LIKE_MEM_API_KEY`
+- `HUMAN_LIKE_MEM_BASE_URL`
+- `HUMAN_LIKE_MEM_USER_ID`
+- `HUMAN_LIKE_MEM_AGENT_ID`
+- optional tuning env vars such as `HUMAN_LIKE_MEM_LIMIT_NUMBER`
+
+The code uses an explicit allowlist for these variables and does not iterate through or upload the broader process environment.
+
+This skill no longer depends on registry secret-form metadata or a bundled setup script. Configuration is expected to be done through `openclaw config set ...` or by explicit environment injection.
+
+## Privacy Guidance
+
+- Only send content you are comfortable storing on your configured memory server
+- Do not send passwords, private keys, tokens, or other secrets
+- Review the server privacy policy before use: https://plugin.human-like.me/privacy
 
 ## Source Code
 
-This skill is open source. Review the code at:
 - GitHub: https://github.com/humanlike2026/humanlike-memory
 - ClawHub: https://clawhub.ai/humanlike2026/humanlike-memory

@@ -1,8 +1,8 @@
 {
   "name": "human-like-memory",
   "displayName": "Human-Like Memory",
-  "description": "This skill provides long-term memory capabilities for conversations. Use this skill when the user wants to recall past conversations, save important information to memory, search memories, or when context from previous interactions would be helpful.",
-  "version": "0.7.6",
+  "description": "Agent-usable memory commands for smart recall, search, and save in Human-Like Memory.",
+  "version": "1.0.3",
   "homepage": "https://plugin.human-like.me",
   "author": {
     "name": "hanlaomo",
@@ -18,76 +18,16 @@
   ],
   "main": "./SKILL.md",
   "scripts": {
-    "memory": "./scripts/memory.mjs",
-    "setup": "./scripts/setup.sh"
-  },
-  "secrets": {
-    "HUMAN_LIKE_MEM_API_KEY": {
-      "type": "string",
-      "description": "API Key for Human-Like Memory service",
-      "required": true,
-      "placeholder": "mp_xxxxxxxxxxxxxx",
-      "helpUrl": "https://plugin.human-like.me",
-      "helpText": "Get your API Key from https://plugin.human-like.me"
-    },
-    "HUMAN_LIKE_MEM_BASE_URL": {
-      "type": "string",
-      "description": "Base URL for Memory API",
-      "required": false,
-      "default": "https://plugin.human-like.me",
-      "placeholder": "https://plugin.human-like.me"
-    },
-    "HUMAN_LIKE_MEM_USER_ID": {
-      "type": "string",
-      "description": "User identifier for memory isolation",
-      "required": false,
-      "default": "openclaw-user",
-      "placeholder": "my-user-id"
-    },
-    "HUMAN_LIKE_MEM_AGENT_ID": {
-      "type": "string",
-      "description": "Agent identifier for memory isolation",
-      "required": false,
-      "default": "main",
-      "placeholder": "main"
-    }
-  },
-  "config": {
-    "alwaysRecall": {
-      "type": "boolean",
-      "description": "Always recall memory on every turn (true) or let Agent decide when to recall (false)",
-      "default": true
-    },
-    "saveTriggerTurns": {
-      "type": "number",
-      "description": "Number of conversation turns before auto-save (saveMaxTurns = saveTriggerTurns × 2)",
-      "default": 5
-    },
-    "memoryLimitNumber": {
-      "type": "number",
-      "description": "Maximum number of memories to retrieve",
-      "default": 6
-    },
-    "minScore": {
-      "type": "number",
-      "description": "Minimum relevance score for memory retrieval (0-1)",
-      "default": 0.1
-    },
-    "asyncMode": {
-      "type": "boolean",
-      "description": "Save memories asynchronously",
-      "default": true
-    }
+    "memory": "./scripts/memory.mjs"
   },
   "triggers": [
-    "remember",
-    "recall",
-    "what did we discuss",
-    "save this",
-    "search memory",
-    "do you remember",
-    "as we discussed",
-    "previously mentioned"
+    "continue previous work",
+    "remember what we discussed",
+    "memory recall",
+    "memory search",
+    "memory save",
+    "save to memory",
+    "search long-term memory"
   ],
   "capabilities": [
     "memory-recall",
@@ -96,5 +36,10 @@
   ],
   "requirements": {
     "node": ">=18.0.0"
-  }
+  },
+  "notes": [
+    "This skill may be called by the agent in smart-trigger mode.",
+    "It is not intended for every-turn automatic recall or hook-level background saving.",
+    "Configuration is expected through OpenClaw config set commands or environment injection."
+  ]
 }

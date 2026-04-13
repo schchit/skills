@@ -3,9 +3,15 @@
   "slug": "humanlike-memory",
   "displayName": "Human-Like Memory",
   "latest": {
-    "version": "0.7.6",
-    "publishedAt": 1775531712773,
-    "commit": "https://github.com/openclaw/skills/commit/178f0549f5ac7bf84fda5b774027084eda37c0ba"
+    "version": "1.0.3",
+    "publishedAt": 1775982407145,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.7.6",
+      "publishedAt": 1775531712773,
+      "commit": "https://github.com/openclaw/skills/commit/178f0549f5ac7bf84fda5b774027084eda37c0ba"
+    }
+  ]
 }

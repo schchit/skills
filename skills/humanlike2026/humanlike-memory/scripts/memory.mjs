@@ -10,199 +10,63 @@
  *   node memory.mjs config
  */
 
-import { readFile } from 'fs/promises';
-import { homedir } from 'os';
-import { join } from 'path';
 import { createInterface } from 'readline';
+import { buildConfig, buildMissingApiKeyError } from './config.mjs';
+import { httpRequest } from './client.mjs';
 
-const SKILL_VERSION = '0.7.6';
+const SKILL_VERSION = '1.0.3';
 
-// Configuration paths
-const OPENCLAW_DIR = join(homedir(), '.openclaw');
-const SECRETS_FILE = join(OPENCLAW_DIR, 'secrets.json');
-const CONFIG_FILE = join(OPENCLAW_DIR, 'skills', 'human-like-memory', 'config.json');
+function truncate(text, maxLen) {
+  if (!text || text.length <= maxLen) return text || '';
+  return text.substring(0, maxLen - 3) + '...';
+}
 
-/**
- * Parse boolean from string/boolean value
- */
-function parseBoolean(value, defaultValue) {
-  if (value === undefined || value === null) return defaultValue;
-  if (typeof value === 'boolean') return value;
-  if (typeof value === 'string') {
-    return value.toLowerCase() === 'true' || value === '1';
+function formatLogValue(value, maxLen = 48) {
+  if (value === undefined || value === null || value === '') return '-';
+  if (Array.isArray(value)) {
+    if (value.length === 0) return '-';
+    const items = value.slice(0, 3).map((item) => truncate(String(item), 24));
+    return items.join(',') + (value.length > 3 ? ',...' : '');
   }
-  return defaultValue;
+  return truncate(String(value), maxLen);
 }
 
-/**
- * Upgrade notification from server
- */
-let upgradeNotification = null;
+function maskSecretForLog(value, prefix = 10, suffix = 6) {
+  const text = String(value || '').trim();
+  if (!text) return '-';
+  if (text.length <= prefix + suffix) return text;
+  return `${text.slice(0, prefix)}...${text.slice(-suffix)}`;
+}
 
-/**
- * Load secrets from OpenClaw secrets store
- */
-async function loadSecrets() {
-  try {
-    const data = await readFile(SECRETS_FILE, 'utf-8');
-    const secrets = JSON.parse(data);
-    return secrets['human-like-memory'] || {};
-  } catch (error) {
-    // Fallback to environment variables
-    return {
-      apiKey: process.env.HUMAN_LIKE_MEM_API_KEY,
-      baseUrl: process.env.HUMAN_LIKE_MEM_BASE_URL,
-      userId: process.env.HUMAN_LIKE_MEM_USER_ID,
-    };
+function buildRequestId(prefix = 'openclaw-skill') {
+  return `${prefix}-${Date.now()}`;
+}
+
+function memoryPreviewItem(memory, rank) {
+  if (!memory || typeof memory !== 'object') {
+    return `#${rank} id=- text="-"`;
   }
-}
-
-/**
- * Load skill configuration
- */
-async function loadConfig() {
-  try {
-    const data = await readFile(CONFIG_FILE, 'utf-8');
-    return JSON.parse(data);
-  } catch {
-    return {};
+  const parts = [
+    `#${rank}`,
+    `id=${formatLogValue(memory.id, 8)}`,
+  ];
+  if (typeof memory.score === 'number' && Number.isFinite(memory.score)) {
+    parts.push(`s=${memory.score.toFixed(6)}`);
   }
+  parts.push(`text="${truncate(memory.description || memory.event || memory.content || '', 80)}"`);
+  return parts.join(' ');
 }
 
-/**
- * Build configuration from secrets and config
- */
-async function buildConfig() {
-  const secrets = await loadSecrets();
-  const config = await loadConfig();
-
-  const saveTriggerTurns = config.saveTriggerTurns || 5;
-
-  return {
-    baseUrl: secrets.baseUrl || secrets.HUMAN_LIKE_MEM_BASE_URL || process.env.HUMAN_LIKE_MEM_BASE_URL || 'https://plugin.human-like.me',
-    apiKey: secrets.apiKey || secrets.HUMAN_LIKE_MEM_API_KEY || process.env.HUMAN_LIKE_MEM_API_KEY,
-    userId: secrets.userId || secrets.HUMAN_LIKE_MEM_USER_ID || process.env.HUMAN_LIKE_MEM_USER_ID || 'openclaw-user',
-    agentId: secrets.agentId || secrets.HUMAN_LIKE_MEM_AGENT_ID || process.env.HUMAN_LIKE_MEM_AGENT_ID || 'main',
-    memoryLimitNumber: config.memoryLimitNumber || 6,
-    minScore: config.minScore || 0.1,
-    timeoutMs: config.timeoutMs || 30000,
-    scenario: secrets.scenario || secrets.HUMAN_LIKE_MEM_SCENARIO || process.env.HUMAN_LIKE_MEM_SCENARIO || 'openclaw-skill',
-    // Privacy and feature toggles
-    recallEnabled: parseBoolean(secrets.recallEnabled ?? secrets.HUMAN_LIKE_MEM_RECALL_ENABLED ?? process.env.HUMAN_LIKE_MEM_RECALL_ENABLED, true),
-    addEnabled: parseBoolean(secrets.addEnabled ?? secrets.HUMAN_LIKE_MEM_ADD_ENABLED ?? process.env.HUMAN_LIKE_MEM_ADD_ENABLED, true),
-    stripPlatformMetadata: parseBoolean(secrets.stripPlatformMetadata ?? secrets.HUMAN_LIKE_MEM_STRIP_PLATFORM_METADATA ?? process.env.HUMAN_LIKE_MEM_STRIP_PLATFORM_METADATA, false),
-    // Conversation storage settings
-    saveTriggerTurns: saveTriggerTurns,
-    saveMaxTurns: saveTriggerTurns * 2,
-  };
+function memoryPreviewSummary(memories, limit = 3) {
+  if (!Array.isArray(memories) || memories.length === 0) return '-';
+  return memories.slice(0, limit).map((memory, index) => memoryPreviewItem(memory, index + 1)).join(' | ');
 }
 
-/**
- * Build actionable guidance when API key is missing
- */
-function buildMissingApiKeyError() {
-  return {
-    success: false,
-    error: 'API Key not configured. HUMAN_LIKE_MEM_API_KEY is required.',
-    nextSteps: [
-      'If installed from ClawHub: open OpenClaw skill settings and fill the secret form.',
-      'Or run setup script: bash ~/.openclaw/workspace/skills/human-like-memory/scripts/setup.sh',
-      'Then verify config: node ~/.openclaw/workspace/skills/human-like-memory/scripts/memory.mjs config',
-    ],
-    helpUrl: 'https://plugin.human-like.me',
-  };
-}
-
-/**
- * Make HTTP request with timeout
- */
-async function httpRequest(url, options, timeoutMs = 5000) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    // Check for upgrade notification in response headers
-    checkUpgradeHeaders(response);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 200)}`);
-    }
-
-    const jsonResult = await response.json();
-
-    // Also check for upgrade notification in response body
-    checkUpgradeBody(jsonResult);
-
-    return jsonResult;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    if (error.name === 'AbortError') {
-      throw new Error(`Request timeout after ${timeoutMs}ms`);
-    }
-    throw error;
-  }
-}
-
-/**
- * Check response headers for upgrade notification
- */
-function checkUpgradeHeaders(response) {
-  const upgradeRequired = response.headers.get('X-Upgrade-Required');
-  const upgradeVersion = response.headers.get('X-Upgrade-Version');
-  const upgradeMessage = response.headers.get('X-Upgrade-Message');
-  const upgradeUrl = response.headers.get('X-Upgrade-Url');
-
-  if (upgradeRequired === 'true' || upgradeVersion) {
-    upgradeNotification = {
-      required: upgradeRequired === 'true',
-      version: upgradeVersion || 'latest',
-      message: upgradeMessage || `Please upgrade to version ${upgradeVersion || 'latest'}`,
-      url: upgradeUrl || 'https://clawhub.dev/skills/human-like-memory',
-      currentVersion: SKILL_VERSION,
-    };
-  }
-}
-
-/**
- * Check response body for upgrade notification
- */
-function checkUpgradeBody(result) {
-  if (result && result._upgrade) {
-    const upgrade = result._upgrade;
-    upgradeNotification = {
-      required: upgrade.required === true,
-      version: upgrade.version || 'latest',
-      message: upgrade.message || `Please upgrade to version ${upgrade.version || 'latest'}`,
-      url: upgrade.url || 'https://clawhub.dev/skills/human-like-memory',
-      currentVersion: SKILL_VERSION,
-    };
-  }
-}
-
-/**
- * Format upgrade notification for output
- */
-function formatUpgradeNotification() {
-  if (!upgradeNotification) return null;
-
-  const { required, version, message, url, currentVersion } = upgradeNotification;
-
-  return {
-    upgradeRequired: required,
-    currentVersion,
-    latestVersion: version,
-    message,
-    upgradeUrl: url,
-    upgradeCommand: 'openclaw skill upgrade human-like-memory',
-  };
+function logSkillStage(stage, fields = {}) {
+  const content = Object.entries(fields)
+    .map(([key, value]) => `${key}=${formatLogValue(value, key === 'top' ? 240 : 96)}`)
+    .join(' ');
+  console.error(`[OpenClaw Skill][${stage}] ${content}`.trim());
 }
 
 /**
@@ -216,24 +80,40 @@ async function recallMemory(query) {
     process.exit(1);
   }
 
-  // Check if recall is disabled
   if (!cfg.recallEnabled) {
     console.log(JSON.stringify({
       success: true,
+      count: 0,
       memories: [],
       message: 'Memory recall is disabled via HUMAN_LIKE_MEM_RECALL_ENABLED=false',
-    }));
+    }, null, 2));
     return;
   }
 
   const url = `${cfg.baseUrl}/api/plugin/v1/search/memory`;
+  const requestId = buildRequestId();
+  const requestStart = Date.now();
   const payload = {
     query: query,
     user_id: cfg.userId,
     agent_id: cfg.agentId,
     memory_limit_number: cfg.memoryLimitNumber,
     min_score: cfg.minScore,
+    scenario: cfg.scenario,
+    scenarios: cfg.scenario ? [cfg.scenario] : [],
   };
+  logSkillStage('Search][START', {
+    req: requestId,
+    url,
+    query: `"${truncate(query, 80)}"`,
+    qlen: query.length,
+    user_id: cfg.userId,
+    agent_id: cfg.agentId,
+    scenario: cfg.scenario,
+    limit: cfg.memoryLimitNumber,
+    min_score: cfg.minScore,
+    api_key: maskSecretForLog(cfg.apiKey),
+  });
 
   try {
     const result = await httpRequest(url, {
@@ -241,7 +121,7 @@ async function recallMemory(query) {
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': cfg.apiKey,
-        'x-request-id': `openclaw-skill-${Date.now()}`,
+        'x-request-id': requestId,
         'x-plugin-version': SKILL_VERSION,
         'x-client-type': 'skill',
       },
@@ -249,6 +129,12 @@ async function recallMemory(query) {
     }, cfg.timeoutMs);
 
     if (!result.success) {
+      logSkillStage('Search][END', {
+        req: requestId,
+        success: false,
+        total_ms: Date.now() - requestStart,
+        error: `"${truncate(result.error || 'Memory retrieval failed', 160)}"`,
+      });
       console.error(JSON.stringify({
         success: false,
         error: result.error || 'Memory retrieval failed',
@@ -274,28 +160,25 @@ async function recallMemory(query) {
       output.context = formatMemoriesForContext(memories);
     }
 
-    // Add upgrade notification if present
-    const upgradeInfo = formatUpgradeNotification();
-    if (upgradeInfo) {
-      output._upgrade = upgradeInfo;
-      upgradeNotification = null; // Clear after showing
-    }
-
+    logSkillStage('Search][END', {
+      req: requestId,
+      success: true,
+      count: memories.length,
+      total_ms: Date.now() - requestStart,
+      top: memoryPreviewSummary(memories),
+    });
     console.log(JSON.stringify(output, null, 2));
   } catch (error) {
-    const errorOutput = {
+    logSkillStage('Search][END', {
+      req: requestId,
+      success: false,
+      total_ms: Date.now() - requestStart,
+      error: `"${truncate(error.message || String(error), 160)}"`,
+    });
+    console.error(JSON.stringify({
       success: false,
       error: error.message,
-    };
-
-    // Add upgrade notification even on error
-    const upgradeInfo = formatUpgradeNotification();
-    if (upgradeInfo) {
-      errorOutput._upgrade = upgradeInfo;
-      upgradeNotification = null;
-    }
-
-    console.error(JSON.stringify(errorOutput));
+    }));
     process.exit(1);
   }
 }
@@ -311,7 +194,6 @@ async function saveMemory(userMessage, assistantResponse) {
     process.exit(1);
   }
 
-  // Check if storage is disabled
   if (!cfg.addEnabled) {
     console.log(JSON.stringify({
       success: true,
@@ -323,6 +205,8 @@ async function saveMemory(userMessage, assistantResponse) {
   const url = `${cfg.baseUrl}/api/plugin/v1/add/message`;
   const sessionId = `session-${Date.now()}`;
   const agentId = cfg.agentId || 'main';
+  const requestId = buildRequestId();
+  const requestStart = Date.now();
   const messages = [];
 
   if (userMessage) {
@@ -353,11 +237,23 @@ async function saveMemory(userMessage, assistantResponse) {
           user_ids: [cfg.userId],
           agent_ids: [agentId],
           session_id: sessionId,
-          scenario: cfg.scenario || 'openclaw-skill',
+          scenario: cfg.scenario || 'openclaw-plugin',
         }),
       },
     },
   };
+  logSkillStage('Add][START', {
+    req: requestId,
+    url,
+    user_id: cfg.userId,
+    agent_id: agentId,
+    conversation_id: sessionId,
+    messages: messages.length,
+    roles: messages.map((m) => m.role),
+    last_user: `"${truncate(userMessage || '', 80)}"`,
+    scenario: cfg.scenario,
+    api_key: maskSecretForLog(cfg.apiKey),
+  });
 
   try {
     const result = await httpRequest(url, {
@@ -365,7 +261,7 @@ async function saveMemory(userMessage, assistantResponse) {
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': cfg.apiKey,
-        'x-request-id': `openclaw-skill-${Date.now()}`,
+        'x-request-id': requestId,
         'x-plugin-version': SKILL_VERSION,
         'x-client-type': 'skill',
       },
@@ -378,28 +274,26 @@ async function saveMemory(userMessage, assistantResponse) {
       memoriesCount: result.memories_count || 0,
     };
 
-    // Add upgrade notification if present
-    const upgradeInfo = formatUpgradeNotification();
-    if (upgradeInfo) {
-      output._upgrade = upgradeInfo;
-      upgradeNotification = null;
-    }
-
+    logSkillStage('Add][END', {
+      req: requestId,
+      success: true,
+      total_ms: Date.now() - requestStart,
+      count: result.memories_count || 0,
+      server_req: result.request_id,
+      message: `"${truncate(result.message || output.message, 120)}"`,
+    });
     console.log(JSON.stringify(output));
   } catch (error) {
-    const errorOutput = {
+    logSkillStage('Add][END', {
+      req: requestId,
+      success: false,
+      total_ms: Date.now() - requestStart,
+      error: `"${truncate(error.message || String(error), 160)}"`,
+    });
+    console.error(JSON.stringify({
       success: false,
       error: error.message,
-    };
-
-    // Add upgrade notification even on error
-    const upgradeInfo = formatUpgradeNotification();
-    if (upgradeInfo) {
-      errorOutput._upgrade = upgradeInfo;
-      upgradeNotification = null;
-    }
-
-    console.error(JSON.stringify(errorOutput));
+    }));
     process.exit(1);
   }
 }
@@ -453,7 +347,6 @@ async function saveBatchMemory() {
     process.exit(1);
   }
 
-  // Check if storage is disabled
   if (!cfg.addEnabled) {
     console.log(JSON.stringify({
       success: true,
@@ -514,13 +407,14 @@ async function saveBatchMemory() {
     }
   }
 
-  // Limit to saveMaxTurns
-  const maxMessages = cfg.saveMaxTurns * 2; // Each turn has 2 messages
+  const maxMessages = cfg.saveMaxMessages;
   const messagesToSave = messages.slice(-maxMessages);
 
   const url = `${cfg.baseUrl}/api/plugin/v1/add/message`;
   const sessionId = `session-${Date.now()}`;
   const agentId = cfg.agentId || 'main';
+  const requestId = buildRequestId();
+  const requestStart = Date.now();
 
   const payload = {
     user_id: cfg.userId,
@@ -538,11 +432,23 @@ async function saveBatchMemory() {
           user_ids: [cfg.userId],
           agent_ids: [agentId],
           session_id: sessionId,
-          scenario: cfg.scenario || 'openclaw-skill',
+          scenario: cfg.scenario || 'openclaw-plugin',
         }),
       },
     },
   };
+  logSkillStage('Add][START', {
+    req: requestId,
+    url,
+    user_id: cfg.userId,
+    agent_id: agentId,
+    conversation_id: sessionId,
+    messages: messagesToSave.length,
+    roles: messagesToSave.map((m) => m.role),
+    last_user: `"${truncate(messagesToSave.filter((m) => m.role === 'user').slice(-1)[0]?.content || '', 80)}"`,
+    scenario: cfg.scenario,
+    api_key: maskSecretForLog(cfg.apiKey),
+  });
 
   try {
     const result = await httpRequest(url, {
@@ -550,7 +456,7 @@ async function saveBatchMemory() {
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': cfg.apiKey,
-        'x-request-id': `openclaw-skill-${Date.now()}`,
+        'x-request-id': requestId,
         'x-plugin-version': SKILL_VERSION,
         'x-client-type': 'skill',
       },
@@ -563,33 +469,30 @@ async function saveBatchMemory() {
       message: `Saved ${turnCount} turns (${messagesToSave.length} messages) to memory`,
       memoriesCount: result.memories_count || 0,
       config: {
-        saveTriggerTurns: cfg.saveTriggerTurns,
-        saveMaxTurns: cfg.saveMaxTurns,
+        saveMaxMessages: cfg.saveMaxMessages,
       },
     };
 
-    // Add upgrade notification if present
-    const upgradeInfo = formatUpgradeNotification();
-    if (upgradeInfo) {
-      output._upgrade = upgradeInfo;
-      upgradeNotification = null;
-    }
-
+    logSkillStage('Add][END', {
+      req: requestId,
+      success: true,
+      total_ms: Date.now() - requestStart,
+      count: result.memories_count || 0,
+      server_req: result.request_id,
+      message: `"${truncate(output.message, 120)}"`,
+    });
     console.log(JSON.stringify(output));
   } catch (error) {
-    const errorOutput = {
+    logSkillStage('Add][END', {
+      req: requestId,
+      success: false,
+      total_ms: Date.now() - requestStart,
+      error: `"${truncate(error.message || String(error), 160)}"`,
+    });
+    console.error(JSON.stringify({
       success: false,
       error: error.message,
-    };
-
-    // Add upgrade notification even on error
-    const upgradeInfo = formatUpgradeNotification();
-    if (upgradeInfo) {
-      errorOutput._upgrade = upgradeInfo;
-      upgradeNotification = null;
-    }
-
-    console.error(JSON.stringify(errorOutput));
+    }));
     process.exit(1);
   }
 }
@@ -604,11 +507,16 @@ async function showConfig() {
     baseUrl: cfg.baseUrl,
     userId: cfg.userId,
     agentId: cfg.agentId,
+    scenario: cfg.scenario,
     apiKeyConfigured: !!cfg.apiKey,
     memoryLimitNumber: cfg.memoryLimitNumber,
     minScore: cfg.minScore,
+    recallEnabled: cfg.recallEnabled,
+    addEnabled: cfg.addEnabled,
+    autoSaveEnabled: cfg.autoSaveEnabled,
     saveTriggerTurns: cfg.saveTriggerTurns,
-    saveMaxTurns: cfg.saveMaxTurns,
+    saveMaxMessages: cfg.saveMaxMessages,
+    mode: 'agent-smart',
   }, null, 2));
 }
 
@@ -714,64 +622,76 @@ Examples:
   echo '[{"role":"user","content":"Hi"},{"role":"assistant","content":"Hello!"}]' | node memory.mjs save-batch
 
 Configuration:
-  Set these in OpenClaw secrets or environment variables:
+  Configure via OpenClaw config or environment variables:
   - HUMAN_LIKE_MEM_API_KEY (required)
   - HUMAN_LIKE_MEM_BASE_URL (optional, default: https://plugin.human-like.me)
   - HUMAN_LIKE_MEM_USER_ID (optional, default: openclaw-user)
   - HUMAN_LIKE_MEM_AGENT_ID (optional, default: main)
-
-  Conversation storage settings (in config.json):
-  - saveTriggerTurns: Number of turns before auto-save (default: 5)
-  - saveMaxTurns: Max turns to save = saveTriggerTurns × 2 (default: 10)
+  - HUMAN_LIKE_MEM_LIMIT_NUMBER (optional, default: 6)
+  - HUMAN_LIKE_MEM_MIN_SCORE (optional, default: 0.0)
+  - HUMAN_LIKE_MEM_RECALL_ENABLED (optional, default: true)
+  - HUMAN_LIKE_MEM_ADD_ENABLED (optional, default: true)
+  - HUMAN_LIKE_MEM_AUTO_SAVE_ENABLED (optional, default: true)
+  - HUMAN_LIKE_MEM_SAVE_TRIGGER_TURNS (optional, default: 5)
+  - HUMAN_LIKE_MEM_SAVE_MAX_MESSAGES (optional, default: 20)
 `);
 }
 
-// Main entry point
-const [,, command, ...args] = process.argv;
+async function main() {
+  const [,, command, ...args] = process.argv;
 
-switch (command) {
-  case 'recall':
-    if (!args[0]) {
-      console.error('Error: Query is required for recall command');
+  switch (command) {
+    case 'recall':
+      if (!args[0]) {
+        console.error('Error: Query is required for recall command');
+        process.exit(1);
+      }
+      await recallMemory(args.join(' '));
+      break;
+
+    case 'save':
+      if (!args[0]) {
+        console.error('Error: At least one message is required for save command');
+        process.exit(1);
+      }
+      await saveMemory(args[0], args[1]);
+      break;
+
+    case 'save-batch':
+      await saveBatchMemory();
+      break;
+
+    case 'search':
+      if (!args[0]) {
+        console.error('Error: Query is required for search command');
+        process.exit(1);
+      }
+      await searchMemory(args.join(' '));
+      break;
+
+    case 'config':
+      await showConfig();
+      break;
+
+    case 'help':
+    case '--help':
+    case '-h':
+      printUsage();
+      break;
+
+    default:
+      if (command) {
+        console.error(`Unknown command: ${command}`);
+      }
+      printUsage();
       process.exit(1);
-    }
-    await recallMemory(args.join(' '));
-    break;
-
-  case 'save':
-    if (!args[0]) {
-      console.error('Error: At least one message is required for save command');
-      process.exit(1);
-    }
-    await saveMemory(args[0], args[1]);
-    break;
-
-  case 'save-batch':
-    await saveBatchMemory();
-    break;
-
-  case 'search':
-    if (!args[0]) {
-      console.error('Error: Query is required for search command');
-      process.exit(1);
-    }
-    await searchMemory(args.join(' '));
-    break;
-
-  case 'config':
-    await showConfig();
-    break;
-
-  case 'help':
-  case '--help':
-  case '-h':
-    printUsage();
-    break;
-
-  default:
-    if (command) {
-      console.error(`Unknown command: ${command}`);
-    }
-    printUsage();
-    process.exit(1);
+  }
 }
+
+await main().catch((error) => {
+  console.error(JSON.stringify({
+    success: false,
+    error: error.message || String(error),
+  }));
+  process.exit(1);
+});
