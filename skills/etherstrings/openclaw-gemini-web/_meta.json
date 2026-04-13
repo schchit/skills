@@ -1,0 +1,11 @@
+{
+  "owner": "etherstrings",
+  "slug": "openclaw-gemini-web",
+  "displayName": "OpenClaw Gemini Web",
+  "latest": {
+    "version": "0.1.5",
+    "publishedAt": 1775572926732,
+    "commit": null
+  },
+  "history": []
+}
