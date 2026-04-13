@@ -392,6 +392,124 @@ def save_shapefile(gdf, filepath):
 def generate_preview(point_gdf, isochrone_gdf, address_name, mode, minutes,
                      output_path, mapbox_ak=None, base_map_path=None,
                      wgs84_extent=None):
+    global os
+    """
+    生成等时圈预览图：
+    - 有 WGS84 GeoTIFF 底图：ESRI 卫星影像重投影 → 最佳效果
+    - 无底图时：matplotlib 绘制简洁 WGS84 网格背景（无外部依赖，极小文件）
+    等时圈透明度: alpha=0.38（面）
+    """
+    fig, ax = plt.subplots(figsize=(10, 9))
+    mode_labels = {"driving": "驾车", "walking": "步行", "cycling": "骑行"}
+    mode_cn = mode_labels.get(mode, mode)
+
+    if not isochrone_gdf.empty:
+        bounds_wgs = isochrone_gdf.total_bounds
+    else:
+        bounds_wgs = None
+
+    # ===== 路径A：WGS84 GeoTIFF 底图（卫星影像）======
+    if wgs84_extent and base_map_path and os.path.exists(base_map_path):
+        try:
+            import rasterio
+            with rasterio.open(base_map_path) as src:
+                img_wgs84 = src.read()
+                extent_wgs84 = src.bounds
+            west, south, east, north = extent_wgs84
+            ax.set_xlim(west, east)
+            ax.set_ylim(south, north)
+            ax.imshow(img_wgs84.transpose(1, 2, 0),
+                      extent=[west, east, south, north],
+                      origin="upper", aspect="auto", zorder=0)
+            isochrone_gdf.plot(ax=ax, color="#4A90E2", alpha=0.35,
+                               edgecolor="#1A5EB8", linewidth=2,
+                               label="等时圈范围", zorder=2)
+            if not point_gdf.empty:
+                pt = point_gdf.geometry.iloc[0]
+                ax.scatter(pt.x, pt.y, color="#E74C3C", s=150, marker="*",
+                          edgecolor="white", linewidth=1.5, zorder=5)
+                ax.annotate(
+                    f"{address_name}\n({pt.x:.5f}, {pt.y:.5f})",
+                    xy=(pt.x, pt.y), xytext=(8, 8),
+                    textcoords="offset points", fontsize=9, color="#222222",
+                    bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
+                              alpha=0.85, edgecolor="#999"), zorder=6)
+            ax.set_xlabel("经度 (WGS84)", fontsize=9)
+            ax.set_ylabel("纬度 (WGS84)", fontsize=9)
+            ax.grid(True, linestyle="--", alpha=0.3, color="white")
+            ax.set_title(f"等时圈预览 — {address_name}\n{mode_cn} {minutes}分钟",
+                         fontsize=13, fontweight="bold")
+            ax.set_aspect("equal")
+            plt.tight_layout()
+            # 先保存 PNG，再用 PIL 转为 JPG（控制文件大小）
+            # 先保存 PNG，再用 PIL 转为 JPG（支持 quality 参数控制文件大小）
+            png_tmp = output_path + '_tmp.png'
+            plt.savefig(png_tmp, dpi=130, bbox_inches='tight', format='png')
+            plt.close()
+            img = Image.open(png_tmp).convert('RGB')
+            img.save(output_path, 'JPEG', quality=82, optimize=True)
+            __import__('os').remove(png_tmp)
+            size = __import__('os').path.getsize(output_path) // 1024
+            print(f"  ✓ 已保存预览图（WGS84底图，JPG压缩{size}KB）: {output_path}")
+            return
+        except Exception as e:
+            print(f"  ⚠ WGS84底图渲染失败: {e}，使用简洁背景模式")
+
+    # ===== 路径B：简洁WGS84网格背景（matplotlib原生，无外部依赖）======
+    if bounds_wgs is not None:
+        pad = (bounds_wgs[2] - bounds_wgs[0]) * 0.12
+        xlim = (bounds_wgs[0] - pad, bounds_wgs[2] + pad)
+        ylim = (bounds_wgs[1] - pad, bounds_wgs[3] + pad)
+    else:
+        xlim = None; ylim = None
+
+    ax.set_facecolor("#EEF2F7")
+    if xlim and ylim:
+        ax.set_xlim(xlim); ax.set_ylim(ylim)
+
+    if xlim and ylim:
+        ax.grid(True, which="major", linestyle="-", alpha=0.4, color="#FFFFFF", linewidth=0.7)
+        ax.grid(True, which="minor", linestyle=":", alpha=0.2, color="#FFFFFF", linewidth=0.3)
+        ax.set_xlabel("经度 (WGS84)", fontsize=9, color="#444")
+        ax.set_ylabel("纬度 (WGS84)", fontsize=9, color="#444")
+        N = 5
+        x_fracs = np.linspace(0, 1, N)
+        x_ticks = [xlim[0] + f * (xlim[1] - xlim[0]) for f in x_fracs]
+        ax.set_xticks(x_ticks)
+        ax.set_xticklabels([f"{v:.3f}°" for v in x_ticks], fontsize=7.5, color="#555")
+        y_fracs = np.linspace(0, 1, N)
+        y_ticks = [ylim[0] + f * (ylim[1] - ylim[0]) for f in y_fracs]
+        ax.set_yticks(y_ticks)
+        ax.set_yticklabels([f"{v:.3f}°" for v in y_ticks], fontsize=7.5, color="#555")
+
+    if not isochrone_gdf.empty:
+        isochrone_gdf.plot(ax=ax, color="#4A90E2", alpha=0.38,
+                           edgecolor="#1A5EB8", linewidth=2, label="等时圈范围", zorder=2)
+
+    if not point_gdf.empty:
+        point_gdf.plot(ax=ax, color="#E74C3C", markersize=130, marker="*",
+                       edgecolor="white", linewidth=1.8, zorder=5, label="起点")
+        pt = point_gdf.geometry.iloc[0]
+        ax.annotate(
+            f"{address_name}\n({pt.x:.5f}, {pt.y:.5f})",
+            xy=(pt.x, pt.y), xytext=(10, 10),
+            textcoords="offset points", fontsize=9, color="#1A1A1A",
+            bbox=dict(boxstyle="round,pad=0.35", facecolor="white",
+                      alpha=0.88, edgecolor="#AAA"), zorder=6)
+
+    ax.set_title(f"等时圈预览 — {address_name}\n{mode_cn} {minutes}分钟",
+                 fontsize=13, fontweight="bold", color="#222")
+    ax.set_aspect("equal")
+    plt.tight_layout()
+    png_tmp = output_path + "_tmp.png"
+    plt.savefig(png_tmp, dpi=80, bbox_inches="tight", format="png")
+    plt.close()
+    img = Image.open(png_tmp).convert("RGB")
+    img.save(output_path, "JPEG", quality=75, optimize=True)
+    __import__("os").remove(png_tmp)
+    size_kb = __import__("os").path.getsize(output_path) // 1024
+    print(f"  ✓ 已保存预览图（简洁WGS84网格背景，{size_kb}KB）: {output_path}")
+
     """
     生成等时圈预览图：
     - 有 WGS84 底图（推荐）：ESRI 卫星影像重投影 + 等时圈(WGS84)，完美匹配
@@ -410,152 +528,8 @@ def generate_preview(point_gdf, isochrone_gdf, address_name, mode, minutes,
     else:
         bounds_wgs = None
 
-    # ========== 路径 A：WGS84 GeoTIFF 底图（通过 rasterio 重投影） ==========
-    if wgs84_extent and base_map_path and os.path.exists(base_map_path):
-        try:
-            import rasterio
 
-            with rasterio.open(base_map_path) as src:
-                img_wgs84 = src.read()  # (3, H, W) in WGS84
-                extent_wgs84 = src.bounds  # (west, south, east, north)
-
-            # matplotlib imshow: extent = [west, east, south, north]
-            west, south, east, north = extent_wgs84
-
-            ax.set_xlim(west, east)
-            ax.set_ylim(south, north)
-
-            # 底图（WGS84 GeoTIFF → RGB 转置）
-            ax.imshow(img_wgs84.transpose(1, 2, 0),
-                      extent=[west, east, south, north],
-                      origin="upper", aspect="auto", zorder=0)
-
-            # 等时圈（WGS84，直接 plot）
-            isochrone_gdf.plot(ax=ax, color="#4A90E2", alpha=0.35,
-                               edgecolor="#1A5EB8", linewidth=2,
-                               label="等时圈范围", zorder=2)
-
-            # 中心点
-            if not point_gdf.empty:
-                pt = point_gdf.geometry.iloc[0]
-                ax.scatter(pt.x, pt.y, color="#E74C3C", s=150, marker="*",
-                          edgecolor="white", linewidth=1.5, zorder=5)
-                ax.annotate(
-                    f"{address_name}\n({pt.x:.5f}, {pt.y:.5f})",
-                    xy=(pt.x, pt.y), xytext=(8, 8),
-                    textcoords="offset points", fontsize=9, color="#222222",
-                    bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                              alpha=0.85, edgecolor="#999"), zorder=6,
-                )
-
-            ax.set_xlabel("经度 (WGS84)", fontsize=9)
-            ax.set_ylabel("纬度 (WGS84)", fontsize=9)
-            ax.grid(True, linestyle="--", alpha=0.3, color="white")
-            ax.set_title(f"等时圈预览 — {address_name}\n{mode_cn} {minutes}分钟",
-                         fontsize=13, fontweight="bold")
-            ax.set_aspect("equal")
-            plt.tight_layout()
-            plt.savefig(output_path, dpi=180, bbox_inches="tight", format="png")
-            plt.close()
-            print(f"  ✓ 已保存预览图（WGS84 底图）: {output_path}")
-            return
-
-        except Exception as e:
-            print(f"  ⚠ WGS84 底图渲染失败: {e}，回退到无底图模式")
-
-    # ========== 路径 B：旧 PNG 底图（EPSG:3857 Mercator）============
-    if base_map_path and os.path.exists(base_map_path) and mapbox_ak:
-        try:
-            base_img = Image.open(base_map_path).convert("RGBA")
-            x1, y1, x2, y2 = bounds_to_mercator(bounds_wgs)
-
-            isochrone_merc = polygon_to_mercator(isochrone_gdf)
-            point_merc = point_gdf.to_crs(epsg=3857)
-
-            ax.set_xlim(x1, x2)
-            ax.set_ylim(y1, y2)
-            ax.imshow(base_img, extent=[x1, x2, y1, y2], aspect="auto", zorder=0)
-            isochrone_merc.plot(ax=ax, color="#4A90E2", alpha=0.35,
-                                edgecolor="#1A5EB8", linewidth=2, label="等时圈范围", zorder=2)
-
-            if not point_gdf.empty:
-                pt_wgs = point_gdf.geometry.iloc[0]
-                pt_m = point_merc.geometry.iloc[0]
-                ax.scatter(pt_m.x, pt_m.y, color="#E74C3C", s=150, marker="*",
-                          edgecolor="white", linewidth=1.5, zorder=5)
-                ax.annotate(
-                    f"{address_name}\n({pt_wgs.x:.5f}, {pt_wgs.y:.5f})",
-                    xy=(pt_m.x, pt_m.y), xytext=(8, 8),
-                    textcoords="offset points", fontsize=9, color="#222222",
-                    bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                              alpha=0.85, edgecolor="#999"), zorder=6,
-                )
-
-            # 轴标签手动换算为 WGS84 度数
-            N = 5
-            x_fracs = np.linspace(0, 1, N)
-            ax.set_xticks([x1 + f * (x2 - x1) for f in x_fracs])
-            ax.set_xticklabels([f"{mercator_x_to_lng(x1 + f * (x2 - x1)):.2f}°" for f in x_fracs], fontsize=8)
-            y_fracs = np.linspace(0, 1, N)
-            ax.set_yticks([y1 + f * (y2 - y1) for f in y_fracs])
-            ax.set_yticklabels([f"{mercator_y_to_lat(y1 + f * (y2 - y1)):.2f}°" for f in y_fracs], fontsize=8)
-
-            ax.set_xlabel("经度 (WGS84)", fontsize=9)
-            ax.set_ylabel("纬度 (WGS84)", fontsize=9)
-            ax.grid(True, linestyle="--", alpha=0.3, color="white")
-            ax.set_title(f"等时圈预览 — {address_name}\n{mode_cn} {minutes}分钟",
-                         fontsize=13, fontweight="bold")
-            ax.set_aspect("equal")
-            plt.tight_layout()
-            plt.savefig(output_path, dpi=180, bbox_inches="tight", format="png")
-            plt.close()
-            print(f"  ✓ 已保存预览图（EPSG:3857 底图）: {output_path}")
-            return
-
-        except Exception as e:
-            print(f"  ⚠ PNG 底图渲染失败: {e}，回退到无底图模式")
-
-    # ========== 路径 C：无底图（WGS84 纯色渲染）============
-    fig, ax = plt.subplots(figsize=(10, 9))
-
-    if not isochrone_gdf.empty:
-        isochrone_gdf.plot(ax=ax, color="#4A90E2", alpha=0.35,
-                           edgecolor="#1A5EB8", linewidth=1.5, label="等时圈范围")
-
-    if not point_gdf.empty:
-        point_gdf.plot(ax=ax, color="#E74C3C", markersize=120, marker="*",
-                       edgecolor="white", linewidth=1.5, zorder=5, label="起点")
-        pt = point_gdf.geometry.iloc[0]
-        ax.annotate(
-            f"{address_name}\n({pt.x:.5f}, {pt.y:.5f})",
-            xy=(pt.x, pt.y), xytext=(8, 8),
-            textcoords="offset points", fontsize=9, color="#333333",
-            bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                      alpha=0.8, edgecolor="#cccccc"),
-        )
-
-    ax.set_title(f"等时圈预览 — {address_name}\n{mode_cn} {minutes}分钟",
-                 fontsize=13, fontweight="bold")
-    ax.set_xlabel("经度 (WGS84)")
-    ax.set_ylabel("纬度 (WGS84)")
-    ax.grid(True, linestyle="--", alpha=0.4)
-    ax.legend(loc="upper right")
-
-    if bounds_wgs is not None:
-        pad = (bounds_wgs[2] - bounds_wgs[0]) * 0.15
-        ax.set_xlim(bounds_wgs[0] - pad, bounds_wgs[2] + pad)
-        ax.set_ylim(bounds_wgs[1] - pad, bounds_wgs[3] + pad)
-
-    ax.set_aspect("equal")
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=180, bbox_inches="tight")
-    plt.close()
-    print(f"  ✓ 已保存预览图（无底图）: {output_path}")
-
-
-# ============================================================
-# 主程序
-# ============================================================
+# [ORPHANED OLD CODE REMOVED]
 
 def main():
     if len(sys.argv) < 6:
@@ -567,7 +541,7 @@ def main():
     mapbox_ak = sys.argv[3]
     mode = sys.argv[4].lower()
     minutes = int(sys.argv[5])
-    output_dir = sys.argv[6] if len(sys.argv) > 6 else "/tmp/isochrone_output"
+    output_dir = sys.argv[6] if len(sys.argv) > 6 else "/root/.openclaw/workspace/isochrone_output"
 
     if mode not in ("driving", "walking", "cycling"):
         raise ValueError("出行模式仅支持: driving / walking / cycling")
@@ -635,7 +609,7 @@ def main():
 
     # Step 6: 生成预览图
     print(f"\n[Step 6] 生成预览图...")
-    preview_path = os.path.join(output_dir, "isochrone_preview.png")
+    preview_path = os.path.join(output_dir, "isochrone_preview.jpg")
     generate_preview(
         point_gdf, isochrone_gdf, address, mode, minutes,
         preview_path, mapbox_ak=mapbox_ak, base_map_path=base_map_path,
