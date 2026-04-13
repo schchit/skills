@@ -3,9 +3,15 @@
   "slug": "compound-eng-frontend-design",
   "displayName": "frontend-design",
   "latest": {
-    "version": "2.53.0",
-    "publishedAt": 1775436858370,
-    "commit": "https://github.com/openclaw/skills/commit/958f819b91ba62b93af5d1ac58265a0ce61376f7"
+    "version": "2.55.1",
+    "publishedAt": 1776004178735,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "2.53.0",
+      "publishedAt": 1775436858370,
+      "commit": "https://github.com/openclaw/skills/commit/958f819b91ba62b93af5d1ac58265a0ce61376f7"
+    }
+  ]
 }
