@@ -3,9 +3,15 @@
   "slug": "compound-eng-document-review",
   "displayName": "document-review",
   "latest": {
-    "version": "2.53.0",
-    "publishedAt": 1775436847604,
-    "commit": "https://github.com/openclaw/skills/commit/ef45bdfddf2c7e4261a2652f57b23949c8218c01"
+    "version": "2.55.1",
+    "publishedAt": 1776004166581,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "2.53.0",
+      "publishedAt": 1775436847604,
+      "commit": "https://github.com/openclaw/skills/commit/ef45bdfddf2c7e4261a2652f57b23949c8218c01"
+    }
+  ]
 }
