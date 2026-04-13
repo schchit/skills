@@ -11,6 +11,7 @@ from typing import Any, Callable, Protocol
 import json
 import math
 import os
+import tempfile
 
 
 def iso_now() -> str:
@@ -122,6 +123,13 @@ class SummaryBackend(Protocol):
 
 
 class ContextMonitor:
+    """Reference/demo pressure estimator.
+
+    Production hosts are expected to supply an explicit numeric pressure value.
+    This estimator exists only for reference environments and tests where the host
+    has not yet wired a real pressure source.
+    """
+
     def __init__(self, warning_threshold: float, compress_threshold: float, critical_threshold: float, max_history_chars: int = 12000):
         self.warning_threshold = warning_threshold
         self.compress_threshold = compress_threshold
@@ -157,6 +165,7 @@ class CheckpointStore:
         self.events_path = self.guardian_dir / "events.ndjson"
         self.task_state_md = self.guardian_dir / "task_state.md"
         self.task_state_json = self.guardian_dir / "task_state.json"
+        self.latest_summary_alias = self.summaries_dir / "latest-summary.md"
 
     def ensure_dirs(self) -> None:
         if self.config.dry_run:
@@ -165,8 +174,26 @@ class CheckpointStore:
         self.summaries_dir.mkdir(parents=True, exist_ok=True)
         self.guardian_dir.mkdir(parents=True, exist_ok=True)
 
+    def _atomic_write_text(self, target: Path, content: str) -> None:
+        self.ensure_dirs()
+        if self.config.dry_run:
+            return
+        target.parent.mkdir(parents=True, exist_ok=True)
+        handle = tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=target.parent, delete=False, suffix=".tmp")
+        tmp_name = handle.name
+        try:
+            with handle:
+                handle.write(content)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(tmp_name, target)
+        finally:
+            if os.path.exists(tmp_name):
+                os.unlink(tmp_name)
+
     def write_checkpoint(self, task_state: TaskState, summary: str, exact_files_touched: list[str], assumptions: list[str], risks: list[str], next_action: str) -> Path:
         self.ensure_dirs()
+        task_state.updated_at = iso_now()
         checkpoint = {
             "timestamp": iso_now(),
             "task_id": task_state.task_id,
@@ -186,9 +213,9 @@ class CheckpointStore:
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         checkpoint_path = self.checkpoints_dir / f"{timestamp}.json"
         if not self.config.dry_run:
-            checkpoint_path.write_text(json.dumps(checkpoint, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-            self.task_state_json.write_text(json.dumps(task_state.to_dict(), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-            self.task_state_md.write_text(self._task_state_markdown(task_state), encoding="utf-8")
+            self._atomic_write_text(checkpoint_path, json.dumps(checkpoint, indent=2, ensure_ascii=False) + "\n")
+            self._atomic_write_text(self.task_state_json, json.dumps(task_state.to_dict(), indent=2, ensure_ascii=False) + "\n")
+            self._atomic_write_text(self.task_state_md, self._task_state_markdown(task_state))
         self.append_event(task_state.task_id, "checkpoint", f"checkpoint written: {timestamp}", exact_files_touched, True, task_state.state_confidence)
         return checkpoint_path
 
@@ -226,7 +253,8 @@ class CheckpointStore:
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         summary_path = self.summaries_dir / f"{timestamp}.md"
         if not self.config.dry_run:
-            summary_path.write_text(summary, encoding="utf-8")
+            self._atomic_write_text(summary_path, summary)
+            self._atomic_write_text(self.latest_summary_alias, summary)
         return summary_path
 
     def _task_state_markdown(self, state: TaskState) -> str:
@@ -294,12 +322,8 @@ class MemoryAssembler:
             system_instructions.strip(),
             "## Current User Task",
             task_state.goal,
-            "## Latest Durable State",
-            json.dumps(task_state.to_dict(), indent=2, ensure_ascii=False),
-        ]
-        if summary:
-            bundle_parts.extend(["## Latest Structured Summary", summary.strip()])
-        bundle_parts.extend([
+            "## Current Phase",
+            task_state.current_phase,
             "## Active Constraints",
             "\n".join(f"- {item}" for item in task_state.constraints) or "- none",
             "## Current Plan",
@@ -310,7 +334,9 @@ class MemoryAssembler:
             task_state.next_action or "none",
             "## Relevant Files",
             "\n".join(f"- {path}" for path in relevant_files) or "- none",
-        ])
+        ]
+        if summary:
+            bundle_parts.extend(["## Latest Structured Summary", summary.strip()])
         return "\n\n".join(bundle_parts)
 
 
@@ -320,34 +346,77 @@ class SafetyGate:
         self.store = store
         self.summarizer = summarizer
 
-    def evaluate(self, messages: list[str], task_state: TaskState, stale_history: list[str], exact_files_touched: list[str]) -> dict[str, Any]:
-        pressure = self.monitor.estimate_usage(messages, durable_state_chars=len(json.dumps(task_state.to_dict(), ensure_ascii=False)))
-        should_compress = pressure["risk_level"] in {"compress", "critical"}
+    def evaluate(
+        self,
+        messages: list[str],
+        task_state: TaskState,
+        stale_history: list[str],
+        exact_files_touched: list[str],
+        pressure_override: float | None = None,
+        action_changed_state: bool = False,
+        phase_or_goal_changed: bool = False,
+        summary_conflict: bool = False,
+    ) -> dict[str, Any]:
+        if pressure_override is None:
+            pressure = self.monitor.estimate_usage(messages, durable_state_chars=len(json.dumps(task_state.to_dict(), ensure_ascii=False)))
+        else:
+            current_usage_ratio = max(0.0, min(1.0, float(pressure_override)))
+            if current_usage_ratio >= self.monitor.critical_threshold:
+                risk_level = "critical"
+            elif current_usage_ratio >= self.monitor.compress_threshold:
+                risk_level = "compress"
+            elif current_usage_ratio >= self.monitor.warning_threshold:
+                risk_level = "warning"
+            else:
+                risk_level = "normal"
+            pressure = {
+                "current_usage_ratio": current_usage_ratio,
+                "estimated_tokens": None,
+                "risk_level": risk_level,
+                "char_count": None,
+                "source": "host",
+            }
+        should_write_summary = (
+            pressure["risk_level"] in {"warning", "compress", "critical"}
+            or phase_or_goal_changed
+            or summary_conflict
+        )
         summary = None
-        if should_compress:
+        if should_write_summary:
             summary = self.summarizer.summarize(task_state, stale_history, self.store.config)
             self.store.write_summary(summary)
-        if pressure["risk_level"] == "critical" and task_state.state_confidence < 0.75:
+        if pressure["risk_level"] == "critical":
+            checkpoint_path = self.store.write_checkpoint(
+                task_state=task_state,
+                summary=summary or "",
+                exact_files_touched=exact_files_touched,
+                assumptions=task_state.constraints,
+                risks=task_state.open_issues,
+                next_action=task_state.next_action,
+            )
             return {
                 "allow": False,
-                "reason": "critical context pressure and low state confidence",
+                "reason": "critical context pressure",
                 "pressure": pressure,
                 "summary": summary,
+                "checkpoint_path": str(checkpoint_path),
             }
-        checkpoint_path = self.store.write_checkpoint(
-            task_state=task_state,
-            summary=summary or "",
-            exact_files_touched=exact_files_touched,
-            assumptions=task_state.constraints,
-            risks=task_state.open_issues,
-            next_action=task_state.next_action,
-        )
+        checkpoint_path = None
+        if action_changed_state:
+            checkpoint_path = self.store.write_checkpoint(
+                task_state=task_state,
+                summary=summary or "",
+                exact_files_touched=exact_files_touched,
+                assumptions=task_state.constraints,
+                risks=task_state.open_issues,
+                next_action=task_state.next_action,
+            )
         return {
             "allow": True,
             "reason": "state is sufficiently recoverable",
             "pressure": pressure,
             "summary": summary,
-            "checkpoint_path": str(checkpoint_path),
+            "checkpoint_path": str(checkpoint_path) if checkpoint_path else None,
         }
 
 

@@ -10,8 +10,11 @@
 - [ ] Update task state after each file write or code patch.
 - [ ] Write a checkpoint before any destructive action.
 - [ ] Write a checkpoint when context pressure enters warning/compress/critical levels.
-- [ ] Stop autonomous execution at critical pressure if state confidence is low.
-- [ ] Ask for confirmation instead of improvising when recovery confidence is low.
+- [ ] Stop autonomous execution at critical pressure unconditionally.
+- [ ] Ask for confirmation instead of improvising when recovery confidence is low or state recovery is ambiguous.
+- [ ] If the host exposes a helper CLI, make it accept a stable workspace root through a session-level default (for example an environment variable) so weak models do not depend on fragile global-option ordering.
+- [ ] Prefer a stable summary alias such as `summaries/latest-summary.md` for runtime reads, even if timestamped summaries also exist.
+- [ ] If legacy task-state shapes may already exist in the host, detect them safely before mutation and require explicit archival/reinitialization instead of silent overwrite.
 - [ ] Append an event log entry after each major action.
 - [ ] Keep configuration and filesystem paths configurable.
 - [ ] Keep the module framework-agnostic.
