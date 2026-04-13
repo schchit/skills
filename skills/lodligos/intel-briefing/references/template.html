@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title><!-- SLOT:TITLE --></title>
+<title>Cloud情报简报 · YYYY-MM-DD HH:MM</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;line-height:1.7;padding:0;max-width:800px;margin:0 auto}
@@ -34,8 +33,10 @@ body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFo
 .cat-count{font-size:.7em;color:#8b949e;background:#21262d;padding:2px 8px;border-radius:10px}
 /* 信息卡片 */
 .item{background:#161b22;border:1px solid #21262d;border-radius:10px;margin-bottom:10px;overflow:hidden;transition:border-color .2s}
-.item.risk-high{border-color:#5a2d2d}
-.item.risk-mid{border-color:#5a3d2d}
+.item.risk-high{border:2px solid #f85149;box-shadow:0 0 15px rgba(248,81,73,.25)}
+.item.risk-high{border:2px solid #f85149;box-shadow:0 0 15px rgba(248,81,73,.25)}
+.item.risk-mid{border:2px solid #f0883e;box-shadow:0 0 10px rgba(240,136,62,.15)}
+.item.risk-info{border:2px solid #d29922;box-shadow:0 0 10px rgba(210,153,34,.15)}
 .item-header{display:flex;align-items:flex-start;padding:12px 14px 0;gap:10px;cursor:pointer;user-select:none}
 .item-rank{flex-shrink:0;width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.75em;font-weight:700;color:#fff}
 .rank-1{background:#f85149}.rank-2{background:#f0883e}.rank-3{background:#d29922}.rank-4,.rank-5{background:#30363d}
@@ -49,14 +50,21 @@ body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFo
 .tag-blue{background:#1a2a3d;color:#58a6ff;border:1px solid #2d3d5a}
 .tag-green{background:#1a3d2a;color:#3fb950;border:1px solid #2d5a3d}
 .tag-gray{background:#21262d;color:#8b949e;border:1px solid #30363d}
-.tag-update{background:#1a2d3d;color:#79c0ff;border:1px solid #2d3d5a}
+.tag-conf{background:#1a3d2a;color:#3fb950;border:1px solid #2d5a3d}
+.tag-conf-mid{background:#1a2a3d;color:#58a6ff;border:1px solid #2d3d5a}
+.tag-conf-low{background:#3d2a1a;color:#f0883e;border:1px solid #5a3d2d}
+.tag-new{background:#1a2d3d;color:#79c0ff;border:1px solid #2d3d5a;font-style:italic}
+.tag-update{background:#3d2a1a;color:#f0883e;border:1px solid #5a3d2d;font-style:italic}
 .item-toggle{flex-shrink:0;width:24px;height:24px;display:flex;align-items:center;justify-content:center;color:#484f58;font-size:.8em;transition:transform .2s}
 .item-toggle.open{transform:rotate(180deg)}
 .item-body{max-height:0;overflow:hidden;transition:max-height .3s ease}
 .item-body.open{max-height:2000px}
 .item-body-inner{padding:8px 14px 14px;font-size:.83em;color:#8b949e;line-height:1.7}
 .item-body-inner strong{color:#c9d1d9}
-.risk-inline{background:#3d2a1a;color:#f0883e;padding:2px 6px;border-radius:4px;font-size:.8em;margin-left:4px}
+/* 风险提示样式 */
+.risk-inline{background:linear-gradient(135deg,#f85149,#d73a3a);color:#fff;padding:3px 8px;border-radius:4px;font-size:.75em;font-weight:700;margin-left:4px;box-shadow:0 2px 8px rgba(248,81,73,.4);text-shadow:0 1px 2px rgba(0,0,0,.3)}
+.risk-mid-inline{background:linear-gradient(135deg,#f0883e,#c7781c);color:#fff;padding:3px 8px;border-radius:4px;font-size:.75em;font-weight:700;margin-left:4px;box-shadow:0 2px 6px rgba(240,136,62,.3)}
+.risk-info-inline{background:linear-gradient(135deg,#d29922,#b8860b);color:#000;padding:3px 8px;border-radius:4px;font-size:.75em;font-weight:700;margin-left:4px;box-shadow:0 2px 6px rgba(210,153,34,.3)}
 /* Agent结论 */
 .conclusion{padding:0 16px 24px}
 .conclusion-box{background:#161b22;border:1px solid #21262d;border-radius:10px;padding:16px}
@@ -82,8 +90,8 @@ body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFo
 
 <!-- 日期栏 -->
 <div class="date-bar">
-<h1>🔍 智二情报简报</h1>
-<div class="meta"><!-- SLOT:DATE_META --></div>
+<h1>🔍 Cloud情报简报</h1>
+<div class="meta">YYYY-MM-DD HH:MM CST</div>
 </div>
 
 <!-- 统计卡片 -->
@@ -144,8 +152,8 @@ body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFo
 
 <!-- 页脚 -->
 <div class="footer">
-智二 · 全域情报集成专家 · 仅供参考，不构成投资建议<br>
-<!-- SLOT:FOOTER_META -->
+Cloud · 全域情报简报 · 仅供参考，不构成投资建议<br>
+数据来源：P0/P1/P2信源 | 生成时间：YYYY-MM-DD HH:MM CST
 </div>
 
 <script>
