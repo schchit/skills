@@ -9,12 +9,61 @@ description: >-
   "monitor my mailbox." Works with any Graph API client; optionally enhanced by
   the open-source email-agent-mcp server.
 license: Apache-2.0
+homepage: https://github.com/UseJunior/email-agent-mcp
 compatibility: >-
-  Works with any agent that can call the Microsoft Graph API.
-  Optional MCP server (email-agent-mcp) requires Node.js >=20.
+  Works with any agent or client that can call the Microsoft Graph API on
+  the user's behalf. Requires a Microsoft 365 OAuth delegated token with
+  the scopes listed below. The reference runtime (email-agent-mcp, open
+  source, Apache-2.0) uses MSAL device code flow, requires Node.js >=20,
+  and persists tokens in the OS keychain.
+requires:
+  credentials:
+    provider: microsoft-graph
+    auth: oauth2-delegated
+    reference_flow: oauth2-device-code (MSAL, via @azure/identity)
+    scopes_read_minimum:
+      - Mail.Read
+      - offline_access
+    scopes_write:
+      - Mail.ReadWrite
+      - MailboxSettings.ReadWrite
+    scopes_sensitive:
+      - Mail.Send
+    reference_runtime_scope_set:
+      - Mail.Read
+      - Mail.ReadWrite
+      - Mail.Send
+      - MailboxSettings.ReadWrite
+      - User.Read
+      - offline_access
+    token_storage: >-
+      Reference runtime (email-agent-mcp) stores OAuth tokens in the OS
+      keychain via MSAL with @azure/identity-cache-persistence. No raw
+      passwords, no plain text token files. Other clients should use their
+      platform's secure storage.
+  environment_variables:
+    - name: AGENT_EMAIL_CLIENT_ID
+      required: false
+      description: Override the default Microsoft App ID used for auth
+    - name: AGENT_EMAIL_SEND_ALLOWLIST
+      required: false
+      description: Path to JSON file listing recipients allowed for send_email (empty by default — blocks all sends)
+    - name: EMAIL_AGENT_MCP_HOME
+      required: false
+      description: Override default config and token storage directory (~/.email-agent-mcp)
+  network:
+    runtime:
+      - graph.microsoft.com
+      - login.microsoftonline.com
+  filesystem:
+    - draft markdown files (optional, client-dependent)
+  enforcement:
+    draft_first: layered
+  out_of_scope:
+    - calendar_integration
 metadata:
   author: UseJunior
-  version: "0.1.0"
+  version: "0.1.7"
 ---
 
 # Outlook Email Management
@@ -37,7 +86,112 @@ The workflow:
 
 Why this matters: a single wrong send — wrong recipient, wrong attachment, confidential content to the wrong thread — can cause real damage. Drafts are free. Mistakes are expensive.
 
-**email-agent-mcp** enforces this via empty send allowlists by default and a `create_draft` → `send_draft` two-step flow. **NemoClaw** can enforce it at the network policy level — see the [NemoClaw Email Policy skill](#related-skills).
+**email-agent-mcp** enforces this via concrete runtime guardrails:
+
+- **Empty send allowlist by default** — agents cannot send email until the user explicitly configures allowed recipients
+- **Action-level blocks** on dangerous inbox rule actions: `forwardTo`, `forwardAsAttachmentTo`, `redirectTo`, `delete`, `permanentDelete` ([rules.ts:39](https://github.com/UseJunior/email-agent-mcp/blob/main/packages/email-core/src/actions/rules.ts#L39))
+- **`delete_email` disabled by default** unless the caller explicitly opts in with `user_explicitly_requested_deletion: true` ([label.ts](https://github.com/UseJunior/email-agent-mcp/blob/main/packages/email-core/src/actions/label.ts))
+
+**NemoClaw** can enforce it at the network policy level — see the [NemoClaw Email Policy skill](#related-skills).
+
+## Trust Boundary: What This Skill Can and Cannot Enforce
+
+Before you install or grant OAuth consent, understand where the safety boundary lies.
+
+**This skill is instruction-only.** It ships no code, executes nothing by itself, and cannot enforce any of the safety protections described in the Safety Model above or the Authentication section below. Everything is enforced (or not enforced) by whichever runtime actually executes the Microsoft Graph API calls. The skill file is a set of instructions; the runtime is the sandbox.
+
+### What that means in practice
+
+- The draft-first workflow, send allowlist, and inbox-rule action blocks are properties of the reference runtime [`email-agent-mcp`](https://github.com/UseJunior/email-agent-mcp), not of this skill. If you use a different runtime, those protections are not automatically present.
+- `Mail.Send` and `Mail.ReadWrite` are high-impact OAuth scopes. Granting them without a runtime that enforces draft-first and send-allowlist gives up the primary mitigations.
+- `MailboxSettings.ReadWrite` controls inbox rules, and inbox rules can forward or redirect mail externally. The reference runtime blocks dangerous rule actions at the action handler level, but that protection is runtime-specific.
+- Autonomous invocation (where the agent runs this skill without per-call approval) is a platform-level setting, not something the skill controls. Combined with write scopes, it increases the surface area of any runtime weakness.
+
+### Before installing or granting consent
+
+This skill requests high-impact Microsoft Graph scopes (`Mail.ReadWrite`, `MailboxSettings.ReadWrite`, optionally `Mail.Send`). Review the items below before you grant consent. They are the exact things to check; the skill cannot enforce any of them for you.
+
+1. **Only grant `Mail.Send` if you trust the runtime** to honor draft-first. The skill itself cannot enforce "draft first, send second" — that's a runtime property. Verify your runtime either (a) blocks direct send by default, or (b) is `email-agent-mcp` which ships with an empty send allowlist by default.
+2. **Only grant `MailboxSettings.ReadWrite` if you trust the runtime** to block dangerous rule actions (`forwardTo`, `forwardAsAttachmentTo`, `redirectTo`, `delete`, `permanentDelete`). The reference runtime does this at [`rules.ts:39`](https://github.com/UseJunior/email-agent-mcp/blob/main/packages/email-core/src/actions/rules.ts#L39) — inspect the code yourself. Alternatively, prefer `MailboxSettings.Read` if rule auditing is all you need.
+3. **Prefer least-privilege consent.** Start with `Mail.Read` + `offline_access` for read-only triage. Escalate to write scopes only as specific workflows require them. Skip `Mail.Send` entirely if draft-first (user sends manually from Outlook) is acceptable.
+4. **Review the client app identity.** Whatever `AGENT_EMAIL_CLIENT_ID` resolves to is the Azure AD application you are consenting to. Check the consent screen, verify the app name and publisher, and make sure the requested scopes match what you see in this document.
+5. **Test on a non-production account first.** Be prepared to revoke OAuth consent and invalidate refresh tokens at https://myaccount.microsoft.com/consent if anything looks wrong or misconfigured.
+6. **Avoid enabling autonomous invocation** for this skill unless you understand and trust the runtime's guardrails. Autonomous invocation combined with `Mail.Send` or `MailboxSettings.ReadWrite` gives the agent the ability to send mail or create inbox rules without per-call user approval — only safe if the runtime enforces the mitigations described above.
+
+## Authentication & Required Scopes
+> 身份验证与所需权限
+
+This skill operates against Microsoft Graph and requires an OAuth 2.0 delegated access token for a Microsoft 365 account.
+
+### Minimum scopes by use case
+
+| Use case | Scopes required |
+|----------|----------------|
+| Read-only triage and summarization | `Mail.Read`, `offline_access` |
+| Create drafts and move email | + `Mail.ReadWrite` |
+| Create and delete inbox rules | + `MailboxSettings.ReadWrite` |
+| Send email directly (not draft-first) | + `Mail.Send` — **sensitive, see below** |
+
+`MailboxSettings.Read` alone is insufficient for rule management; Microsoft requires `MailboxSettings.ReadWrite` in practice to read some rule state. The reference runtime requests `MailboxSettings.ReadWrite` directly.
+
+### Reference runtime scope set (email-agent-mcp)
+
+The open-source reference runtime [`email-agent-mcp`](https://github.com/UseJunior/email-agent-mcp) requests all six of the following scopes up front via MSAL device code flow:
+
+```
+Mail.Read
+Mail.ReadWrite
+Mail.Send
+MailboxSettings.ReadWrite
+User.Read
+offline_access
+```
+
+`User.Read` is requested by the reference runtime only — it is used by the CLI to fetch `/me` and persist the authenticated mailbox address to config. A generic Graph client does not need `User.Read` unless it performs the same profile lookup.
+
+Source: [`packages/provider-microsoft/src/auth.ts:14`](https://github.com/UseJunior/email-agent-mcp/blob/main/packages/provider-microsoft/src/auth.ts#L14)
+
+### Token storage
+
+The reference runtime stores OAuth tokens in the OS keychain (macOS Keychain / Windows Credential Manager / Linux libsecret) via MSAL with `@azure/identity-cache-persistence`. No raw passwords. No plain text token files. Refresh tokens are handled silently by MSAL.
+
+If using a different client, use your platform's secure secret storage. Do not store Graph tokens in `.env` files committed to repos.
+
+### Risk mapping — scopes to exfiltration risk
+
+| Scope | Enables | Risk if misused |
+|-------|---------|----------------|
+| `Mail.Read` | Read any message, attachment, and header | Read-only; no exfiltration beyond what the agent session can already see |
+| `Mail.ReadWrite` | Create drafts, move/copy messages, mark read | Low on its own; combined with `Mail.Send` enables outbound |
+| `MailboxSettings.ReadWrite` | Create and delete inbox rules | **HIGH** — malicious rules with `forwardTo`/`redirectTo` can exfiltrate mail silently even after the session ends |
+| `Mail.Send` | Send email from the user's account | **HIGH** — unauthorized outbound mail, impersonation risk |
+| `User.Read` | Read user profile basics (email, display name) | Low; metadata only |
+| `offline_access` | Refresh tokens without re-auth | Low on its own; extends the blast radius of any other scope if the token is stolen |
+
+The reference runtime mitigates the two HIGH-risk scopes with concrete controls — see the enforcement layers below.
+
+### Draft-first: layered enforcement
+
+Draft-first is the recommended workflow for all runtimes. Enforcement is layered — this skill describes the policy, and the runtime enforces it:
+
+| Layer | Enforcement mechanism |
+|-------|----------------------|
+| **Reference runtime (email-agent-mcp)** | Send allowlist empty by default. Action-level blocks on `forwardTo`, `forwardAsAttachmentTo`, `redirectTo`, `delete`, `permanentDelete` in [`rules.ts:39`](https://github.com/UseJunior/email-agent-mcp/blob/main/packages/email-core/src/actions/rules.ts#L39). `delete_email` disabled by default in [`label.ts`](https://github.com/UseJunior/email-agent-mcp/blob/main/packages/email-core/src/actions/label.ts). |
+| **Network policy (NemoClaw)** | Can block `graph.microsoft.com/v1.0/me/sendMail` at the network layer via custom policy, eliminating send capability entirely |
+| **Raw Graph API client** | Instruction-level only. Relies on the agent honoring the draft-first instructions. **Not recommended for safety-critical use** — pair with one of the runtime layers above |
+
+The reference runtime layer is the strongest: it catches mistakes at the action handler, not just at the instruction layer. Publicly verifiable in the linked source files.
+
+### Hardening recipes for high-risk environments
+
+1. **Use `email-agent-mcp` with an empty send allowlist.** Already the default. Agents cannot send without explicit recipient configuration.
+2. **Don't grant `Mail.Send`.** Scope-level mitigation — makes direct send impossible. The user sends from Outlook manually after reviewing drafts.
+3. **Don't grant `MailboxSettings.ReadWrite`.** Removes the ability to create inbox rules at all. Rule auditing still works if you grant `MailboxSettings.Read` separately.
+4. **Layer NemoClaw.** See the [NemoClaw Email Policy skill](#related-skills) to block send endpoints at the network layer regardless of scope grants.
+
+### Calendar integration is out of scope
+
+This skill references calendar events as one possible communication channel (for example, "create a calendar event for an action item with a deadline"), and `references/outlook-graph-patterns.md` §9 documents the calendar Graph endpoints for reference. However, calendar integration is **not part of this skill's core scope set** — the reference runtime does not request `Calendars.*` scopes. Use a separate calendar skill if you need calendar automation.
 
 ## Email Triage
 > 邮件分类
