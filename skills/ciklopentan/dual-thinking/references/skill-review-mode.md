@@ -3,6 +3,7 @@
 
 ## Skill Architecture Mode
 Use this mode when the topic is a skill or a skill-adjacent artifact.
+Read `references/self-evolution-lens.md` when the reviewed artifact is `dual-thinking` itself or a native-domain-adjacent skill, or when the user explicitly asks for stronger self-review, self-hardening, meta-review, or self-rewrite. Purpose: force outside-self review and strength-for-purpose pressure.
 
 ### Required review angles
 1. purpose clarity
@@ -17,6 +18,16 @@ Use this mode when the topic is a skill or a skill-adjacent artifact.
 10. tests and validation needs
 11. integration quality with other skills
 12. publishable quality when the asked scope includes shipping or readiness
+
+### Self-evolution overlay
+When the self-evolution lens is active, also require all of these:
+- self-distancing instead of author-identification
+- native-purpose maximization instead of preservation-first reasoning
+- self-obsolescence testing
+- anti-comfort review
+- anti-self-flattery review
+- smallest-stronger-patch pressure
+- current-date strength-for-purpose pressure from the binding lock in `SKILL.md`, without redeclaring that doctrine here
 
 ### Skill class first
 Classify the skill before critique:
@@ -48,6 +59,7 @@ A skill review round 1 must include:
 ### Skill Review Contract
 Act as a critical skill architect, not just a reviewer.
 For every major weakness, name the issue, explain why it matters, classify severity, propose the smallest strong fix, and say whether the fix belongs in runtime, docs, tests, schema, scripts, or integrations.
+If the artifact has a clear native mission, evaluate it against the strongest relevant current domain patterns for that mission, as required by the binding lock in `SKILL.md`, without turning this reference into a second runtime law source.
 
 ### Skill deliverables
 A skill task should end with:

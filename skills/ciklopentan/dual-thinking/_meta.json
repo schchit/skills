@@ -3,11 +3,16 @@
   "slug": "dual-thinking",
   "displayName": "Dual Thinking",
   "latest": {
-    "version": "7.3.1",
-    "publishedAt": 1775776415134,
-    "commit": "https://github.com/openclaw/skills/commit/e03c8539e3c4d32ea33e94908ce70b6e63d02262"
+    "version": "8.5.11",
+    "publishedAt": 1776060671411,
+    "commit": null
   },
   "history": [
+    {
+      "version": "7.3.1",
+      "publishedAt": 1775776415134,
+      "commit": "https://github.com/openclaw/skills/commit/e03c8539e3c4d32ea33e94908ce70b6e63d02262"
+    },
     {
       "version": "5.7.6",
       "publishedAt": 1775546932849,

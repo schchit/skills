@@ -21,3 +21,50 @@ bash tests/test_weak_model_shortcut.sh
 
 Purpose:
 - verify the simplified weak-model shortcut round still emits the minimum resumable state
+
+## Multi-orchestrator alternation test
+Run:
+
+```bash
+bash tests/test_multi_alternation.sh
+```
+
+Purpose:
+- verify the skill documents `STATE_SNAPSHOT` for `ORCHESTRATOR_MODE: multi`
+- verify examples mention `SYNC_POINT`
+- verify packaging includes the multi-alternation test
+
+## Reference alignment test
+Run:
+
+```bash
+bash tests/test_reference_alignment.sh
+```
+
+Purpose:
+- verify release-significant reference text stays aligned across `SKILL.md`, `references/modes.md`, `references/runtime-contract.md`, and `references/examples.md`
+- verify multi-orchestrator and round-limit wording does not drift across documents
+- treat this as a required publish-gate check, not an optional doc nicety
+
+## Validation rollback test
+Run:
+
+```bash
+bash tests/test_rollback_on_validation_failure.sh
+```
+
+Purpose:
+- verify the publish checklist requires rollback-test coverage
+- verify the runtime contract documents rollback-on-validation-failure behavior
+- verify the main skill text requires reverting to the last passed artifact after failed validation
+
+## Self-evolution alignment test
+Run:
+
+```bash
+bash tests/test_self_evolution_alignment.sh
+```
+
+Purpose:
+- verify the active line is explicitly a candidate line rather than a silently mutated frozen release line
+- verify self-evolution doctrine is synchronized across `SKILL.md`, `references/self-evolution-lens.md`, `references/reference-scenarios.md`, `references/modes.md`, `references/change-policy.md`, and `references/runtime-contract.md`

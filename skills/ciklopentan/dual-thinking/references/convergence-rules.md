@@ -19,10 +19,14 @@ A round is meaningful only if at least one of these happened:
 - a real patch was accepted or applied
 - a concrete risk was surfaced
 - a validated stop signal was explicitly produced
+- a real `SELF_POSITION` materially influenced the final decision
 
 If none of those happened, the round is non-meaningful.
 Do not count it as convergence.
 Narrow the next prompt or switch mode according to failure rules.
+
+`SELF_POSITION` alone is not enough in `api` or `multi` when consultant input was required and available.
+`SYNTHESIS` must still exist.
 
 ## Skill-task closure checklist
 For skill topics, stop only if all are true for the asked scope:

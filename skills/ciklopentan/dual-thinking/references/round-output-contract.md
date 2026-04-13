@@ -1,67 +1,79 @@
 # Round Output Contract
 #tags: skills review
 
+This file mirrors the inline runtime authority in `SKILL.md`.
+If this file ever drifts from the inline contract, the inline contract wins and this file must be synchronized before release.
+
 ## Minimum Required Round Block
-Always emit these fields.
-- `ROUND`
-- `TOPIC`
-- `MODE`
-- `SESSION`
-- `DECISION`
-- `PATCH_STATUS`
-- `CONTINUATION_SIGNAL`
-- `NEXT_ACTION`
-- `CHAT_CONTINUITY`
-- `RESUME_SNIPPET`
+Emit this fully populated block exactly once at the end of the round, after synthesis and decision.
 
-## Extended Round Block
-Add these when useful.
-- `SKILL_CLASS`
-- `ORCHESTRATOR`
-- `ORCHESTRATOR_MODE`
-- `CONSULTANT_QUALITY`
-- `COMPARISON`
-- `DOC_STATUS`
-- `TEST_STATUS`
-- `VALIDATION_STATUS`
-- `PUBLISH_STATUS`
-
-## Emission rule
-If uncertain, emit the minimum block correctly first.
-Add extended fields only when they improve review accuracy, recovery, or gate decisions.
-
-## Field meaning
-- `ORCHESTRATOR_MODE`: `local`, `api`, or `multi`.
-- `CONSULTANT_QUALITY: mixed`: at least one actionable finding is valid, but the response also contains vague, hallucinated, or partially misaligned points that must be filtered locally.
-- Omit `CONSULTANT_QUALITY` in `local` mode unless a formal self-critique pass was actually run.
-- `TEST_STATUS`: `missing` when no relevant test artifact exists yet; `planned` when a concrete test path is named; `updated` when the relevant test artifact was added or modified for the accepted patch; `verified` when the relevant tests or evals have been run successfully against the current artifact.
-- `DRY_RUN`: whether mutation was authorized to proceed.
-- `APPLY`: whether the real patch was applied.
-- `PATCH_MANIFEST`: the concrete change record for the round when a patch exists, a fix remains pending, or a blocker must be logged.
-- `CHAT_CONTINUITY`: whether the round used a new chat, reused the intended chat, or required recovery.
-- `RESUME_SNIPPET`: a compact restart state containing enough information to resume after context loss. On recovery, use the snippet as ground truth for `MODE`, `SESSION`, and `NEXT_ACTION`.
-
-## Resume snippet form
 ```text
+ROUND: <N>
+TOPIC: <slug>
+MODE: <mode>
+SESSION: <session>
+DECISION: <take|keep|merge|reject|defer>
+VALIDATION_STATUS: <passed|failed|blocked|not-applicable>
+PATCH_STATUS: <none|proposed|applied|re-reviewed|deferred>
+CONTINUATION_SIGNAL: <continue|stop|missing|ambiguous>
+NEXT_ACTION: <one clear next step>
+CHAT_CONTINUITY: <new|reused|recovery>
 RESUME_SNIPPET: |
   ROUND: <N>
   TOPIC: <slug>
   MODE: <mode>
   SESSION: <session>
-  LAST_CONSULTANT: <skill-name or local>
   NEXT_ACTION: <one clear next step>
 ```
 
-## Patch state rule
-- If `PATCH_STATUS: none` and no patch blocker exists, `PATCH_MANIFEST` may be omitted.
-- If `PATCH_STATUS` is `proposed`, `applied`, `re-reviewed`, or `deferred`, include `PATCH_MANIFEST`.
-- If `APPLY: done`, `PATCH_MANIFEST` must describe the real patch.
+Immediately after the minimum block, emit this contiguous status block when `ORCHESTRATOR_MODE` is `api` or `multi`:
+1. `SELF_POSITION_STATUS`
+2. `CONSULTANT_POSITION_STATUS`
+3. `SYNTHESIS_STATUS`
 
-## Patch manifest form
+In `local` mode, `CONSULTANT_POSITION_STATUS: not-applicable` satisfies the mandatory status-field invariant.
+
+## Extended Round Block
+Add these only when they materially help review accuracy, recovery, validation, or publish gates.
+- `SKILL_CLASS`
+- `ORCHESTRATOR`
+- `ORCHESTRATOR_MODE`
+- `SELF_POSITION` or `SELF_POSITION_COMPACT`
+- `CONSULTANT_POSITION` or `CONSULTANT_POSITION_COMPACT`
+- `SYNTHESIS` or `SYNTHESIS_COMPACT`
+- `CONSULTANT_QUALITY`
+- `COMPARISON`
+- `DOC_STATUS`
+- `TEST_STATUS`
+- `VERIFICATION_EVIDENCE`
+- `PUBLISH_STATUS`
+
+Because `VALIDATION_STATUS` is mandatory in the minimum required round block, it is no longer extended metadata. For `skill-publish-readiness`, `TEST_STATUS` and `VERIFICATION_EVIDENCE` are conditionally mandatory gate fields.
+
+## Validation alignment notes
+- Inline authority lives in `SKILL.md`, not here.
+- This file mirrors field names, ordering, and emission expectations for validators, tests, and packaging.
+- If a consultant-bearing round omits any of the three contiguous status fields, validation fails.
+- If a consultant-bearing round emits those three fields outside the contiguous block immediately after `RESUME_SNIPPET`, validation fails.
+- If `PATCH_STATUS` is `proposed`, `applied`, `re-reviewed`, or `deferred`, a `PATCH_MANIFEST` is required.
+- If `VALIDATION_STATUS: failed` or `blocked`, packaging and publishing stay blocked.
+
+## Compact forms for weak models
 ```text
-PATCH_MANIFEST:
-- target: <file or section>
-  change: <one-line description>
-  status: <proposed|applied|re-reviewed|rejected>
-  version_bump: <none|patch|minor|major>
+SELF_POSITION_COMPACT:
+- verdict: <...>
+- weakness: <...>
+- fix: <...>
+
+CONSULTANT_POSITION_COMPACT:
+- consultant_verdict: <...>
+- strongest_finding: <...>
+- proposed_fix: <...>
+
+SYNTHESIS_COMPACT:
+- relation: <aligned|partial|divergent>
+- decision: <...>
+- next_action: <...>
 ```
+
+Compact is allowed. Skipping self -> consultant -> synthesis is not.

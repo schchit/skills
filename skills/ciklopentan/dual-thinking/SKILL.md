@@ -3,15 +3,249 @@ name: dual-thinking
 description: Second-opinion consultation plus automatic skill-engineering escalation for reviews, rewrites, hardening, weak-model optimization, packaging, testing, and publish readiness.
 ---
 
-# Dual Thinking Method — v7.3.1
+# Dual Thinking Method — v8.5.11
 
-**Purpose:** consult a second model, then escalate skill topics into structured, patch-bearing skill engineering instead of generic advice when the topic is a skill or skill-adjacent artifact.
+**Purpose:** consult a second model, then escalate skill topics into structured, patch-bearing skill engineering instead of generic advice when the topic is a skill or skill-adjacent artifact. In the next candidate line, the method also includes a self-evolution lens for self-review and native-domain-adjacent review without changing the public three-step architecture.
+
+## Runtime Core Lock
+This section is the binding runtime law for execution, recovery, validation ordering, and patch discipline.
+If a later section is longer, more specific, or easier to remember, this section still wins.
+Reference files and later narrative sections may explain, test, or exemplify the runtime law, but they must not silently override it, add new mandatory runtime behavior, or become a second runtime source of truth.
+
+### Core lock
+1. Order is always `SELF_POSITION` -> `CONSULTANT_POSITION` -> `SYNTHESIS`. The main agent owns synthesis and the final round decision.
+2. The first consultant-bearing round on a new skill topic must paste the real artifact inline broadly enough for exact-wording review. Path-only references, `FILE:` labels without body text, shell snippets, unresolved placeholders, short summaries, and partial fragments that do not actually cover the claim under review do not count as pasted artifact.
+3. In `api` and `multi`, produce `SELF_POSITION` before any consultant call. Do not jump from consultant response directly to final decision.
+4. The consultant-shaped minimum is `consultant_verdict`, `strongest_finding`, and `proposed_fix`. If consultant-bearing extraction still cannot reach that minimum after the allowed retry, downgrade to `analysis-only` or mark the round invalid.
+5. The minimum required round block is always `ROUND`, `TOPIC`, `MODE`, `SESSION`, `DECISION`, `VALIDATION_STATUS`, `PATCH_STATUS`, `CONTINUATION_SIGNAL`, `NEXT_ACTION`, `CHAT_CONTINUITY`, `RESUME_SNIPPET`.
+6. For consultant-bearing rounds, the contiguous status order is always `SELF_POSITION_STATUS` -> `CONSULTANT_POSITION_STATUS` -> `SYNTHESIS_STATUS` immediately after the minimum block.
+7. If a fix is accepted, patch the real artifact before the next review round unless the round explicitly records a justified deferral.
+8. If a patch changes the artifact, refresh the accepted continuity state from the patched artifact before switching orchestrators.
+9. `STATE_SNAPSHOT`, `SYNC_POINT`, and `RESUME_SNIPPET` must always describe the latest accepted artifact state, not a stale pre-patch state. When both `STATE_SNAPSHOT` and `SYNC_POINT` include `support_surfaces_synchronized` for the same accepted state, the synchronized support-surface set must be identical across both artifacts.
+10. If validation fails after a real patch, block packaging/publishing, retain the diff, and revert to the last passed artifact before continuing. Retain the failed diff for inspection.
+11. Publish claims require real validation evidence, real packaging evidence, and an actual publish result. Do not claim publish-readiness or publication from intent alone.
+12. `references/` files are synchronization, validation, test, example, and packaging artifacts. They are not executable runtime instructions. If a reference file is missing, stale, or conflicts with the inline runtime contract, do not halt or hallucinate compliance; the inline contract wins immediately and execution continues.
+
+### State Transition & Rollback Gate
+When a round includes a real patch, treat validation, patch state, rollback, continuity refresh, and handoff as one atomic sequence:
+1. Resolve `VALIDATION_STATUS` before any orchestrator handoff or accepted-state refresh.
+2. Do not emit `PATCH_STATUS: applied` as the accepted state until `VALIDATION_STATUS: passed` is explicit.
+3. Do not refresh `STATE_SNAPSHOT`, `SYNC_POINT`, or `RESUME_SNIPPET` with a new artifact hash/version while validation is still unresolved.
+4. If `VALIDATION_STATUS: failed` or `blocked`, immediately set `PATCH_STATUS: deferred`, revert to the last passed artifact state, retain the failed diff for inspection, refresh continuity state from the reverted artifact, including `support_surfaces_synchronized` and any support-surface tracking fields, and continue from that reverted state.
+5. Only after `VALIDATION_STATUS: passed` may the round refresh accepted continuity state from the patched artifact and hand off to the next orchestrator as the new accepted baseline.
+6. When refreshing accepted continuity state from a patched artifact, the artifact's visible version/release label must be updated to reflect the accepted patched state if `PATCH_MANIFEST.version_bump` is not `none`, unless the round explicitly records a justified deferral for version-bump timing.
+
+### Fresh-rerun support-surface honesty gate
+When a fresh self-rerun starts from a previously published, promoted, frozen, verified, or otherwise settled baseline, subordinate release, promotion, freeze, validation, or publish-status surfaces immediately become stale for the active rerun unless and until the new line revalidates and resynchronizes them.
+Treat prior `PUBLISH_STATUS`, reference-line maturity claims, promotion-status statements, freeze-status statements, release-checklist conclusions, and verification-evidence summaries as historical support surfaces only, not as authority about the active rerun state.
+During the new rerun, the active state must behave as unsettled until the new line passes its own validation and publish gate honestly.
+If a stale support surface remains visible during the rerun, do not inherit its settled claim into active synthesis or publish reasoning; either synchronize it or explicitly mark it stale/non-authoritative for the active rerun state.
+Once the current rerun explicitly revalidates and resynchronizes a subordinate support surface, that surface immediately upgrades from historical-only to current-support authority for the active line; all other unsynchronized settled-status surfaces remain strictly stale until they individually pass the same synchronization gate.
+When synchronization occurs during a rerun, record the synchronized support surface or surfaces in the next emitted `SYNC_POINT` so the accepted-state change is explicit across orchestrator handoffs.
+When a previously synchronized support surface is intentionally removed from the accepted state, becomes explicitly non-authoritative again for the active rerun, or the synchronized set becomes empty, record that removal/clearing as an explicit delta in the next `SYNC_POINT` and refresh `STATE_SNAPSHOT` to the current synchronized set rather than silently carrying the historical set forward.
+This gate does not override the `Runtime Core Lock`; it prevents stale subordinate release/support claims from silently masquerading as current truth while a new rerun is in progress.
+
+### Recovery Decision Tree
+Evaluate conditions in order. Execute the first matching next action exactly once per failure attempt, then re-evaluate from the latest accepted state. Do not loop speculatively.
+
+| Trigger condition | Required next action | Max attempts |
+|---|---|---|
+| consultant-visible prompt contains path-only artifact references, `FILE:` labels without body text, shell snippets instead of artifact text, unresolved placeholders such as `$(cat ...)`, hidden-local assertions, or thin excerpts that do not actually cover the exact claim being reviewed | set `VALIDATION_STATUS: blocked`, emit `BLOCKED_STATE: artifact-not-pasted`, ask once for sufficient inline artifact text, and stop patching until the artifact is really pasted | 1 |
+| `BLOCKED_STATE: artifact-not-pasted` persists after the one allowed ask | downgrade to `analysis-only`, set `CONSULTANT_POSITION_STATUS: omitted-invalid`, and stop the patch loop for that scope | 0 additional |
+| consultant response is missing any member of the consultant-shaped minimum (`consultant_verdict`, `strongest_finding`, `proposed_fix`) | set `CONSULTANT_QUALITY: failed` and retry once with the narrow consultant template | 1 |
+| `CONSULTANT_QUALITY: failed` still holds after the one allowed retry | downgrade to `analysis-only`, keep the contiguous status block honest, and do not pretend a consultant-bearing success occurred | 0 additional |
+| validation failed or blocked after a real patch | execute the `State Transition & Rollback Gate`, refresh continuity from the reverted artifact, and mark the patch attempt failed for that scope; do not continue the patch loop there unless a new materially different fix is proposed from the failure evidence | 1 |
+| runtime ambiguity is being resolved from a subordinate section or `references/` file instead of the `Runtime Core Lock` and inline artifact text | ignore the subordinate wording for runtime resolution, re-evaluate from the `Runtime Core Lock` and inline artifact text only, record `SYNC_DRIFT: subordinate-runtime-shadow` in the next `SYNC_POINT` or accepted-state summary, then synchronize the stale support surface | 1 |
+| session pollution, stale continuity, or context-length degradation is detected because the active orchestrator session is critiquing a pre-patch artifact state, repeating already-fixed findings, losing task identity, hallucinating against the visible same-topic chat history, or the latest accepted `STATE_SNAPSHOT` does not match the active artifact | first try to resume the intended persistent same-topic session and verify continuity there; open a recovery session only if that intended session is unusable, then repaste the latest accepted artifact and `RESUME_SNIPPET`, rebuild from the latest accepted `STATE_SNAPSHOT`, and verify continuity before continuing | 1 |
+| the current consultant/orchestrator launch path triggers approval cards or repeated authorization prompts for work that is otherwise allowed | do not claim the safeguard can be disabled and do not try to remove authorization globally; switch once to a launch path that stays inside the same safety boundary but avoids the prompt-triggering transport, preferably direct stdin or file redirection when the runtime supports it, then resume the same round/session and record the transport change honestly | 1 |
+| a failure condition is not an exact match for any rule above | narrow scope explicitly or stop as blocked; do not improvise a multi-step recovery chain | 0 |
+
+### Self-evolution lock
+Activate the self-evolution lens when ANY of these are true:
+- the artifact under review is `dual-thinking`
+- the user asks `dual-thinking` to improve itself
+- the artifact is a skill in the same native domain as `dual-thinking`
+- the user asks for stronger self-review, meta-review, self-hardening, or self-rewrite
+- the user asks how to make the skill more powerful for the purpose it was created for
+
+When active:
+- use outside-self reasoning as if the current artifact were written by someone else
+- optimize for strength-for-purpose, not preservation-first comfort
+- preserve real invariants, not familiar wording
+- prefer the smallest patch that materially strengthens the skill
+- treat praise as near-zero value unless it protects a distinctive strength from accidental removal
+- reject commentary-only convergence when a real patch or explicit structural deferral is still required
+- apply native-purpose maximization: optimize for skill review, rewrite, hardening, weak-model optimization, packaging, testing, and publish-readiness rather than continuity of authorship
+- run the self-obsolescence test explicitly: ask where a stronger replacement would simplify, harden, compress, re-order, or delete current structure
+- treat comfort, prior publication, prior validation, and familiarity as non-arguments unless they defend a real invariant
+- do not accept `this is already strong` as a stopping reason by itself
+- when `dual-thinking` reviews itself, improves itself, or improves a skill, code artifact, program, workflow, or runtime component inside OpenClaw, inspect the relevant local skill corpus before convergence, structural deferral, or publish-readiness conclusions
+- capability harvest is runtime-complete only if it proposes at least one evidenced reusable quality tied to a specific failure mode, validation gap, recovery seam, operator-risk seam, or publish-risk seam in the current artifact, or explicitly records that no evidenced transfer applies
+- when local capability harvest is active, execute the compact validation defined in `## Local Capability Harvest Rule`; do not run verbose interrogation lists, but do not relax the minimum required round block or `VALIDATION_STATUS` visibility
+- do not hallucinate harvested strengths, and do not treat decorative wording or project-specific noise as harvested capability
+- keep unique downstream consequences in later sections only; do not redeclare this doctrine as parallel runtime law below the Reference Manual Boundary
+
+### Current-date native-purpose maximization lock
+When reviewing, rewriting, hardening, or creating any skill, code artifact, program, workflow, tool, or system artifact through Dual Thinking, do not optimize merely for incremental improvement of the current form. Optimize for the strongest realistically justified version of that artifact for its native purpose on the current creation or revision date.
+
+Activation rule:
+- this lock is binding by default whenever the routed task is `artifact-review`, `artifact-improvement`, `skill-review`, `skill-rewrite`, `skill-hardening`, or `skill-publish-readiness` and the artifact under review or change has a clear native mission
+- it changes stance inside the routed task; it does not create a new public mode or a new runtime stage
+- if the artifact's mission is still unclear, make the mission explicit or narrow scope before continuing; do not silently fall back to preservation-first review
+
+Binding rules:
+- treat the current artifact as a replaceable baseline, not as the target shape to preserve by default
+- ask what a stronger current-date version of this artifact should look like if designed now for the same mission
+- prefer current best-practice architecture, reliability patterns, operability patterns, validation discipline, maintainability patterns, and domain-appropriate performance and safety patterns when they materially strengthen the artifact
+- do not preserve stale structure, weak defaults, legacy ceremony, or historically inherited limits unless they defend a real invariant, compatibility boundary, validated strength, or user-required constraint
+- if the artifact belongs to a specific native domain such as memory, orchestration, networking, runtime safety, packaging, testing, or review, evaluate it against the strongest relevant current patterns for that domain rather than generic quality advice
+- if the user asks to improve a named artifact with a clear mission, interpret the task as make it genuinely strong for that mission on the current date, not make it slightly cleaner while preserving its old ceiling
+- trends are not authority by themselves; import only modern patterns that materially improve strength-for-purpose, reliability, recovery, clarity, maintainability, performance, safety, testability, or publish-readiness
+- preserve real invariants, compatibility requirements, validated strengths, and user constraints, but do not treat age, familiarity, prior publication, prior praise, or prior validation as reasons to keep a weaker structure
+- when multiple upgrade paths exist, prefer the smallest change that most increases present-day strength for the artifact's native purpose
+- if the stronger present-day solution would require a structural change that the current line cannot absorb safely, record that explicitly as a structural deferral or next-line upgrade instead of silently settling for a weaker patch
+
+Domain interpretation rule:
+- memory skill such as `super-memori` -> optimize toward a genuinely stronger current memory system
+- orchestrator -> optimize toward a genuinely stronger current orchestration system
+- code, application, or runtime tool -> optimize toward a genuinely stronger current implementation for its mission
+
+Stop-rule clarification:
+- `already good`, `already published`, `already validated`, or `close enough to the existing form` are not sufficient stopping reasons by themselves
+- completion requires either a real strengthening patch, or an explicit justified structural deferral when the stronger path cannot safely land in the current line
+
+## Local Capability Harvest Rule
+This is a hard strengthening rule for native-domain self-improvement and OpenClaw artifact review.
+When local capability harvest is active, inspect the relevant local skill corpus and pull forward only evidenced reusable qualities that can harden the current artifact against a specific failure mode, validation gap, recovery seam, operator-risk seam, or publish-risk seam.
+A harvest step is valid only if it does one of these:
+- proposes at least one concrete strengthening patch tied to one such specific seam
+- records an explicit `no evidenced transfer` conclusion for the current seam in visible round output, typically in `SYNTHESIS`, `SYNTHESIS_COMPACT`, or a clearly labeled accepted-state summary
+Do not treat decorative wording, branding language, or project-specific noise as harvested capability.
+Do not hallucinate a quality that was not evidenced by the local corpus.
+Actual artifact rewrites still require the normal patch, validation, rollback, and publish gates.
+Read `references/harvest-doctrine.md` when syncing capability-harvest rationale, examples, or preservation policy. Purpose: non-runtime doctrine and examples.
+
+## Capability Harvest Preservation Lock
+Already-identified evidenced reusable strengths and harvested capabilities are additive-by-default.
+They may be clarified, tightened, or better formulated, but they must not be silently removed, weakened, forgotten, or replaced by a weaker form.
+If one is intentionally removed or weakened, that change must be recorded explicitly as a conscious decision, not smuggled in as wording cleanup.
+Only the user's explicit personal instruction may authorize weakening or removal of an already-identified harvested strength.
+If any conflict appears, the stronger preserved harvested-capability interpretation wins until an explicit decision records otherwise.
+
+## Fundamental Context Isolation Rule
+This is a hard invariant.
+No round logic, role logic, consultant logic, session-reuse logic, payload-shaping logic, comparison logic, evidence logic, or synthesis logic overrides it.
+
+- External models are blind by default.
+- They only see the text explicitly sent in the current request.
+- If the transport reuses the same visible consultant chat or session, the consultant can see only the text explicitly present in that same visible chat or session. A new chat does not inherit old chat context unless it is explicitly resent. Shorter payloads, narrower prompts, or follow-up convenience do not create implicit visibility.
+- No consultant sees arbiter context unless the arbiter pastes it.
+- No consultant sees another consultant's context unless it is explicitly pasted.
+- External models do not see local paths, local files, file contents that were not pasted, arbiter reasoning, hidden notes, draft comparisons, other-model prompts, other-model answers, other-model context, other-model reasoning, prior-round system context, local command output, local validation output, or repository state unless that exact content is explicitly pasted as text.
+- A local file path is not file access.
+- If content was not pasted, the external model did not see it.
+- Every consultant request must be self-contained.
+- If a consultant needs code, logs, requirements, constraints, acceptance criteria, or file content, paste the exact needed text. Do not rely on filenames, paths, summaries, or implied context.
+- If the arbiter is not sure the consultant has enough context, fail closed: resend the missing context in text or say explicitly that the context was not provided. Never fill the gap with an assumption of shared visibility.
+
+## Context Isolation Stability Lock
+The Fundamental Context Isolation Rule is a stability-critical invariant.
+It must not be weakened, softened, bypassed, shortened in meaning, or reinterpreted into a shared-visibility model.
+Convenience, brevity, payload reduction, round compression, token savings, prompt simplification, or easier consultant reuse are not valid reasons to relax it.
+It may only be clarified or strengthened.
+If real runtime evidence shows that correction is needed, it must be corrected only toward stricter correctness and better isolation discipline.
+No later section may override, dilute, or silently narrow this invariant.
+If any conflict appears, the stricter consultant-isolation interpretation wins.
+
+## User-Declared Round Commitment Lock
+If the user explicitly declares a cycle-count, round-count, or total round plan before execution, that declared plan becomes binding runtime commitment.
+A user-declared round plan is binding.
+It must run to completion.
+The run must continue until the full declared cycle/round plan is completed.
+Early stop is forbidden merely because the current artifact looks good, convergence seems strong, the agent agrees with itself, the consultant agrees, the patch looks sufficient, or the closure checklist would otherwise allow stopping.
+Convenience, brevity, token savings, convergence comfort, impatience, repetition fatigue, or stylistic confidence are not valid reasons to shorten a user-declared round plan.
+This commitment may be interrupted only by true force-majeure conditions or by the user's explicit personal instruction.
+No ordinary closure rule may terminate a declared round plan before that plan is complete.
+If the user declared more than one cycle before execution, no user-facing progress reply may be emitted between cycles; continue straight into the next cycle and reply only after all declared cycles complete, unless a lawful force-majeure condition applies or the user explicitly instructs otherwise.
+If a consultant round, validation step, or other checkpointed execution step completes successfully and `NEXT_ACTION` is already known while the declared plan remains unfinished, continue immediately into that `NEXT_ACTION`; do not wait for a fresh user ping unless the user explicitly requested a pause or a lawful force-majeure condition applies.
+This inter-cycle no-reply rule and this no-idle-after-completion rule are stability-critical and may be changed only by the user's explicit personal instruction.
+This rule augments current stop logic only; it does not weaken or bypass the Runtime Core Lock, the State Transition & Rollback Gate, the Recovery Decision Tree, the Fundamental Context Isolation Rule, the Context Isolation Stability Lock, validation honesty, blocked-state honesty, or any lawful recovery requirement.
+No later section may override this invariant.
+
+### Allowed force-majeure interruption only
+Allowed interruption reasons are limited to:
+- explicit personal user stop or rewrite of the round plan
+- hard runtime failure that prevents honest continuation
+- blocking artifact-not-pasted state that cannot be resolved inside the allowed recovery path
+- safety boundary or authorization boundary that prevents lawful continuation
+- unrecoverable continuity loss where the accepted state cannot be reconstructed honestly
+- validation or execution state that makes further rounds dishonest or impossible under the Runtime Core Lock
+- any already-defined hard-blocked state that the Runtime Core Lock treats as non-continuable
+
+For a user-declared multi-cycle plan, an inter-cycle user-facing progress reply is itself an interruption unless the user explicitly asked for it or a lawful force-majeure condition requires it.
+For a user-declared unfinished plan, post-step idleness after a successful completed round, completed validation step, or completed tool/process result is itself an interruption unless the user explicitly asked for a pause or a lawful force-majeure condition requires it.
+Closure logic may confirm completion only after the declared plan is actually complete; it may not pre-empt that plan.
+
+Normal convergence is not force majeure.
+`already enough` is not force majeure.
+agreement is not force majeure.
+good patch quality is not force majeure.
+repeated findings are not force majeure by themselves.
+
+## Round Commitment Stability Lock
+The User-Declared Round Commitment Lock is stability-critical.
+It may only be clarified or strengthened.
+It must not be changed without the user's explicit personal instruction.
+It must not be weakened, softened, bypassed, or converted back into optional stop behavior.
+No convenience argument is valid grounds for relaxing it.
+No later section may override this invariant.
+If any conflict appears, the stricter round-commitment interpretation wins.
+
+## Round Commitment Anti-Patterns
+- Do not stop early just because the artifact already looks strong.
+- Do not stop early because self and consultant agree.
+- Do not treat closure satisfaction as permission to ignore a user-declared round plan.
+- Do not reinterpret a user-declared plan as a soft target.
+- Do not reduce cycles or rounds for convenience, brevity, token savings, or repetition fatigue.
+- Do not silently collapse a multi-cycle plan into a shorter run.
+- Do not emit an inter-cycle user-facing progress reply during a user-declared multi-cycle plan unless the user explicitly asked for it or lawful force majeure applies.
+- Do not sit idle after a successful completed round, validation step, or tool/process result when `NEXT_ACTION` is already known and the declared plan is still unfinished.
+- Do not claim force majeure when the real reason is ordinary convergence.
+- Do not weaken this rule without the user's explicit personal instruction.
+
+## Context Isolation Anti-Patterns
+- Do not send full context to consultant A and a reduced fragment to consultant B while assuming B can infer or access A's context.
+- Do not reference local file paths as if external models can open them.
+- Do not assume a new chat inherits earlier context.
+- Do not assume the arbiter's internal reasoning, draft notes, hidden comparisons, or unstated accepted state are visible to consultants.
+- Do not assume one consultant can see another consultant's answer, prompt, or context unless it is explicitly pasted.
+- Do not assume the consultant knows file contents because the arbiter knows them.
+- Do not assume prior rounds, prior system context, or prior validation results are visible unless they were explicitly resent in text to that same consultant.
+- Do not weaken or shorten the context-isolation rule just because repeated context passing feels expensive, redundant, or inconvenient.
+
+## Before Sending Any Consultant Request
+Before any external consultant call, check all:
+- Is this request self-contained?
+- Did I include the exact code, text, log, requirement, constraint, and acceptance-criteria excerpts needed for the answer?
+- Am I relying on invisible arbiter knowledge?
+- Am I assuming this model saw another model's context?
+- Am I assuming this new chat still has the old chat context?
+- If the answer requires file content, did I paste the relevant content instead of only naming the file or path?
+- If the answer depends on prior rounds, did I explicitly resend the needed prior-round text to this same consultant?
+- Am I silently relaxing the context-isolation invariant for convenience, brevity, token savings, or payload reduction?
+- If anything required is missing, stop and resend the missing context in text or acknowledge that it was not provided.
+
+## Reference Manual Boundary
+Everything below this boundary is subordinate to the Runtime Core Lock and the Fundamental Context Isolation Rule.
+Use later sections, references, and examples as support material, checklists, validator surfaces, and detailed decompositions.
+If a lower section feels broader, more legalistic, or more detailed than the Runtime Core Lock, do not let it silently become the real execution law.
+Self-review stance, local capability harvest, harvested-capability preservation, current-date native-purpose maximization, native-purpose targets, and patch sizing are fully governed by the `Self-evolution lock`, `Local Capability Harvest Rule`, `Capability Harvest Preservation Lock`, and `Current-date native-purpose maximization lock` above; no parallel doctrine applies below this boundary.
 
 ## Deterministic Router
 
 Evaluate router conditions in order. The first matching semantic condition sets `MODE`.
 
-If the user explicitly asked for alternating orchestrators before round 1, set `ORCHESTRATOR_MODE: multi`, keep one persistent session per orchestrator, and continue routing to set `MODE`.
+If the user explicitly asked for alternating orchestrators before round 1, set `ORCHESTRATOR_MODE: multi`, keep one persistent session per orchestrator, and continue routing to set `MODE`. Do not silently create a fresh consultant chat on later rounds just because a new round started.
 If the user explicitly asked for findings only, set `MODE: analysis-only` and do not patch.
 If the topic is a skill or skill-adjacent artifact and the requested outcome is a concrete rewrite, set `MODE: skill-rewrite`.
 If the topic is a skill or skill-adjacent artifact and the requested outcome is runtime, safety, weak-model, or operability tightening, set `MODE: skill-hardening`.
@@ -23,76 +257,378 @@ If the user wants an artifact assessed, set `MODE: artifact-review`.
 Otherwise set `MODE: general-decision-review`.
 
 If multiple intents overlap, keep the first-match semantic mode already encountered. Do not blend modes.
+The self-evolution lens does not create a fourth public stage or a new public mode. It changes stance inside the existing three-step architecture.
 
 ## Runtime Contract
+The enforceable execution rules are defined by the `Runtime Core Lock`, the terminal Minimum Required Round Block rule, the contiguous status-block rule, and the mode/closing-tail semantics already defined inline above.
+This section now stays as a pointer only; duplicated enums, paths, and block definitions must not become a second runtime source of truth or a fallback runtime authority.
 
-Read `references/runtime-contract.md` when you need the visible round block, enum values, or marker split. Purpose: keep runtime output cheap and machine-checkable.
+### When not to use dual-thinking
+Do not use the method when all are true:
+- the action is reversible in under 1 hour
+- the risk is low
+- the requested change is small
+- no real trade-off or uncertainty remains
 
-### External Required Output
-These are the visible runtime rules.
+If all are true, act directly instead of opening the full dual-thinking loop.
+If the request is trivial and no real critique is needed, skip the method.
+Do not spend review rounds on formatting-only churn unless the user explicitly asked for wording polish.
 
-#### Quick enum block
-Use these values exactly.
-- `MODE`: `general-decision-review` | `artifact-review` | `artifact-improvement` | `skill-review` | `skill-rewrite` | `skill-hardening` | `skill-publish-readiness` | `weak-model-optimization` | `analysis-only`
-- `SKILL_CLASS`: `memory` | `continuity` | `network` | `orchestrator` | `tooling` | `workflow` | `infra` | `hybrid` | `na`
-- `ORCHESTRATOR_MODE`: `local` | `api` | `multi`
-- `PATCH_STATUS`: `none` | `proposed` | `applied` | `re-reviewed` | `deferred`
-- `CONSULTANT_QUALITY`: `strong` | `mixed` | `weak` | `failed`
-- `CONTINUATION_SIGNAL`: `continue` | `stop` | `missing` | `ambiguous`
+#### Extended consultation structure
+Use the full form when the runtime can support it.
 
-#### Minimum viable path
-##### For skill topics
-1. Route.
-2. Classify the skill.
-3. Paste the real skill text inline.
-4. Get critique.
-5. Decide.
-6. Patch if accepted.
-7. Emit the round block.
-8. Continue or stop.
+```text
+SELF_POSITION:
+- initial_verdict: <short verdict>
+- strongest_points: <1-3 bullets>
+- likely_weaknesses: <1-3 bullets>
+- smallest_strong_fix: <one concrete fix>
+- confidence: <low|medium|high>
+- what_could_change_my_mind: <one short condition>
 
-##### For non-skill topics
-1. Route.
-2. Paste the real artifact or context inline.
-3. Get critique.
-4. Decide.
-5. Patch if needed.
-6. Emit the round block.
-7. Continue or stop.
+CONSULTANT_POSITION:
+- consultant_verdict: <short verdict>
+- strongest_finding: <one strongest finding>
+- weakest_or_vague_finding: <one weak point or `none`>
+- proposed_fix: <smallest strong fix from consultant>
+- confidence: <low|medium|high|unknown>
+
+SYNTHESIS:
+- relation: <aligned|partially-aligned|divergent>
+- keep_from_self: <what stays from self position>
+- keep_from_consultant: <what stays from consultant>
+- reject: <what is rejected and why>
+- final_decision: <take|keep|merge|reject|defer>
+- final_next_action: <one clear next step>
+```
+
+Rules:
+- `SELF_POSITION` is a real pre-consultant position, not a decorative summary after the fact.
+- Build `SELF_POSITION` from the actually loaded artifact.
+- In `api` and `multi`, do not ask the consultant before producing `SELF_POSITION`.
+- After a consultant response, extract `CONSULTANT_POSITION` before deciding.
+- In `api` and `multi`, do not jump from consultant response directly to final decision.
+- `DECISION` and `NEXT_ACTION` must be grounded in `SYNTHESIS` whenever a consultant-bearing round occurred.
+- Stance for this phase is governed exclusively by the applicable lock in `## Runtime Core Lock` above.
+
+#### Compact consultation structure
+Use this only for weak-model constrained rounds.
+
+```text
+SELF_POSITION_COMPACT:
+- verdict: <...>
+- weakness: <...>
+- fix: <...>
+
+CONSULTANT_POSITION_COMPACT:
+- consultant_verdict: <...>
+- strongest_finding: <...>
+- proposed_fix: <...>
+
+SYNTHESIS_COMPACT:
+- relation: <aligned|partial|divergent>
+- decision: <...>
+- next_action: <...>
+```
+
+Rules:
+- compact form is allowed for weak-model constrained rounds
+- compact form is not permission to skip the three-step logic
+- in `api` and `multi`, do not omit `SELF_POSITION` entirely
+- in `api` and `multi`, do not omit `SYNTHESIS` entirely
+- compact consultant output must remain consultant-position-shaped by default unless the round has explicitly moved to a synthesis compaction step
+- if consultant input is still required but unavailable after retries, narrow to `analysis-only` or mark the round invalid instead of pretending the structure existed
+- stance for this phase is governed exclusively by the applicable lock in `## Runtime Core Lock` above
+
+## Consultation status requirements by mode
+
+```text
+Mode-specific status requirements:
+- `local`:
+  - `SELF_POSITION_STATUS` must be `present` or `compact`
+  - `CONSULTANT_POSITION_STATUS` must be `not-applicable`
+  - `SYNTHESIS_STATUS` must be `present` or `compact`
+
+- `api`:
+  - `SELF_POSITION_STATUS` must be `present` or `compact`
+  - `CONSULTANT_POSITION_STATUS` must be `present` or `compact`
+  - `SYNTHESIS_STATUS` must be `present` or `compact`
+
+- `multi`:
+  - on every consultant-bearing round:
+    - `SELF_POSITION_STATUS` must be `present` or `compact`
+    - `CONSULTANT_POSITION_STATUS` must be `present` or `compact`
+    - `SYNTHESIS_STATUS` must be `present` or `compact`
+
+- `analysis-only`:
+  - compact or partial consultation structure is allowed only if the narrowed scope explicitly justifies it
+  - do not pretend a full consultant-bearing structure happened when it did not
+```
+
+Validation consequences:
+- If `ORCHESTRATOR_MODE: local`, then `CONSULTANT_POSITION_STATUS: not-applicable` is the only valid consultant status.
+- If `ORCHESTRATOR_MODE: api` or `multi`, then `CONSULTANT_POSITION_STATUS: not-applicable` is invalid for a consultant-bearing round.
+- In consultant-bearing modes, `SELF_POSITION_STATUS`, `CONSULTANT_POSITION_STATUS`, and `SYNTHESIS_STATUS` are mandatory round-state enums, not optional extended niceties.
+- If a consultant-bearing round omits any required consultation status enum, validation must fail.
+- If a consultant-bearing round lacks `SYNTHESIS_STATUS`, validation must fail unless the round was explicitly narrowed out of consultant-bearing execution.
+
+Rules:
+- A round that violates the required status pattern for its mode cannot be treated as fully valid unless the narrowed mode explicitly permits partial structure.
+- synthesis stance for this phase is governed exclusively by the applicable lock in `## Runtime Core Lock` above.
+
+## Consultant prompt shaping
+
+```text
+For `api` and `multi` modes, the consultant prompt must include:
+1. the real artifact
+2. the current task or requested scope
+3. the current `SELF_POSITION`
+4. an explicit instruction to agree, refine, or challenge the current position
+5. a request for consultant-position output, not immediate final synthesis unless explicitly narrowed to synthesis
+```
+
+Rules:
+- Do not ask the consultant to produce the final round decision by default.
+- The consultant provides input to synthesis; the main agent remains responsible for final synthesis and final decision.
+- The consultant-visible prompt must contain the real artifact text itself, not just a path, filename, repository pointer, `FILE:` label, shell command, unresolved placeholder, or my own summary of unseen material.
+- Literal command substitutions such as `$(cat path/to/file)` count as unresolved placeholders when they appear in the transmitted prompt body.
+- If a prompt only references where the artifact lives instead of embedding the text itself, treat that round as `artifact not pasted`.
+- If the claim under review depends on local checks, test output, validation results, command results, or code not already visible in that same consultant session, paste those exact results in text before asking for critique.
+- consultant stance for this phase is governed exclusively by the applicable lock in `## Runtime Core Lock` above.
+
+### Consultant Blindness Clarification
+
+The Fundamental Context Isolation Rule applies here without exception.
+
+In `api` and `multi`, external consultants are blind by default.
+They only see the text explicitly sent in the current request.
+If the transport reuses the same visible consultant chat or session, the consultant can see only the text explicitly present in that same visible chat or session. A new chat does not inherit old chat context unless it is explicitly resent.
+No consultant sees arbiter context unless the arbiter pastes it.
+No consultant sees another consultant's context unless it is explicitly pasted.
+The consultant cannot see local files, local paths, repository state, project code, hidden main-agent context, unstated accepted state, local command output, local validation results, screenshots, non-pasted sections of the artifact, hidden notes, or other-model prompts or answers unless that exact information was explicitly transmitted in text in the visible consultant prompt/session.
+A local file path is not file access.
+If content was not pasted, the external model did not see it.
+
+Use these formulas:
+- `not pasted = not visible`
+- `not visible = not reviewed`
+- `local to me ≠ visible to consultant`
+- `summarized by me ≠ verified by consultant`
+- `path or filename ≠ artifact text`
+
+Do not claim consultant review of sections, files, checks, code, logs, or state that were not actually pasted.
+If the consultant's finding depends on non-pasted material, treat that finding as ungrounded until the relevant text is pasted and re-reviewed.
+Do not assume cross-consultant visibility in `multi`; if round N depends on text seen only by the other consultant, repaste that text into the active consultant's own session before asking for review.
+
+### Baseline artifact requirement
+
+For the first consultant-bearing round on a new skill topic, do not use summary-only review.
+
+Paste the artifact as fully as practical, or paste a large enough canonical excerpt bundle that really covers the issue.
+If the round asks the consultant to judge a specific section, invariant, failure mode, code path, test result, or local verification outcome, the prompt must also paste the exact relevant text for that claim in visible form.
+
+Later narrower rounds are valid only after baseline context was already transmitted in that same consultant-visible conversation and only when the omitted material is truly unchanged and already visible in that same consultant's own session.
+
+Clarification:
+- first consultant-bearing round on a new skill topic should use a baseline artifact payload, not a thin summary
+- later narrower prompts are valid only after that baseline context already exists in the same visible consultant session
+- if you switch consultants, do not assume the new consultant inherits the other consultant's pasted context; repaste what the new consultant needs
+- do not assume the consultant can infer unseen artifact sections from the skill name, file path, repository, prior hidden state, or your private local work
+- if you want the consultant to reason about code, checks, logs, tests, or validation, paste that material in text
+- do not feed consultants chopped fragments when the claim under review needs broader surrounding context to stay grounded
+
+Example consultant prompt shape:
+
+```text
+I already formed an internal position on this artifact.
+
+SELF_POSITION:
+<block>
+
+Critique the real artifact directly.
+Do one of:
+- agree and strengthen
+- refine
+- challenge with stronger reasoning
+
+Return only:
+- consultant_verdict
+- strongest_finding
+- weakest_or_vague_finding
+- proposed_fix
+- confidence
+```
+
+When the self-evolution trigger is active, shape the consultant prompt like this instead:
+
+```text
+I already formed an internal position on this artifact.
+
+SELF_POSITION:
+<block>
+
+Review this artifact as if you were designing the stronger successor that should replace it.
+Challenge the current form.
+Prefer forceful critique over praise.
+Identify where the current artifact is trapped in a local maximum.
+Name what should be removed, tightened, or redesigned.
+Return the smallest strong fix, not admiration.
+
+Return only:
+- consultant_verdict
+- strongest_finding
+- weakest_or_vague_finding
+- proposed_fix
+- confidence
+```
+
+Do not ask for the final round `DECISION` in this prompt unless the flow has explicitly moved into synthesis compaction.
 
 #### Local mode rule
 If `ORCHESTRATOR_MODE: local`, set `ORCHESTRATOR: local`.
+The agent is the only consultant in local mode.
+`SELF_POSITION` is mandatory in local mode.
+There is no `CONSULTANT_POSITION` in local mode.
+Do not output `CONSULTANT_QUALITY` in local mode.
 Do not use model names in local mode.
 Do not imitate an external consultant call in local mode.
-Omit `CONSULTANT_QUALITY` in local mode unless a formal self-critique pass was explicitly run.
-If a formal self-critique pass was explicitly run, use `strong`, `mixed`, `weak`, or `failed` honestly.
+Treat local mode as self-consultation plus self-synthesis plus decision.
 
-#### Failure -> next action
-| Failure | Next action |
-|---|---|
-| artifact not pasted | ask once, request inline artifact, no path-only review |
-| second request still no artifact | switch to `analysis-only` and stop patch loop |
-| consultant weak | retry once with a narrower prompt |
-| consultant weak again | switch to `analysis-only` or stop as blocked |
-| continuation missing | default `continue` |
-| session polluted | open recovery chat, paste latest accepted artifact, add `RESUME_SNIPPET` |
-| accepted fix not patched | patch before next review |
-| validation failed | block packaging and publishing |
+#### API mode rule
+If `ORCHESTRATOR_MODE: api`, the required order is:
+1. `SELF_POSITION`
+2. external `CONSULTANT_POSITION`
+3. `SYNTHESIS`
+4. patch or next action
 
-#### Meaningful round rule
-A round counts as meaningful only if at least one of these happened:
-- a grounded flaw was identified
-- a decision changed or was defended with explicit reasoning
-- a real patch was accepted or applied
-- a concrete risk was surfaced
-- a validated stop signal was explicitly produced
+Round 2+ for the same topic must reuse the same consultant chat or session by default so the consultant can see only the prior rounds and payload text already given in that same chat.
+Open a fresh consultant chat only if the intended same-topic chat cannot be safely reused because continuity is broken, the chat is polluted, or the consultant is clearly degrading under context load and producing nonsense against the visible prior round history.
+Do not reorder this into consultant-first review.
 
-If none of those happened, the round is non-meaningful.
-Do not treat it as convergence.
-Narrow the next prompt or switch mode according to failure rules.
+#### Multi-orchestrator alternation contract
+If `ORCHESTRATOR_MODE: multi`, alternate by round and keep one persistent session per orchestrator for the topic.
+Do not let both orchestrators free-run on the same round in parallel unless the caller explicitly asks for that.
+The default continuity rule is strict: each orchestrator must stay in its own same-topic chat across the full round series so that consultant can see only the prior rounds and payload text already given to it in that same chat.
+Each of those chats is isolated from the other orchestrator's chat. Reuse inside consultant A's own chat preserves A-context only; reuse inside consultant B's own chat preserves B-context only.
+Starting a fresh consultant chat on round 2+ is invalid by default and must not be treated as normal alternation behavior.
+Open a replacement chat only if the intended persistent chat is unusable because continuity is broken, the session is polluted, or the consultant is clearly degrading under context length and starts repeating already-fixed findings, losing task identity, or producing nonsense against the visible accepted state.
+If replacement is required, mark `CHAT_CONTINUITY: recovery`, repaste the latest accepted artifact and `RESUME_SNIPPET`, and continue only after the replacement chat has enough context to review the current state honestly.
+The required sequence for a multi round is:
+1. load the latest accepted artifact state
+2. produce one `SELF_POSITION` for that artifact state
+3. resume the intended persistent orchestrator session for that round only by making the needed continuity text visible there again; do not assume hidden transport memory and do not open a fresh chat unless the recovery rule above applies
+4. paste the latest accepted artifact, not a stale pre-patch copy
+5. include the latest `RESUME_SNIPPET` and any other accepted patch context or prior-round text that is still needed for grounded review in that visible session
+6. obtain critique from exactly one orchestrator for that round
+7. extract `CONSULTANT_POSITION`
+8. produce `SYNTHESIS`
+9. emit a `SYNC_POINT` summary with accepted findings, rejected findings, and the current next action
+10. patch accepted fixes before the next round when required
+11. emit or refresh `STATE_SNAPSHOT` before switching orchestrators
+
+`STATE_SNAPSHOT` must minimally preserve:
+- current round number
+- active topic slug
+- routed `MODE`
+- per-orchestrator session keys
+- latest accepted artifact version or hash
+- latest accepted findings summary
+- latest `SELF_POSITION` summary or hash reference
+- latest consultant-side summary for recovery fidelity
+- `support_surfaces_synchronized` when one or more subordinate support surfaces were synchronized in the accepted state; otherwise omit it or set it to `none`
+- `deferred_patch_context` when the latest rollback or deferred patch outcome must remain exact across handoff; otherwise set it to `none`
+- latest `RESUME_SNIPPET`
+- `LAST_CONSULTANT` when the next round needs explicit consultant-side continuity context; otherwise omit it or set it to `na`
+
+Use `LAST_CONSULTANT` only as a continuity hint.
+It does not override the alternation invariant in `multi` mode.
+It helps recovery and handoff clarity; it does not choose the next orchestrator by itself.
+
+`RESUME_SNIPPET` must explicitly list any material continuity deltas that change the resuming session's starting assumptions, such as active synchronized support surfaces, deferred patch outcomes, or overridden next actions. If no such deltas apply, it may remain a compact state summary.
+
+Use this concrete shape when you need to serialize it:
+
+```text
+STATE_SNAPSHOT:
+  round: <N>
+  topic: <slug>
+  mode: <mode>
+  session_a: <key>
+  session_b: <key>
+  artifact_hash: <hash-or-version>
+  self_position: <compact summary>
+  consultant_summary: <compact summary>
+  accepted_findings: <compact summary>
+  support_surfaces_synchronized: <surface-slug-list-or-none>
+  deferred_patch_context: <diff-slug-or-none>
+  last_consultant: <session-key|local|na>
+  resume_snippet: |
+    <latest RESUME_SNIPPET>
+```
+
+After each consultant round in `multi` mode, emit this handoff shape before switching orchestrators:
+
+```text
+SYNC_POINT:
+  round: <N>
+  accepted: |
+    - <finding slug>
+  rejected: |
+    - <finding slug> (reason: <short reason>)
+  support_surfaces_synchronized: |
+    - <surface slug> (omit when none)
+  next_action: <one clear next step>
+```
+
+If a multi-round recovery is required, restore from the latest accepted `STATE_SNAPSHOT`, not from raw memory of prior chat turns.
+The alternation invariant is simple: round 1 uses orchestrator A, round 2 uses orchestrator B, later rounds keep alternating while reusing the same per-orchestrator sessions.
+Consultant context should accumulate inside those same persistent chats only to the extent that the transport actually preserves visible chat history there; if the needed history is not visibly present, repaste the required context before asking for review.
+Do not discard that continuity and restart round-specific fresh chats unless the explicit recovery rule applies. Token savings, payload reduction, or convenience are not recovery reasons.
+
+Blind-session clarification:
+- each orchestrator session is independently blind except for what was actually pasted into that specific session
+- do not assume orchestrator B knows what was only pasted to orchestrator A
+- do not assume orchestrator A knows what was only pasted to orchestrator B
+- do not assume hidden main-agent context transfers automatically
+- do not assume a consultant can read your local files, project tree, codebase, shell history, validator output, or test results unless you pasted them into that same visible session
+- when switching orchestrators, repaste the latest accepted artifact or the relevant accepted excerpt needed for grounded review
+- if the next round depends on text, code, checks, or decisions that were visible only in the other consultant's chat, repaste them into the active consultant's own chat before asking for review
+- if the next round depends on a local check you performed, repaste the exact check result in text before asking the consultant to rely on it
+- if the current launch transport keeps triggering approval cards for otherwise allowed work, do not try to disable safeguards globally; switch to a less approval-prone transport such as direct stdin or file redirection when supported, keep the same safety boundary, and continue honestly from the accepted state
+
+### Synthesis honesty clarification
+
+`SYNTHESIS` may only attribute consultant coverage to text actually visible to that consultant.
+
+Allowed:
+- `consultant reviewed the provided excerpt`
+- `consultant responded to the supplied artifact section`
+- `consultant reviewed the pasted check output`
+
+Disallowed:
+- `consultant reviewed the skill` when the full skill was not pasted
+- `consultant reviewed the updated artifact` when the updated artifact was not pasted
+- `consultant reviewed the code` when only a filename or path was given
+- `consultant considered my validation/tests/logs` when those results were not pasted into the visible prompt/session
+
+#### Failure and round-meaningfulness authority
+For runtime failure handling, blocked states, retry caps, and non-meaningful-round recovery, use the authoritative `Recovery Decision Tree` in `## Runtime Core Lock`.
+This subordinate section no longer carries primary runtime law for the current execution line.
+Preserve only the boundary rule here: a long wait after a successful consultant submit is not by itself evidence of a weak or failed round, `SELF_POSITION` alone is not enough in `api` or `multi` when consultant input was required and available, and `SYNTHESIS` must still exist.
+
+#### Round-Limit & Stop Precedence
+Resolve stop behavior in this order:
+1. If the user explicitly declared a cycle-count, round-count, or total round plan before execution, that declared plan is binding runtime commitment and must run to completion unless a force-majeure condition from the `User-Declared Round Commitment Lock` applies or the user explicitly rewrites the plan.
+2. If that declared plan includes more than one cycle, do not emit a user-facing progress reply between cycles unless the user explicitly asked for one or a lawful force-majeure condition requires it.
+3. If a consultant round, validation step, or other checkpointed execution step completes successfully and `NEXT_ACTION` is already known while the declared plan remains unfinished, continue immediately into that `NEXT_ACTION`; do not wait for a fresh user message unless the user explicitly requested a pause or a lawful force-majeure condition applies.
+4. If the user explicitly authorized a higher round count for the current flow before round 1, that explicit limit overrides the default `MAX_ROUNDS` note.
+5. If a round produces `CONTINUATION_SIGNAL: stop` while a user-declared round plan remains unfinished, override the signal, continue to the next lawful step, and do not stop unless a force-majeure condition applies. A normal stop signal is invalid while a declared round plan remains unfinished.
+6. If the resolved round limit has been reached, force `CONTINUATION_SIGNAL: stop` for the next decision point unless the user explicitly authorized more rounds or already declared a larger binding round plan before execution.
+7. If a round is non-meaningful, recover or narrow scope first and do not treat that attempt as convergence by itself.
+8. Otherwise continue according to the normal convergence and failure rules.
 
 #### Skill-task closure checklist
-For skill topics, stop only if all are true for the asked scope:
+For skill topics, stop only if all are true for the asked scope. This checklist is subordinate to `User-Declared Round Commitment Lock` and cannot lawfully terminate an unfinished declared round plan:
 - `CONTINUATION_SIGNAL: stop`
 - I also agree
 - no accepted fix remains unpatched
@@ -100,22 +636,9 @@ For skill topics, stop only if all are true for the asked scope:
 - no must-have docs remain missing for the asked scope
 - no must-have tests remain missing for the asked scope
 - no unresolved blocker remains for the asked scope
-
-### Internal Execution Markers
-These markers are service markers. They are not required user-visible output.
-- `ROUTE_COMPLETE`
-- `STATE_EMITTED`
-- `CHAT_CONTINUITY: new|reused|recovery`
-- `ARTIFACT_LOADED`
-- `PROMPT_READY`
-- `RESPONSE_RECEIVED`
-- `DECISION_MADE`
-- `ROUND_EMITTED`
-- `PATCH_GATE_CHECKED`
-- `PATCH_APPLIED`
-- `CHECKS_COMPLETE`
-- `VALIDATION_STATUS: passed|failed|blocked`
-- `FLOW_STATUS: continued|terminated`
+- if the user declared a binding round plan before execution, the full declared plan has actually been completed or a force-majeure condition applies under the `User-Declared Round Commitment Lock`
+- if the declared plan included more than one cycle, no inter-cycle user-facing progress reply was emitted unless the user explicitly requested it or a lawful force-majeure condition applied
+- if the declared plan remained unfinished and `NEXT_ACTION` was already known, no post-step idle pause occurred after a successful completed round, validation step, or tool/process result unless the user explicitly requested a pause or a lawful force-majeure condition applied
 
 ## Required Modes
 Keep these modes available and route with the Deterministic Router. Read `references/modes.md` when you need the full mode table and mode-specific entry rules. Purpose: map task types.
@@ -123,8 +646,14 @@ Keep these modes available and route with the Deterministic Router. Read `refere
 ## Skill Review Checklist
 
 If the topic is a skill, always check the 12 review angles defined in `references/skill-review-mode.md`.
+Stance for this phase is governed exclusively by the applicable lock in `## Runtime Core Lock` above.
+Use `references/self-evolution-lens.md` and other review references only as supporting checklists, not as a second doctrine source.
+
+When the self-evolution lens or OpenClaw artifact-improvement path is active, apply the compact harvest validation defined in `## Local Capability Harvest Rule`; do not restate harvest questions here, and do not treat that compactness as permission to relax the minimum required round block or `VALIDATION_STATUS` visibility.
 
 If a skill fix is accepted, the next round must include a real patch in the real artifact, not only a suggestion list.
+If self and consultant both detect stagnation under the self-evolution lens, escalate toward a real patch or an explicit structural deferral instead of settling for commentary alone.
+- Stop behavior, force-majeure limits, and declared round plans are governed exclusively by `User-Declared Round Commitment Lock` and `Round-Limit & Stop Precedence`; do not re-evaluate them through checklist questions.
 
 ## Patch State
 
@@ -132,7 +661,6 @@ Emit patch state when patch work exists, an accepted fix is still pending, or a 
 If no patch work exists, `PATCH_STATUS: none` is enough and `PATCH_MANIFEST` may be omitted.
 
 ```text
-DRY_RUN: <ready|not-needed|blocked>
 APPLY: <done|deferred|not-needed>
 PATCH_MANIFEST:
 - target: <file or section>
@@ -143,84 +671,119 @@ PATCH_MANIFEST:
 
 ## Round Output Contract
 
-Every round ends with the shared block in `references/round-output-contract.md`.
-For weak models, emit the minimum required round block first. Add extended fields only when they help.
+Every round ends with the inline Minimum Required Round Block and contiguous status order defined in this document, emitted exactly once after synthesis and decision. Reference files may mirror that structure for sync and validation, but they do not override it.
+For weak models, emit the fully populated minimum required round block exactly once at the end of the round. Add extended fields only when they help.
+`VALIDATION_STATUS` is mandatory in the minimum round block and must resolve before `PATCH_STATUS` is emitted as accepted state. For `PATCH_STATUS: none`, emit an explicit resolved value such as `passed` or `not-applicable` rather than omitting the field.
+If an external validator schema conflicts with the inline round-block structure required by this document, the inline requirement wins and the external file must be flagged for maintenance.
 
 ## Publish Scope and Gate
 
-Publish, release, and package gates are required only in `skill-publish-readiness`.
-In `skill-review`, `skill-rewrite`, `skill-hardening`, and `weak-model-optimization`, run publish checks only if the user asked for shipping, distribution, packaging, or readiness.
-Keep `PUBLISH_STATUS` even when publish scope is not requested.
-If publish scope is not requested, `PUBLISH_STATUS` may be `Draft`, `Reviewed`, `Hardened`, or `Deferred`.
-If `VALIDATION_STATUS: failed`, block packaging and publishing.
+Publish, release, and package gates are required only in `skill-publish-readiness` or when the user explicitly asked for shipping, distribution, packaging, or readiness.
+If publish scope is not requested, `PUBLISH_STATUS` may remain `Draft`, `Reviewed`, `Hardened`, or `Deferred` without adding extra packaging runtime obligations.
+If `VALIDATION_STATUS: failed` or `blocked`, block packaging and publishing.
 
-For `skill-publish-readiness`, require all of these before `PUBLISH_STATUS: Packaged`:
-- validator passes
-- weak-model validator passes
-- package contents are explicit
-- version string is explicit and matches the latest applied patch intent
-- no unresolved must-have docs remain for the asked scope
-- no unresolved must-have tests remain for the asked scope
-- `TEST_STATUS: verified`, unless the user explicitly accepted deferral for the current scope
-
-The heading version string (for example `v7.3.1`) is the authoritative source of truth for validation and packaging. Do not require a frontmatter version key.
-
-When a patch changes runtime behavior, record a `version_bump` value in `PATCH_MANIFEST` and keep the visible version string aligned with the latest applied change.
-Packaging means bundling `SKILL.md`, `references/`, and any required test or eval artifacts into one import-ready archive.
-
-**Test status transitions:**
-- `missing` -> no test artifact exists yet for the current asked scope.
-- `planned` -> a concrete test or eval path has been specified but not yet updated and run.
-- `updated` -> the relevant test or eval artifact was added or modified for the latest accepted patch.
-- `verified` -> the relevant tests or evals were run successfully against the current artifact.
+For `skill-publish-readiness`:
+- `VALIDATION_STATUS: passed` is required before `PUBLISH_STATUS: Packaged` or `PUBLISH_STATUS: Published`; the full atomic sequencing and accepted-state rules remain governed exclusively by `State Transition & Rollback Gate`.
+- `TEST_STATUS` and `VERIFICATION_EVIDENCE` become conditionally mandatory round-block fields for the current publish gate
+- heading version alignment and detailed package-content / ClawHub packaging checks belong to subordinate support surfaces (`PACKAGING_CHECKLIST.md`, synced reference artifacts, and release evidence), not to a second inline runtime law
 
 ## Weak-Model Shortcut
 
-If you cannot safely manage the full package flow, use this fallback.
+If you cannot safely manage the full review flow, use this fallback.
 Treat the current path as weak-model constrained if either of these is true:
-- after two attempts, the consultant response still does not contain a usable `DECISION` field and a concrete non-empty `NEXT_ACTION`
+- upfront constraints or the first consultant attempt already show that the round cannot reliably maintain structured output or session/mode stability
 - the consultant repeats generic praise after the real artifact was pasted inline
 - the consultant cannot keep the mode, session, or next-action state stable across one round
 
-1. Preserve the routed `MODE`. Output marker: `ROUTE_COMPLETE`.
-2. Paste the real artifact inline and ask for 3 structural weaknesses plus the smallest fix for each. Output marker: `PROMPT_READY`.
-3. Emit a simplified round block with `ROUND`, `MODE`, `DECISION`, `NEXT_ACTION`, and `RESUME_SNIPPET`. Output marker: `FLOW_STATUS: terminated`.
-4. If the user later wants the full flow back, resume by pasting the last `RESUME_SNIPPET` and the latest accepted artifact into a normal round and routing again. Output marker: `RESUME_READY`.
+Shortcut contract:
+- preserve the routed `MODE`
+- paste the real artifact inline in enough detail for the exact claim under review
+- produce `SELF_POSITION_COMPACT`
+- if the round is still consultant-bearing, request `CONSULTANT_POSITION_COMPACT`
+- produce `SYNTHESIS_COMPACT`
+- follow the round-block emission discipline defined by the `Runtime Core Lock` and `Round Output Contract`
+
+Authority note:
+- consultant-shaped minimum, retry caps, downgrade-to-`analysis-only`, `CONSULTANT_POSITION_STATUS: omitted-invalid`, and failure routing are governed exclusively by the Runtime Core Lock and the Recovery Decision Tree
+- narrowing defaults to consultant-position output first; decision-style narrowing is synthesis-only
+- shortcut stance for this phase is governed exclusively by the applicable lock in `## Runtime Core Lock` above
+
+### Narrow consultant template — normal consultant-bearing rounds
+```text
+Focus strictly on <section>.
+Name exactly 1 structural weakness.
+Give the smallest strong fix.
+Return only:
+- consultant_verdict
+- strongest_finding
+- weakest_or_vague_finding
+- proposed_fix
+- confidence
+No praise. No preamble.
+```
+
+### Narrow synthesis fallback — only when the caller explicitly requests decision-ready compaction
+```text
+Focus strictly on <section>.
+Given the current SELF_POSITION and the consultant critique, output only:
+- relation
+- decision
+- next_action
+No praise. No preamble.
+```
 
 ## Execution
 
-1. Route the topic with the Deterministic Router. Internal marker: `ROUTE_COMPLETE`.
-2. Emit the minimum round state needed for the current round. Internal marker: `STATE_EMITTED`.
-3. Decide chat continuity for the round. Reuse the same chat for the same topic unless explicit recovery is required. Internal marker: `CHAT_CONTINUITY: new|reused|recovery`.
-4. Paste the real artifact inline. Internal marker: `ARTIFACT_LOADED`.
-5. Generate the round prompt. Internal marker: `PROMPT_READY`.
-6. Obtain critique using the resolved `ORCHESTRATOR_MODE` in the current topic chat. Internal marker: `RESPONSE_RECEIVED`.
-7. Compare findings and set `DECISION`, `CONSULTANT_QUALITY`, and `NEXT_ACTION`. Internal marker: `DECISION_MADE`.
-8. Emit the round block. Internal marker: `ROUND_EMITTED`.
-9. Check whether patching is required. Internal marker: `PATCH_GATE_CHECKED`.
-10. If patching is required, emit `DRY_RUN: ready`, patch the real artifact, emit `APPLY: done`, and emit `PATCH_MANIFEST`. Internal marker: `PATCH_APPLIED`.
-11. Run the skill checklist, class checklist, and mode-specific checks when the topic is a skill. Internal marker: `CHECKS_COMPLETE`.
-12. Validate the round block against `references/validator-schema.md`. Ensure that even in fallback or weak-model-constrained rounds, `DECISION` and `NEXT_ACTION` are present and non-empty. Internal marker: `VALIDATION_STATUS: passed|failed|blocked`.
-13. Decide whether the flow continues. Internal marker: `FLOW_STATUS: continued|terminated`.
+The executable sequence is already defined by the inline Runtime Core Lock, the round block contract, the mode semantics, and the shared closing tail rules above.
+This section intentionally stays short to avoid reintroducing mirrored runtime law.
+
+Execution trace rule:
+- route first
+- preserve round context
+- load the real artifact inline
+- produce `SELF_POSITION`
+- obtain exactly one consultant position when the mode is consultant-bearing
+- produce `SYNTHESIS`
+- validate
+- apply accepted fixes to the artifact; advance accepted state only after validation passes and the accepted state can advance honestly
+- emit the fully populated round block exactly once with resolved validation and patch state
+- continue or stop
+
+Mode note:
+- `local` = self + synthesis only
+- `api` = self -> one consultant -> synthesis
+- `multi` = alternate one orchestrator per round, refresh accepted continuity state before handoff, and keep one persistent session per orchestrator for the topic
+
+Closing-tail note:
+After the mode-specific core produces the decision state, apply the shared closing tail exactly once. Do not duplicate emit/patch/validate logic in parallel prose paths.
 
 ## Maintenance & Release Gates
 
 - `CONSULTANT_QUALITY: mixed` means the response contained at least one structurally sound actionable finding, but also included vague, hallucinated, or only partially aligned points. Keep the good parts, reject the bad parts, and do not retry automatically if the actionable path is already clear.
 - `analysis-only` is a valid operating mode, not a failure state.
-- In `local` mode, omit `CONSULTANT_QUALITY` unless a formal self-critique pass was actually run.
-- `MAX_ROUNDS`: default `5` unless the user explicitly wants more.
-- Retry a `CONSULTANT_QUALITY: weak` response only once with a narrower prompt.
-- If the second response is still weak, switch to `analysis-only` or stop with a blocker.
-- Package only after `VALIDATION_STATUS: passed`.
-- Treat `VALIDATION_STATUS: passed` as a required precondition for `PUBLISH_STATUS: Packaged` or `PUBLISH_STATUS: Published`.
+- In `local` mode, do not output `CONSULTANT_QUALITY`.
+- `MAX_ROUNDS`: default `5` unless the user explicitly wants more and did not already declare a binding larger round plan before execution.
+- In `multi` mode, alternate one orchestrator per round and keep the per-orchestrator sessions stable for the topic.
+- For ClawHub publish-readiness, `.clawhubignore` must exist and must not exclude required package artifacts.
+- `CONSULTANT_QUALITY: weak` handling is governed by the Runtime Core Lock, the Recovery Decision Tree, and the Weak-Model Shortcut above; do not reintroduce a parallel retry policy here.
+- Packaging and publishing preconditions are governed exclusively by `Publish Scope and Gate` and `State Transition & Rollback Gate`; do not restate publish rules here, to prevent parallel-law drift.
 - Publish only if the user asked for distribution and the publish gate has been satisfied.
 
-Read `references/skill-review-mode.md` when the topic is a skill. Purpose: enforce skill-architecture review.
-Read `references/skill-classes.md` when the skill belongs to a known class. Purpose: load the correct checklist.
-Read `references/round-output-contract.md` when you need the exact round fields. Purpose: emit a machine-checkable round block.
-Read `references/failure-handling.md` when the consultant is shallow, vague, or misses the artifact. Purpose: force a corrective round.
-Read `references/patch-discipline.md` when a real fix was accepted. Purpose: patch before the next round.
-Read `references/convergence-rules.md` when deciding whether to stop. Purpose: test stop conditions.
-Read `references/weak-model-guide.md` when weak models may struggle. Purpose: flatten the path.
-Read `references/validator-schema.md` when validation needs a minimal contract. Purpose: check round-block structure.
-Read `references/examples.md` when you need prompt or output examples. Purpose: copy a safe pattern.
+Reference files remain required sync and package surfaces for this skill, but they are subordinate to the inline runtime contract. Use them to keep validators, scenarios, examples, packaging, and release evidence aligned with the inline authority; do not let them become a second executable runtime path, a fallback execution path, or a competing source of runtime truth.
+
+## Artifact Governance
+Governance and release-policy detail is non-runtime and lives in `GOVERNANCE.md`.
+Use that file for freeze policy, release criteria, validation-state taxonomy, backlog discipline, done-enough heuristics, and line-state / lineage labels.
+Do not encode candidate/release lineage labels in the runtime header of `SKILL.md`.
+Inline runtime law still wins for execution behavior.
+If the current line is frozen, structural changes must still route to the next candidate line unless a required scenario test proves a defect in the current reference-release line.
+
+## Required scenario tests
+Required scenario ownership lives in `references/reference-scenarios.md` and the freeze / release-policy gates in `GOVERNANCE.md`.
+Those validation surfaces define which scenario failures justify bugfixes, candidate-line work, release blocking, or structural deferral.
+They do not add a second executable runtime path on top of the inline `Runtime Core Lock`.
+A structural change is justified only if one of those required scenarios fails or a newly required scenario with clear operational value is explicitly adopted through the reference/governance surfaces.
+
+## Reference validation status
+Reference-line maturity states and backlog/governance policy are defined in `GOVERNANCE.md`.
+Keep `PUBLISH_STATUS` separate from reference-line maturity.

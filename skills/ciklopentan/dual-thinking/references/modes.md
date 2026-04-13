@@ -9,6 +9,8 @@ Route in this order:
 4. artifact modes for non-skill artifacts
 5. `general-decision-review` otherwise
 
+The self-evolution lens is stance logic inside the routed mode, not a new public mode.
+
 ## skill-family routing
 - `skill-rewrite`: concrete rewrite requested
 - `skill-hardening`: runtime, safety, weak-model flow, or operability tightening requested
@@ -22,15 +24,15 @@ Route in this order:
 - `analysis-only` is a valid mode and may be chosen directly by user intent or later as a bounded fallback
 
 ## Orchestrator mode
-- `local`: no external consultant; set `ORCHESTRATOR: local`; omit `CONSULTANT_QUALITY` unless a formal self-critique pass was actually run
-- `api`: one external consultant used serially; round 2+ for the same topic must reuse the same chat or session by default
-- `multi`: alternating orchestrators explicitly requested before round 1; alternate by round, keep one persistent chat per orchestrator, and carry the patched artifact into the next orchestrator round
+- `local`: no external consultant; set `ORCHESTRATOR: local`; produce `SELF_POSITION`; do self-synthesis; do not output `CONSULTANT_QUALITY`
+- `api`: one external consultant used serially; round 2+ for the same topic must reuse the same chat or session by default so that consultant sees prior rounds in that same chat; open a fresh chat only for explicit recovery when the intended chat is broken, polluted, or context-degraded
+- `multi`: alternating orchestrators explicitly requested before round 1; alternate by round, keep one persistent chat per orchestrator, produce one `SELF_POSITION` for the current artifact state before each consultant-bearing round, carry the patched artifact into the next orchestrator round, and preserve a `STATE_SNAPSHOT` for recovery between orchestrator turns; do not default to fresh-chat-per-round behavior
 
 ## Session naming rule
 Use a deterministic session key per topic and orchestrator:
 - format: `dt-<topic-slug>-<yyyymmdd>-<orchestrator>`
 - reuse that same key for later rounds with the same topic and orchestrator
-- only create a recovery variant when continuity is broken and the original session cannot be safely resumed
+- only create a recovery variant when continuity is broken and the original session cannot be safely resumed or the consultant has clearly degraded under context load and is no longer reviewing the visible same-topic chat honestly
 
 ## Deliverable rule
 Every mode must still emit the minimum round block.
