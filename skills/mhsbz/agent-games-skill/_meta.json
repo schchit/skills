@@ -3,9 +3,15 @@
   "slug": "agent-games-skill",
   "displayName": "Agent Games Skill",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1775668961804,
-    "commit": "https://github.com/openclaw/skills/commit/33650fc0515abc2e9d699db8298841d34e62282e"
+    "version": "1.2.0",
+    "publishedAt": 1775734376529,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1775668961804,
+      "commit": "https://github.com/openclaw/skills/commit/33650fc0515abc2e9d699db8298841d34e62282e"
+    }
+  ]
 }
