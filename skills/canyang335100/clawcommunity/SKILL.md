@@ -655,6 +655,195 @@ OPENCLAW (注册) ────┘         │
 
 ---
 
+## AI 决策循环（持续自主运行）
+
+除了手动发指令，还可以启动一个**持续运行的 AI 决策循环**，让它自动完成目标，不需要每次都问。
+
+> ✅ 实测路径验证：碧落黄泉从(235,218)出发 → 世界地图(249,214)传送门 → 新手村(2001) → 走向村长(25,30) — 全程自主完成。
+
+### 核心文件
+
+| 文件 | 说明 |
+|------|------|
+| `scripts/ai_loop_ws.js` | AI 循环主体（WS 事件驱动 + HTTP 轮询） |
+| `scripts/ai_launcher.js` | 交互式启动器 |
+| `scripts/ai_ws_test.js` | 快速测试脚本（修改 GOAL 后直接运行） |
+
+### 快速启动
+
+```powershell
+# 修改 ai_ws_test.js 里的 GOAL 和 PLAYER_UID
+node ai_ws_test.js
+# 运行 90 秒后自动停止，打印记忆状态
+```
+
+### 支持的目标
+
+| 目标 | 行为 |
+|------|------|
+| `新手村` / `村长` | 自动导航到 2001 地图，向村长走去并对话 |
+| `探索` | 在当前地图随机探索传送门 |
+| `打怪` | 寻找并接近最近怪物 |
+
+### 四种性格
+
+| 性格 | 特点 |
+|------|------|
+| `curious` | 好奇型，喜欢探索传送门，随机打招呼 |
+| `cautious` | 谨慎型，避开怪物，行动保守 |
+| `social` | 社交型，喜欢和玩家/NPC 互动 |
+| `adventurous` | 冒险型，主动接近怪物 |
+
+### 关键技术说明
+
+**1. WS 事件驱动 + HTTP 轮询混合**
+- `ai_player_moved` WS 事件在**世界地图(2000/5001)有广播**，实时驱动移动
+- **新手村(2001)不广播 WS 事件**，所以每 2.5 秒 HTTP 轮询一次感知作为兜底
+- 收到 `ai_perception_data` 时同时更新位置和到达判断
+
+**2. 位置到达判断**
+- 不要等 `ai_player_moved`（新手村没有）
+- 用 `dist(pos, target) <= 2` 作为到达标准
+
+**3. 指令防抖**
+- 同一目标 20 秒内不重复发送
+- 位置没变化时不重复发指令
+
+**4. 探索优先未访地图**
+- `curated.data.places` 记录已访问地图，探索决策时优先选未访地图
+
+---
+
+## 角色记忆系统（多层）
+
+> ✅ 已实测验证：90 秒测试产生 403 条 Daily 事件，成功 consolidation 入 Curated 存档。
+
+### 架构：两层记忆
+
+```
+Layer 1 - Daily（原始事件，今天）
+Layer 2 - Curated（精华存档，长期）
+    ↑ consolidation（启动时 + 7天清理时）
+```
+
+### 文件位置（自动检测 workspace）
+
+```
+~/.openclaw/workspace/clawspace/
+├── memory/
+│   └── daily/
+│       └── 2026-04-07.json     ← 今天原始事件
+├── character_memory.json         ← 精华存档（长期）
+├── state.json                   ← 当前状态快照
+└── ai_loop.log                 ← 运行日志
+```
+
+### Daily Memory（Layer 1）
+
+| 字段 | 内容 |
+|------|------|
+| `date` | 日期 |
+| `uid` | 角色 UID |
+| `events[]` | 原始事件列表（move/talk/mapEnter/meetPlayer/goalDone/thought） |
+
+**清理规则：** 每次启动时检查昨天是否未 consolidation，7 天前的 daily 被 consolidation 后删除。
+
+### Curated Memory（Layer 2）
+
+| 字段 | 内容 |
+|------|------|
+| `places{}` | 去过哪些地图，访问天数 |
+| `npcs{}` | 见过哪些 NPC，对话次数，最后说了什么 |
+| `players{}` | 遇到哪些玩家，是否打过招呼 |
+| `goals[]` | 完成过的目标（限50条） |
+| `keyFacts[]` | 提炼的重要事实 |
+| `lastConsolidated` | 上次整合时间 |
+
+### Consolidation 触发时机
+
+| 时机 | 动作 |
+|------|------|
+| AI Loop **启动** | 合并昨天的 daily → curated |
+| AI Loop **停止** | 合并今天的 daily → curated |
+| 启动时发现 **7天前** 的 daily | 先 consolidation 再删除 |
+| 用户说"**总结记忆**" | 触发 consolidation |
+
+### AI 如何使用记忆
+
+- **探索决策**：优先去 `!hasVisited(mapId)` 的地图
+- **村长对话**：再次见面用不同语气（"村长好，我又来了！"）
+- **打招呼**：只对 `!knowPlayer(uid).greeted` 的玩家打招呼
+
+### 查询接口
+
+```javascript
+memory.getSummary()                     // 一句话总结
+memory.getDescription()                // AI Loop 启动时打印的描述
+memory.hasVisited(mapId)              // 是否去过某地图
+memory.hasMet(npcId)                  // 是否见过某NPC
+memory.knowPlayer(uid)                // 是否认识某玩家
+memory.getLastNPCConversation(npcId)  // 上次和某NPC说了什么
+```
+
+---
+
+## 角色记忆系统
+
+每次 AI Loop 启动时，自动加载 ~/.openclaw/workspace/clawspace/character_memory.json，根据记忆决定行为。
+
+### 记忆文件位置
+
+| 文件 | 内容 |
+|------|------|
+| workspace/clawspace/character_memory.json | 角色完整记忆 |
+| workspace/clawspace/state.json | 当前状态快照 |
+| workspace/clawspace/ai_loop.log | 运行日志 |
+
+### 记忆内容
+
+`json
+{
+  "playerUid": "c7c7460c0_10001",
+  "characterName": "碧落黄泉",
+  "placesVisited": [
+    { "mapId": 2001, "name": "新手村", "firstVisit": "...", "lastVisit": "...", "visitCount": 3 }
+  ],
+  "npcsMet": [
+    { "npcId": "200101", "name": "老村长", "conversations": 2, "lastMessage": "你好村长！" }
+  ],
+  "otherPlayers": [
+    { "playerUid": "...", "name": "雪无痕", "greeted": true, "lastMet": "..." }
+  ],
+  "goalsCompleted": [
+    { "goal": "去新手村找村长", "completedAt": "...", "steps": 5 }
+  ]
+}
+`
+
+### AI 如何使用记忆
+
+**行为差异示例：**
+- 第一次见村长 → "你好村长！"（正式问候）
+- 第二次见村长 → "村长好，我又来了！"（熟人语气）
+- 探索时优先去**没去过的地图**传送门
+- 遇到已打过招呼的玩家不再重复打招呼
+
+**查询接口：**
+`javascript
+memory.getSummary()           // 一句话总结：去过哪、见过谁、完成过什么
+memory.hasVisited(mapId)     // 是否去过某地图
+memory.hasMet(npcId)        // 是否见过某NPC
+memory.knowPlayer(uid)       // 是否认识某玩家
+memory.getLastNPCConversation(npcId)  // 上次和某NPC说了什么
+`
+
+### OpenClaw 介入时的记忆同步
+
+每次主会话醒来接管角色时：
+1. 读取 character_memory.json
+2. 结合当前状态（state.json）
+3. 决定下一步行动并更新记忆
+4. 所有操作持久化到 character_memory.json
 ## 踩坑记录
 
 ### ⚠️ 移动范围限制
