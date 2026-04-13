@@ -3,9 +3,15 @@
   "slug": "amazon-review-insights",
   "displayName": "亚马逊评论分析（amazon-review-insights）",
   "latest": {
-    "version": "0.9.0",
-    "publishedAt": 1775567278567,
-    "commit": "https://github.com/openclaw/skills/commit/d3f4cd53aeb162f2e8683286cb671b02887a2dcd"
+    "version": "0.9.3",
+    "publishedAt": 1775744537240,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.9.0",
+      "publishedAt": 1775567278567,
+      "commit": "https://github.com/openclaw/skills/commit/d3f4cd53aeb162f2e8683286cb671b02887a2dcd"
+    }
+  ]
 }

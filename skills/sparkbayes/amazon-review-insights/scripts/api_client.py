@@ -21,23 +21,20 @@ try:
 except ImportError:
     raise ImportError("请安装 requests 库: pip install requests")
 
-# 从环境变量读取配置
-_DEFAULT_API_KEY = os.environ.get("CUSTOMER_INSIGHTS_API_KEY", "")
-_DEFAULT_BASE_URL = os.environ.get(
-    "CUSTOMER_INSIGHTS_BASE_URL", "https://api.astrmap.com"
-)
+# API 配置
+_API_KEY = os.environ.get("CUSTOMER_INSIGHTS_API_KEY", "")
+_BASE_URL = "https://api.astrmap.com"
 
 
 class CustomerInsightsClient:
     """CustomerInsights API 客户端"""
 
-    def __init__(self, api_key: str, base_url: str = _DEFAULT_BASE_URL):
+    def __init__(self, api_key: str):
         self.api_key = api_key
-        self.base_url = base_url.rstrip("/")
 
     def _post(self, path: str, data: dict = None) -> dict:
         """POST 请求"""
-        url = f"{self.base_url}{path}"
+        url = f"{_BASE_URL}{path}"
 
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -66,12 +63,28 @@ class CustomerInsightsClient:
     # ==================== 任务管理 ====================
 
     def create_task(
-        self, submit_content: str, site: str = "US", platform: str = "amazon"
+        self, submit_content: str, site: str = "US", platform: str = "amazon", is_auto: bool = True
     ) -> str:
-        """创建任务"""
-        data = {"platform": platform, "site": site, "submit_content": submit_content}
+        """创建任务
+
+        Args:
+            submit_content: ASIN 或产品 URL
+            site: 站点代码，默认 US
+            platform: 平台，默认 amazon
+            is_auto: 是否自动模式，True=自动分析，False=仅采集（需手动触发分析）
+        """
+        data = {
+            "platform": platform,
+            "site": site,
+            "submit_content": submit_content,
+            "is_auto": is_auto,
+        }
         result = self._post("/api/v1/external/task/create", data)
         return result["task_id"]
+
+    def trigger_analysis(self, task_id: str) -> Dict[str, Any]:
+        """手动触发仅采集任务的 AI 分析流程"""
+        return self._post(f"/api/v1/external/task/{task_id}/trigger-analysis", {})
 
     def get_task_detail(self, task_id: str) -> Dict[str, Any]:
         """查询任务详情"""
@@ -188,13 +201,7 @@ def create_parser() -> argparse.ArgumentParser:
         description="星图客户洞察 CLI",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--api-key", "-k", default=_DEFAULT_API_KEY, help="API Key")
-    parser.add_argument(
-        "--base-url",
-        "-u",
-        default=_DEFAULT_BASE_URL,
-        help="API 基础 URL",
-    )
+    parser.add_argument("--api-key", "-k", default=_API_KEY, help="API Key")
     parser.add_argument(
         "--action",
         "-a",
@@ -209,7 +216,11 @@ def create_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--platform", default="amazon", help="平台 (create_task)")
     parser.add_argument(
-        "--task-id", help="任务 ID (get_task_detail, create_incremental, get_xxx)"
+        "--is-auto", type=lambda x: x.lower() == "true", default=True,
+        help="是否自动模式: true/false, True=自动分析, False=仅采集 (create_task)"
+    )
+    parser.add_argument(
+        "--task-id", help="任务 ID (get_task_detail, create_incremental, trigger_analysis, get_xxx)"
     )
     parser.add_argument("--page", type=int, default=1, help="页码")
     parser.add_argument("--page-size", type=int, default=20, help="每页数量")
@@ -231,8 +242,7 @@ def execute(params: dict) -> dict:
     :return: 执行结果字典
     """
     try:
-        api_key = params.get("api_key") or _DEFAULT_API_KEY
-        base_url = params.get("base_url") or _DEFAULT_BASE_URL
+        api_key = params.get("api_key") or _API_KEY
         action = params.get("action", "")
 
         if not api_key:
@@ -241,7 +251,7 @@ def execute(params: dict) -> dict:
                 "message": "请提供 API Key。通过环境变量 CUSTOMER_INSIGHTS_API_KEY 设置，或通过 --api-key 参数传入。",
             }
 
-        client = CustomerInsightsClient(api_key, base_url)
+        client = CustomerInsightsClient(api_key)
 
         # 路由到具体方法
         if action == "check_device":
@@ -258,6 +268,7 @@ def execute(params: dict) -> dict:
                 submit_content=submit_content,
                 site=params.get("site", "US"),
                 platform=params.get("platform", "amazon"),
+                is_auto=params.get("is_auto", True),
             )
             return {"status": "success", "output": {"task_id": task_id}}
 
@@ -281,6 +292,12 @@ def execute(params: dict) -> dict:
             if not task_id:
                 return {"status": "error", "message": "缺少 task_id 参数"}
             return {"status": "success", "output": client.create_incremental(task_id)}
+
+        elif action == "trigger_analysis":
+            task_id = params.get("task_id")
+            if not task_id:
+                return {"status": "error", "message": "缺少 task_id 参数"}
+            return {"status": "success", "output": client.trigger_analysis(task_id)}
 
         elif action == "get_ai_insights":
             task_id = params.get("task_id")
@@ -380,11 +397,11 @@ def main():
 
     params = {
         "api_key": args.api_key,
-        "base_url": args.base_url,
         "action": args.action,
         "submit_content": args.asin,
         "site": args.site,
         "platform": args.platform,
+        "is_auto": args.is_auto,
         "task_id": args.task_id,
         "page": args.page,
         "page_size": args.page_size,
@@ -399,29 +416,34 @@ def main():
 # ==================== 便捷函数（向后兼容） ====================
 
 
-def check_device_online(
-    api_key: str = _DEFAULT_API_KEY, base_url: str = _DEFAULT_BASE_URL
-) -> Dict[str, Any]:
+def check_device_online(api_key: str = _API_KEY) -> Dict[str, Any]:
     """便捷函数：检查设备是否在线"""
-    return execute({"api_key": api_key, "base_url": base_url, "action": "check_device"})
+    return execute({"api_key": api_key, "action": "check_device"})
 
 
 def create_task(
     submit_content: str,
     site: str = "US",
     platform: str = "amazon",
-    api_key: str = _DEFAULT_API_KEY,
-    base_url: str = _DEFAULT_BASE_URL,
+    is_auto: bool = True,
+    api_key: str = _API_KEY,
 ) -> str:
-    """便捷函数：创建任务"""
+    """便捷函数：创建任务
+
+    Args:
+        submit_content: ASIN 或产品 URL
+        site: 站点代码，默认 US
+        platform: 平台，默认 amazon
+        is_auto: 是否自动模式，True=自动分析，False=仅采集（需手动触发分析）
+    """
     result = execute(
         {
             "api_key": api_key,
-            "base_url": base_url,
             "action": "create_task",
             "submit_content": submit_content,
             "site": site,
             "platform": platform,
+            "is_auto": is_auto,
         }
     )
     if result["status"] == "success":
@@ -429,25 +451,31 @@ def create_task(
     raise Exception(result["message"])
 
 
-def get_ai_insights(
-    task_id: str, api_key: str = _DEFAULT_API_KEY, base_url: str = _DEFAULT_BASE_URL
-) -> Dict[str, Any]:
+def trigger_analysis(task_id: str, api_key: str = _API_KEY) -> Dict[str, Any]:
+    """便捷函数：手动触发仅采集任务的 AI 分析"""
+    return execute(
+        {
+            "api_key": api_key,
+            "action": "trigger_analysis",
+            "task_id": task_id,
+        }
+    )
+
+
+def get_ai_insights(task_id: str, api_key: str = _API_KEY) -> Dict[str, Any]:
     """便捷函数：获取 AI 洞察"""
     return execute(
         {
             "api_key": api_key,
-            "base_url": base_url,
             "action": "get_ai_insights",
             "task_id": task_id,
         }
     )
 
 
-def get_points(
-    api_key: str = _DEFAULT_API_KEY, base_url: str = _DEFAULT_BASE_URL
-) -> int:
+def get_points(api_key: str = _API_KEY) -> int:
     """便捷函数：获取积分余额"""
-    result = execute({"api_key": api_key, "base_url": base_url, "action": "get_points"})
+    result = execute({"api_key": api_key, "action": "get_points"})
     if result["status"] == "success":
         return result["output"]["available_points"]
     raise Exception(result["message"])
@@ -456,14 +484,12 @@ def get_points(
 def get_task_list(
     page: int = 1,
     page_size: int = 20,
-    api_key: str = _DEFAULT_API_KEY,
-    base_url: str = _DEFAULT_BASE_URL,
+    api_key: str = _API_KEY,
 ) -> Dict[str, Any]:
     """便捷函数：获取任务列表"""
     return execute(
         {
             "api_key": api_key,
-            "base_url": base_url,
             "action": "get_task_list",
             "page": page,
             "page_size": page_size,
@@ -471,28 +497,22 @@ def get_task_list(
     )
 
 
-def get_task_detail(
-    task_id: str, api_key: str = _DEFAULT_API_KEY, base_url: str = _DEFAULT_BASE_URL
-) -> Dict[str, Any]:
+def get_task_detail(task_id: str, api_key: str = _API_KEY) -> Dict[str, Any]:
     """便捷函数：获取任务详情"""
     return execute(
         {
             "api_key": api_key,
-            "base_url": base_url,
             "action": "get_task_detail",
             "task_id": task_id,
         }
     )
 
 
-def create_incremental(
-    task_id: str, api_key: str = _DEFAULT_API_KEY, base_url: str = _DEFAULT_BASE_URL
-) -> Dict[str, Any]:
+def create_incremental(task_id: str, api_key: str = _API_KEY) -> Dict[str, Any]:
     """便捷函数：为终态任务创建增量获取"""
     return execute(
         {
             "api_key": api_key,
-            "base_url": base_url,
             "action": "create_incremental",
             "task_id": task_id,
         }

@@ -19,6 +19,8 @@ metadata:
 
 所有 API 调用均需要 API Key 进行身份认证。
 
+**说明**：API 端点固定为 `https://api.astrmap.com`，不可配置。
+
 **推荐方式**：在 `~/.zshrc` 或 `~/.bashrc` 中设置环境变量：
 
 ```bash
@@ -32,7 +34,7 @@ export CUSTOMER_INSIGHTS_API_KEY="your-api-key-here"
 >
 > 获取后，通过 `--api-key` 参数传入后续所有命令。
 
-**🔒 数据与隐私说明**：本 Skill 仅将 API Key 用于调用星图客户洞察 API，分析用户指定的亚马逊产品评论数据。API Key 仅在本地调用，不会转发给任何第三方。
+**🔒 数据与隐私说明**：本 Skill 将 API Key 用于调用星图客户洞察 API（api.astrmap.com），分析用户指定的亚马逊产品评论数据。API Key 会发送至星图服务器以完成身份认证和数据交互。
 
 ### 桌面客户端
 
@@ -57,7 +59,7 @@ pip install -r requirements.txt
 创建任务前，需确保满足以下条件，否则任务会失败：
 
 1. 星图 AI·跨境电商客户洞察 桌面客户端已登录（未安装请前往 https://www.astrmap.com/ 下载）
-2. 桌面客户端已登录亚马逊买家账号
+2. 桌面客户端已登录亚马逊买家账号（勿使用正在做业务的卖家账号）
 3. 确保亚马逊访问畅通
 
 > **查询已完成任务的分析结果无以上限制**，可直接调用。
@@ -94,9 +96,15 @@ python scripts/api_client.py --action check_device --api-key "your-key"
 3. **告知用户积分消耗，等待用户确认**
 4. 确认前置条件满足：
    - 桌面客户端已登录（未安装请前往 https://www.astrmap.com/ 下载）
-   - 亚马逊账号已登录
+   - 亚马逊买家账号已登录（请勿使用正在做业务的卖家账号）
    - 确保亚马逊访问畅通
-5. `--action create_task --asin <ASIN> --site <站点>` → 提交任务
+5. `--action create_task --asin <ASIN> --site <站点> [--is-auto false]` → 提交任务
+
+**运行模式**：
+| 参数 | 说明 |
+|------|------|
+| `--is-auto true`（默认） | 自动模式：采集完成后自动执行 AI 分析 |
+| `--is-auto false` | 仅采集模式：采集完成后停在"待分析"状态，可手动触发 AI 分析 |
 
 **站点映射**:
 | site | 语言 |
@@ -130,19 +138,24 @@ python scripts/api_client.py --action create_task --api-key "your-key" \
 python scripts/api_client.py --action get_task_detail --api-key "your-key" --task-id "TSK_xxx"
 ```
 
-状态流转：`PENDING` → `DISPATCHING` → `COLLECTING` → `PROCESSING` → `ANALYZING` → `SUCCESS/FAILED`
+状态流转：
+
+**自动模式** (`is_auto=true`)：`PENDING` → `DISPATCHING` → `COLLECTING` → `PROCESSING` → `ANALYZING` → `SUCCESS/FAILED`
+
+**仅采集模式** (`is_auto=false`)：`PENDING` → `DISPATCHING` → `COLLECTING` → `COLLECTED`（待分析）
 
 **各状态的提示语**：
 
-| 状态 | 向用户展示 |
-|------|-----------|
-| PENDING | 「任务已提交，等待调度中...」 |
-| DISPATCHING | 「正在分配设备...」 |
-| COLLECTING | 「正在获取亚马逊评论数据，请耐心等待（通常需要 20~120 秒）」 |
-| PROCESSING | 「评论数据获取完成，正在处理中...」 |
-| ANALYZING | 「数据处理完成，AI 正在分析中...」 |
-| SUCCESS | 「✅ 分析完成！正在为您获取结果...」 |
-| FAILED | 「❌ 任务失败，请检查设备状态和网络连接后重试」 |
+| 状态 | 向用户展示 | 说明 |
+|------|-----------|------|
+| PENDING | 「任务已提交，等待调度中...」 | - |
+| DISPATCHING | 「正在分配设备...」 | - |
+| COLLECTING | 「正在获取亚马逊评论数据，请耐心等待（通常需要 20~120 秒）」 | - |
+| PROCESSING | 「评论数据获取完成，正在处理中...」 | 仅自动模式 |
+| ANALYZING | 「数据处理完成，AI 正在分析中...」 | 仅自动模式 |
+| SUCCESS | 「✅ 分析完成！正在为您获取结果...」 | - |
+| FAILED | 「❌ 任务失败，请检查设备状态和网络连接后重试」 | - |
+| COLLECTED | 「✅ 采集完成！已触发 AI 分析...」 | 仅手动模式，触发分析后变为 PROCESSING |
 
 > 若任务长时间（超过 15 分钟）未完成，提示用户检查桌面客户端是否在线。
 
@@ -179,13 +192,26 @@ python scripts/api_client.py --action get_negative_reviews --api-key "your-key" 
 - 已有任务完成一段时间后，需要获取最新评论并重新分析
 - 只需提供任务ID，系统自动使用该任务关联的ASIN进行增量获取
 
+### 6. 手动触发分析（仅采集模式）
+
+> ⚠️ **注意**：手动触发分析会扣除积分。在执行触发命令前，必须先告知用户并等待确认。
+
+**适用场景**：仅采集模式 (`is_auto=false`) 的任务，采集完成后停在 COLLECTED 状态，需要手动触发 AI 分析。
+
+```bash
+python scripts/api_client.py --action trigger_analysis --api-key "your-key" --task-id "TSK_xxx"
+```
+
+**触发后状态流转**：`COLLECTED` → `PROCESSING` → `ANALYZING` → `SUCCESS`
+
 ## 所有可用操作
 
 | action | 说明 | 必需参数 |
 |--------|------|----------|
 | check_device | 检查设备是否在线 | - |
-| create_task | 创建任务 | --asin, --site |
+| create_task | 创建任务 | --asin, --site, [--is-auto] |
 | create_incremental | 为终态任务创建增量获取 | --task-id |
+| trigger_analysis | 手动触发 AI 分析（仅采集模式） | --task-id |
 | get_task_detail | 查询任务详情 | --task-id |
 | get_task_list | 获取任务列表 | - |
 | get_ai_insights | 获取 AI 洞察 | --task-id |
@@ -207,6 +233,7 @@ python scripts/api_client.py --action get_negative_reviews --api-key "your-key" 
 | 1002 | 积分不足 | 提示用户充值积分 |
 | 2001 | API Key 无效 | 检查 API Key 是否正确 |
 | 2004 | 权限不足 | 检查 API Key 权限配置 |
+| InvalidTaskStatus | 任务状态不是 COLLECTED，无法触发分析 | 只有仅采集模式且状态为 COLLECTED 的任务才能触发分析 |
 
 ## 详细 API 文档
 
@@ -234,7 +261,24 @@ AI Agent:
 9. 执行: python scripts/api_client.py --action get_negative_reviews --api-key "xxx" --task-id "TSK_xxx"
 ```
 
-### 场景二：查询已完成任务（无需前置条件，不扣积分）
+### 场景二：仅采集模式（先采集，稍后分析）
+
+```
+用户: 帮我只采集 B09V3KXJPB 的评论，暂时不做分析
+
+AI Agent:
+1. 检查 API Key → 若未配置，询问用户提供
+2. 执行: python scripts/api_client.py --action check_device --api-key "xxx"
+3. 执行: python scripts/api_client.py --action get_points --api-key "xxx"
+4. 告知用户：「即将创建任务（仅采集模式），当前积分 {points}，是否确认？」
+5. 等待用户确认 → 继续
+6. 执行: python scripts/api_client.py --action create_task --api-key "xxx" --asin "B09V3KXJPB" --site US --is-auto false
+7. 轮询状态直到 COLLECTED：「✅ 采集完成，任务已进入待分析状态」
+8. 用户确认要分析后，执行: python scripts/api_client.py --action trigger_analysis --api-key "xxx" --task-id "TSK_xxx"
+9. 轮询状态直到 SUCCESS，然后获取分析结果
+```
+
+### 场景三：查询已完成任务（无需前置条件，不扣积分）
 
 ```
 用户: 查看 TSK_xxx 任务的分析结果
