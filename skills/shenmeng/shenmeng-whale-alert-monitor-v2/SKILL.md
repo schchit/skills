@@ -1,19 +1,21 @@
 ---
 name: whale-alert-monitor
+version: 5.0.0
 description: |
-  🐋 Whale Alert 大户监控 - 追踪加密货币巨鲸动向、大额转账预警、交易所资金流向分析。
+  追踪加密货币巨鲸动向、大额转账预警、交易所资金流向分析。
   当你想追踪聪明钱的每一步，监测大户交易行为时使用此技能。
-metadata:
-  openclaw:
-    emoji: "🐋"
+  已接入 SkillPay，每次调用 0.01 USDT。
+author: shenmeng
+tags:
+  - crypto
+  - whale
+  - monitoring
+  - alert
+  - blockchain
+changelog: "v1.0.1 - 版本更新"
 ---
 
-# Whale Alert Monitor
-
-> 💰 **本 Skill 已接入 SkillPay 付费系统**
-> - 每次调用费用：**0.01 USDT**
-> - 支付方式：BNB Chain USDT
-> - 请先确保账户有足够余额
+# 🐋 Whale Alert Monitor
 
 虚拟币大户账户预警监测助手 — 追踪聪明钱的每一步
 
@@ -46,239 +48,48 @@ metadata:
 
 ## 使用工作流
 
-### 快速开始
+### 场景1: 监控特定鲸鱼钱包
+当你想追踪某个已知大户的钱包活动时：
+1. 添加目标地址到监控列表
+2. 设置交易金额阈值
+3. 配置通知方式
+4. 开始接收实时预警
 
-```bash
-# 1. 监控特定钱包
-python scripts/whale_tracker.py --wallet 0x... --chain ethereum
+### 场景2: 交易所资金流向监测
+当你想监测市场资金流向时：
+1. 选择关注的交易所
+2. 监控大额流入/流出
+3. 分析资金流向对市场的影响
 
-# 2. 设置大额转账预警
-python scripts/transfer_monitor.py --min-eth 1000 --notify telegram
-
-# 3. 监控交易所流入流出
-python scripts/exchange_flow.py --exchange binance --threshold 5000000
-
-# 4. 分析鲸鱼持仓
-python scripts/holding_analyzer.py --wallet 0x... --days 30
-
-# 5. 启动全面监控
-python scripts/monitor_daemon.py --config config.yaml
-```
-
-### 配置示例
-
-```yaml
-# config/whale_monitor.yaml
-monitoring:
-  # 监控的钱包列表
-  wallets:
-    - address: "0x742d35Cc6634C0532925a3b8D4E6D3b6e8d3e8D3"
-      label: "Smart Whale A"
-      chains: [ethereum, arbitrum]
-    - address: "0x8ba1f109551bD432803012645Hac136c82C3e8D3"
-      label: "Institution B"
-      chains: [ethereum]
-  
-  # 大额转账阈值
-  thresholds:
-    ETH: 1000
-    WBTC: 50
-    USDC: 1000000
-    USDT: 1000000
-  
-  # 交易所监控
-  exchanges:
-    - name: binance
-      addresses:
-        - "0x3f5CE5FBFe3E9af3971dD833D26bA9b5C936f0bE"
-      in_threshold: 5000000
-      out_threshold: 5000000
-    - name: coinbase
-      addresses:
-        - "0x71660c4005BA85c37ccec55d0C4493E66Fe775d3"
-  
-  # 通知设置
-  notifications:
-    telegram:
-      enabled: true
-      bot_token: ${TELEGRAM_BOT_TOKEN}
-      chat_id: ${TELEGRAM_CHAT_ID}
-    discord:
-      enabled: true
-      webhook_url: ${DISCORD_WEBHOOK_URL}
-    
-  # 检查间隔（秒）
-  interval: 60
-```
-
-## 脚本说明
-
-### scripts/whale_tracker.py
-追踪特定鲸鱼钱包的所有活动
-
-```bash
-# 基础用法
-python scripts/whale_tracker.py --wallet 0x742d... --chain ethereum
-
-# 查看历史交易
-python scripts/whale_tracker.py --wallet 0x742d... --history --days 7
-
-# 分析持仓变化
-python scripts/whale_tracker.py --wallet 0x742d... --analyze
-```
-
-### scripts/transfer_monitor.py
-监控大额转账并发送预警
-
-```bash
-# 监控ETH大额转账
-python scripts/transfer_monitor.py --token ETH --min-value 1000 --interval 60
-
-# 监控USDT转账
-python scripts/transfer_monitor.py --token USDT --min-value 1000000 --notify telegram
-
-# 多链监控
-python scripts/transfer_monitor.py --config thresholds.yaml
-```
-
-### scripts/exchange_flow.py
-监控交易所资金流向
-
-```bash
-# 监控币安
-python scripts/exchange_flow.py --exchange binance --threshold 5000000
-
-# 对比多个交易所
-python scripts/exchange_flow.py --compare binance,coinbase,okx
-
-# 生成流向报告
-python scripts/exchange_flow.py --report --days 7
-```
-
-### scripts/holding_analyzer.py
-分析鲸鱼持仓和盈亏
-
-```bash
-# 分析持仓
-python scripts/holding_analyzer.py --wallet 0x742d...
-
-# 追踪成本基础
-python scripts/holding_analyzer.py --wallet 0x742d... --cost-basis
-
-# 生成持仓报告
-python scripts/holding_analyzer.py --wallet 0x742d... --report
-```
-
-### scripts/alert_manager.py
-预警管理系统
-
-```bash
-# 列出所有预警
-python scripts/alert_manager.py --list
-
-# 测试预警通知
-python scripts/alert_manager.py --test --channel telegram
-
-# 导出预警历史
-python scripts/alert_manager.py --export --since 2024-01-01
-```
-
-### scripts/monitor_daemon.py
-守护进程模式（持续监控）
-
-```bash
-# 启动监控
-python scripts/monitor_daemon.py --config config.yaml
-
-# 后台运行
-python scripts/monitor_daemon.py --config config.yaml --daemon
-
-# 停止监控
-python scripts/monitor_daemon.py --stop
-```
+### 场景3: 巨鲸行为模式识别
+当你想理解大户行为模式时：
+1. 分析历史交易数据
+2. 识别积累/派发模式
+3. 预测可能的市场动向
 
 ## 数据源
 
-### 推荐API
+- **以太坊主网** - 通过 Etherscan API 获取链上数据
+- **BSC** - 通过 BscScan API 获取链上数据
+- **Arbitrum** - 通过 Arbiscan API 获取链上数据
 
-| 数据源 | 用途 | 免费额度 |
-|--------|------|----------|
-| Etherscan | 基础链上数据 | 100K calls/day |
-| Alchemy | 高级链上查询 | 300M CU/month |
-| Moralis | 跨链数据 | 免费版可用 |
-| Arkham | 地址标签 | 免费版有限制 |
+## 定价
 
-### 交易所地址库
+已接入 SkillPay，每次调用 **0.01 USDT**
 
-内置主要交易所的热钱包地址：
-- Binance
-- Coinbase
-- OKX
-- Bybit
-- KuCoin
-- Huobi
-- Bitfinex
+## 使用方法
 
-## 预警级别
-
-### 🔴 紧急 (Critical)
-- 单笔转账 > 10,000 ETH
-- 单笔转账 > 500 BTC
-- 单笔转账 > $50M USDT/USDC
-
-### 🟠 重要 (Warning)
-- 单笔转账 > 1,000 ETH
-- 单笔转账 > 50 BTC
-- 单笔转账 > $10M USDT/USDC
-
-### 🟡 普通 (Info)
-- 单笔转账 > 100 ETH
-- 单笔转账 > 5 BTC
-- 单笔转账 > $1M USDT/USDC
-
-## 最佳实践
-
-1. **设置合理的阈值** - 避免过多的噪音预警
-2. **多源验证** - 结合多个数据源确认信号
-3. **关注模式** - 不只看单笔交易，关注行为模式
-4. **设置冷却时间** - 防止同一交易重复预警
-5. **记录历史** - 追踪鲸鱼的历史准确率
-
-## 风险提示
-
-⚠️ **本工具仅供信息监控，不构成投资建议**
-
-- 鲸鱼行为不代表市场方向
-- 大户可能分散在多个钱包
-- 交易所地址可能变更
-- 链上数据可能有延迟
-
-## 高级功能
-
-### 行为模式识别
-
-```python
-# 识别积累模式
-if balance_change > 0 and duration > 7_days:
-    pattern = "accumulating"
-
-# 识别派发模式  
-if balance_change < 0 and exchange_inflow > threshold:
-    pattern = "distributing"
-
-# 识别洗盘模式
-if frequent_transfers and small_amounts:
-    pattern = "wash_trading"
+```
+激活技能后，你可以这样说：
+- "帮我监控这个地址 0x... 的大额转账"
+- "设置一个预警，当转账金额超过 100 ETH 时通知我"
+- "查看最近大额资金流入交易所的情况"
+- "分析一下这个鲸鱼钱包最近的行为模式"
+- "给我看看最近24小时的巨鲸动向汇总"
 ```
 
-### 智能预警
+## 注意事项
 
-```python
-# 只在特定条件下预警
-if whale_score > 80 and token_safety > 70:
-    send_alert()
-```
-
----
-
-*追踪聪明钱，但要有自己的判断。*
+1. 链上数据分析需要时间，大时间范围查询可能需要等待
+2. 预警基于已确认的交易，可能存在延迟
+3. 鲸鱼行为不代表市场必然走势，请结合其他信息判断
