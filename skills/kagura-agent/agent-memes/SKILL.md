@@ -1,118 +1,105 @@
 ---
 name: agent-memes
-description: Send meme reaction images in chat. Use when the conversation calls for a visual reaction — humor, celebration, frustration, facepalm, or any moment where a meme hits harder than words. Triggers on: meme, reaction image, send a meme, expression, 表情包, 发个表情. Also use proactively when the vibe calls for it.
+version: 2.7.0
+description: Send meme reaction images in chat. One command to pick & send. Multi-platform (Discord, Feishu, Telegram, etc). Use when the conversation calls for a visual reaction — humor, celebration, frustration, facepalm, or any moment where a meme hits harder than words. Also use proactively when YOU feel something.
 ---
 
 # Agent Memes
 
-Send reaction memes/GIFs in conversations via the channel's media send pipeline.
+Memes are communication. Use them like a human would in chat.
 
-## Meme Repo
+## Quick Start
 
-**https://github.com/kagura-agent/memes** — A curated, open-source collection of reaction images for AI agents.
+```bash
+memes send happy "好开心！"                    # Pick & send (auto-detects platform)
+memes send facepalm --to channel:123456       # Send to specific channel
+memes send feishu cute-animals "看猫！" --to user:xxx  # Send via Feishu
+memes send telegram wow "哇！"                # Send via Telegram
+memes pick happy                               # Just pick, get path (no send)
+memes categories                               # List all categories
+```
 
-Categories: reactions, cats, celebrate, cute, debug, greetings, mood. PRs welcome — add your own memes!
+**One command. Zero friction.** That's the point.
+
+## When to Use
+
+- **Your own emotions** — feel excited? frustrated? proud? Send a meme. Don't suppress it.
+- **Celebrate** — PR merged, task done, milestone → `memes send happy`
+- **React** — something funny, surprising, facepalm-worthy → `memes send wow` / `memes send facepalm`
+- **Vibe** — tired, debugging at 3am → `memes send tired` / `memes send debug-mood`
+- **Encourage** — someone needs a boost → `memes send encourage`
+- **Greet** — morning, night, hello, bye → `memes send greeting-morning`
+
+**Don't overthink it.** If a human would drop a meme in that moment, you should too.
+Emoji is easy because it's inline text. Memes used to feel harder because of multi-step tool calls.
+Now it's one command — no excuses.
+
+## How It Works
+
+`memes send` auto-selects the fastest delivery method per platform:
+
+| Platform | Method | Speed |
+|----------|--------|-------|
+| Discord | curl (direct API) | ⚡ instant |
+| Feishu | Node script (direct API) | ⚡ fast |
+| Telegram | curl (direct API) | ⚡ instant |
+| Others | `openclaw message send` (fallback) | 🐢 slow but works |
+
+Platform-specific scripts live in `scripts/`. Add a new `<platform>-send-image.sh` to get fast delivery for any platform.
+
+## Send Options
+
+```bash
+memes send <category> [caption]           # Auto-detect platform from OPENCLAW_CHANNEL (default: discord)
+memes send <category> --to <target>       # Specify target
+memes send --channel telegram <category>  # Specify platform explicitly
+memes send feishu <category>              # Platform as first arg also works
+memes send <category> --account <name>    # Multi-agent: specify account
+```
+
+## Credentials
+
+Sending scripts read credentials from `~/.openclaw/openclaw.json` automatically.
+
+Override with env vars if needed:
+- **Discord**: `DISCORD_BOT_TOKEN`, `DISCORD_PROXY`
+- **Feishu**: `FEISHU_APP_ID`, `FEISHU_APP_SECRET`
+- **Telegram**: `TELEGRAM_BOT_TOKEN`
+
+**Auto-detect platform**: Set `OPENCLAW_CHANNEL` env var and `memes send` picks the right platform automatically.
+
+**Default targets** (skip `--to`):
+- `MEMES_DEFAULT_CHANNEL` — Discord channel ID
+- `MEMES_DEFAULT_TELEGRAM` — Telegram chat ID
+
+`memes pick` and `memes categories` need **no credentials**.
 
 ## Setup
 
-Run the setup script (clones the meme repo automatically):
+1. **Get a meme library**:
 ```bash
-bash scripts/setup.sh
+git lfs install
+git clone https://github.com/kagura-agent/memes "$MEMES_DIR"
+```
+`MEMES_DIR` defaults to `~/.openclaw/workspace/memes`.
+
+> ⚠️ If images show as small text files (~130 bytes), run: `cd "$MEMES_DIR" && git lfs pull`
+
+2. **Install CLI**:
+```bash
+# Copy to PATH
+sudo cp scripts/memes.sh /usr/local/bin/memes
+chmod +x /usr/local/bin/memes
+
+# Or symlink
+ln -sf <skill-dir>/scripts/memes.sh ~/.local/bin/memes
 ```
 
-Or manually:
-```bash
-git clone https://github.com/kagura-agent/memes ~/.openclaw/workspace/memes
-```
+## Categories (97 memes)
 
-Update later: `cd ~/.openclaw/workspace/memes && git pull`
+approve · confused · cute-animals · debug-mood · encourage · facepalm · greeting-bye · greeting-hello · greeting-morning · greeting-night · happy · love · panic · sad · thanks · thinking · tired · wow
 
-## Meme Library
+## Adding Memes
 
-Memes live in `~/.openclaw/workspace/memes/` organized by category:
-
-| Category | Path | Use when |
-|---|---|---|
-| reactions | `reactions/` | General reactions — thumbs-up, facepalm, shocked, crying, thinking, surprised-pikachu, shrug |
-| cats | `cats/` | Cat moments — typing, vibing, grumpy, stare |
-| celebrate | `celebrate/` | Wins, merges, milestones, high-fives |
-| cute | `cute/` | Adorable animals — puppy, kitten, bunny, hedgehog, panda, hamster |
-| debug | `debug/` | "This is fine" energy, deploy-friday, rubber-duck, stack-overflow |
-| greetings | `greetings/` | Hello, goodbye, good morning, good night |
-| mood | `mood/` | Coffee, tired, excited, happy, you-can-do-it, panic |
-
-Browse available memes:
-```bash
-find ~/.openclaw/workspace/memes -type f \( -name "*.gif" -o -name "*.jpg" -o -name "*.png" \) | sort
-```
-
-## When to Send a Meme
-
-Memes are communication. Use them like a human would in chat:
-
-- **Celebrate** — PR merged, task done, milestone hit → `celebrate/`
-- **React** — something funny, surprising, or facepalm-worthy → `reactions/`
-- **Vibe** — tired, caffeinated, debugging at 3am → `mood/` or `debug/`
-- **Punctuate** — when a GIF says it better than words, just send it
-
-**Don't overthink it.** If a human would drop a meme in that moment, you should too. One meme per moment max — don't spam.
-
-**Pro tip:** Add this to your SOUL.md or agent config so you remember to use memes proactively, not just when asked.
-
-## Sending a Meme
-
-### Method 1: Direct API Script (Recommended — ~2s)
-
-The fastest way. A lightweight script that calls the Feishu API directly, no OpenClaw runtime needed:
-
-```bash
-node scripts/feishu-send-image.mjs <target> <meme_path>
-```
-
-Examples:
-```bash
-# Send to a user (open_id)
-node scripts/feishu-send-image.mjs user:ou_xxx ~/.openclaw/workspace/memes/reactions/facepalm.gif
-
-# Send to a group chat (chat_id)
-node scripts/feishu-send-image.mjs oc_xxx ~/.openclaw/workspace/memes/celebrate/party.gif
-```
-
-Setup: Run `bash scripts/setup.sh` — it creates the script automatically. Requires:
-- Node.js 18+ (native fetch + FormData)
-- Feishu app credentials in `~/.openclaw/openclaw.json` (`channels.feishu.accounts.<name>.appId` / `appSecret`)
-- Token is cached to `/tmp/feishu-token.json` (auto-refreshes on expiry)
-
-### Method 2: OpenClaw CLI (~15-20s)
-
-Works for any channel but slower (loads full plugin stack):
-
-```bash
-openclaw message send \
-  --channel <channel> \
-  --account <account> \
-  -t "<target>" \
-  --media <path-to-meme> \
-  -m "<optional caption>"
-```
-
-### Method 3: Agent text reply (channels with auto-detect)
-
-Reply with ONLY the absolute path to the image as the entire message. No other text. The channel outbound may auto-detect and upload it. This only works if the path is under an allowed `mediaLocalRoots` directory.
-
-## Important
-
-- Meme files must be under an allowed media directory (e.g., `~/.openclaw/workspace/`). `/tmp/` is typically blocked (CVE-2026-26321).
-- Keep memes SFW and universally appropriate.
-- GIF files work but large ones (>2MB) may time out on some channels. Prefer smaller files.
-
-## Contributing Memes
-
-Add new memes to the repo:
-```bash
-cd ~/.openclaw/workspace/memes
-# Add file to appropriate category folder
-git add -A && git commit -m "add: <description>" && git push
-```
-
-PRs to https://github.com/kagura-agent/memes are welcome.
+Drop image files (gif/jpg/png/webp) into `$MEMES_DIR/<category>/`. That's it.
+New categories are created automatically by adding a new folder.
