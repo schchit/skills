@@ -9,13 +9,13 @@ description: "Live OmniFocus access via native Omni Automation — tasks, projec
 
 | User asks about… | Command to run |
 |------------------|----------------|
-| summary / overview / stats | `scripts/of summary` |
-| inbox | `scripts/of inbox` |
-| today / overdue / due | `scripts/of today` |
-| flagged tasks | `scripts/of flagged` |
-| what to do / available tasks | `scripts/of available 10` |
-| projects | `scripts/of projects` |
-| search for something | `scripts/of search "query"` |
+| summary / overview / stats | `.claude/skills/omnifocus4/scripts/of summary` |
+| inbox | `.claude/skills/omnifocus4/scripts/of inbox` |
+| today / overdue / due | `.claude/skills/omnifocus4/scripts/of today` |
+| flagged tasks | `.claude/skills/omnifocus4/scripts/of flagged` |
+| what to do / available tasks | `.claude/skills/omnifocus4/scripts/of available 10` |
+| projects | `.claude/skills/omnifocus4/scripts/of projects` |
+| search for something | `.claude/skills/omnifocus4/scripts/of search "query"` |
 
 Control OmniFocus via Omni Automation JS, called from a Python wrapper.
 
@@ -28,7 +28,7 @@ Control OmniFocus via Omni Automation JS, called from a Python wrapper.
 ## Quick Reference
 
 ```bash
-scripts/of <command> [args...]
+.claude/skills/omnifocus4/scripts/of <command> [args...]
 ```
 
 All commands return JSON to stdout. Errors print `{"error": "..."}` and exit 1.
@@ -88,10 +88,10 @@ All commands return JSON to stdout. Errors print `{"error": "..."}` and exit 1.
 
 ```bash
 # repeat <taskId> <method> <interval> <unit>
-scripts/of repeat abc123 fixed 1 weeks
-scripts/of repeat abc123 due-after-completion 2 days
-scripts/of repeat abc123 defer-after-completion 1 months
-scripts/of unrepeat abc123
+.claude/skills/omnifocus4/scripts/of repeat abc123 fixed 1 weeks
+.claude/skills/omnifocus4/scripts/of repeat abc123 due-after-completion 2 days
+.claude/skills/omnifocus4/scripts/of repeat abc123 defer-after-completion 1 months
+.claude/skills/omnifocus4/scripts/of unrepeat abc123
 ```
 
 Methods: `fixed`, `due-after-completion`, `defer-after-completion`
@@ -127,34 +127,34 @@ Write commands return `{"success": true, "task": {...}}`.
 
 ```bash
 # Add task to inbox
-scripts/of add "Buy groceries"
+.claude/skills/omnifocus4/scripts/of add "Buy groceries"
 
 # Add task to specific project
-scripts/of add "Review docs" "Work Projects"
+.claude/skills/omnifocus4/scripts/of add "Review docs" "Work Projects"
 
 # Get today's tasks
-scripts/of today
+.claude/skills/omnifocus4/scripts/of today
 
 # Search name and notes
-scripts/of search "quarterly report"
+.claude/skills/omnifocus4/scripts/of search "quarterly report"
 
 # Set due date and flag
-scripts/of due abc123 2026-04-10
-scripts/of flag abc123 true
+.claude/skills/omnifocus4/scripts/of due abc123 2026-04-10
+.claude/skills/omnifocus4/scripts/of flag abc123 true
 
 # Add tags
-scripts/of tag abc123 "urgent"
+.claude/skills/omnifocus4/scripts/of tag abc123 "urgent"
 
 # Create recurring task
-scripts/of add "Weekly review" "Habits"
-scripts/of repeat xyz789 fixed 1 weeks
+.claude/skills/omnifocus4/scripts/of add "Weekly review" "Habits"
+.claude/skills/omnifocus4/scripts/of repeat xyz789 fixed 1 weeks
 
 # Hierarchical views
-scripts/of summary
-scripts/of root
-scripts/of folder "Personal"
-scripts/of project-tree "Work" 50
-scripts/of tag-family "review"
+.claude/skills/omnifocus4/scripts/of summary
+.claude/skills/omnifocus4/scripts/of root
+.claude/skills/omnifocus4/scripts/of folder "Personal"
+.claude/skills/omnifocus4/scripts/of project-tree "Work" 50
+.claude/skills/omnifocus4/scripts/of tag-family "review"
 ```
 
 ## Performance
