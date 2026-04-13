@@ -3,9 +3,15 @@
   "slug": "alibabacloud-tair-devtoolset",
   "displayName": "Alibabacloud Tair Devtoolset",
   "latest": {
-    "version": "0.0.2",
-    "publishedAt": 1775095080378,
-    "commit": "https://github.com/openclaw/skills/commit/30cc0ab92cc3efca714393b9cda2197a011bbceb"
+    "version": "0.0.1",
+    "publishedAt": 1775721502895,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.0.2",
+      "publishedAt": 1775095080378,
+      "commit": "https://github.com/openclaw/skills/commit/30cc0ab92cc3efca714393b9cda2197a011bbceb"
+    }
+  ]
 }
