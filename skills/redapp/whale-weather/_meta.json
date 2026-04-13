@@ -1,0 +1,11 @@
+{
+  "owner": "redapp",
+  "slug": "whale-weather",
+  "displayName": "Whale Weather 🐳",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775710794758,
+    "commit": null
+  },
+  "history": []
+}
