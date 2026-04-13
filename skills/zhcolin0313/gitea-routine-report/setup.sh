@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# 文件用途：初始化本技能运行环境（虚拟环境、依赖安装、环境变量文件）。
+# 输入：无命令行参数；依赖 requirements.txt 与 env-example.txt。
+# 输出：创建 .venv 和 ~/.config/gitea-routine-report/.env，并在终端输出执行结果。
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"

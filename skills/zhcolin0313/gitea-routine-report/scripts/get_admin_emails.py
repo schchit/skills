@@ -1,3 +1,9 @@
+"""
+用途：根据 owner/repo 查询仓库 owner 的注册邮箱，供报告邮件默认收件人使用。
+输入：repo_full_name（owner/repo）或命令行参数 --repo。
+输出：函数返回邮箱字符串；命令行模式输出包含 repo 与 admin_email 的 JSON。
+"""
+
 import requests
 import os
 import json
