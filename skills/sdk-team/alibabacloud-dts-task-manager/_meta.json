@@ -1,0 +1,11 @@
+{
+  "owner": "sdk-team",
+  "slug": "alibabacloud-dts-task-manager",
+  "displayName": "Alibabacloud Dts Task Manager",
+  "latest": {
+    "version": "0.0.1",
+    "publishedAt": 1775180266135,
+    "commit": null
+  },
+  "history": []
+}
