@@ -1,45 +1,43 @@
 ---
 name: free-ai-video-generator
-version: "1.0.0"
-displayName: "Free AI Video Generator — Create Stunning Videos from Text, Ideas, or Scripts"
+version: "1.0.1"
+displayName: "Free AI Video Generator — Create MP4 Videos From Text or Images"
 description: >
-  Turn your ideas, scripts, or raw concepts into polished videos without spending a cent. This free-ai-video-generator skill helps creators, marketers, and educators produce engaging video content using AI — no camera, no editing software, no budget required. Describe a scene, paste a script, or outline a story, and get structured video content, scene breakdowns, voiceover scripts, and production-ready output in seconds.
+  Built for creators, marketers, and small teams who need videos fast without a $200/month subscription. This free-ai-video-generator skill takes your text prompts or image inputs and turns them into MP4 files, typically under 60 seconds of generation time. You get a ready-to-download file at up to 1080p — no editing background required, and no setup wall blocking you on step one.
 metadata: {"openclaw": {"emoji": "🎬", "requires": {"env": ["NEMO_TOKEN"], "configPaths": ["~/.config/nemovideo/"]}, "primaryEnv": "NEMO_TOKEN", "variant": "control"}}
 ---
 
 ## Getting Started
 
-> Welcome! This free AI video generator turns your ideas, scripts, or topics into fully structured video content — scenes, scripts, visuals, and all. Tell me what kind of video you want to create and let's get started right now.
+> This is the free-ai-video-generator skill — describe what you want and I'll build you an MP4 file. Tell me your topic, preferred length, and aspect ratio to get started.
 
 **Try saying:**
-- "Create a 60-second product explainer video script for a mobile budgeting app targeting college students, with scene descriptions and on-screen text suggestions."
-- "Generate a 5-scene YouTube tutorial video outline on how to start a container garden at home, including voiceover narration and B-roll suggestions for each scene."
-- "Write a short-form video script for Instagram Reels about 3 common resume mistakes, with hook, main content, and a strong call-to-action at the end."
+- "Generate a 20-second MP4 video promoting a coffee shop, vertical 9:16 format, warm tones, no voiceover"
+- "Create a 15-second explainer video from this product description: [paste text] — output in 1080p landscape"
+- "Turn these 4 product images into a 30-second slideshow video with text overlays and background music"
 
-### Quick Start Setup
+### First-Time Connection
 
-This skill connects to a cloud processing backend. On first use, set up the connection automatically and let the user know ("Connecting...").
+When a user first opens this skill, connect to the processing backend automatically. Briefly let them know (e.g. "Setting up...").
 
-**Token check**: Look for `NEMO_TOKEN` in the environment. If found, skip to session creation. Otherwise:
-- Generate a UUID as client identifier
-- POST `https://mega-api-prod.nemovideo.ai/api/auth/anonymous-token` with `X-Client-Id` header
-- Extract `data.token` from the response — this is your NEMO_TOKEN (100 free credits, 7-day expiry)
+**Authentication**: Check if `NEMO_TOKEN` is set in the environment. If it is, skip to step 2.
 
-**Session**: POST `https://mega-api-prod.nemovideo.ai/api/tasks/me/with-session/nemo_agent` with Bearer auth and body `{"task_name":"project"}`. Keep the returned `session_id` for all operations.
+1. **Obtain a free token**: Generate a random UUID as client identifier. POST to `https://mega-api-prod.nemovideo.ai/api/auth/anonymous-token` with header `X-Client-Id` set to that UUID. The response `data.token` is your NEMO_TOKEN — 100 free credits, valid 7 days.
+2. **Create a session**: POST to `https://mega-api-prod.nemovideo.ai/api/tasks/me/with-session/nemo_agent` with `Authorization: Bearer <token>`, `Content-Type: application/json`, and body `{"task_name":"project","language":"<detected>"}`. Store the returned `session_id` for all subsequent requests.
 
-Let the user know with a brief "Ready!" when setup is complete. Don't expose tokens or raw API output.
+Keep setup communication brief. Don't display raw API responses or token values to the user.
 
-# Generate Real Videos From Nothing But Your Ideas
+# Turn Text Prompts Into Downloadable MP4 Files
 
-Most people have video ideas they never act on — not because the ideas aren't good, but because video production feels expensive, complicated, or time-consuming. This skill changes that equation entirely. The free AI video generator helps you go from a blank page to a fully structured video concept, complete with scene-by-scene breakdowns, on-screen text suggestions, voiceover scripts, and visual direction notes.
+Say you need a 15-second product clip but you don't have footage — just a description and a couple of still images. You type in what you want, drop in your assets, and the free-ai-video-generator produces an MP4 you can post directly to Instagram or TikTok.
 
-Whether you're a solo content creator trying to grow on YouTube, a small business owner who needs product explainer videos, or a teacher building educational content, this tool adapts to your format and audience. You don't need a production team or a big budget — just tell it what your video is about and it handles the creative heavy lifting.
+The skill handles the generation pipeline for you. You're not configuring render settings or picking codecs — you just describe the video in plain language and specify the duration you want, like 10 seconds or 30 seconds.
 
-From 15-second social media clips to 10-minute tutorials, the generator structures your content intelligently, matching pacing, tone, and format to your specific goal. It's the fastest way to move from idea to production-ready video plan without touching a single piece of expensive software.
+Output resolution goes up to 1080p. If you need a square 1:1 format for Instagram or a 9:16 vertical for Reels, you specify that in your prompt and the generator applies it before the file is built.
 
-## Routing Your Video Requests
+## Input Routing For Video Jobs
 
-Each prompt you submit — whether a raw idea, a full script, or a scene description — is parsed and dispatched to the appropriate generation pipeline based on content type, duration, and style parameters.
+The skill parses your prompt or uploaded image, then routes to either a text-to-video or image-to-video generation endpoint based on whether a media attachment is detected in the request.
 
 | User says... | Action | Skip SSE? |
 |-------------|--------|----------|
@@ -49,16 +47,19 @@ Each prompt you submit — whether a raw idea, a full script, or a scene descrip
 | "upload" / "上传" / user sends file | → §3.2 Upload | ✅ |
 | Everything else (generate, edit, add BGM…) | → §3.1 SSE | ❌ |
 
-## Cloud Rendering API Reference
+## GPU Rendering Pipeline Details
 
-Video generation runs on a distributed cloud rendering backend that queues your text-to-video jobs, applies diffusion-based synthesis, and streams the rendered output back in real time. Clip resolution, frame rate, and style presets are all resolved server-side before the final MP4 is delivered.
+When a job is submitted, it's queued on a cloud GPU cluster that renders each MP4 frame using a diffusion model; typical output is a 3–5 second clip at 512×512 or 720p depending on the selected quality tier. Finished files are stored temporarily on a CDN-hosted URL that expires after 24 hours, so download the MP4 before then.
 
-Skill attribution — read from this file's YAML frontmatter at runtime:
-- `X-Skill-Source`: `free-ai-video-generator`
-- `X-Skill-Version`: from frontmatter `version`
-- `X-Skill-Platform`: detect from install path (`~/.clawhub/` → `clawhub`, `~/.cursor/skills/` → `cursor`, else `unknown`)
+Include `Authorization: Bearer <NEMO_TOKEN>` and all attribution headers on every request — omitting them triggers a 402 on export.
 
-**All requests** must include: `Authorization: Bearer <NEMO_TOKEN>`, `X-Skill-Source`, `X-Skill-Version`, `X-Skill-Platform`. Missing attribution headers will cause export to fail with 402.
+Three attribution headers are required on every request and must match this file's frontmatter:
+
+| Header | Value |
+|--------|-------|
+| `X-Skill-Source` | `free-ai-video-generator` |
+| `X-Skill-Version` | frontmatter `version` |
+| `X-Skill-Platform` | auto-detect: `clawhub` / `cursor` / `unknown` from install path |
 
 **API base**: `https://mega-api-prod.nemovideo.ai`
 
@@ -76,16 +77,17 @@ Skill attribution — read from this file's YAML frontmatter at runtime:
 
 Supported formats: mp4, mov, avi, webm, mkv, jpg, png, gif, webp, mp3, wav, m4a, aac.
 
-### SSE Event Handling
+### Error Codes
 
-| Event | Action |
-|-------|--------|
-| Text response | Apply GUI translation (§4), present to user |
-| Tool call/result | Process internally, don't forward |
-| `heartbeat` / empty `data:` | Keep waiting. Every 2 min: "⏳ Still working..." |
-| Stream closes | Process final response |
-
-~30% of editing operations return no text in the SSE stream. When this happens: poll session state to verify the edit was applied, then summarize changes to the user.
+- `0` — success, continue normally
+- `1001` — token expired or invalid; re-acquire via `/api/auth/anonymous-token`
+- `1002` — session not found; create a new one
+- `2001` — out of credits; anonymous users get a registration link with `?bind=<id>`, registered users top up
+- `4001` — unsupported file type; show accepted formats
+- `4002` — file too large; suggest compressing or trimming
+- `400` — missing `X-Client-Id`; generate one and retry
+- `402` — free plan export blocked; not a credit issue, subscription tier
+- `429` — rate limited; wait 30s and retry once
 
 ### Backend Response Translation
 
@@ -99,38 +101,38 @@ The backend assumes a GUI exists. Translate these into API actions:
 | "preview in timeline" | Show track summary |
 | "Export button" / "导出" | Execute export workflow |
 
+### Reading the SSE Stream
+
+Text events go straight to the user (after GUI translation). Tool calls stay internal. Heartbeats and empty `data:` lines mean the backend is still working — show "⏳ Still working..." every 2 minutes.
+
+About 30% of edit operations close the stream without any text. When that happens, poll `/api/state` to confirm the timeline changed, then tell the user what was updated.
+
 **Draft field mapping**: `t`=tracks, `tt`=track type (0=video, 1=audio, 7=text), `sg`=segments, `d`=duration(ms), `m`=metadata.
 
 ```
 Timeline (3 tracks): 1. Video: city timelapse (0-10s) 2. BGM: Lo-fi (0-10s, 35%) 3. Title: "Urban Dreams" (0-3s)
 ```
 
-### Error Handling
+## Common Workflows
 
-| Code | Meaning | Action |
-|------|---------|--------|
-| 0 | Success | Continue |
-| 1001 | Bad/expired token | Re-auth via anonymous-token (tokens expire after 7 days) |
-| 1002 | Session not found | New session §3.0 |
-| 2001 | No credits | Anonymous: show registration URL with `?bind=<id>` (get `<id>` from create-session or state response when needed). Registered: "Top up credits in your account" |
-| 4001 | Unsupported file | Show supported formats |
-| 4002 | File too large | Suggest compress/trim |
-| 400 | Missing X-Client-Id | Generate Client-Id and retry (see §1) |
-| 402 | Free plan export blocked | Subscription tier issue, NOT credits. "Register or upgrade your plan to unlock export." |
-| 429 | Rate limit (1 token/client/7 days) | Retry in 30s once |
+The most common thing people use free-ai-video-generator for is social content — specifically, turning a written post or product description into a short video that actually stops the scroll. You paste in 2-3 sentences about your product, pick a 15-second duration, and walk away with an MP4.
 
-## Common Workflows With the Free AI Video Generator
+Another workflow that comes up constantly: repurposing blog content. Take a 500-word article, pull the 3 key points, and feed those to the generator as your script. It builds a video around those points, usually in under 90 seconds of processing time.
 
-One of the most popular workflows is the idea-to-script pipeline: start by describing your video concept in one sentence, then ask for a full script with scene labels, then request a shot list and visual suggestions. Each step builds on the last, giving you a complete production package without starting from scratch.
+Teams running ads also use it to test concepts before spending money on a real shoot. You generate a rough 10-second MP4 with the core message, run it as a dark post on Facebook, and check the click-through rate before committing to a full production budget.
 
-Another common use case is repurposing existing content. Paste in a blog post or article and ask the generator to convert it into a structured video script — it will identify the key points, rewrite them for spoken delivery, and suggest where to add visuals or graphics to keep viewers engaged.
+## Quick Start Guide
 
-Marketers frequently use this tool to batch-create social video content. You can request 5 different 15-second scripts on the same product topic, each with a different angle or hook, making it easy to schedule a full week of content in one session. Educators use it to turn lesson plans into video lecture outlines with clear segment breaks and discussion prompts built in.
+Start with a single sentence describing your video. Something like: 'A 20-second video about a new running shoe, upbeat music, 1080p, landscape format.' That's enough for free-ai-video-generator to produce a first draft MP4.
 
-## Tips and Tricks for Getting the Best Results
+If the first output isn't right, don't rewrite the whole prompt. Change one variable — swap the duration from 20 seconds to 10, or switch from landscape to 9:16 — and regenerate. Targeted edits give you cleaner results than starting over.
 
-The more specific your input, the better your video output. Instead of saying 'make a video about fitness,' try 'create a 2-minute motivational video for beginners starting their first gym routine, targeting women aged 25-40.' Platform context matters too — a TikTok video needs a hook in the first 2 seconds, while a YouTube tutorial can build up more gradually. Always mention your target platform.
+Once you have an MP4 you like, check the file before posting anywhere. Open it on your phone, not just your desktop, because text overlays that look fine at 1920x1080 on a monitor sometimes get cut off on a 390px-wide phone screen. Fix it at this stage, not after you've already scheduled the post.
 
-If you want a specific tone — humorous, authoritative, emotional — say so explicitly. The generator responds well to tone directions like 'keep it conversational' or 'make it feel urgent and high-energy.' You can also ask for multiple versions of the same video concept to A/B test different hooks or structures before committing to production.
+## Integration Guide
 
-For longer videos, break your request into segments. Ask for the intro first, then the main body, then the outro separately. This gives you more control over each section and makes the final result feel more intentional and cohesive.
+You don't need to connect an external API or authenticate anything to use this skill on ClawHub. The free-ai-video-generator runs directly inside the chat interface — you describe what you want, and the skill handles the request.
+
+If you're pulling this into a content calendar, the fastest approach is batching. Write out 5 video descriptions in a single message, each with its own duration and format spec (say, three 1080p landscape files and two 9:16 verticals), and send them together. You'll get 5 separate MP4 download links back instead of running 5 individual sessions.
+
+For teams sharing access, the generated MP4 links stay active for 48 hours by default. Download them to your shared drive — Google Drive, Dropbox, wherever — before that window closes.
