@@ -27,7 +27,7 @@ cp "$REPO_DIR/feedback_update.py"   "$TARGET_DIR/"
 echo "[3/6] Copying templates..."
 mkdir -p "$TARGET_DIR/templates"
 cp "$REPO_DIR/templates/proaktiv_state.json"  "$TARGET_DIR/"
-cp "$REPO_DIR/templates/interest_graph.json" "$TARGET_DIR/"
+cp "$REPO_DIR/templates/interests.yaml" "$TARGET_DIR/"
 cp "$REPO_DIR/templates/social_knowledge.json" "$TARGET_DIR/"
 
 # --- STEP 4: Copy topic templates ---
@@ -90,10 +90,10 @@ echo "Configuring tools profile..."
  echo " ✅ tools.profile = coding (exec via gateway enabled)" || \
  echo " ⚠️ Could not set tools.profile — run manually: openclaw config set tools.profile coding"
 
-# --- Patch interest_graph.json with user profile ---
+# --- Patch proaktiv_state.json with user profile ---
 python3 - << PYEOF2
 import json, os
-path = "$TARGET_DIR/interest_graph.json"
+path = "$TARGET_DIR/proaktiv_state.json"
 with open(path) as f:
     data = json.load(f)
 data.setdefault('user_profile', {})
@@ -103,7 +103,7 @@ data['user_profile']['daily_budget_weekend'] = int("$BUDGET_WEEKEND")
 data['user_profile']['ping_style'] = 'conversational_buddy_telegram'
 with open(path, 'w') as f:
     json.dump(data, f, indent=2, ensure_ascii=False)
-print(" ✅ interest_graph.json — user profile saved")
+print(" ✅ proaktiv_state.json — user profile saved")
 PYEOF2
 
 # --- Set up OpenClaw Cron job ---
@@ -163,18 +163,14 @@ When you receive `[SYSTEM-TRIGGER: PROAKTIV_CHECK`:
 4. Only respond if the script injects a new follow-up trigger
 5. NEVER tell the user that a cron or script triggered this
 ## 🎯 Proaktiv-Trigger Delivery Rules
-When you receive `[SYSTEM-TRIGGER: MOTIVATION]`, `[SYSTEM-TRIGGER: KI_NEWS]`, `[SYSTEM-TRIGGER: F1]` or any topic trigger:
-1. Generate the message as normal text in this session
-2. OpenClaw delivers automatically via --deliver --reply-channel telegram
-3. NEVER call curl api.telegram.org directly
-4. Duplicate ping_id → stay silent, no HEARTBEAT_OK
-5. HEARTBEAT_OK only for [SYSTEM-TRIGGER: HEARTBEAT]
-## 🎯 Proaktiv-Onboarding Routing
-When you receive `[SYSTEM-TRIGGER: PROAKTIV_ONBOARDING]`:
-1. START IMMEDIATELY — do NOT ask for permission
-2. Send the 5 onboarding questions one by one via Telegram
-3. Wait for answers, save to interest_graph.json and proaktiv_state.json
-4. Confirm with a summary at the end
+When you receive `[SYSTEM-TRIGGER: MOTIVATION]`, `[SYSTEM-TRIGGER: KI_NEWS]`, `[SYSTEM-TRIGGER: SPORT_EVENT]` or any topic trigger:
+1. Read skills/proaktiv/SKILL.md first — it contains the full dispatch matrix
+2. SKILL.md tells you which cluster template to load next
+3. Generate the message as normal text in this session
+4. OpenClaw delivers automatically via --deliver --reply-channel telegram
+5. NEVER call curl api.telegram.org directly
+6. Duplicate ping_id → stay silent, no HEARTBEAT_OK
+7. HEARTBEAT_OK only for [SYSTEM-TRIGGER: HEARTBEAT]
 ## 🧠 Social Knowledge
 When updating social_knowledge.json or processing calendar/mail context:
 Read skills/proaktiv/SOCIAL.md first — it contains all detection and write rules.
@@ -201,12 +197,12 @@ sleep 3
     --session-key "agent:main:telegram:direct:$OPENCLAW_TELEGRAM_NR" \
     --message "[SYSTEM-TRIGGER: PROAKTIV_ONBOARDING]
 Starte jetzt SOFORT das Onboarding. Stelle dem User folgende 5 Fragen nacheinander via Telegram:
-1. Welche Themen interessieren dich? (z.B. F1, KI, Fitness, Serien...)
+1. Welche Themen interessieren dich? (z.B. Formel 1, KI, Fitness, Serien...)
 2. Welche Sportarten oder Events soll ich tracken? (oder: keine)
 3. Was willst du NIEMALS hören? (No-Go Topics, z.B. Crypto, Politik)
 4. Quiet Hours: Von wann bis wann soll ich still sein? (z.B. 22-07)
 5. Chill Mode: Ab wann nur noch Entertainment/Lifestyle? (z.B. ab 18 Uhr)
-Warte auf Antworten und speichere sie direkt in interest_graph.json und proaktiv_state.json." \
+Warte auf Antworten und speichere sie direkt in interests.yaml und proaktiv_state.json." \
     --deliver \
     --reply-channel telegram
 echo "✅ Onboarding gestartet — schau in Telegram!"

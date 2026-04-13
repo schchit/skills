@@ -1,11 +1,17 @@
 {
   "owner": "wewillsee86",
   "slug": "proactive-living-companion",
-  "displayName": "Proactive — The Living Companion",
+  "displayName": "Proaktiv",
   "latest": {
-    "version": "1.0.49",
-    "publishedAt": 1775221168852,
-    "commit": "https://github.com/openclaw/skills/commit/228a36cdf29ef339a742aa652afda25103940e01"
+    "version": "1.0.52",
+    "publishedAt": 1775842078937,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.49",
+      "publishedAt": 1775221168852,
+      "commit": "https://github.com/openclaw/skills/commit/228a36cdf29ef339a742aa652afda25103940e01"
+    }
+  ]
 }

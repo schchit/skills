@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """
-Proactive v1.0.11 - interest_evolve.py (The Breathing Graph)
-Wertet candidate_topics aus, bereitet Promotions vor und lässt alte Themen verblassen.
-Seeded den Graphen aus dem proaktiv_state wenn er leer ist.
+Proactive v1.0.12 - interest_evolve.py (The Breathing Graph)
+Changelog v1.0.12 (2026-04-05):
+ + MIGRATION: seed_graph_from_yaml() liest Interessen aus interests.yaml statt aus State
+ + interests.yaml ist jetzt die einzige Quelle für User-deklarierte Interessen
 """
 
-import json, fcntl, logging, os
+import json, fcntl, logging, os, yaml
 from datetime import datetime, timezone, timedelta
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-GRAPH_FILE = os.path.join(BASE_DIR, "interest_graph.json")
-STATE_FILE = os.path.join(BASE_DIR, "proaktiv_state.json")
+GRAPH_FILE      = os.path.join(BASE_DIR, "interest_graph.json")
+STATE_FILE      = os.path.join(BASE_DIR, "proaktiv_state.json")
+INTERESTS_FILE  = os.path.join(BASE_DIR, "interests.yaml")
 os.makedirs(os.path.join(BASE_DIR, "logs"), exist_ok=True)
 LOG_FILE = os.path.join(BASE_DIR, "logs", "proaktiv_cron.log")
 
@@ -35,17 +37,27 @@ def save_json(path, data):
         with open(path, "w") as f:
             json.dump(data, f, indent=2)
 
-def seed_graph_from_state(graph, state):
-    """Seedet den Graphen mit Interests aus dem State wenn der Graph leer ist."""
+def load_yaml(path, default=None):
+    if default is None:
+        default = {}
+    try:
+        with open(path) as f:
+            return yaml.safe_load(f) or {}
+    except (FileNotFoundError, yaml.YAMLError):
+        return default.copy()
+
+def seed_graph_from_yaml(graph):
+    """Seedet den Graphen mit Interessen aus interests.yaml wenn der Graph leer ist."""
     interests = graph.get("interests", {})
-    state_interests = state.get("interests", [])
-    
-    if not state_interests:
-        log.info("Keine Interessen im State gefunden.")
+    yaml_data = load_yaml(INTERESTS_FILE, {})
+    yaml_interests = yaml_data.get("interests", [])
+
+    if not yaml_interests:
+        log.info("Keine Interessen in interests.yaml gefunden.")
         return graph
-    
-    for topic in state_interests:
-        if topic not in interests:
+
+    for topic in yaml_interests:
+        if isinstance(topic, str) and topic not in interests:
             interests[topic] = {
                 "weight": 0.5,
                 "priority": 5,
@@ -53,8 +65,8 @@ def seed_graph_from_state(graph, state):
                 "engagement_score": 0.5,
                 "category": "user_declared"
             }
-            log.info(f"Graph gespeist: {topic}")
-    
+            log.info(f"Graph gespeist aus YAML: {topic}")
+
     graph["interests"] = interests
     return graph
 
@@ -62,20 +74,20 @@ def main():
     graph = load_json(GRAPH_FILE, {"interests": {}, "candidate_topics": {}})
     state = load_json(STATE_FILE, {})
 
-    # NEU: Graph aus State seeden wenn leer
+    # Graph aus interests.yaml seeden wenn leer
     if not graph.get("interests"):
-        log.info("Graph leer — seede aus State...")
-        graph = seed_graph_from_state(graph, state)
+        log.info("Graph leer — seede aus interests.yaml...")
+        graph = seed_graph_from_yaml(graph)
 
     candidates = graph.get("candidate_topics", {})
-    interests = graph.get("interests", {})
+    interests  = graph.get("interests", {})
 
     now = datetime.now(timezone.utc)
     promoted_keys = []
 
     # 1. PROMOTION (Ask-First vorbereiten)
     for cand_name, cand_data in candidates.items():
-        mentions = cand_data.get("mentions", 0)
+        mentions    = cand_data.get("mentions", 0)
         pos_replies = cand_data.get("positive_replies", 0)
 
         if mentions >= 3 and pos_replies >= 2:
@@ -93,7 +105,7 @@ def main():
 
     # 2. PASSIVE DECAY
     for topic, t_data in interests.items():
-        score = t_data.get("engagement_score", 0.5)
+        score         = t_data.get("engagement_score", 0.5)
         last_date_str = t_data.get("last_topic_date", "")
 
         if score < 0.2 and last_date_str:

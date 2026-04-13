@@ -1,284 +1,91 @@
 ---
-
-
-# 🦊 Proactive — The Living Companion
-
-## ⚠️ Installation — Telegram Only / Nur über Telegram
-
-### 🇩🇪 Deutsch
-Dieser Skill muss **zwingend über Telegram installiert werden** — nicht über das Web-UI!
-
-1. Öffne deinen Telegram-Bot
-2. Schreibe dem Bot den Install-Befehl
-3. Beantworte alle Fragen direkt in Telegram
-4. Der Skill richtet sich automatisch für deinen Account ein
-
-> ⚠️ **Installation über das Web-UI führt zu Routing-Fehlern** — Nachrichten landen dann nicht in Telegram!
-
-### 🇬🇧 English
-This skill **must be installed via Telegram** — not through the Web-UI!
-
-1. Open your Telegram bot
-2. Send the install command to your bot
-3. Answer all questions directly in Telegram
-4. The skill will automatically configure itself for your account
-
-> ⚠️ **Installing via Web-UI will cause routing errors** — messages will not be delivered to Telegram!
-
+name: proactive-companion
+version: 1.0.52
 ---
 
----
-## ⚠️ Required: SOUL.md Routing Configuration
-This skill requires routing rules in your agent's `SOUL.md` to function correctly.
-Without them, the agent will respond directly to the system trigger instead of running the check script.
-The `install.sh` handles this automatically. For manual installs, add the following to your `SOUL.md`:
-### Trigger Routing Rule
-When you receive a message containing `[SYSTEM-TRIGGER: PROAKTIV_CHECK`:
-- IMMEDIATELY execute: `python3 skills/proaktiv/proaktiv_check.py`
-- Do NOT respond yourself — no weather, no comment, nothing
-- The script decides everything. Exit 0 = stay silent
-- Only respond if the script injects a new follow-up trigger
-- NEVER mention to the user that a cron or script triggered this
-### Delivery Rules
-When you receive `[SYSTEM-TRIGGER: MOTIVATION]`, `[SYSTEM-TRIGGER: KI_NEWS]`, `[SYSTEM-TRIGGER: F1]` or any other topic trigger:
-- Write your response as normal text in the session
-- OpenClaw delivers automatically via `--deliver --reply-channel telegram`
-- NEVER use curl or the Bot API directly
-- If you see the same `ping_id` twice → stay silent, no HEARTBEAT_OK
-- HEARTBEAT_OK only for `[SYSTEM-TRIGGER: HEARTBEAT]`
----
+# Proactive Companion — Dispatcher
 
-## What Is This?
+## Pflicht: proaktiv_state.json lesen
+Vor JEDEM Trigger: Lese `skills/proaktiv/proaktiv_state.json`.
+Relevante Context-Flags:
+- `context.sport_race_weekend` → true/false
+- `context.sport_race_today` → true/false
+- `context.sport_active_series` → z.B. "Formel 1", "IndyCar", "MotoGP"
+- `context.sport_event_today` → z.B. "Bahrain GP — Race"
+- `context.has_major_ai_news` → true/false
 
-Proactive transforms OpenClaw into a smart companion that actively looks out for you. Instead of waiting for commands, it monitors what matters and sends you timely pings — updates on your favorite sports, breaking news in your field, reminders at the right moment. And it gets better over time by learning from every interaction.
+## Trigger-Dispatch-Matrix
 
-## How It Works
+### [SYSTEM-TRIGGER: MORNING_BRIEFING]
+1. Lese `clusters/morning_briefing/SKILL.md` → render vollständig
+2. WENN `sport_race_weekend == true` → Sport-Hinweis in Slot A einsetzen
+3. WENN `has_major_ai_news == true` → KI-Flash in Slot B einsetzen
+4. Alle anderen Cluster: excluded
 
-Every 30 minutes, Proactive runs a decision cycle:
+### [SYSTEM-TRIGGER: SPORT_EVENT]
+1. Lese `clusters/sport_events/SKILL.md` → render vollständig
+2. Sport-Art steht in `context.sport_active_series` (z.B. "Formel 1")
+3. Keine Conditional-Blöcke
 
-```
-Should I ping my user right now?
-  ├── Is it quiet hours? → Nightshift: run memory cleanup, then sleep
-  ├── Morning (7:00–9:00)? → Morning briefing
-  ├── Ping pressure high enough? → Send targeted topic ping
-  └── Otherwise? → Wait silently
-```
+### [SYSTEM-TRIGGER: BUNDESLIGA]
+1. Lese `clusters/fussball/SKILL.md` → render vollständig
+2. WENN `context.has_matchday_today == true` → Matchday-Output
+3. Keine Conditional-Blöcke
 
-## Core Features
+### [SYSTEM-TRIGGER: FORMEL 1] oder [SYSTEM-TRIGGER: F1]
+1. Lese `clusters/formel1/SKILL.md` → render vollständig
+2. Keine Conditional-Blöcke
 
-### 1. Breathing Interest Graph
-Proactive tracks your topics across three states:
-- **Hot** — actively discussed recently → gets pings
-- **Emerging** — mentioned a few times → promoted toward Hot
-- **Dormant** — not mentioned for days → cooled down, stops getting pings
+### [SYSTEM-TRIGGER: WEC] oder [SYSTEM-TRIGGER: LE MANS] oder [SYSTEM-TRIGGER: ENDURANCE]
+1. Lese `clusters/wec/SKILL.md` → render vollständig
+2. Keine Conditional-Blöcke
 
-Topics with more engagement get pinged more often. Topics you ignore fade away automatically.
+### [SYSTEM-TRIGGER: SUNO] oder [SYSTEM-TRIGGER: SUNOAI] oder [SYSTEM-TRIGGER: AI_MUSIC]
+1. Lese `clusters/suno/SKILL.md` → render vollständig
+2. Keine Conditional-Blöcke
 
-### 2. Morning Briefing (7:00–9:00)
-Every morning (once per day, configurable), you get a structured briefing:
-- Today's calendar events
-- Important unread emails
-- Weather at your location
-- Breaking news in your interests
+### [SYSTEM-TRIGGER: KI_NEWS] oder [SYSTEM-TRIGGER: AI_NEWS]
+1. Lese `clusters/tech_ai_news/SKILL.md` → render vollständig
+2. Keine Conditional-Blöcke
 
-### 3. Topic-Based Pings (30-min Cycle)
-Throughout the day, Proactive decides whether to ping based on:
-- **Budget**: max 6-8 pings per day (resets at midnight)
-- **Pressure**: chance increases the longer you've been silent
-- **Recent history**: won't ping the same topic twice in a row
+### [SYSTEM-TRIGGER: PROAKTIV_CHECK]
+→ Nicht hier behandeln.
+→ Direkt: `python3 skills/proaktiv/proaktiv_check.py`
+→ Dieser Dispatcher wird NICHT geladen bei PROAKTIV_CHECK.
 
-Example topics:
-- `f1`: Race week — Thursday build-up, Friday first practice results, Saturday quali, Sunday is quiet
-- `ki_news`: Monday–Friday mornings — latest AI/LLM developments relevant to your setup
-- `n8n`: When something breaks or a new workflow pattern is relevant
-- `turkish`: Cultural/entertainment — weekend vibes, memes, casual check-ins
+### Unbekannter Trigger
+→ Lese `clusters/_fallback/SKILL.md`
+→ Still bleiben, nur loggen
 
-### 4. Quiet Hours & Nightshift (21:00–07:30)
-During quiet hours, Proactive stops sending pings. But it still works in the background:
+## Dispatch-Regeln
+- Primary-Cluster IMMER vollständig rendern
+- Conditional-Blöcke: IMMER kürzer als Primary (max 2 Sätze)
+- NIEMALS alle Cluster gleichzeitig rendern
+- NIEMALS Meta-Kommentare in der Ausgabe ("Ich lese jetzt...", "Laut SKILL.md...")
+- Ausgabe: nur fertiger Content für Telegram
 
-When quiet hours start, the **Nightshift Module** kicks in:
-1. Reads the day's `proaktiv_state.json` (conversation highlights captured during the day)
-2. Extracts key decisions, corrections, and preferences
-3. Updates `proaktiv_state.json` with compacted daily memory
-4. Clears the buffer
-5. Goes to sleep — silently, no chat message
+## Research-Pflicht (alle Trigger außer PROAKTIV_CHECK)
+1. IMMER zuerst suchen: brave_search → tavily_search
+2. NIEMALS Fakten, News, Ergebnisse aus internem Wissen
+3. Kein Ergebnis → "Keine aktuellen Daten gefunden" — nie raten
 
-### 5. Feedback Loop
-After every ping you react to (reply, emoji, anything), Proactive scores that interaction:
-- **Positive reaction** → topic gets a boost, pressure resets
-- **No reaction** → topic cools down, pressure increases
-- **Negative reaction** ("stop", "not this again") → topic goes on a temporary no-go list
-- **Apology protocol** → if a ping annoyed you, Proactive acknowledges it and adjusts
+## Interessen-Management
+Wenn der User sagt "füge X hinzu", "ich interessiere mich für X", "X zu meinen Interessen",
+"trag X ein", "X interessiert mich" oder ähnliches:
+1. `interests.yaml` öffnen → Begriff unter `interests:` eintragen
+2. `/home/node/.openclaw/workspace/skills/proaktiv/interest_evolve.py` ausführen → Graph wird automatisch geseedet
+3. Bestätigen: "✅ [Begriff] wurde zu deinen Interessen hinzugefügt!"
 
-### 6. WAL Protocol (Write-Ahead Log)
-Proactive maintains a live working state. During conversation, it scans for:
-- **Corrections**: "No, it's X not Y" / "Actually..."
-- **Decisions**: "Let's go with option B" / "Use X instead"
-- **Preferences**: "I prefer dark mode" / "I like X more than Y"
-- **Key facts**: new names, URLs, numbers, deadlines
+Wenn der User sagt "entferne X", "X interessiert mich nicht mehr", "lösche X":
+1. `interests.yaml` öffnen → Begriff aus `interests:` entfernen
+2. In `interest_graph.json` → `interests.[Begriff]` entfernen
+3. Bestätigen: "✅ [Begriff] wurde aus deinen Interessen entfernt!"
 
-These get written to `proaktiv_state.json` immediately — before answering. This survives context clears and compaction.
+Wenn der User sagt "zeig meine Interessen", "was sind meine Topics":
+1. `interests.yaml` lesen → Liste ausgeben
+2. Format: "📋 Deine aktuellen Interessen: Formel 1, Suno, ..."
 
-### 7. 60% Context Buffer
-When the conversation gets long (~60% context used), Proactive starts mirroring the conversation essence to `proaktiv_state.json`. This file bridges context loss and nightly compaction. After a context clear, Proactive reads the buffer first and recovers the thread.
-
-## Architecture
-
-```
-proaktiv_check.py     ← Main loop. Runs every 30 min via OpenClaw Cron
-                     ← Decides: ping / nightshift / sleep
-                     ← Contains interest_evolve logic (daily evolution)
-feedback_update.py    ← Called after every user reaction. Updates scores
-```
-
-Supporting files (created on install — no personal data in templates):
-```
-proaktiv_state.json     ← Daily budget, quiet hours config, last ping dates
-interest_graph.json     ← Topic scores, temperatures, cooldown state
-social_knowledge.json  ← Tracked goals, commitments, no-go list
-```
-
-## Installation
-
-```bash
-git clone https://github.com/Wewillsee86/proactive-companion.git
-cd proaktiv-skill
-bash install.sh
-```
-
-The installer will:
-1. Copy all scripts to `/data/.openclaw/skills/proaktiv/`
-2. Copy template JSON files (empty state — no personal data)
-3. **Auto-detect your Telegram session** (dynamic UUID lookup)
-4. Set `tools.profile = coding` (enables script execution via gateway — no node pairing needed)
-5. Patch your `SOUL.md` with all required routing rules automatically
-6. Set up the OpenClaw Cron job (every 30 minutes, Europe/Berlin)
-7. Ask for your ping budget (weekday / weekend) and preferred language
-8. Fire the onboarding interview via Telegram automatically
-
-### Finding Your Telegram Chat ID
-Message [@userinfobot](https://t.me/userinfobot) on Telegram. It will reply with your numeric user ID. Enter that during install.
-
-### Manual Setup (skip chat ID prompt)
-```bash
-echo "OPENCLAW_TELEGRAM_NR=YOUR_CHAT_ID" > /data/.openclaw/skills/proaktiv/.env
-chmod 600 /data/.openclaw/skills/proaktiv/.env
-```
-
-## Configuration
-
-### Quiet Hours
-Default: 22:00–07:30 (Europe/Berlin). Override during onboarding:
-```
-[SETUP-QUIET: 21-08]
-```
-
-### Daily Ping Budget
-Default: 8 pings/day (weekdays) / 10 pings/day (weekends). Resets at midnight. Hard cap — Proactive won't exceed it.
-
-### No-Go Topics
-Tell Proactive topics to never ping about:
-```
-[SETUP-NOGO: politics]
-[SETUP-NOGO: crypto]
-```
-
-### Topic Time Windows
-Each topic has a preferred time window. Examples:
-- `f1`: Any time during race week; quiet on Sundays
-- `ki_news`: Weekdays only, mornings
-- `morning_briefing`: Only 7:00–9:00
-
-## Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `OPENCLAW_TELEGRAM_NR` | Yes | Your Telegram chat ID. Written to `.env` during install. |
-
-## Cron Job
-
-Proactive registers a single cron job on install:
-```
-PROAKTIV-30min  */30 * * * *  (Europe/Berlin)
-```
-
-Runs via `--session-key agent:main:telegram:direct:<ID>` — routes directly to your Telegram session.
-
-## Permissions
-
-- **Cron**: every 30 min, autonomous
-- **File system**: read/write `/data/.openclaw/skills/proaktiv/`
-- **Telegram**: send direct messages to configured chat ID
-- **Chat context**: reads recent chat history for morning briefing personalization (via OpenClaw CLI)
-- **Working buffer**: writes conversation highlights to `proaktiv_state.json` during long sessions
-  — this survives context loss and feeds the nightly memory compaction
-
-## Example Pings
-
-**Morning Briefing:**
-> "Good morning! You've got a dentist appointment at 10am. One urgent email from Stripe. Weather: 8°C and rainy. F1: Hamilton contract extension announced. Want details?"
-
-**F1 Race Week (Thursday):**
-> "Japanese GP is this Sunday! Schedule: FP1 Fri 04:00, FP2 Fri 08:00, Quali Sat 08:00, Race Sun 07:00 CET. Want me to pull up the championship standings?"
-
-**KI News (Monday morning):**
-> "Weekend AI roundup: OpenAI dropped a new model, plus rumors about an Anthropic investment round. Want the details?"
-
-**Nightshift complete (silent — no chat sent):**
-> *(nothing — Proactive updates proaktiv_state.json and goes to sleep)*
-
-## Extending Proactive
-
-### Adding a New Topic
-1. Add to `interest_graph.json` under `interests`:
-```json
-"my_topic": {
-  "temperature": 0.5,
-  "weight": 1.0,
-  "status": "candidate"
-}
-```
-2. Add time window in `proaktiv_check.py` (look for `TW` definitions):
-```python
-TW = {
-    ...
-    "my_topic": {"from": 9, "to": 22, "weekend": True},
-}
-```
-
-### Adjusting Ping Frequency
-- Lower budget: edit `DAILY_BUDGET` in `proaktiv_check.py`
-- Higher pressure cap: edit `PRESSURE_MAX`
-- More topics active: increase `MAX_PROMOTIONS_PER_DAY` in `interest_evolve.py`
-
-## Open for Contribution
-
-Open source — PRs, forks, and ideas are welcome. The codebase is readable and heavily commented. Fork it and build your own version.
-
-## Changelog
-
-- **v1.0.49**: Bugfix — user_reacted statt daniel_reacted (Skill jetzt für alle User). session_id Argparse-Fix. now_iso Duplikat entfernt. bare except durch spezifische Exceptions ersetzt.
-- **v1.0.48**: Feat — Globale Search-Pflicht für alle Topic-Pings (brave_search / tavily / web_search immer zuerst).
-- **v1.0.47**: Cleanup — proaktiv_check_fixed.py entfernt. Repo umbenannt zu proactive-companion.
-- **v1.0.46**: Critical Fix — install.sh patcht jetzt SOUL.md automatisch. PROAKTIV_CHECK Routing-Regel ergänzt. tools.profile=coding wird beim Install gesetzt.
-- **v1.0.45**: Fix — Onboarding startet automatisch nach Install ohne Rückfrage.
-- **v1.0.31**: Fix — `last_run_date` in `proaktiv_state.json` wird jetzt nach jedem Lauf korrekt aktualisiert.
-- **v1.0.30**: Fix — Install-Reihenfolge verifiziert (Auto-UUID-Lookup aus aktiver Telegram-Session). ClawHub: Telegram-Only-Warning DE/EN hinzugefügt.
-- **v1.0.29**: Production Release — Dynamic UUID lookup via `openclaw sessions --json`, `--session-key agent:main:telegram:direct:`, `--system-event` Cron, explizite Fehlermeldung, dual-language Install-UX.
-- **v1.0.28**: RC — Dynamic UUID lookup, explicit routing, blocking 120s `subprocess.run()`, dual-language install UX.
-- **v1.0.23**: Bugfix — Split-Brain-Amnesie behoben (Session-ID fest verdrahtet auf `agent:main:telegram:direct:{tg_nr}`).
-- **v1.0.21**: Bugfix — Telegram-Routing-Flags (`--reply-channel`, `--reply-to`) für async delivery wiederhergestellt.
-- **v1.0.19**: Strict Silence Policy — Fallback-Telegram-Code komplett entfernt. Bei `inject_trigger()`-Fehler: nur Log, kein Direkt-Fallback.
-- **v1.0.18**: Fix routing — `inject_trigger()` sends to MAIN session instead of Telegram. SOUL.md processes trigger, generates researched content, sends proper message.
-- **v1.0.9**: Topic Templates Module — all topic rules in `TOPIC_TEMPLATES.md`. Generic fallback for custom interests.
-- **v1.0.8**: Fix .env loading.
-- **v1.0.7**: Remove deceptive onboarding text. Permission transparency.
-- **v1.0.6**: Full English rebrand.
-- **v1.0.5**: Privacy fix.
-- **v1.0.4**: Nightshift Module.
-- **v1.0.3**: Interactive install.
-- **v1.0.1**: Initial ClawHub release.
-
-## License
-
-MIT — see LICENSE file
+WICHTIG:
+- Nie breite Kategorien eintragen ("KI-Themen") — immer konkrete Begriffe ("Suno", "n8n")
+- Nach jedem Add/Remove → interest_evolve.py ausführen
+- interests.yaml ist die einzige Quelle — nie direkt in interest_graph.json schreiben

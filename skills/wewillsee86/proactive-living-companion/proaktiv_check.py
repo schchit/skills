@@ -1,40 +1,27 @@
 #!/usr/bin/env python3
 """
-Proactive v1.0.38 - proaktiv_check.py
+Proactive v1.0.39 - proaktiv_check.py
+Changelog v1.0.39 (2026-04-05):
+ + MIGRATION: get_quiet_hours() liest aus interests.yaml statt aus State
+ + MIGRATION: no_go_topics in decide_next_ping() liest aus interests.yaml statt aus Graph
+ + State-Key quiet_hours_start/end wird nicht mehr geschrieben/gelesen
+
 Changelog v1.0.38 (2026-04-01):
  + FIX: Quiet Hours jetzt aus State (quiet_hours_start/end) statt Hardcode
  + FIX: stale key daily_budget wird beim Reset entfernt
- + FIX: Topic-Wiederholung — letzten 3 Topics komplett gesperrt (nicht nur 2x)
-Changelog v1.0.29 (2026-03-31):
- + PROD RELEASE: Dynamic UUID lookup via openclaw sessions --json
- + Klarere Fehlermeldung bei fehlender Telegram-Session
- + FIX: last_run_date wird jetzt nach jedem Lauf aktualisiert
-Changelog v1.0.28 (2026-03-31):
- + RELEASE CANDIDATE: Dynamic UUID lookup, explicit routing, blocking run
- + install.sh: dual-language UX Hinweis
-Changelog v1.0.23 (2026-03-31):
- + BUGFIX: Fixed split-brain amnesia (feste Verdrahtung)
-Changelog v1.0.21 (2026-03-31):
- + BUGFIX: Restored explicit telegram routing flags
-Changelog v1.0.19 (2026-03-31):
- + STRICT SILENCE POLICY: kein Fallback mehr
-Changelog v1.0.10 (2026-03-30):
- + Daily Interest Evolution (interest_evolve) direkt eingebaut
- + Runs once per day (bei erstem Cron-Durchlauf nach Mitternacht)
- + Calls interest_evolve.main(), State wird neu geladen nach Promotion
- + FIX: BASE before import, TELEGRAM_NR aus Env Var (keine Hard-coded IDs)
+ + FIX: Topic-Wiederholung — letzten 3 Topics komplett gesperrt
 """
 
-import json, random, logging, sys, os, subprocess, time, uuid
+import json, random, logging, sys, os, subprocess, time, uuid, yaml
+from pathlib import Path
+from pathlib import Path
 from datetime import datetime, date, timedelta
 import fcntl
 
-# SEARCH-PFLICHT: Wird mit jedem Topic-Trigger mitgeschickt
 SEARCH_REMINDER = "⚠️ SEARCH FIRST: Nutze brave_search oder tavily_search BEVOR du schreibst. Keine Fakten, Versionen, News aus internem Wissen — immer erst suchen."
 
 import importlib.util
 
-# .env laden (kein python-dotenv nötig)
 _env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
 if os.path.exists(_env_path):
     with open(_env_path) as _f:
@@ -44,17 +31,15 @@ if os.path.exists(_env_path):
                 _k, _v = _line.split("=", 1)
                 os.environ.setdefault(_k.strip(), _v.strip())
 
-# BASE must be defined FIRST, before loading interest_evolve
-# Dynamic BASE_DIR — portable, works on any OpenClaw installation
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-STATE_FILE = os.path.join(BASE_DIR, "proaktiv_state.json")
-HISTORY_FILE = os.path.join(BASE_DIR, "ping_history.json")
-GRAPH_FILE = os.path.join(BASE_DIR, "interest_graph.json")
-SOCIAL_FILE = os.path.join(BASE_DIR, "social_knowledge.json")
+BASE_DIR       = os.path.dirname(os.path.abspath(__file__))
+STATE_FILE     = os.path.join(BASE_DIR, "proaktiv_state.json")
+HISTORY_FILE   = os.path.join(BASE_DIR, "ping_history.json")
+GRAPH_FILE     = os.path.join(BASE_DIR, "interest_graph.json")
+SOCIAL_FILE    = os.path.join(BASE_DIR, "social_knowledge.json")
+INTERESTS_FILE = os.path.join(BASE_DIR, "interests.yaml")
 os.makedirs(os.path.join(BASE_DIR, "logs"), exist_ok=True)
 LOG_FILE = os.path.join(BASE_DIR, "logs", "proaktiv_cron.log")
 
-# TELEGRAM_NR: MUST be set via environment — no fallback allowed
 _tg = os.environ.get("OPENCLAW_TELEGRAM_NR", "")
 if not _tg:
     raise RuntimeError("KRITISCH: OPENCLAW_TELEGRAM_NR nicht gesetzt! Bitte in .env eintragen.")
@@ -69,7 +54,6 @@ except (ImportError, KeyError):
     _dst = _t.daylight and _t.localtime().tm_isdst
     TZ = timezone(td(hours=2 if _dst else 1))
 
-# Load interest_evolve as module (daily gardener) — BASE must be defined above first!
 _spec = importlib.util.spec_from_file_location(
     "interest_evolve", os.path.join(BASE_DIR, "interest_evolve.py")
 )
@@ -78,50 +62,7 @@ _spec.loader.exec_module(interest_evolve)
 
 MORNING_UNTIL = 10
 
-def get_quiet_hours(state: dict) -> tuple[int, int, int]:
-    """Liest Quiet Hours aus State, Fallback auf Defaults."""
-    qs = state.get("quiet_hours_start", "21:00")
-    qe = state.get("quiet_hours_end", "08:30")
-    try:
-        q_start = int(qs.split(":")[0])
-        qe_parts = qe.split(":")
-        q_end_h = int(qe_parts[0])
-        q_end_m = int(qe_parts[1]) if len(qe_parts) > 1 else 0
-    except (ValueError, IndexError):
-        q_start, q_end_h, q_end_m = 21, 8, 30
-    return q_start, q_end_h, q_end_m
-PRESSURE_STEP = 30
-PRESSURE_MAX = 90
-HISTORY_MAX = 30
-
-# Dormant-Automatik: nach N ignorierten Pings → Cooldown
-IGNORE_THRESHOLD = 3
-IGNORE_COOLDOWN_H = 48
-PASSIVE_DECAY_RATE = 0.003
-
-# ─── v3.1 NEU: Arbeitszeiten-Schutz ────────────────────────────────────────
-WORK_DAYS = {0, 1, 2, 3, 4, 5}  # Montag bis Samstag
-WORK_HOUR_START = 8
-WORK_HOUR_END = 17              # Schutzschild gilt bis 16:59 Uhr
-
-def is_work_hours(now=None) -> bool:
-    """True wenn Mo–Sa zwischen 08:00 und 17:00 Uhr (Europe/Berlin)."""
-    if now is None:
-        now = datetime.now(TZ)
-    return (
-        now.weekday() in WORK_DAYS
-        and WORK_HOUR_START <= now.hour < WORK_HOUR_END
-    )
-
-logging.basicConfig(
-    filename=LOG_FILE,
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
-)
-log = logging.getLogger()
-
-# ─── JSON-Helfer ────────────────────────────────────────────────────────────
+# ─── JSON / YAML Helfer ─────────────────────────────────────────────────────
 
 def load_json(path, default=None):
     if default is None:
@@ -149,6 +90,67 @@ def save_json(path, data):
         with open(path, "w") as f:
             json.dump(data, f, indent=2)
 
+def load_yaml(path, default=None):
+    if default is None:
+        default = {}
+    try:
+        with open(path) as f:
+            return yaml.safe_load(f) or {}
+    except (FileNotFoundError, yaml.YAMLError):
+        return default.copy()
+
+# ─── Quiet Hours aus interests.yaml (MIGRIERT) ──────────────────────────────
+
+def get_quiet_hours() -> tuple[int, int, int]:
+    """Liest Quiet Hours aus interests.yaml. Verarbeitet '22:00' (String) und 22 (Integer)."""
+    interests_data = load_yaml(INTERESTS_FILE, {})
+    qh = interests_data.get("quiet_hours", {})
+    try:
+        start_val = qh.get("start", 21)
+        end_val = qh.get("end", 8)
+        end_min_val = qh.get("end_minute", 0)
+        if isinstance(start_val, str) and ":" in start_val:
+            q_start = int(start_val.split(":")[0])
+        else:
+            q_start = int(start_val)
+        if isinstance(end_val, str) and ":" in end_val:
+            parts = end_val.split(":")
+            q_end_h = int(parts[0])
+            q_end_m = int(parts[1]) if len(parts) > 1 else 0
+        else:
+            q_end_h = int(end_val)
+            q_end_m = int(end_min_val) if isinstance(end_min_val, int) else 0
+    except (ValueError, TypeError):
+        q_start, q_end_h, q_end_m = 21, 8, 30
+    return q_start, q_end_h, q_end_m
+
+PRESSURE_STEP  = 30
+PRESSURE_MAX   = 90
+HISTORY_MAX    = 30
+IGNORE_THRESHOLD  = 3
+IGNORE_COOLDOWN_H = 48
+PASSIVE_DECAY_RATE = 0.003
+
+WORK_DAYS       = {0, 1, 2, 3, 4, 5}
+WORK_HOUR_START = 8
+WORK_HOUR_END   = 17
+
+def is_work_hours(now=None) -> bool:
+    if now is None:
+        now = datetime.now(TZ)
+    return (
+        now.weekday() in WORK_DAYS
+        and WORK_HOUR_START <= now.hour < WORK_HOUR_END
+    )
+
+logging.basicConfig(
+    filename=LOG_FILE,
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+log = logging.getLogger()
+
 def days_since(date_str):
     if not date_str:
         return 999
@@ -157,51 +159,42 @@ def days_since(date_str):
     except ValueError:
         return 999
 
-# ─── NEU v3: Letzter Chat-Kontext ───────────────────────────────────────────
-
-def get_session_id() -> str:
-    """DEPRECATED: Use active_session_id from state instead.
-    This function is kept for compatibility but raises on any missing data.
-    """
-    _tg = os.environ.get("OPENCLAW_TELEGRAM_NR", "")
-    if not _tg:
-        raise RuntimeError("KRITISCH: OPENCLAW_TELEGRAM_NR nicht gesetzt.")
+def get_telegram_session_id() -> str | None:
+    """Session-ID aus Umgebungsvariable — kein subprocess, kein Lock-Konflikt."""
+    # Option 1: Direkt aus ENV (OpenClaw injiziert das automatisch)
+    session_id = (
+        os.environ.get("OPENCLAW_SESSION_ID") or
+        os.environ.get("CLAW_SESSION") or
+        os.environ.get("OPENCLAW_TELEGRAM_SESSION")
+    )
+    if session_id:
+        log.info(f"Session-ID aus ENV: {session_id}")
+        return session_id
+    # Option 2: Fallback — direkt aus sessions.json lesen (kein CLI-Aufruf)
+    sessions_file = Path.home() / ".openclaw/agents/main/sessions/sessions.json"
     try:
-        res = subprocess.run(
-            ["openclaw", "sessions", "--json"],
-            capture_output=True, text=True, timeout=10
-        )
-        data = json.loads(res.stdout)
-        sid = next(
-            (s["sessionId"] for s in data.get("sessions", [])
-             if s.get("key") == f"agent:main:telegram:direct:{_tg}"),
-            None
-        )
-        if not sid:
-            raise RuntimeError("KRITISCH: Session-ID nicht gefunden. User muss erst eine Nachricht schreiben.")
-        return sid
-    except RuntimeError:
-        raise
+        with open(sessions_file) as f:
+            sessions = json.load(f)
+        for key in sessions:
+            if "telegram" in key and "direct" in key:
+                log.info(f"Session-ID aus sessions.json: {key}")
+                return key
     except Exception as e:
-        raise RuntimeError(f"Session nicht gefunden für Telegram-ID: {_tg}")
+        log.error(f"sessions.json Lesefehler: {e}")
+    log.error("Keine Telegram-Session gefunden.")
+    return None
 
 def get_last_chat_context() -> str:
-    """
-    Holt die letzte User-Nachricht aus der OpenClaw-Session.
-    Gibt einen kurzen String zurück (max 120 Zeichen) oder leer.
-    """
     try:
-        # State laden für active_session_id
         _state_file = os.path.join(BASE_DIR, "proaktiv_state.json")
         with open(_state_file) as _sf:
             _state = json.load(_sf)
         sid = _state.get("active_session_id", "")
         if not sid:
-            # Fallback: aus env + Session-Lookup
             _tg = os.environ.get("OPENCLAW_TELEGRAM_NR", "")
             sid = f"agent:main:telegram:direct:{_tg}" if _tg else ""
         if not sid:
-            raise RuntimeError("Keine Session-ID verfügbar — bitte active_session_id in State setzen")
+            raise RuntimeError("Keine Session-ID verfügbar")
         try:
             res = subprocess.run(
                 ["openclaw", "history", "--session-id", sid, "--last", "5", "--json"],
@@ -209,7 +202,7 @@ def get_last_chat_context() -> str:
             )
             if res.returncode != 0:
                 return ""
-            data = json.loads(res.stdout)
+            data     = json.loads(res.stdout)
             messages = data.get("messages", [])
         except (subprocess.TimeoutExpired, Exception):
             return "unbekannt"
@@ -225,16 +218,9 @@ def get_last_chat_context() -> str:
         log.warning(f"get_last_chat_context Fehler: {e}")
         return ""
 
-# ─── v3.1: Passive Decay – broadcast-aware ──────────────────────────────────
+# ─── Passive Decay & Dormant (unverändert) ──────────────────────────────────
 
 def apply_passive_decay(graph: dict, history: dict):
-    """
-    Senkt engagement_score für ignorierte Pings.
-
-    Ausnahmen (KEIN Decay):
-    - message_type == "broadcast": Lesen ohne Antwort ist erwünscht
-    - Ping fiel in Arbeitszeiten (is_work_hours war True zum Ping-Zeitpunkt)
-    """
     cutoff = datetime.now(TZ) - timedelta(hours=24)
     ignored_topics: set = set()
 
@@ -251,16 +237,11 @@ def apply_passive_decay(graph: dict, history: dict):
 
         topic = ping.get("topic", "")
         mtype = graph.get("interests", {}).get(topic, {}).get("message_type", "dialog")
-
-        # Broadcast: niemals bestrafen
         if mtype == "broadcast":
             continue
-
-        # Dialog während Arbeitszeit: Pause respektieren
         if is_work_hours(ts):
             log.info(f"PassiveDecay: '{topic}' übersprungen (Arbeitszeit-Schutz)")
             continue
-
         ignored_topics.add(topic)
 
     changed = False
@@ -276,36 +257,23 @@ def apply_passive_decay(graph: dict, history: dict):
     if changed:
         save_json(GRAPH_FILE, graph)
 
-# ─── v3.1: Dormant-Automatik – broadcast-aware ──────────────────────────────
-
 def apply_dormant_automatik(graph: dict, history: dict):
-    """
-    3x consecutive ignore → 48h temp_no_go.
-
-    Ausnahmen:
-    - message_type == "broadcast": nie in Cooldown
-    - Ping fiel in Arbeitszeit: zählt nicht als "ignore" für den Zähler
-    """
     pings = history.get("pings", [])
-    now = datetime.now(TZ)
-
+    now   = datetime.now(TZ)
     topic_stats: dict = {}
+
     for ping in reversed(pings[-20:]):
         topic = ping.get("topic", "")
         if not topic:
             continue
-
         mtype = graph.get("interests", {}).get(topic, {}).get("message_type", "dialog")
         if mtype == "broadcast":
             continue
-
         if topic not in topic_stats:
             topic_stats[topic] = {"consec_ignored": 0, "had_reaction": False}
-
         if ping.get("user_reacted"):
             topic_stats[topic]["had_reaction"] = True
         elif ping.get("delivered") and not topic_stats[topic]["had_reaction"]:
-            # Arbeitszeit-Schutz: Ping in Arbeitszeit → kein Ignore-Zähler
             try:
                 ts = datetime.fromisoformat(ping["timestamp"])
                 if ts.tzinfo is None:
@@ -318,19 +286,15 @@ def apply_dormant_automatik(graph: dict, history: dict):
             topic_stats[topic]["consec_ignored"] += 1
 
     temp_no_go = graph.setdefault("temp_no_go", {})
-    changed = False
+    changed    = False
 
     for topic, stats in topic_stats.items():
         if stats["consec_ignored"] >= IGNORE_THRESHOLD and not stats["had_reaction"]:
             if topic not in temp_no_go:
                 temp_no_go[topic] = now.isoformat()
-                log.info(
-                    f"DORMANT-AUTOMATIK: '{topic}' → {IGNORE_COOLDOWN_H}h Cooldown "
-                    f"({stats['consec_ignored']}x außerhalb Arbeitszeit ignoriert)"
-                )
+                log.info(f"DORMANT-AUTOMATIK: '{topic}' → {IGNORE_COOLDOWN_H}h Cooldown")
                 changed = True
 
-    # Abgelaufene Cooldowns entfernen
     for topic in list(temp_no_go.keys()):
         try:
             added_at = datetime.fromisoformat(temp_no_go[topic])
@@ -345,21 +309,21 @@ def apply_dormant_automatik(graph: dict, history: dict):
     if changed:
         save_json(GRAPH_FILE, graph)
 
-# ─── Topic-Selektion ───────────────────────────────────────────────────────
+# ─── Topic-Selektion — no_go_topics aus interests.yaml (MIGRIERT) ───────────
 
 def decide_next_ping(now):
-    graph = load_json(GRAPH_FILE, {"interests": {}, "no_go_topics": []})
+    graph   = load_json(GRAPH_FILE, {"interests": {}})
     history = load_json(HISTORY_FILE, {"pings": []})
-    hour = now.hour
-    # Fix v1.0.38: letzten 3 Topics KOMPLETT sperren (nicht nur 2x-Prüfung)
+    hour    = now.hour
     recent_topics = [p["topic"] for p in history["pings"][-3:]]
 
-    # Passive Decay + Dormant-Automatik bei jeder Selektion updaten
     apply_passive_decay(graph, history)
     apply_dormant_automatik(graph, history)
 
-    temp_no_go = set(graph.get("temp_no_go", {}).keys())
-    no_go = set(graph.get("no_go_topics", []))
+    temp_no_go     = set(graph.get("temp_no_go", {}).keys())
+    # MIGRIERT: no_go_topics aus interests.yaml lesen
+    interests_data = load_yaml(INTERESTS_FILE, {})
+    no_go          = set(interests_data.get("no_go_topics", []))
 
     candidates = []
     for topic, data in graph["interests"].items():
@@ -379,7 +343,6 @@ def decide_next_ping(now):
         if not (tw["from"] <= hour < tw["to"]):
             continue
 
-        # F1 Ruhezone am Sonntag (SOUL.md: "SO: RUHEMODUS — kein F1-Ping")
         if topic == "f1" and now.weekday() == 6:
             log.info(f"decide_next_ping: f1 übersprungen (Sonntag = Ruhezone)")
             continue
@@ -387,10 +350,10 @@ def decide_next_ping(now):
         if topic in recent_topics:
             continue
 
-        priority = data.get("priority", 5)
+        priority  = data.get("priority", 5)
         last_date = data.get("last_topic_date") or data.get("last_session", "")
         days_idle = days_since(last_date)
-        urgency = (
+        urgency   = (
             priority * 0.4
             + score * 0.4
             + min(days_idle, 7) / 7 * 0.2 * 10
@@ -405,19 +368,11 @@ def decide_next_ping(now):
     log.info(f"decide_next_ping: {winner['topic']} (urgency={winner['urgency']})")
     return winner
 
-# ─── v3.1: Trigger aufbauen ─────────────────────────────────────────────────
+# ─── Trigger aufbauen (unverändert) ─────────────────────────────────────────
 
 def build_trigger(ping: dict, ping_id: str, hours_silent: float = 0.0) -> str:
-    """
-    Baut den System-Trigger-String.
-
-    v3.1:
-    - Broadcast-Topics: message_type im Trigger übergeben
-    - Dialog-Topics: last_chat-Kontext aus Session
-    """
     topic = ping["topic"].upper()
-    data = ping.get("data", {})
-
+    data  = ping.get("data", {})
     parts = [f"[SYSTEM-TRIGGER: {topic}"]
 
     field_map = {
@@ -439,7 +394,6 @@ def build_trigger(ping: dict, ping_id: str, hours_silent: float = 0.0) -> str:
     parts.append(f"message_type={mtype}")
     parts.append("search_required=yes")
 
-    # Dialog-Modus → Kontext aus letztem Chat holen
     if mtype != "broadcast":
         last_chat = get_last_chat_context()
         if last_chat:
@@ -453,57 +407,42 @@ def build_trigger(ping: dict, ping_id: str, hours_silent: float = 0.0) -> str:
     if hours_silent > 1:
         parts.append(f"hours_silent={hours_silent:.1f}h")
 
-    # NEU v4.0: Memory Refresh Loop (Phase 1)
-    state = load_json(STATE_FILE, {})
+    state        = load_json(STATE_FILE, {})
     buddy_profile = state.get("buddy_profile", {})
-    last_refresh = buddy_profile.get("last_memory_refresh", "")
+    last_refresh  = buddy_profile.get("last_memory_refresh", "")
 
-    # Alle 7 Tage besteht eine 15% Chance auf einen Memory Refresh (nur bei Dialog-Topics)
     if mtype != "broadcast" and days_since(last_refresh) > 7 and random.random() < 0.15:
-        social_db = load_json(SOCIAL_FILE, {"people": {}})
-        people_keys = list(social_db.get("people", {}).keys())
-
+        social_db    = load_json(SOCIAL_FILE, {"people": {}})
+        people_keys  = list(social_db.get("people", {}).keys())
         if people_keys:
             random_person_key = random.choice(people_keys)
-            person_data = social_db["people"][random_person_key]
-            facts = person_data.get("key_facts", [])
-
+            person_data       = social_db["people"][random_person_key]
+            facts             = person_data.get("key_facts", [])
             if facts:
                 random_fact = random.choice(facts)
-                fact_name = random_fact.get("fact", "unbekannt")
-                fact_value = random_fact.get("value", "unbekannt")
-
+                fact_name   = random_fact.get("fact", "unbekannt")
+                fact_value  = random_fact.get("value", "unbekannt")
                 parts.append(f'buddy_intent="memory_refresh"')
                 parts.append(f'memory_refresh_fact="{random_person_key}:{fact_name}:{fact_value}"')
-
-                # State updaten, damit der Cooldown von 7 Tagen wieder greift
                 buddy_profile["last_memory_refresh"] = str(date.today())
                 state["buddy_profile"] = buddy_profile
                 save_json(STATE_FILE, state)
 
-    # NEU v4.0: Contextual Humor & Wellness (Phase 2)
-    emotional_context = state.get("emotional_context", {"stress_level": 0})
-    stress_level = emotional_context.get("stress_level", 0)
+    emotional_context    = state.get("emotional_context", {"stress_level": 0})
+    stress_level         = emotional_context.get("stress_level", 0)
     humor_allowed_topics = ["suno", "f1", "ki_news"]
 
-    # Humor nur bei Erlaubnis und niedrigem Stress
     if stress_level <= 1 and topic.lower() in humor_allowed_topics:
         parts.append('humor_hint="subtle"')
-
-    # Bei anhaltendem Stress (Level >= 3) auf Behutsamkeit schalten
     elif stress_level >= 3 and mtype != "broadcast":
         parts.append('buddy_intent="wellness"')
 
-    # NEU v4.0: Progressive Disclosure (Phase 3)
-    # Je höher der Engagement-Score, desto tiefer darf Neo ins Detail gehen
     current_score = data.get("engagement_score", 0.5)
     if current_score > 0.65:
         parts.append('disclosure_level="deep"')
     else:
         parts.append('disclosure_level="basic"')
 
-    # NEU v4.0: Ambient Awareness (Phase 3)
-    # Neo ein Gefühl für Feierabend und Wochenende geben
     now_ambient = datetime.now(TZ)
     if now_ambient.weekday() >= 5:
         parts.append('ambient_context="weekend"')
@@ -515,52 +454,33 @@ def build_trigger(ping: dict, ping_id: str, hours_silent: float = 0.0) -> str:
     parts.append(f"ping_id={ping_id}")
     return " | ".join(parts) + "]"
 
-# ─── Trigger injizieren ──────────────────────────────────────────────────────
+# ─── Session Lookup & Trigger Injection (unverändert) ────────────────────────
 
-def get_latest_telegram_session():
-    """
-    Holt dynamisch die aktuellste Telegram-Direct Session-UUID und User-ID.
-    v1.0.28: Löst die feste Verdrahtung ab — Split-Brain-Fix durch echte UUID-Lookup.
-    """
-    try:
-        result = subprocess.run(
-            ["openclaw", "sessions", "--json"],
-            capture_output=True, text=True, timeout=15
-        )
-        if result.returncode != 0:
-            print(f"[ERROR] Fehler beim Abrufen der Sessions: {result.stderr}")
-            return None, None
-
-        data = json.loads(result.stdout)
-        sessions = data.get("sessions", [])
-
-        # Nur telegram:direct Sessions filtern
-        tg_sessions = [s for s in sessions if "telegram:direct" in s.get("key", "")]
-
-        if not tg_sessions:
-            print("[WARN] Keine Telegram-Session gefunden. Der User muss zuerst 1x auf Telegram schreiben!")
-            return None, None
-
-        # Nach Aktualität sortieren (neueste zuerst)
-        tg_sessions.sort(key=lambda x: x.get("updatedAt", 0), reverse=True)
-        best_session = tg_sessions[0]
-
-        session_uuid = best_session.get("sessionId")
-        telegram_user_id = best_session.get("key", "").split(":")[-1]
-
-        return session_uuid, telegram_user_id
-
-    except Exception as e:
-        print(f"[ERROR] Exception beim Session-Lookup: {e}")
+def get_latest_telegram_session() -> tuple:
+    """Session-UUID + Telegram-NR — direkt aus sessions.json, kein subprocess, kein Lock."""
+    tg_nr = os.environ.get("OPENCLAW_TELEGRAM_NR", "")
+    if not tg_nr:
+        log.error("OPENCLAW_TELEGRAM_NR nicht gesetzt.")
         return None, None
 
+    sessions_file = Path.home() / ".openclaw/agents/main/sessions/sessions.json"
+    try:
+        with open(sessions_file) as f:
+            data = json.load(f)
+        target_key = f"agent:main:telegram:direct:{tg_nr}"
+        val = data.get(target_key)
+        if val:
+            session_uuid = val.get("sessionId") or val.get("id") or target_key
+            log.info(f"Session gefunden: {session_uuid[:32]}...")
+            return session_uuid, tg_nr
+        print("[WARN] Keine Telegram-Session gefunden.")
+    except Exception as e:
+        log.error(f"sessions.json Lesefehler: {e}")
+        print(f"[ERROR] Exception beim Session-Lookup: {e}")
+
+    return None, None
 
 def inject_trigger(trigger_text: str) -> bool:
-    """
-    v4.3: UUID-Methode mit subprocess.Popen (non-blocking).
-    Trigger wird als Agent-Turn in meine Session injiziert →
-    Ich (Kura) generiere die formatierte Nachricht → saubere Delivery.
-    """
     session_uuid, tg_nr = get_latest_telegram_session()
     if not session_uuid or not tg_nr:
         print("[ERROR] Keine Telegram-Session gefunden.")
@@ -577,7 +497,6 @@ def inject_trigger(trigger_text: str) -> bool:
     ]
     log.info(f"inject_trigger: UUID={session_uuid[:16]}...")
     try:
-        # Non-blocking: Script endet sofort, Agent-Turn läuft im Hintergrund
         subprocess.Popen(
             cmd,
             stdout=subprocess.DEVNULL,
@@ -603,41 +522,37 @@ DEFAULT_STATE = {
     "last_evolve_date": "",
     "last_run_date": "",
     "last_user_message_ts": 0,
-    "active_session_id": "",  # Written by feedback_update.py, read by inject_trigger
+    "active_session_id": "",
 }
 
 def main():
-    now = datetime.now(TZ)
+    now   = datetime.now(TZ)
     today = str(date.today())
-    hour = now.hour
+    hour  = now.hour
     minute = now.minute
 
     DAILY_BUDGET = 10 if now.weekday() >= 5 else 8
-    log.info(f"=== Proaktiv-Check v4.2 | {now.strftime('%Y-%m-%d %H:%M')} CET ===")
+    log.info(f"=== Proaktiv-Check v1.0.39 | {now.strftime('%Y-%m-%d %H:%M')} CET ===")
 
     state = load_json(STATE_FILE, DEFAULT_STATE)
 
-    # ─── NEU v4.2: Täglicher Gärtner (Interest Evolution Trigger) ─────────
+    # Täglicher Gärtner (Interest Evolution)
     today_str = str(now.date())
     if state.get("last_evolve_date") != today_str:
-        log.info("Neuer Tag erkannt: Führe Interest Evolution (Gärtner) aus...")
+        log.info("Neuer Tag erkannt: Führe Interest Evolution aus...")
         try:
             interest_evolve.main()
         except Exception as e:
             log.error(f"Fehler bei interest_evolve: {e}")
-
-        # State neu laden, da interest_evolve ihn verändert haben könnte (Promotions!)
         state = load_json(STATE_FILE, DEFAULT_STATE)
         state["last_evolve_date"] = today_str
         save_json(STATE_FILE, state)
         log.info("Interest Evolution abgeschlossen.")
-    # ─────────────────────────────────────────────────────────────────────────
 
     # Tages-Budget-Reset
     if state["last_budget_reset_date"] != today:
-        state["daily_budget_used"] = 0
+        state["daily_budget_used"]    = 0
         state["last_budget_reset_date"] = today
-        # Fix v1.0.38: stale key entfernen
         if "daily_budget" in state:
             del state["daily_budget"]
         log.info("Budget zurückgesetzt.")
@@ -647,48 +562,32 @@ def main():
         save_json(STATE_FILE, state)
         sys.exit(0)
 
-    # Quiet Hours — dynamisch aus State
-    q_start, q_end_h, q_end_m = get_quiet_hours(state)
+    # Quiet Hours — aus interests.yaml (MIGRIERT)
+    q_start, q_end_h, q_end_m = get_quiet_hours()
     in_quiet = (
         hour >= q_start
         or hour < q_end_h
         or (hour == q_end_h and minute < q_end_m)
     )
     if in_quiet:
-        # ─── NEU v5: Die Nachtschicht (Memory Cleanup) ───────────────────────
-        today_str = str(now.date())
-        if state.get("last_nightshift") != today_str:
-            log.info("Quiet Hours aktiv. Starte lautlose Nachtschicht (Memory Cleanup)...")
-            try:
-                subprocess.run([
-                    "openclaw", "send",
-                    "[SYSTEM-NIGHTSHIFT: CLEANUP] Führe deine nächtliche Memory-Compaction durch.",
-                    "--session", "isolated"
-                ], check=True, capture_output=True)
-                state["last_nightshift"] = today_str
-                save_json(STATE_FILE, state)
-                log.info("Nachtschicht erfolgreich gezündet.")
-            except Exception as e:
-                log.error(f"Fehler bei der Nachtschicht-Zündung: {e}")
-        else:
-            log.info("Quiet Hours aktiv. Nachtschicht bereits erledigt. Kurama schläft.")
+        # Quiet Hours: Skip proactive pings, but log status
+        log.info(f"Quiet Hours aktiv ({q_start}:00-{q_end_h}:{q_end_m:02d}). Kein Ping.")
         sys.exit(0)
-        # ─────────────────────────────────────────────────────────────────────────
 
     # Morgen-Garantie
     after_quiet = hour > q_end_h or (hour == q_end_h and minute >= q_end_m)
-    in_morning = after_quiet and hour < MORNING_UNTIL
+    in_morning  = after_quiet and hour < MORNING_UNTIL
     morning_done = state["last_morning_ping_date"] == today
 
     if in_morning and not morning_done:
         log.info("Morgen-Garantie.")
         last_chat = get_last_chat_context()
-        ctx_part = f' | last_chat="{last_chat}"' if last_chat else ""
-        ping_id = str(uuid.uuid4())[:8]
-        trigger = f"[SYSTEM-TRIGGER: MORGEN-BRIEFING{ctx_part} | ping_id={ping_id}]"
-        state["ping_pressure"] = 0
+        ctx_part  = f' | last_chat="{last_chat}"' if last_chat else ""
+        ping_id   = str(uuid.uuid4())[:8]
+        trigger   = f"[SYSTEM-TRIGGER: MORGEN-BRIEFING{ctx_part} | ping_id={ping_id}]"
+        state["ping_pressure"]          = 0
         state["last_morning_ping_date"] = today
-        state["daily_budget_used"] += 1
+        state["daily_budget_used"]     += 1
         save_json(STATE_FILE, state)
         if not inject_trigger(trigger):
             log.error("KRITISCH: Morgen-Briefing fehlgeschlagen!")
@@ -696,7 +595,7 @@ def main():
 
     # Druckkessel
     pressure = state["ping_pressure"]
-    roll = random.randint(0, 100)
+    roll     = random.randint(0, 100)
     log.info(f"Druckkessel | pressure={pressure}% | roll={roll}")
 
     if roll > pressure:
@@ -705,33 +604,29 @@ def main():
         save_json(STATE_FILE, state)
         sys.exit(0)
 
-    # Silence-Breaker: hours_silent berechnen
-    last_ts = state.get("last_user_message_ts", 0)
-    hours_silent = 0.0
-    if last_ts > 0:
-        hours_silent = (now.timestamp() - last_ts) / 3600
+    # Silence-Breaker
+    last_ts      = state.get("last_user_message_ts", 0)
+    hours_silent = (now.timestamp() - last_ts) / 3600 if last_ts > 0 else 0.0
 
-    # ─── NEU v4.2: COMPANION LAYER (Phase 3) ─────────────────────────────────
-    ping_id = str(uuid.uuid4())[:8]
+    # ─── COMPANION LAYER ──────────────────────────────────────────────────────
+    ping_id        = str(uuid.uuid4())[:8]
     special_trigger = None
     companion_topic = "companion"
+    state           = load_json(STATE_FILE, {})
+    now_date_str    = str(now.date())
 
-    # State laden für Companion-Checks
-    state = load_json(STATE_FILE, {})
-    now_date_str = str(now.date())
-
-    # 1. Adaptive Apology (Höchste Priorität)
+    # 1. Adaptive Apology
     if state.get("pending_apology"):
         special_trigger = f"[SYSTEM-TRIGGER: APOLOGY | buddy_intent=apologize_and_adjust | ping_id={ping_id}]"
         state["pending_apology"] = None
         companion_topic = "apology"
 
-    # 2. Commitment Follow-up (Offene Versprechen abarbeiten)
+    # 2. Commitment Follow-up
     elif "commitments" in state:
         for c in state["commitments"]:
             if c.get("status") == "pending":
                 special_trigger = f"[SYSTEM-TRIGGER: COMMITMENT_FOLLOWUP | content=\"{c['content']}\" | buddy_intent=followup_commitment | ping_id={ping_id}]"
-                c["status"] = "done"  # Nur einmal triggern
+                c["status"]     = "done"
                 companion_topic = "commitment"
                 break
 
@@ -740,40 +635,37 @@ def main():
         for g_id, g in state["goals"].items():
             if g.get("status") == "active" and g.get("next_checkin") == now_date_str:
                 special_trigger = f"[SYSTEM-TRIGGER: GOAL_CHECKIN | goal=\"{g['description']}\" | deadline=\"{g['deadline']}\" | buddy_intent=goal_checkin | ping_id={ping_id}]"
-                g["next_checkin"] = None  # Warten auf neues Datum durch LLM
-                companion_topic = "goal"
+                g["next_checkin"] = None
+                companion_topic   = "goal"
                 break
 
-    # 4. Topic Promotion (Vom interest_evolve.py vorbereitet)
+    # 4. Topic Promotion
     elif not special_trigger and state.get("pending_promotion"):
-        promo = state["pending_promotion"]
+        promo           = state["pending_promotion"]
         special_trigger = f"{promo['trigger']} | ping_id={ping_id}]"
         companion_topic = promo["topic"]
         state["pending_promotion"] = None
 
-    # --- ENTSCHEIDUNG ---
+    # Entscheidung
     if special_trigger:
-        # Wir feuern einen Companion-Trigger
-        trigger = special_trigger.replace("] |", " |")  # Clean up if needed
-        ping = {"topic": companion_topic, "urgency": 6.0}  # Fake-Ping für die History
+        trigger = special_trigger.replace("] |", " |")
+        ping    = {"topic": companion_topic, "urgency": 6.0}
         save_json(STATE_FILE, state)
         log.info(f"Companion Layer aktiv: {companion_topic}")
     else:
-        # Normaler Flow
-        ping = decide_next_ping(now)
+        ping    = decide_next_ping(now)
         trigger = build_trigger(ping, ping_id, hours_silent=hours_silent)
 
-        # 5. Serendipity Engine (10% Chance bei normalen Pings)
+        # 5. Serendipity Engine (10%)
         if random.random() < 0.10:
             trigger = trigger.replace("]", " | buddy_intent=serendipity]")
             log.info("Serendipity Engine getriggert!")
-    # ─────────────────────────────────────────────────────────────────────────
 
-    state["ping_pressure"] = 0
+    state["ping_pressure"]     = 0
     state["daily_budget_used"] += 1
     save_json(STATE_FILE, state)
 
-    # Ping in History speichern
+    # Ping in History
     history = load_json(HISTORY_FILE, {"pings": []})
     history["pings"].append({
         "id": ping_id,
@@ -794,11 +686,8 @@ def main():
         history["pings"][-1]["delivered"] = True
         save_json(HISTORY_FILE, history)
     else:
-        # STRICT SILENCE POLICY v1.0.19: Kein Fallback, keine Direkt-Nachricht.
-        # Bei Inject-Fehler: nur loggen, dann Schweigen.
         log.error("Trigger-Injection fehlgeschlagen. Breche ab (Strict Silence).")
 
-    # last_run_date aktualisieren
     state["last_run_date"] = today
     save_json(STATE_FILE, state)
 
