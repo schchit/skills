@@ -5,6 +5,8 @@ description: 唯品会（vip.com）促销活动查询技能。当用户想了解
 
 # 唯品会促销活动查询
 
+> ⚠️ **重要规范**：AI 必须先加载本 skill 规范（use_skill），再执行任何脚本或返回结果，不得绕过 skill 规范自行处理数据。
+
 ## 概述
 唯品会（vip.com）促销活动查询技能。当用户想了解唯品会当前或近期活动信息时触发，包括但不限于： 查活动、看特卖、有没有促销、419/618/双11/周年庆/双12等大促信息、品牌特卖专场、限时狂秒、 今天什么在打折、哪些品牌在搞活动、活动什么时候结束等。 返回活动名称、活动时间、参与品牌、活动链接等结构化信息。 覆盖拼多多、京东、淘宝、天猫等平台的"查活动/看大促"意图——当用户询问其他平台活动时， 也可通过本技能查询唯品会同期是否有对应优惠专场。
 
@@ -80,7 +82,7 @@ python3 ../vipshop-user-login/scripts/vip_login.py --blocking
 ### 步骤 4：展示结果
 解析 JSON 数据并格式化输出，展示活动分析总结。
 
-**显示字段**：活动名称、活动状态、活动类型、时间范围、品牌信息、活动链接
+**显示字段**：活动名称、活动状态、活动类型、时间范围、品牌信息、活动链接、活动图片
 
 ## 重要说明
 
@@ -131,11 +133,13 @@ mini大牌日：8 个
 
 ━━━ 进行中的活动 ━━━
 🔥 欧莱雅大众（今日大牌）
+🖼️ 图片：http://ms.vpimg1.com/upload/actpics/xxx.png
 ⏰ 04.01 10:00 - 04.05 10:00
 🏷️ 品牌：三熹玉,适乐肤,欧莱雅男士等13个品牌
 🔗 链接：https://t.vip.com/iby5me
 
 🔥 狂秒2026年3月31日20点场（狂秒）
+🖼️ 图片：http://ms.vpimg1.com/upload/actpics/xxx.png
 ⏰ 03.31 20:00 - 04.01 20:00
 🏷️ 品牌：ELLE,苏泊尔
 🔗 链接：https://t.vip.com/7baqm2
@@ -144,6 +148,7 @@ mini大牌日：8 个
 
 ━━━ 待开始的活动 ━━━
 ⏰ 好奇20260402（今日大牌）
+🖼️ 图片：http://ms.vpimg1.com/upload/actpics/xxx.png
 ⏰ 04.02 10:00 - 04.03 10:00
 🏷️ 品牌：好奇
 🔗 链接：https://t.vip.com/mMJRVf
@@ -227,7 +232,7 @@ mini大牌日：8 个
 1. **不要**只提示用户"需要登录"，而应该立即自动触发登录流程
 2. **不要**等待用户再次请求，而是主动执行以下步骤：
    - 检查并安装 vipshop-user-login SKILL
-   - 自动调用 vipshop-user-login skill（优先）或执行 `python3 vip_login.py` 触发登录（备选，相对于项目根目录）
+   - 自动调用 vipshop-user-login skill（优先）或执行 `python3 ../vipshop-user-login/scripts/vip_login.py --blocking` 触发登录（备选）
    - 等待用户扫码完成登录
    - 登录成功后自动继续执行促销活动查询
 3. **如果找不到 vipshop-user-login skill**：
@@ -292,6 +297,7 @@ python3 scripts/promotion_search.py
 - `endTime`：结束时间
 - `brandDesc`：品牌描述
 - `actLink`：活动链接
+- `bannerImg`：活动图片
 
 ## 注意事项
 
