@@ -1,11 +1,17 @@
 {
   "owner": "tanteng",
   "slug": "tradingagents-cn-skill",
-  "displayName": "TradingAgents-CN Skill",
+  "displayName": "tradingagents-cn-skill",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1775543800508,
-    "commit": "https://github.com/openclaw/skills/commit/52bc89c2aa9b770a45d10b80f4454a853f912595"
+    "version": "2.0.0",
+    "publishedAt": 1775818183391,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1775543800508,
+      "commit": "https://github.com/openclaw/skills/commit/52bc89c2aa9b770a45d10b80f4454a853f912595"
+    }
+  ]
 }

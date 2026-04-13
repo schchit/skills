@@ -5,6 +5,7 @@ PDF Report Generator for Stock Analysis
 """
 
 import os
+import markdown
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -16,6 +17,13 @@ class ReportGenerator:
     def __init__(self):
         self.output_dir = Path(__file__).parent / "reports"
         self.output_dir.mkdir(exist_ok=True)
+
+    @staticmethod
+    def _render_markdown(text: str) -> str:
+        """把 Markdown 转为 HTML"""
+        if not text:
+            return ""
+        return markdown.markdown(text, extensions=['nl2br', 'tables'])
 
     def generate(
         self,
@@ -46,10 +54,92 @@ class ReportGenerator:
         filename = f"{stock_code}_{timestamp}.pdf"
         pdf_path = output_path / filename
 
+        # 数据预处理：自动修复常见问题
+        analysis_result = self._preprocess_data(analysis_result)
+
         html_content = self._generate_html(analysis_result)
         self._html_to_pdf(html_content, pdf_path)
 
         return str(pdf_path)
+
+    def _preprocess_data(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """预处理分析结果数据，自动修复常见问题"""
+        import copy
+        result = copy.deepcopy(result)
+
+        # 1. 修复新闻摘要
+        news_analyst = result.get("parallel_analysis", {}).get("news_analyst", {})
+        news_list = news_analyst.get("news_list", [])
+        for news in news_list:
+            summary = (news.get("summary") or "").strip()
+            if not summary:
+                # fallback 1: snippet
+                summary = (news.get("snippet") or "").strip()
+            if not summary:
+                # fallback 2: title
+                title = news.get("title", "")
+                summary = title  # 直接用 title
+            news["summary"] = summary if summary.strip() else "暂无摘要"
+
+        # 2. 修复交易价格：如果 Agent 传入了字符串类型的价格描述而非数字
+        trading = result.get("trading_plan", {})
+        price_fields = ["buy_price", "target_price", "stop_loss"]
+        for field in price_fields:
+            val = trading.get(field)
+            if val is not None and not isinstance(val, (int, float)):
+                try:
+                    trading[field] = float(val)
+                except (ValueError, TypeError):
+                    # 非数字字符串如 "现行价格" -> 设为 None，让模板显示 fallback
+                    trading[field] = None
+
+        # 3. 计算参考价格（如果缺少决策价格但有当前价格）
+        current_price = result.get("current_price")
+        if current_price and trading:
+            # 如果没有决策价格但有当前价格，计算参考价格
+            if trading.get("buy_price") is None:
+                trading["reference_price"] = current_price
+                trading["reference_target"] = round(current_price * 1.10, 2)
+                trading["reference_stop"] = round(current_price * 0.95, 2)
+
+        # 4. 诚实空缺检测（优先使用明确的失败标记）
+        trading = result.get("trading_plan", {})
+
+        # 检测 position_size 是否为空缺
+        # 注意: '0%' 是合法的观望建议，不是数据获取失败
+        if "_position_size_failed" in trading:
+            pass
+        elif trading.get("position_size") in [None, ""]:
+            trading["_position_size_failed"] = True
+        else:
+            trading["_position_size_failed"] = False
+
+        # 检测 exit_criteria 是否为空缺
+        # 注意: '不适用'/'等待更好时机' 是合法的观望回答，不是数据获取失败
+        if "_exit_criteria_failed" in trading:
+            pass
+        elif trading.get("exit_criteria") in [None, ""]:
+            trading["_exit_criteria_failed"] = True
+        else:
+            trading["_exit_criteria_failed"] = False
+
+        return result
+
+    @staticmethod
+    def _format_price(price, fallback: str = "N/A", reference: float = None) -> str:
+        """格式化价格显示，兼容数字和字符串类型"""
+        if price is None and reference is not None:
+            return f"参考 ¥{reference:.2f}"
+        if price is None:
+            return fallback
+        if isinstance(price, (int, float)):
+            return f"¥{price:.2f}"
+        # 字符串类型：尝试转为数字
+        try:
+            return f"¥{float(price):.2f}"
+        except (ValueError, TypeError):
+            # 非数字字符串（如 "现行价格"）直接返回
+            return str(price) if str(price).strip() else fallback
 
     def _generate_html(self, result: Dict[str, Any]) -> str:
         """生成 HTML 格式的报告"""
@@ -68,6 +158,12 @@ class ReportGenerator:
         if news_analyst.get("news_list") and len(news_analyst["news_list"]) > 0:
             for news in news_analyst["news_list"]:
                 sentiment_color = "#2e7d32" if "多" in news.get("sentiment", "") or "正" in news.get("sentiment", "") else ("#c62828" if "空" in news.get("sentiment", "") or "负" in news.get("sentiment", "") else "#666")
+                # 摘要 fallback：summary > snippet > title
+                summary_text = (news.get('summary') or '').strip()
+                if not summary_text:
+                    summary_text = (news.get('snippet') or '').strip()
+                if not summary_text:
+                    summary_text = news.get('title', '暂无摘要')
                 news_list_html += f"""
                 <div class="news-item">
                     <div class="news-header">
@@ -78,7 +174,8 @@ class ReportGenerator:
                         <span class="news-date">{news.get('date', '')}</span>
                         <span class="news-source">{news.get('source', '')}</span>
                     </div>
-                    <div class="news-summary">{news.get('summary', '')}</div>
+                    <div class="news-summary">{summary_text}</div>
+                    {f'<div class="news-url"><a href="{news.get("url", "")}" target="_blank">原文链接</a></div>' if news.get("url") else ""}
                 </div>
                 """
         else:
@@ -91,10 +188,176 @@ class ReportGenerator:
                 social_html += f"<li>{platform.get('name', '')}: {platform.get('sentiment', '')} (热度: {platform.get('heat', '')})</li>"
         else:
             social_html = f"""
-            <li>雪球讨论热度: 中等</li>
-            <li>东方财富股吧情绪: {social_analyst.get('sentiment_score', 0.5)}</li>
-            <li>机构评级汇总: 待获取</li>
+            <li>雪球讨论热度: {social_analyst.get('platforms', [{}])[0].get('heat', '暂无数据') if social_analyst.get('platforms') else '暂无数据'}</li>
+            <li>东方财富股吧情绪: {social_analyst.get('sentiment_score', '暂无数据')}</li>
+            <li>机构评级汇总: 暂无机构评级数据，需对接券商数据源</li>
             """
+
+        # 生成技术分析 HTML
+        tech_analyst_data = parallel.get("tech_analyst", {})
+        ta = tech_analyst_data.get("technical_analysis", {})
+        trend = ta.get("趋势判断", {})
+        indicators = ta.get("关键指标", {})
+        advice = ta.get("操作建议", {})
+        tech_summary = ta.get("技术信号总结", "") or (tech_analyst_data.get("analysis", [""])[0] if tech_analyst_data.get("analysis") else "待分析")
+
+        tech_html = "<ul>"
+        if trend and isinstance(trend, dict) and trend:
+            tech_html += "<li><strong>趋势判断：</strong> "
+            tech_html += " / ".join(f"{k}: {v}" for k, v in trend.items() if v)
+            tech_html += "</li>"
+        if indicators and isinstance(indicators, dict) and indicators:
+            tech_html += "<li><strong>关键指标：</strong></li>"
+            for k, v in indicators.items():
+                tech_html += f'<li style="margin-left:16px">{k}: {v}</li>'
+        if advice and isinstance(advice, dict) and advice:
+            tech_html += "<li><strong>操作建议：</strong></li>"
+            for k, v in advice.items():
+                tech_html += f'<li style="margin-left:16px">{k}: {v}</li>'
+        if tech_summary:
+            tech_html += f"<li><strong>技术信号：</strong>{tech_summary}</li>"
+        if not trend and not indicators and not advice:
+            tech_html = "<ul><li>待分析</li>"
+        tech_html += "</ul>"
+
+        # 生成基本面分析 HTML
+        fund_analyst_data = parallel.get("fundamentals_analyst", {})
+        fa = fund_analyst_data.get("fundamentals_analysis", {})
+        valuation = fa.get("估值分析", {})
+        profitability = fa.get("盈利能力", {})
+        growth = fa.get("成长性", {})
+        health = fa.get("财务健康", {})
+        fund_summary = fa.get("综合评价", "") or (fund_analyst_data.get("analysis", [""])[0] if fund_analyst_data.get("analysis") else "待分析")
+
+        fund_html = "<ul>"
+        if valuation and isinstance(valuation, dict) and valuation:
+            fund_html += "<li><strong>估值分析：</strong></li>"
+            for k, v in valuation.items():
+                if isinstance(v, dict):
+                    fund_html += f'<li style="margin-left:16px">{k}: {v.get("数值", "待计算")} (行业: {v.get("行业平均", "待计算")}, {v.get("评价", "")})</li>'
+                else:
+                    fund_html += f'<li style="margin-left:16px">{k}: {v}</li>'
+        if profitability and isinstance(profitability, dict) and profitability:
+            fund_html += "<li><strong>盈利能力：</strong></li>"
+            for k, v in profitability.items():
+                if isinstance(v, dict):
+                    fund_html += f'<li style="margin-left:16px">{k}: {v.get("数值", "待计算")} (同比: {v.get("同比变化", "")})</li>'
+                else:
+                    fund_html += f'<li style="margin-left:16px">{k}: {v}</li>'
+        if growth and isinstance(growth, dict) and growth:
+            fund_html += "<li><strong>成长性：</strong></li>"
+            for k, v in growth.items():
+                fund_html += f'<li style="margin-left:16px">{k}: {v}</li>'
+        if health and isinstance(health, dict) and health:
+            fund_html += "<li><strong>财务健康：</strong></li>"
+            for k, v in health.items():
+                fund_html += f'<li style="margin-left:16px">{k}: {v}</li>'
+        if fund_summary:
+            fund_html += f"<li><strong>综合评价：</strong>{fund_summary}</li>"
+        if not valuation and not profitability and not growth and not health:
+            fund_html = "<ul><li>待分析</li>"
+        fund_html += "</ul>"
+
+        # 生成辩论 HTML
+        debate_html = ""
+        debate_rounds = result.get("debate", {}).get("rounds", [])
+        if debate_rounds:
+            for i, r in enumerate(debate_rounds):
+                round_num = r.get("round", i + 1)
+                
+                # 检查是否有详细的多头论证结构
+                bull_detail = r.get("bull_detail", {})
+                bear_detail = r.get("bear_detail", {})
+                
+                # 生成多头论证 HTML
+                if bull_detail and isinstance(bull_detail, dict):
+                    bull_items_html = ""
+                    for dim_name, dim_data in bull_detail.items():
+                        if isinstance(dim_data, dict):
+                            point = dim_data.get("论点", dim_data.get("point", ""))
+                            data = dim_data.get("支撑数据", dim_data.get("data", ""))
+                            conclusion = dim_data.get("结论", dim_data.get("conclusion", ""))
+                            if point:
+                                bull_items_html += f'''
+                                <div class="debate-argument">
+                                    <div class="debate-argument-title">◆ {dim_name}</div>
+                                    <div class="debate-argument-content">
+                                        <div><strong>论点：</strong>{point}</div>'''
+                                if data:
+                                    bull_items_html += f'''
+                                        <div><strong>支撑：</strong>{data}</div>'''
+                                if conclusion:
+                                    bull_items_html += f'''
+                                        <div class="debate-conclusion">{conclusion}</div>'''
+                                bull_items_html += "</div></div>"
+                        elif isinstance(dim_data, str):
+                            bull_items_html += f'''
+                                <div class="debate-argument">
+                                    <div class="debate-argument-title">◆ {dim_name}</div>
+                                    <div class="debate-argument-content">{dim_data}</div>
+                                </div>'''
+                elif r.get("bull_points"):
+                    bull_pts_list = r.get("bull_points", [])
+                    if isinstance(bull_pts_list, list) and len(bull_pts_list) > 0:
+                        bull_items_html = "<ul>" + "".join(f"<li>{pt}</li>" for pt in bull_pts_list[:5]) + "</ul>"
+                    else:
+                        bull_items_html = f"<p>{bull_pts_list}</p>" if bull_pts_list else "<p>待补充</p>"
+                else:
+                    bull_items_html = "<p>待补充</p>"
+                
+                # 生成空头论证 HTML
+                if bear_detail and isinstance(bear_detail, dict):
+                    bear_items_html = ""
+                    for dim_name, dim_data in bear_detail.items():
+                        if isinstance(dim_data, dict):
+                            point = dim_data.get("论点", dim_data.get("point", ""))
+                            data = dim_data.get("支撑数据", dim_data.get("data", ""))
+                            conclusion = dim_data.get("结论", dim_data.get("conclusion", ""))
+                            if point:
+                                bear_items_html += f'''
+                                <div class="debate-argument bear">
+                                    <div class="debate-argument-title">◆ {dim_name}</div>
+                                    <div class="debate-argument-content">
+                                        <div><strong>论点：</strong>{point}</div>'''
+                                if data:
+                                    bear_items_html += f'''
+                                        <div><strong>支撑：</strong>{data}</div>'''
+                                if conclusion:
+                                    bear_items_html += f'''
+                                        <div class="debate-conclusion">{conclusion}</div>'''
+                                bear_items_html += "</div></div>"
+                        elif isinstance(dim_data, str):
+                            bear_items_html += f'''
+                                <div class="debate-argument bear">
+                                    <div class="debate-argument-title">◆ {dim_name}</div>
+                                    <div class="debate-argument-content">{dim_data}</div>
+                                </div>'''
+                elif r.get("bear_points"):
+                    bear_pts_list = r.get("bear_points", [])
+                    if isinstance(bear_pts_list, list) and len(bear_pts_list) > 0:
+                        bear_items_html = "<ul>" + "".join(f"<li>{pt}</li>" for pt in bear_pts_list[:5]) + "</ul>"
+                    else:
+                        bear_items_html = f"<p>{bear_pts_list}</p>" if bear_pts_list else "<p>待补充</p>"
+                else:
+                    bear_items_html = "<p>待补充</p>"
+                
+                # 组合辩论卡片
+                debate_html += f'''
+                <div class="debate-round">
+                    <h4 class="debate-round-title">第{round_num}轮辩论</h4>
+                    <div class="debate-columns">
+                        <div class="debate-column bull">
+                            <div class="debate-column-header">多方论点</div>
+                            {bull_items_html}
+                        </div>
+                        <div class="debate-column bear">
+                            <div class="debate-column-header">空方论点</div>
+                            {bear_items_html}
+                        </div>
+                    </div>
+                </div>'''
+        else:
+            debate_html = "<p class=\"no-data\">辩论数据待生成</p>"
 
         html = f"""<!DOCTYPE html>
 <html lang="zh-CN">
@@ -138,6 +401,8 @@ class ReportGenerator:
         .news-meta {{ font-size: 10px; color: #888; margin-bottom: 6px; }}
         .news-date {{ margin-right: 15px; }}
         .news-summary {{ font-size: 11px; color: #555; line-height: 1.5; }}
+        .news-url {{ margin-top: 6px; font-size: 10px; }}
+        .news-url a {{ color: #1a73e8; text-decoration: none; }}
         .no-news {{ text-align: center; color: #999; padding: 20px; font-size: 12px; }}
 
         .sentiment-summary {{ background: #e8f5e9; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 12px; }}
@@ -170,20 +435,22 @@ class ReportGenerator:
             <div class="target-prices">
                 <div class="price-card">
                     <div class="label">买入价格</div>
-                    <div class="value">{"¥{:.2f}".format(trading["buy_price"]) if trading["buy_price"] else "观望"}</div>
+                    <div class="value">{self._format_price(trading.get("buy_price"), "观望", trading.get("reference_price"))}</div>
                 </div>
                 <div class="price-card">
                     <div class="label">目标价格</div>
-                    <div class="value">{"¥{:.2f}".format(trading["target_price"]) if trading["target_price"] else "待定"}</div>
+                    <div class="value">{self._format_price(trading.get("target_price"), "待定", trading.get("reference_target"))}</div>
                 </div>
                 <div class="price-card">
                     <div class="label">止损价格</div>
-                    <div class="value">{"¥{:.2f}".format(trading["stop_loss"]) if trading["stop_loss"] else "不适用"}</div>
+                    <div class="value">{self._format_price(trading.get("stop_loss"), "不适用", trading.get("reference_stop"))}</div>
                 </div>
             </div>
-            <p><strong>仓位建议:</strong> {trading["position_size"]}</p>
-            <p><strong>入场条件:</strong> {trading["entry_criteria"]}</p>
-            <p><strong>出场条件:</strong> {trading["exit_criteria"]}</p>
+            <p><strong>仓位建议:</strong> {'<span style="color:#c62828">数据获取失败</span>' if trading.get('_position_size_failed') else trading.get('position_size', '')}
+</p>
+            <p><strong>入场条件:</strong> {trading.get("entry_criteria", "")}</p>
+            <p><strong>出场条件:</strong> {'<span style="color:#c62828">数据获取失败</span>' if trading.get('_exit_criteria_failed') else trading.get('exit_criteria', '')}
+</p>
         </div>
 
         <!-- 新闻与情绪分析 -->
@@ -209,7 +476,7 @@ class ReportGenerator:
             <div class="analyst-card">
                 <h4>买入论证</h4>
                 <ul>
-                    {"".join(f"<li>{point}</li>" for point in parallel["bull_analyst"]["analysis"])}
+                    {"".join(f"<li>{ReportGenerator._render_markdown(point)}</li>" for point in parallel.get("bull_analyst", {}).get("analysis", ["待分析"]))}
                 </ul>
             </div>
         </div>
@@ -220,7 +487,7 @@ class ReportGenerator:
             <div class="analyst-card">
                 <h4>卖出/观望论证</h4>
                 <ul>
-                    {"".join(f"<li>{point}</li>" for point in parallel["bear_analyst"]["analysis"])}
+                    {"".join(f"<li>{ReportGenerator._render_markdown(point)}</li>" for point in parallel.get("bear_analyst", {}).get("analysis", ["待分析"]))}
                 </ul>
             </div>
         </div>
@@ -230,13 +497,7 @@ class ReportGenerator:
             <h2>技术分析</h2>
             <div class="analyst-card">
                 <h4>技术指标解读</h4>
-                <ul>
-                    {"".join(f"<li>{point}</li>" for point in parallel["tech_analyst"]["analysis"])}
-                </ul>
-                <p style="margin-top:8px;"><strong>关键指标:</strong></p>
-                <ul>
-                    {"".join(f"<li>{k}: {v}</li>" for k, v in parallel["tech_analyst"]["indicators"].items())}
-                </ul>
+                {tech_html}
             </div>
         </div>
 
@@ -245,13 +506,7 @@ class ReportGenerator:
             <h2>基本面分析</h2>
             <div class="analyst-card">
                 <h4>估值与财务指标</h4>
-                <ul>
-                    {"".join(f"<li>{point}</li>" for point in parallel["fundamentals_analyst"]["analysis"])}
-                </ul>
-                <p style="margin-top:8px;"><strong>核心指标:</strong></p>
-                <ul>
-                    {"".join(f"<li>{k}: {v}</li>" for k, v in parallel["fundamentals_analyst"]["metrics"].items())}
-                </ul>
+                {fund_html}
             </div>
         </div>
 
@@ -266,22 +521,22 @@ class ReportGenerator:
                     <th>止损</th>
                 </tr>
                 <tr>
-                    <td>{risk["aggressive"]["position"]}</td>
-                    <td>{risk["aggressive"]["position_size"]}</td>
-                    <td>{risk["aggressive"]["target_return"]}</td>
-                    <td>{risk["aggressive"]["stop_loss"]}</td>
+                    <td>{risk["aggressive"].get("position", "激进派")}</td>
+                    <td>{risk["aggressive"].get("position_size", "获取数据失败") if not risk.get("_risk_debate_failed") else "获取数据失败"}</td>
+                    <td>{risk["aggressive"].get("target_return", "获取数据失败") if not risk.get("_risk_debate_failed") else "获取数据失败"}</td>
+                    <td>{risk["aggressive"].get("stop_loss", "获取数据失败") if not risk.get("_risk_debate_failed") else "获取数据失败"}</td>
                 </tr>
                 <tr>
-                    <td>{risk["neutral"]["position"]}</td>
-                    <td>{risk["neutral"]["position_size"]}</td>
-                    <td>{risk["neutral"]["target_return"]}</td>
-                    <td>{risk["neutral"]["stop_loss"]}</td>
+                    <td>{risk["neutral"].get("position", "中性派")}</td>
+                    <td>{risk["neutral"].get("position_size", "获取数据失败") if not risk.get("_risk_debate_failed") else "获取数据失败"}</td>
+                    <td>{risk["neutral"].get("target_return", "获取数据失败") if not risk.get("_risk_debate_failed") else "获取数据失败"}</td>
+                    <td>{risk["neutral"].get("stop_loss", "获取数据失败") if not risk.get("_risk_debate_failed") else "获取数据失败"}</td>
                 </tr>
                 <tr>
-                    <td>{risk["conservative"]["position"]}</td>
-                    <td>{risk["conservative"]["position_size"]}</td>
-                    <td>{risk["conservative"]["target_return"]}</td>
-                    <td>{risk["conservative"]["stop_loss"]}</td>
+                    <td>{risk["conservative"].get("position", "保守派")}</td>
+                    <td>{risk["conservative"].get("position_size", "获取数据失败") if not risk.get("_risk_debate_failed") else "获取数据失败"}</td>
+                    <td>{risk["conservative"].get("target_return", "获取数据失败") if not risk.get("_risk_debate_failed") else "获取数据失败"}</td>
+                    <td>{risk["conservative"].get("stop_loss", "获取数据失败") if not risk.get("_risk_debate_failed") else "获取数据失败"}</td>
                 </tr>
             </table>
         </div>
@@ -294,7 +549,7 @@ class ReportGenerator:
             </ul>
             <p style="margin-top:12px;"><strong>监控要点:</strong></p>
             <ul>
-                {"".join(f"<li>{point}</li>" for point in final["monitoring_points"])}
+                {"".join(f"<li>{ReportGenerator._render_markdown(point)}</li>" for point in final["monitoring_points"])}
             </ul>
             <p style="margin-top:12px;"><strong>适合投资者:</strong> {", ".join(final["suitable_investors"])}</p>
         </div>
@@ -302,13 +557,7 @@ class ReportGenerator:
         <!-- 辩论过程 -->
         <div class="section">
             <h2>辩论过程</h2>
-            {"".join(f'''
-            <div class="analyst-card" style="margin-bottom:10px;">
-                <h4>第{r["round"]}轮辩论</h4>
-                <p><strong>多头:</strong> {", ".join(r["bull_points"][:2])}</p>
-                <p><strong>空头:</strong> {", ".join(r["bear_points"][:2])}</p>
-            </div>
-            ''' for r in result["debate"]["rounds"])}
+            {debate_html}
         </div>
 
         <!-- 免责声明 -->
