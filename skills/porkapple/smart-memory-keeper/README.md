@@ -1,16 +1,16 @@
-# 🐰 memory-keeper
+# 🐰 smart memory-keeper
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-1.3.0-blue)](https://github.com/porkapple/memory-keeper/releases)
+[![Version](https://img.shields.io/badge/version-1.5.0-blue)](https://github.com/porkapple/memory-keeper/releases)
 [![Author](https://img.shields.io/badge/author-爱兔%20aitu-orange)](https://github.com/porkapple)
 
 ---
 
 你有没有这种经历——
 
-跟 AI 聊了两个小时，终于把它"调教好了"：它懂你的项目、懂你的习惯、懂你想要什么。
+跟 Openclaw 聊了两个小时，终于把它"调教好了"：它懂你的项目、懂你的习惯、懂你想要什么。
 
-然后你手滑按了 `/new`。
+然后因为某个任务卡住了，你手滑按了 `/new`。
 
 它又变成什么都不知道的陌生人了。
 
@@ -91,7 +91,11 @@ git clone https://github.com/porkapple/memory-keeper.git ~/.openclaw/workspace/s
 │       └── 2026-03-01.md
 └── skills/
     └── memory-keeper/
-        └── SKILL.md
+        ├── SKILL.md                  # 核心流程与触发规则
+        └── references/
+            ├── formats.md            # tasks.md / 日记 / MEMORY.md 格式规范
+            ├── dream-guide.md        # Dream 整理四阶段详解
+            └── install-snippets.md   # AGENTS.md / HEARTBEAT.md 待追加内容
 ```
 
 ---
