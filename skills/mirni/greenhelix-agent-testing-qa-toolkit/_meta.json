@@ -1,0 +1,11 @@
+{
+  "owner": "mirni",
+  "slug": "greenhelix-agent-testing-qa-toolkit",
+  "displayName": "Agent Testing & QA Toolkit: Integration, Chaos, and Contract Testing for Multi-Agent Systems",
+  "latest": {
+    "version": "1.2.0",
+    "publishedAt": 1776065391986,
+    "commit": null
+  },
+  "history": []
+}
