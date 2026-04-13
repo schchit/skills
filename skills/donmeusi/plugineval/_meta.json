@@ -1,11 +1,17 @@
 {
   "owner": "donmeusi",
   "slug": "plugineval",
-  "displayName": "Plugineval",
+  "displayName": "PluginEval",
   "latest": {
-    "version": "1.2.0",
-    "publishedAt": 1774988877381,
-    "commit": "https://github.com/openclaw/skills/commit/2e7d5d3556c1f15074ca298f9db8f786b0efad04"
+    "version": "2.0.0",
+    "publishedAt": 1775662552967,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.2.0",
+      "publishedAt": 1774988877381,
+      "commit": "https://github.com/openclaw/skills/commit/2e7d5d3556c1f15074ca298f9db8f786b0efad04"
+    }
+  ]
 }
