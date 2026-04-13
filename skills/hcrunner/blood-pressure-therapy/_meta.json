@@ -1,11 +1,17 @@
 {
   "owner": "hcrunner",
   "slug": "blood-pressure-therapy",
-  "displayName": "Blood Pressure Care",
+  "displayName": "Blood Pressure Therapy",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1775208894739,
-    "commit": "https://github.com/openclaw/skills/commit/a06517257328c8fa96f6ddfe9f98517d513e9db2"
+    "version": "3.0.1",
+    "publishedAt": 1776063514779,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1775208894739,
+      "commit": "https://github.com/openclaw/skills/commit/a06517257328c8fa96f6ddfe9f98517d513e9db2"
+    }
+  ]
 }
