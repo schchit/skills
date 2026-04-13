@@ -3,9 +3,15 @@
   "slug": "bazi-fortune-analysis",
   "displayName": "Bazi Fortune Analysis",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1775549020563,
-    "commit": "https://github.com/openclaw/skills/commit/8589e0de6dff2133a9fcba7d66dcab9c4858b0cd"
+    "version": "1.0.1",
+    "publishedAt": 1775955823252,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1775549020563,
+      "commit": "https://github.com/openclaw/skills/commit/8589e0de6dff2133a9fcba7d66dcab9c4858b0cd"
+    }
+  ]
 }
