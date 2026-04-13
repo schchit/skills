@@ -1,11 +1,17 @@
 {
   "owner": "flowelement-alexunbridled",
   "slug": "mflow-memory",
-  "displayName": "M-flow Memory",
+  "displayName": "Mflow Memory",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1775654777055,
-    "commit": "https://github.com/openclaw/skills/commit/6c22ce70911c70ea4e75412ad3cba15e79fdc8bd"
+    "version": "0.3.4",
+    "publishedAt": 1776023230584,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1775654777055,
+      "commit": "https://github.com/openclaw/skills/commit/6c22ce70911c70ea4e75412ad3cba15e79fdc8bd"
+    }
+  ]
 }

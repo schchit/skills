@@ -3,7 +3,7 @@
 set -euo pipefail
 
 CONTAINER_NAME="mflow-memory"
-IMAGE="flowelement/m_flow-mcp:latest@sha256:fb249fa6bb9d3e25235cc2f5bd99225c4464761b46fd9d15adc6087fe65a3c03"
+IMAGE="flowelement/m_flow-mcp:latest@sha256:ba9955bb9c9e57b40bf5619f37474357bfe00268e81514783a956de2b301bb82"
 VOLUME_NAME="mflow_memory_data"
 DEFAULT_PORT=8001
 OPENCLAW_CONFIG="$HOME/.openclaw/openclaw.json"
