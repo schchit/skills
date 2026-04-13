@@ -3,9 +3,15 @@
   "slug": "openclaw-coding-agent-playbook",
   "displayName": "OpenClaw Coding Agent Playbook",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1775631800892,
-    "commit": "https://github.com/openclaw/skills/commit/606291afcf4b6dc7e634f5b944eb24957578743d"
+    "version": "0.1.1",
+    "publishedAt": 1775986469798,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1775631800892,
+      "commit": "https://github.com/openclaw/skills/commit/606291afcf4b6dc7e634f5b944eb24957578743d"
+    }
+  ]
 }
