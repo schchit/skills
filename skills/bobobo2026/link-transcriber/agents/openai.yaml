@@ -1,0 +1,7 @@
+interface:
+  display_name: "Link Transcriber"
+  short_description: "转写后只返回总结结果"
+  default_prompt: "Use $link-transcriber to summarize a Douyin or Xiaohongshu link through https://linktranscriber.store/linktranscriber-api, relying on the server's saved platform cookies. If the user already provided a supported link, execute immediately without asking for confirmation. Prefer the bundled Python script in the installed skill directory over ad-hoc curl commands. Return only the final summary result, and if the service fails, return only a short failure message without browsing the page or inferring a substitute summary."
+
+policy:
+  allow_implicit_invocation: true
