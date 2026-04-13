@@ -65,7 +65,7 @@ Adjust question style accordingly. Technical users get architecture-level probin
 
 **Explore project context first:** Before asking questions, read existing files, docs, and recent commits related to the idea. Understanding what exists prevents asking questions the codebase already answers and grounds the conversation in reality.
 
-Ask questions **one at a time** by default. When probing a single dimension (e.g., data model, auth flow), 2-3 related questions together is acceptable -- see Question Clustering below.
+Ask questions **one at a time** by default. When probing a single dimension (e.g., data model, auth flow), clustering 2-3 related questions together is acceptable.
 
 **Question Techniques:**
 
@@ -129,11 +129,37 @@ After understanding the idea, propose 2-3 concrete approaches.
 - Reference codebase patterns when relevant
 - If no approach is accepted after 2 rounds, ask the user to describe their preferred direction directly
 
+**Ideation lenses** (use 2-3 to stress-test approaches when the design space is wide):
+- **Inversion**: What if we solved the opposite problem?
+- **Constraint removal**: What would we build if [biggest constraint] didn't exist?
+- **Audience shift**: What if the primary user were [different persona]?
+- **Combination**: Can two weak approaches combine into a strong one?
+- **Simplification**: What's the version that ships in a day?
+- **10x version**: What if this needed to handle 10x the scale?
+- **Expert lens**: How would [domain expert] approach this?
+
+**"Not Doing" list:** Include an explicit list of what the chosen approach will NOT do. Focus is about saying no to good ideas. Make the trade-offs visible so they're a deliberate choice, not an oversight.
+
+**Assumptions with validation:** For each key assumption in the chosen approach, state how to test it. Not just "we assume X" but "we assume X -- we'll know by [validation method]."
+
 ### Phase 3: Capture the Design
 
 Summarize key decisions in a structured format. For each major component, verify isolation and clarity: it must answer "what does it do, how do you use it, what does it depend on?" and be independently understandable and testable. If working in an existing codebase, note which existing patterns to follow and where targeted improvements fit naturally.
 
 **Design Doc:** Save to `docs/brainstorms/YYYY-MM-DD-<topic>-brainstorm.md`. Required sections: What We're Building, Why This Approach, Key Decisions (with rationale), Open Questions, Next Steps. Collapse the Q&A interview log in a `<details>` block. Include YAML frontmatter with `date` and `topic`. Commit to git -- design decisions are project history.
+
+### Phase 3b: Spec Self-Review
+
+Before presenting the design doc, run this checklist against the draft. Any failure means return to Phase 2 or Phase 3, not Phase 4.
+
+- **Placeholder scan**: no "TBD", "figure out later", "appropriate error handling", bracketed gaps, or tasks without concrete criteria
+- **Internal consistency**: names, types, and verbs referenced in one section match every other section (no `createOrder()` in one place and `placeOrder()` in another)
+- **Scope containment**: every decision traces back to a stated goal. If a decision doesn't, cut it or surface it as an explicit scope expansion with rationale
+- **Ambiguity sweep**: read each Key Decision and ask "could a reasonable implementer interpret this two ways?" If yes, tighten the wording before handoff
+- **Assumption validation**: every assumption has a stated validation method (not just "we assume X" but "we assume X — we'll confirm by Y")
+- **Non-goals list present**: the explicit "Not Doing" list exists and is specific, not boilerplate
+
+Silent pass is a valid outcome. If the draft is clean, say so and move to Phase 4.
 
 ### Phase 4: Review and Handoff
 
@@ -161,4 +187,5 @@ Present the design doc to the user for approval. The user explicitly confirming 
 Brainstorming answers WHAT to build. Planning answers HOW. When brainstorm output exists, `workflows:plan` detects it and skips idea refinement.
 
 - **Next step:** `workflows:plan` (always)
+- **Threat modeling:** when the brainstorm involves auth, payments, external API surfaces, or multi-tenant data, suggest a `security-sentinel` threat model before moving to planning. Catching trust boundary issues at the design stage prevents costly rework.
 - **Predecessor:** user request or ambiguous feature description
