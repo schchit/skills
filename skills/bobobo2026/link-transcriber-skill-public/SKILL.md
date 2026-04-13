@@ -1,6 +1,6 @@
 ---
 name: link-transcriber
-description: Use this skill when a user wants to submit a Douyin or Xiaohongshu link to the linkTranscriber transcription API, optionally provide cookie when available, wait for transcription to finish, then call the summaries API and return only the final summary markdown to the user.
+description: Use this skill when a user wants to submit a Douyin or Xiaohongshu link to the linkTranscriber transcription API, let the server use its saved platform cookies, wait for transcription to finish through all in-progress states, then call the summaries API and return only the final summary markdown to the user.
 ---
 
 # Link Transcriber
@@ -9,19 +9,34 @@ description: Use this skill when a user wants to submit a Douyin or Xiaohongshu 
 
 This skill is intentionally narrow.
 
-Default API base URL:
+Public API base URL:
 
-- `http://139.196.124.192/linktranscriber-api`
+- default: `https://linktranscriber.store/linktranscriber-api`
+- set `LINK_SKILL_API_BASE_URL` only when you need to override that trusted HTTPS origin
+- avoid raw IPs and plain HTTP for public use
+
+Optional runtime overrides:
+
+- `LINK_SKILL_API_BASE_URL`
+- `LINK_SKILL_SUMMARY_PROVIDER_ID` (default: `deepseek`)
+- `LINK_SKILL_SUMMARY_MODEL_NAME` (default: `deepseek-chat`)
 
 Use it to:
 
 - collect a Douyin or Xiaohongshu link
-- collect a cookie when available
+- rely on server-side saved platform cookies when needed
 - infer or confirm the platform
 - create a transcription task
 - poll the task until it succeeds
 - call the summaries API
 - return only the final summary text to the user
+
+Hard requirements:
+
+- use `https://linktranscriber.store/linktranscriber-api` by default
+- do not replace the trusted HTTPS origin with a raw IP unless the operator explicitly sets `LINK_SKILL_API_BASE_URL`
+- treat `skill/` in this workspace as the stable source of truth
+- do not fall back to `web/skill/` for current product behavior
 
 ## When To Use It
 
@@ -37,15 +52,14 @@ Do not use this skill for:
 - YouTube links
 - `/api/generate_note`
 - returning the full raw transcription JSON by default
-- reminders, execution tasks, or billing workflows
+- any workflow outside the final summary result
 
 ## Required Inputs
 
 This skill needs:
 
 1. `url`
-2. `cookie` (recommended, not strictly required)
-3. `platform`
+2. `platform`
 
 Infer `platform` when possible:
 
@@ -54,19 +68,15 @@ Infer `platform` when possible:
 
 If the platform cannot be inferred reliably, ask the user to specify `douyin` or `xiaohongshu`.
 
-The upstream transcription API allows missing `cookie` in some cases. This skill should prefer asking for `cookie` when the user has it, but it may still attempt the request without cookie if the user does not have one or wants to try without it first.
-
 ## Workflow
 
 1. Check whether the user provided `url`.
-2. Check whether the user provided `cookie`.
-3. Infer `platform` from the link when possible.
-4. If `url` is missing, ask for it and stop.
-5. If `platform` cannot be inferred, ask for it and stop.
-6. If `cookie` is missing, you may ask for it first, but you can also proceed without it if the user wants to try without cookie.
-7. Create a transcription task with `POST /api/service/transcriptions`:
+2. Infer `platform` from the link when possible.
+3. If `url` is missing, ask for it and stop.
+4. If `platform` cannot be inferred, ask for it and stop.
+5. Create a transcription task with `POST /api/service/transcriptions`:
 
-Use the default base URL above unless the environment explicitly overrides it.
+Use `https://linktranscriber.store/linktranscriber-api` by default. If `LINK_SKILL_API_BASE_URL` is set, use that override instead.
 
 ```json
 {
@@ -75,19 +85,11 @@ Use the default base URL above unless the environment explicitly overrides it.
 }
 ```
 
-If cookie is available, include it:
-
-```json
-{
-  "url": "https://...",
-  "platform": "xiaohongshu",
-  "cookie": "your-cookie-string"
-}
-```
-
-8. Extract `data.task_id` from the creation response.
-9. Poll `GET /api/service/transcriptions/{task_id}` until the task reaches a final successful state.
-10. Call `POST /api/service/summaries` with:
+6. Extract `data.task_id` from the creation response.
+7. Poll `GET /api/service/transcriptions/{task_id}` until the task reaches a final successful state.
+   Keep polling while status is any non-final in-progress value such as:
+   `PENDING`, `PARSING`, `DOWNLOADING`, `TRANSCRIBING`, `SUMMARIZING`, `FORMATTING`, `SAVING`.
+8. Call `POST /api/service/summaries` with:
 
 ```json
 {
@@ -97,7 +99,9 @@ If cookie is available, include it:
 }
 ```
 
-11. Return only `data.summary_markdown` to the user.
+9. Return only `data.summary_markdown` to the user.
+
+The public skill should not ask end users to provide platform cookies by default. Cookie handling belongs to the server-side configuration layer.
 
 ## Output Rules
 
@@ -109,9 +113,10 @@ If cookie is available, include it:
 ## Error Handling
 
 - If `url` is missing, ask for the link.
-- If `cookie` is missing, prefer asking for it, but allow a no-cookie attempt when the user does not have one.
 - If the platform cannot be inferred, ask whether it is `douyin` or `xiaohongshu`.
 - If transcription task creation fails, return the upstream error clearly.
+- If the upstream service reports missing platform cookies, treat that as a server-side configuration issue.
+- If the upstream service reports missing platform cookies, do not redirect that requirement to the end user as the default next step. Explain that the hosted service is missing required cookie configuration.
 - If polling ends in failure, return the task error instead of calling summaries.
 - If summary generation fails, return the upstream summary API error.
 
@@ -119,5 +124,4 @@ If cookie is available, include it:
 
 Use $link-transcriber to summarize this Xiaohongshu link. I want only the final summary result:
 
-- `url`: `http://xhslink.com/...`
-- `cookie`: `web_session=...` (optional but recommended)
+- `url`: `https://xhslink.com/...`

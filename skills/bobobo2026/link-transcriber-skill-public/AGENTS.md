@@ -9,9 +9,18 @@ Current purpose:
 - distribute a Codex-compatible public skill
 - support Douyin and Xiaohongshu link summarization
 - call the live `linkTranscriber` API
+- rely on server-side saved platform cookies when needed
 - return only the final summary text to the end user
 
 This repo is intentionally small and should stay focused on the skill distribution surface only.
+
+## Invocation Guardrails
+
+- For current product behavior, use this repo's `SKILL.md` as the stable contract.
+- Do not use `web/skill/` as the current source of truth; it is legacy migration reference only.
+- Default to `https://linktranscriber.store/linktranscriber-api` for public use.
+- If the hosted service reports missing platform cookies, treat it as a server-side configuration issue rather than asking the end user for cookies by default.
+- Poll until a true final state arrives. In-progress states are broader than `PENDING` and include `PARSING`, `DOWNLOADING`, `TRANSCRIBING`, `SUMMARIZING`, `FORMATTING`, and `SAVING`.
 
 ## Current Status
 
@@ -21,13 +30,14 @@ What is already done:
 - `agents/openai.yaml` exists and matches the current skill behavior
 - `scripts/call_service_example.py` supports:
   - infer platform from URL
-  - optional cookie
   - create transcription task
   - poll transcription task
   - call summaries API
   - print only final summary text
-- default live API base URL is wired in:
-  - `http://139.196.124.192/linktranscriber-api`
+- API base URL is intentionally configurable:
+  - default public origin: `https://linktranscriber.store/linktranscriber-api`
+  - set `LINK_SKILL_API_BASE_URL` only when an override is required
+  - avoid raw IPs and plain HTTP in public copy
 - real API smoke has already succeeded against Xiaohongshu
 - public GitHub repo has already been created and pushed:
   - `https://github.com/bobobo2026/link-transcriber-skill`
@@ -35,33 +45,35 @@ What is already done:
 ClawHub status:
 
 - CLI login is valid
-- publish command was executed
-- current blocker is platform policy:
-  - GitHub account must be at least 14 days old
-- last observed platform message:
-  - `Try again in 1 day`
+- publish succeeded on `2026-04-01`
+- published version:
+  - `0.1.0`
+- published slug:
+  - `link-transcriber-skill-public`
+- published page:
+  - `https://clawhub.ai/bobobo2026/link-transcriber-skill-public`
 
 ## Source Of Truth
 
 Behavior source of truth:
 
-- [SKILL.md](/Users/yibo/Documents/company/IdeaProjects/moreHelper/link-transcriber-skill-public/SKILL.md)
+- [SKILL.md](/Users/yibo/Documents/company/IdeaProjects/KnowledgeOS/skill/SKILL.md)
 
 Codex UI metadata source of truth:
 
-- [agents/openai.yaml](/Users/yibo/Documents/company/IdeaProjects/moreHelper/link-transcriber-skill-public/agents/openai.yaml)
+- [agents/openai.yaml](/Users/yibo/Documents/company/IdeaProjects/KnowledgeOS/skill/agents/openai.yaml)
 
 Public repo overview:
 
-- [README.md](/Users/yibo/Documents/company/IdeaProjects/moreHelper/link-transcriber-skill-public/README.md)
+- [README.md](/Users/yibo/Documents/company/IdeaProjects/KnowledgeOS/skill/README.md)
 
 ClawHub-oriented copy:
 
-- [CLAWHUB.md](/Users/yibo/Documents/company/IdeaProjects/moreHelper/link-transcriber-skill-public/CLAWHUB.md)
+- [CLAWHUB.md](/Users/yibo/Documents/company/IdeaProjects/KnowledgeOS/skill/CLAWHUB.md)
 
 Smoke / example runner:
 
-- [scripts/call_service_example.py](/Users/yibo/Documents/company/IdeaProjects/moreHelper/link-transcriber-skill-public/scripts/call_service_example.py)
+- [scripts/call_service_example.py](/Users/yibo/Documents/company/IdeaProjects/KnowledgeOS/skill/scripts/call_service_example.py)
 
 ## Key Product Behavior
 
@@ -73,15 +85,12 @@ Supported platforms:
 Not supported in this repo’s current public skill positioning:
 
 - YouTube
-- action cards
-- reminders
-- execution tasks
 - raw transcription JSON as the default user-facing result
 
 End-user behavior:
 
 1. user provides a link
-2. user may provide cookie, but cookie is optional
+2. skill relies on server-side saved platform cookies when needed
 3. skill infers platform when possible
 4. skill creates transcription task
 5. skill polls until transcription finishes
@@ -90,9 +99,10 @@ End-user behavior:
 
 ## Live API Details
 
-Default API base URL:
+Public API base URL:
 
-- `http://139.196.124.192/linktranscriber-api`
+- default: `https://linktranscriber.store/linktranscriber-api`
+- override with `LINK_SKILL_API_BASE_URL` when needed
 
 Health check:
 
@@ -120,54 +130,50 @@ Default summary settings:
 Validate skill structure:
 
 ```bash
-/Users/yibo/Documents/company/IdeaProjects/moreHelper/link-transcriber/.venv-pytest/bin/python \
-  /Users/yibo/.codex/skills/.system/skill-creator/scripts/quick_validate.py \
-  /Users/yibo/Documents/company/IdeaProjects/moreHelper/link-transcriber-skill-public
+python3 /Users/yibo/.codex/skills/.system/skill-creator/scripts/quick_validate.py \
+  /Users/yibo/Documents/company/IdeaProjects/KnowledgeOS/skill
 ```
 
 Compile script:
 
 ```bash
-python3 -m compileall /Users/yibo/Documents/company/IdeaProjects/moreHelper/link-transcriber-skill-public/scripts
+python3 -m compileall /Users/yibo/Documents/company/IdeaProjects/KnowledgeOS/skill/scripts
 ```
 
 Run live smoke:
 
 ```bash
-python3 /Users/yibo/Documents/company/IdeaProjects/moreHelper/link-transcriber-skill-public/scripts/call_service_example.py \
-  'http://xhslink.com/o/23s4jTem6em'
+python3 /Users/yibo/Documents/company/IdeaProjects/KnowledgeOS/skill/scripts/call_service_example.py \
+  'https://xhslink.com/o/23s4jTem6em'
 ```
 
 Optional API base override:
 
 ```bash
-LINK_SKILL_API_BASE_URL=http://139.196.124.192/linktranscriber-api \
-python3 /Users/yibo/Documents/company/IdeaProjects/moreHelper/link-transcriber-skill-public/scripts/call_service_example.py \
-  'http://xhslink.com/o/23s4jTem6em'
+LINK_SKILL_API_BASE_URL=https://linktranscriber.store/linktranscriber-api \
+python3 /Users/yibo/Documents/company/IdeaProjects/KnowledgeOS/skill/scripts/call_service_example.py \
+  'https://xhslink.com/o/23s4jTem6em'
 ```
 
-## Todo
+## Follow-ups
 
 Immediate:
 
-- retry ClawHub publish after account-age restriction clears
-- record the final ClawHub page URL in `README.md` and this file
 - verify one real Douyin smoke path in addition to Xiaohongshu
 
 Short-term:
 
-- improve `CLAWHUB.md` from compatibility note to final publish copy if ClawHub needs richer listing text
 - add one concrete “natural language user examples” section to `README.md`
 - verify Codex installation from the public GitHub repo on a clean machine or clean Codex profile
 
 Optional:
 
 - add a lightweight changelog section in `README.md`
-- add a second smoke example for no-cookie and with-cookie modes
+- add a second smoke example for explicit platform selection
 
 ## Constraints
 
 - Keep this repo focused on public skill distribution only
 - Do not pull backend implementation, deployment docs, or unrelated project history into this repo
-- Do not reintroduce action-card / reminder / execution-task positioning into public skill copy
+- Do not reintroduce unrelated workflow positioning into public skill copy
 - Prefer updating `SKILL.md`, `agents/openai.yaml`, `README.md`, and `CLAWHUB.md` together so public descriptions stay aligned
