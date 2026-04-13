@@ -1,0 +1,11 @@
+{
+  "owner": "heqq-github",
+  "slug": "custom-api-summary",
+  "displayName": "调用自定义摘要 API，对用户提供的文本进行处理并返回结果",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775701613826,
+    "commit": null
+  },
+  "history": []
+}
