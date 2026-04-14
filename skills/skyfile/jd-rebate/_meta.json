@@ -1,0 +1,11 @@
+{
+  "owner": "skyfile",
+  "slug": "jd-rebate",
+  "displayName": "京东返利",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1775891783022,
+    "commit": null
+  },
+  "history": []
+}
