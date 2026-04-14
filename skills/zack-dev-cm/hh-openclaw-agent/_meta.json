@@ -1,0 +1,11 @@
+{
+  "owner": "zack-dev-cm",
+  "slug": "hh-openclaw-agent",
+  "displayName": "HH OpenClaw Agent",
+  "latest": {
+    "version": "1.0.3",
+    "publishedAt": 1775894505869,
+    "commit": null
+  },
+  "history": []
+}
