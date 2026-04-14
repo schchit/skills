@@ -1,0 +1,11 @@
+{
+  "owner": "deconsoleapp",
+  "slug": "chromia-skill",
+  "displayName": "Chromia Skill",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1775852122425,
+    "commit": null
+  },
+  "history": []
+}
