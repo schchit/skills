@@ -1,0 +1,11 @@
+{
+  "owner": "mrfengcn",
+  "slug": "classical-chinese-translator",
+  "displayName": "Skill for OpenClaw: Converts classical Chinese to vernacular Chinese, supporting multiple e-book formats for full-text conversion.",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775917956240,
+    "commit": null
+  },
+  "history": []
+}
