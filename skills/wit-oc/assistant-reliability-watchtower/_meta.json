@@ -1,0 +1,11 @@
+{
+  "owner": "wit-oc",
+  "slug": "assistant-reliability-watchtower",
+  "displayName": "Assistant Reliability Watchtower",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1775934937657,
+    "commit": null
+  },
+  "history": []
+}
