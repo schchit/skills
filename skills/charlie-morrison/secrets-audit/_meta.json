@@ -1,0 +1,11 @@
+{
+  "owner": "charlie-morrison",
+  "slug": "secrets-audit",
+  "displayName": "secrets-audit",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775864677062,
+    "commit": null
+  },
+  "history": []
+}
