@@ -1,0 +1,11 @@
+{
+  "owner": "assix",
+  "slug": "home-network-security-agent",
+  "displayName": "HomeNetworkSecurityAgent",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775967231187,
+    "commit": null
+  },
+  "history": []
+}
