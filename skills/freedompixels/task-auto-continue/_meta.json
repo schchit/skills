@@ -1,0 +1,11 @@
+{
+  "owner": "freedompixels",
+  "slug": "task-auto-continue",
+  "displayName": "任务自动续接",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1776037403535,
+    "commit": null
+  },
+  "history": []
+}
