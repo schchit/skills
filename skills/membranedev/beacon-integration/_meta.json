@@ -1,0 +1,11 @@
+{
+  "owner": "membranedev",
+  "slug": "beacon-integration",
+  "displayName": "Beacon",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775736242096,
+    "commit": null
+  },
+  "history": []
+}
