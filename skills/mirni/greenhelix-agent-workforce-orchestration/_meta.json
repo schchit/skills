@@ -1,0 +1,11 @@
+{
+  "owner": "mirni",
+  "slug": "greenhelix-agent-workforce-orchestration",
+  "displayName": "Agent Workforce Orchestration: Hybrid Human+AI Teams",
+  "latest": {
+    "version": "1.3.0",
+    "publishedAt": 1776133572772,
+    "commit": null
+  },
+  "history": []
+}
