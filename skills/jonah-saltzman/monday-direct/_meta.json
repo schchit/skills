@@ -1,11 +1,17 @@
 {
   "owner": "jonah-saltzman",
   "slug": "monday-direct",
-  "displayName": "Monday Publish",
+  "displayName": "Monday Direct",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1776030897587,
-    "commit": "https://github.com/openclaw/skills/commit/6a080f18152b10e2e2920c965c9335ffc3ff391c"
+    "version": "1.0.7",
+    "publishedAt": 1776031955434,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1776030897587,
+      "commit": "https://github.com/openclaw/skills/commit/6a080f18152b10e2e2920c965c9335ffc3ff391c"
+    }
+  ]
 }

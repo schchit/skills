@@ -1,6 +1,6 @@
 ---
 name: monday
-description: Interact with the monday.com GraphQL API — read and create boards, items, columns, updates, and users. Use when asked to check tasks, add items, update statuses, query boards, or do anything with a user's monday.com workspace.
+description: Interact directly with the monday.com GraphQL API — no third-party gateway required. Read and create boards, items, columns, updates, and users. Use when asked to check tasks, add items, update statuses, query boards, or do anything with a user's monday.com workspace.
 homepage: https://github.com/mondaycom/monday-graphql-api
 metadata:
   {
@@ -82,3 +82,14 @@ node ~/.agents/skills/monday/scripts/monday.js query '
 - Use `users(limit: 50, page: N)` for paginating users.
 - Request only the fields you actually need.
 - Board IDs and item IDs are strings in variables (`ID!` type).
+
+## LLM context rules
+
+Official monday.com guidance files are in `references/`:
+
+- `references/graphql-api-best-practices.md` — pagination patterns and correct query structure
+- `references/api-client-best-practices.md` — client setup, error handling, env var usage
+- `references/backend-usage-rules.md` — Node.js mutation/query examples with full error handling
+- `references/frontend-usage-rules.md` — browser/React examples (reference only; this skill is server-side)
+
+When writing a new or unfamiliar query, read the relevant rules file first.
