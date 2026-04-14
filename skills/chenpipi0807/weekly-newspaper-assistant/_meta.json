@@ -1,0 +1,11 @@
+{
+  "owner": "chenpipi0807",
+  "slug": "weekly-newspaper-assistant",
+  "displayName": "用来帮你写周报把图文周报变成漂亮图片的skill--当前版本是苹果的风格",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775908097659,
+    "commit": null
+  },
+  "history": []
+}
