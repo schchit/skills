@@ -1,0 +1,11 @@
+{
+  "owner": "crayfish-ai",
+  "slug": "pubmed-review",
+  "displayName": "PubMed Review",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1775831412604,
+    "commit": null
+  },
+  "history": []
+}
