@@ -1,0 +1,11 @@
+{
+  "owner": "membranedev",
+  "slug": "sage-300",
+  "displayName": "Sage 300",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775729104532,
+    "commit": null
+  },
+  "history": []
+}
