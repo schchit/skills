@@ -1,0 +1,11 @@
+{
+  "owner": "vigorouspp",
+  "slug": "auto-citation",
+  "displayName": "自动为文章添加参考文献",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775905639859,
+    "commit": null
+  },
+  "history": []
+}
