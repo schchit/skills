@@ -1,0 +1,11 @@
+{
+  "owner": "lq434239",
+  "slug": "self-improving-session",
+  "displayName": "Triggers when a session contains user corrections, repeated workflow preferences,    or project conventions that should be preserved for future sessions. Also triggers    when the user explicitly asks to remember rules, update guidance, or summarize       lessons. Runs automatically at session end.",
+  "latest": {
+    "version": "1.0.2",
+    "publishedAt": 1776048793870,
+    "commit": null
+  },
+  "history": []
+}
