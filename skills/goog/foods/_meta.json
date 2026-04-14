@@ -1,0 +1,11 @@
+{
+  "owner": "goog",
+  "slug": "foods",
+  "displayName": "food balance health checker",
+  "latest": {
+    "version": "1.1.0",
+    "publishedAt": 1776049606962,
+    "commit": null
+  },
+  "history": []
+}
