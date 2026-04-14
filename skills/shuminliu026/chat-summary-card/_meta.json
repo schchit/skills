@@ -1,0 +1,11 @@
+{
+  "owner": "shuminliu026",
+  "slug": "chat-summary-card",
+  "displayName": "An AI-powered tool that turns conversations into polished, structured summary cards by extracting key ideas, action items, and next steps.",
+  "latest": {
+    "version": "1.0.4",
+    "publishedAt": 1776066922985,
+    "commit": null
+  },
+  "history": []
+}
