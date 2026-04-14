@@ -1,0 +1,11 @@
+{
+  "owner": "ityhg",
+  "slug": "a11y-label-audit",
+  "displayName": "无障碍标签审查与自动修复",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775808667102,
+    "commit": null
+  },
+  "history": []
+}
