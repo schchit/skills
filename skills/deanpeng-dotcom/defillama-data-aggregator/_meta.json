@@ -1,0 +1,11 @@
+{
+  "owner": "deanpeng-dotcom",
+  "slug": "defillama-data-aggregator",
+  "displayName": "Defillama Data Aggregator",
+  "latest": {
+    "version": "1.0.3",
+    "publishedAt": 1775957558736,
+    "commit": null
+  },
+  "history": []
+}
