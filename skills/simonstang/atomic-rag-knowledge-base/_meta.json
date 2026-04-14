@@ -1,0 +1,11 @@
+{
+  "owner": "simonstang",
+  "slug": "atomic-rag-knowledge-base",
+  "displayName": "原子化RAG知识库构建器",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775996856440,
+    "commit": null
+  },
+  "history": []
+}
