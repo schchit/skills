@@ -1,0 +1,11 @@
+{
+  "owner": "daririnch",
+  "slug": "dcl-provenance-tracker",
+  "displayName": "DCL Provenance Tracker — Supply Chain & Version Drift Verifier",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775790270728,
+    "commit": null
+  },
+  "history": []
+}
