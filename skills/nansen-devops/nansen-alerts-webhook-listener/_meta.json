@@ -1,0 +1,11 @@
+{
+  "owner": "nansen-devops",
+  "slug": "nansen-alerts-webhook-listener",
+  "displayName": "Nansen Alerts Webhook Listener",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775828404544,
+    "commit": null
+  },
+  "history": []
+}
