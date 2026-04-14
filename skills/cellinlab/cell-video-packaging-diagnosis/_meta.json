@@ -1,0 +1,11 @@
+{
+  "owner": "cellinlab",
+  "slug": "cell-video-packaging-diagnosis",
+  "displayName": "视频封标诊断",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1775876025589,
+    "commit": null
+  },
+  "history": []
+}
