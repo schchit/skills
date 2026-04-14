@@ -1,0 +1,11 @@
+{
+  "owner": "colapsis",
+  "slug": "agentid-mcp",
+  "displayName": "AgentID MCP",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1776000948844,
+    "commit": null
+  },
+  "history": []
+}
