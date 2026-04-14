@@ -1,0 +1,11 @@
+{
+  "owner": "wld-bot",
+  "slug": "ai-business",
+  "displayName": "Global Business AI Assistant",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1775978994026,
+    "commit": null
+  },
+  "history": []
+}
