@@ -1,0 +1,11 @@
+{
+  "owner": "mirni",
+  "slug": "greenhelix-trading-bot-audit-trail",
+  "displayName": "Tamper-Proof Audit Trails for Trading Bots",
+  "latest": {
+    "version": "1.3.0",
+    "publishedAt": 1776133715868,
+    "commit": null
+  },
+  "history": []
+}
