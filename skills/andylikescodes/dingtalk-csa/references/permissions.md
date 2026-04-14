@@ -2,10 +2,12 @@
 
 ## 📋 应用信息
 
-- **AppKey**: `dingsemtijka6uyry5vd`
-- **AppSecret**: `U2MnO8Z1i46InyzRuFZCKfpDuHYTwGYKp_G1hxbieJ3vy23MuGQ1rW_rK1-kSkM7`
+- **AppKey**: 配置为环境变量 `DINGTALK_APP_KEY`
+- **AppSecret**: 配置为环境变量 `DINGTALK_APP_SECRET`（⚠️ 绝不要明文写在代码或文档中）
 - **应用类型**: 企业内部应用
 - **开通方式**: 管理员在钉钉开放平台操作
+
+> ⚠️ **安全提示**：AppKey 和 AppSecret 是敏感凭据，请通过环境变量或安全配置文件传入，切勿硬编码。
 
 ## 🔑 权限状态总览
 
@@ -37,19 +39,21 @@
 直接访问以下链接，逐个点击申请：
 
 1. **Storage.DownloadInfo.Read**  
-   https://open-dev.dingtalk.com/appscope/apply?content=dingsemtijka6uyry5vd%23Storage.DownloadInfo.Read
+   https://open-dev.dingtalk.com/appscope/apply?content=YOUR_APP_KEY%23Storage.DownloadInfo.Read
 
 2. **qyapi_get_member**  
-   https://open-dev.dingtalk.com/appscope/apply?content=dingsemtijka6uyry5vd%23qyapi_get_member
+   https://open-dev.dingtalk.com/appscope/apply?content=YOUR_APP_KEY%23qyapi_get_member
 
 3. **qyapi_get_department_list**  
-   https://open-dev.dingtalk.com/appscope/apply?content=dingsemtijka6uyry5vd%23qyapi_get_department_list
+   https://open-dev.dingtalk.com/appscope/apply?content=YOUR_APP_KEY%23qyapi_get_department_list
 
 4. **Contact.User.Read**  
-   https://open-dev.dingtalk.com/appscope/apply?content=dingsemtijka6uyry5vd%23Contact.User.Read
+   https://open-dev.dingtalk.com/appscope/apply?content=YOUR_APP_KEY%23Contact.User.Read
 
 5. **qyapi_cspace_base**（可选，旧版API）  
-   https://open-dev.dingtalk.com/appscope/apply?content=dingsemtijka6uyry5vd%23qyapi_cspace_base
+   https://open-dev.dingtalk.com/appscope/apply?content=YOUR_APP_KEY%23qyapi_cspace_base
+
+> ⚠️ 将链接中的 `YOUR_APP_KEY` 替换为你的实际 AppKey。
 
 ### 方式二：在开放平台手动操作
 
@@ -80,7 +84,7 @@
 curl -s -X POST "https://api.dingtalk.com/v1.0/storage/spaces/{spaceId}/dentries/{dentryId}/downloadInfos/query" \
   -H "x-acs-dingtalk-access-token: $TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"unionId": "iSHgMJf7O6XZNiiGQhmwN4FgiEiE"}'
+  -d '{"unionId": "YOUR_UNION_ID"}'
 ```
 
 如果返回下载链接而不是权限错误，说明开通成功。

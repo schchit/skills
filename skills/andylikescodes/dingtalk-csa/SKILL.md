@@ -1,6 +1,12 @@
 ---
 name: dingtalk-csa
 description: 钉盘助手 (DingTalk Cloud Storage Assistant) - 管理钉钉云盘空间、文件和文档。用当用户要求读写钉盘文件、管理团队空间、上传下载文档、操作adoc文档时触发。也适用于钉钉文件分析、报告生成、团队协作等场景。触发词：钉盘、钉钉云盘、DingTalk storage、钉钉文件、钉钉文档。
+metadata:
+  openclaw:
+    requires:
+      env:
+        DINGTALK_APP_KEY: "钉钉应用 AppKey"
+        DINGTALK_APP_SECRET: "钉钉应用 AppSecret（敏感凭据，切勿明文写在配置文件中）"
 ---
 
 # 钉盘助手 DingTalk Cloud Storage Assistant
@@ -43,8 +49,12 @@ ALLOWED_WRITE_PATHS:
 ```bash
 curl -X POST 'https://api.dingtalk.com/v1.0/oauth2/accessToken' \
   -H 'Content-Type: application/json' \
-  -d '{"appKey": "<YOUR_APP_KEY>", "appSecret": "<YOUR_APP_SECRET>"}'
+  -d '{"appKey": "'"$DINGTALK_APP_KEY"'", "appSecret": "'"$DINGTALK_APP_SECRET"'"}'
 ```
+
+**环境变量配置：**
+- `DINGTALK_APP_KEY` — 钉钉应用的 AppKey
+- `DINGTALK_APP_SECRET` — 钉钉应用的 AppSecret（⚠️ 绝不要明文写在代码或配置文件中）
 
 Token 有效期 2 小时，请缓存避免重复请求。
 
