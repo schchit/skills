@@ -1,0 +1,11 @@
+{
+  "owner": "intsig-textin",
+  "slug": "xparse-parser",
+  "displayName": "TextIn xParse Document Parse",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1775734688738,
+    "commit": null
+  },
+  "history": []
+}
