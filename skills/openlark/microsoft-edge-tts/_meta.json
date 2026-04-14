@@ -1,0 +1,11 @@
+{
+  "owner": "openlark",
+  "slug": "microsoft-edge-tts",
+  "displayName": "Microsoft Edge TTS",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775873109141,
+    "commit": null
+  },
+  "history": []
+}
