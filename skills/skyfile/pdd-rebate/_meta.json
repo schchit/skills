@@ -1,0 +1,11 @@
+{
+  "owner": "skyfile",
+  "slug": "pdd-rebate",
+  "displayName": "拼多多返利",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1775892010642,
+    "commit": null
+  },
+  "history": []
+}
