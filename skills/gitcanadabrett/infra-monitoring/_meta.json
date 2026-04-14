@@ -1,0 +1,11 @@
+{
+  "owner": "gitcanadabrett",
+  "slug": "infra-monitoring",
+  "displayName": "Infra Monitoring",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1775840343263,
+    "commit": null
+  },
+  "history": []
+}
