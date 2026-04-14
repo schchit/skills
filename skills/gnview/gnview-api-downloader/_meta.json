@@ -1,0 +1,11 @@
+{
+  "owner": "gnview",
+  "slug": "gnview-api-downloader",
+  "displayName": "gnview-api-downloader",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775914904660,
+    "commit": null
+  },
+  "history": []
+}
