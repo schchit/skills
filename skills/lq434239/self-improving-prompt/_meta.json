@@ -1,0 +1,11 @@
+{
+  "owner": "lq434239",
+  "slug": "self-improving-prompt",
+  "displayName": "Triggers when user input is vague, missing goal/constraints/acceptance criteria,    or contains words like \"optimize/improve/fix it up\". Also triggers when the user      explicitly asks to refine or improve a prompt.",
+  "latest": {
+    "version": "1.0.2",
+    "publishedAt": 1776048864986,
+    "commit": null
+  },
+  "history": []
+}
