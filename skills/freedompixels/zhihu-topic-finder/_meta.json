@@ -1,0 +1,11 @@
+{
+  "owner": "freedompixels",
+  "slug": "zhihu-topic-finder",
+  "displayName": "知乎选题分析器",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1776033861818,
+    "commit": null
+  },
+  "history": []
+}
