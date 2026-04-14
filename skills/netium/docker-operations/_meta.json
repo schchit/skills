@@ -1,0 +1,11 @@
+{
+  "owner": "netium",
+  "slug": "docker-operations",
+  "displayName": "Docker Operations",
+  "latest": {
+    "version": "0.0.2",
+    "publishedAt": 1775961776630,
+    "commit": null
+  },
+  "history": []
+}
