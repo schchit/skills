@@ -1,0 +1,11 @@
+{
+  "owner": "ankechenlab-node",
+  "slug": "synapse-brain",
+  "displayName": "Synapse Brain",
+  "latest": {
+    "version": "2.0.1",
+    "publishedAt": 1775850335954,
+    "commit": null
+  },
+  "history": []
+}
