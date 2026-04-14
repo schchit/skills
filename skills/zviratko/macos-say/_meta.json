@@ -1,0 +1,11 @@
+{
+  "owner": "zviratko",
+  "slug": "macos-say",
+  "displayName": "Text to speech using the default macOS \"say\" command. No need for 3rd party APIs or models. Supports many languages. Also, Trinoids!",
+  "latest": {
+    "version": "0.0.2",
+    "publishedAt": 1776034506225,
+    "commit": null
+  },
+  "history": []
+}
