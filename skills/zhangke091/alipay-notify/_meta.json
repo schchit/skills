@@ -1,0 +1,11 @@
+{
+  "owner": "zhangke091",
+  "slug": "alipay-notify",
+  "displayName": "支付宝支付异步通知助手",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1776012486548,
+    "commit": null
+  },
+  "history": []
+}
