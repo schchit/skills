@@ -1,0 +1,11 @@
+{
+  "owner": "athola",
+  "slug": "nm-hookify-rule-catalog",
+  "displayName": "Nm Hookify Rule Catalog",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1775991699377,
+    "commit": null
+  },
+  "history": []
+}
