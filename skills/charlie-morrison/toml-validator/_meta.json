@@ -1,0 +1,11 @@
+{
+  "owner": "charlie-morrison",
+  "slug": "toml-validator",
+  "displayName": "Toml Validator",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1776050583588,
+    "commit": null
+  },
+  "history": []
+}
