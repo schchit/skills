@@ -1,0 +1,11 @@
+{
+  "owner": "agents365-ai",
+  "slug": "thesis-reviewer",
+  "displayName": "Thesis Reviewer",
+  "latest": {
+    "version": "3.0.0",
+    "publishedAt": 1776040348041,
+    "commit": null
+  },
+  "history": []
+}
