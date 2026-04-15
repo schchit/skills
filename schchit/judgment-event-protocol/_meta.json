@@ -2,15 +2,20 @@
   "owner": "schchit",
   "slug": "judgment-event-protocol",
   "displayName": "Judgment Event Protocol",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Minimal verifiable log format for agent decisions. Record tamper-proof judgment, delegation, termination, and verification events using JCS and Ed25519.",
   "tags": ["jep", "judgment", "provenance", "audit", "accountability", "jcs", "ed25519"],
   "author": {
-    "name": "Yuqiang",
+    "name": "Yuqiang Wang",
     "homepage": "https://github.com/hjs-spec"
   },
   "license": "Apache-2.0",
   "requires": {
     "bins": ["python3", "pip"]
+  },
+  "security": {
+    "sensitive_data": "This skill does not collect or transmit any data. Private keys are never hardcoded and should be provided by the user's secure environment.",
+    "external_dependencies": "Relies on the 'jep-protocol' PyPI package. Users are advised to verify its source and integrity.",
+    "recommendations": "Use in an isolated environment. Never share private keys in prompts."
   }
 }
