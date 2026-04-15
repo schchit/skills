@@ -26,6 +26,14 @@ You have a minimal, verifiable event logging system for AI agent decisions. Use 
 pip install jep-protocol
 ```
 
+## Security Considerations
+
+This skill handles cryptographic keys and external dependencies. Please observe the following practices to ensure safe usage:
+
+- **🔑 Private Key Management**: Private keys should **never** be hardcoded in agent prompts, source files, or shared in conversations. Always store keys using a secure key manager (e.g., environment variables, secret management services, HSMs, or hardware tokens). The code examples below assume `private_key` and `public_key` are securely loaded from such a source.
+- **📦 Package Integrity**: The `jep-protocol` PyPI package is open source. Verify its integrity by checking the source code at https://github.com/hjs-spec/jep. Consider pinning the package to a reviewed version hash in your dependency manager.
+- **🧪 Environment Isolation**: Before integrating the library into production systems or granting access to sensitive keys, test it in an isolated environment (e.g., a Python virtual environment or a container).
+
 ## When to Use This Skill
 
 - When you need to **record an agent's decision** for future audit
@@ -69,6 +77,7 @@ A minimal JEP event before signing:
 ```python
 from jep import JEPEvent, Verb
 
+# Assumes private_key is loaded from a secure source
 event = JEPEvent(
     verb=Verb.J,
     who="did:example:agent-123",
@@ -164,6 +173,6 @@ JEP events serve as the immutable data layer that HJS and JAC build upon. All th
 
 ## Links
 
-- **Protocol Documentation**: https://github.com/hjs-spec/jep
+- **Protocol Documentation**: https://github.com/hjs-spec
 - **HJS Foundation**: https://humanjudgment.org
 ```
