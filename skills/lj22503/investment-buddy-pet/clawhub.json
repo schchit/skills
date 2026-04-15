@@ -1,0 +1,157 @@
+{
+  "name": "investment-buddy-pet",
+  "version": "1.1.0",
+  "description": "投资宠物技能 - 12 只宠物陪伴你投资成长，提供情感陪伴、定投提醒、投资者教育（v1.1.0 新增自我进化能力）",
+  "author": "燃冰 + ant",
+  "license": "MIT",
+  "keywords": [
+    "投资",
+    "宠物",
+    "陪伴",
+    "定投",
+    "提醒",
+    "投资者教育",
+    "金融合规"
+  ],
+  "category": "finance",
+  "tags": [
+    "investment",
+    "pet",
+    "companion",
+    "education",
+    "compliance"
+  ],
+  "main": "SKILL.md",
+  "files": [
+    "SKILL.md",
+    "README.md",
+    "clawhub.json",
+    "pets/*.json",
+    "scripts/*.py",
+    "docs/*.md",
+    "docs/knowledge/*.md",
+    "examples/*.md",
+    "references/*.md"
+  ],
+  "scripts": {
+    "test": "python3 scripts/compliance_checker.py",
+    "start": "python3 scripts/heartbeat_engine.py start --user-id <your_user_id> --pet-type <pet_id>"
+  },
+  "dependencies": {
+    "python": ">=3.6",
+    "requests": ">=2.31.0",
+    "sqlite3": "builtin"
+  },
+  "compliance": {
+    "level": "financial_services",
+    "features": [
+      "不推荐具体产品",
+      "不承诺收益",
+      "不提供择时建议",
+      "用户数据本地存储",
+      "合规检查器集成"
+    ],
+    "disclaimer": "本技能为投资者教育工具，不构成投资建议。市场有风险，投资需谨慎。"
+  },
+  "pets": [
+    {
+      "id": "songguo",
+      "name": "松果",
+      "emoji": "🐿️",
+      "style": "谨慎定投",
+      "communication_style": "warm"
+    },
+    {
+      "id": "wugui",
+      "name": "慢慢",
+      "emoji": "🐢",
+      "style": "长期主义",
+      "communication_style": "calm"
+    },
+    {
+      "id": "maotouying",
+      "name": "智多星",
+      "emoji": "🦉",
+      "style": "理性分析",
+      "communication_style": "rational"
+    },
+    {
+      "id": "lang",
+      "name": "孤狼",
+      "emoji": "🐺",
+      "style": "激进成长",
+      "communication_style": "decisive"
+    },
+    {
+      "id": "daxiang",
+      "name": "稳稳",
+      "emoji": "🐘",
+      "style": "稳健配置",
+      "communication_style": "calm"
+    },
+    {
+      "id": "ying",
+      "name": "鹰眼",
+      "emoji": "🦅",
+      "style": "趋势交易",
+      "communication_style": "decisive"
+    },
+    {
+      "id": "huli",
+      "name": "狐狐",
+      "emoji": "🦊",
+      "style": "灵活配置",
+      "communication_style": "witty"
+    },
+    {
+      "id": "haitun",
+      "name": "豚豚",
+      "emoji": "🐬",
+      "style": "指数投资",
+      "communication_style": "friendly"
+    },
+    {
+      "id": "shizi",
+      "name": "狮王",
+      "emoji": "🦁",
+      "style": "集中投资",
+      "communication_style": "decisive"
+    },
+    {
+      "id": "mayi",
+      "name": "蚁蚁",
+      "emoji": "🐜",
+      "style": "分散投资",
+      "communication_style": "cautious"
+    },
+    {
+      "id": "luotuo",
+      "name": "驼驼",
+      "emoji": "🐪",
+      "style": "逆向投资",
+      "communication_style": "rational"
+    },
+    {
+      "id": "dunjiaoshou",
+      "name": "角角",
+      "emoji": "🦄",
+      "style": "成长投资",
+      "communication_style": "visionary"
+    },
+    {
+      "id": "junma",
+      "name": "马马",
+      "emoji": "🐎",
+      "style": "行业轮动",
+      "communication_style": "energetic"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lj22503/investment-buddy-pet.git"
+  },
+  "homepage": "https://github.com/lj22503/investment-buddy-pet#readme",
+  "bugs": {
+    "url": "https://github.com/lj22503/investment-buddy-pet/issues"
+  }
+}
