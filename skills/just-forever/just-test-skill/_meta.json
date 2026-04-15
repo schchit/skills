@@ -1,0 +1,11 @@
+{
+  "owner": "just-forever",
+  "slug": "just-test-skill",
+  "displayName": "just for test",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1776059932150,
+    "commit": null
+  },
+  "history": []
+}
