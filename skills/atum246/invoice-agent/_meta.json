@@ -1,0 +1,11 @@
+{
+  "owner": "atum246",
+  "slug": "invoice-agent",
+  "displayName": "Invoice Agent",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1776065217657,
+    "commit": null
+  },
+  "history": []
+}
