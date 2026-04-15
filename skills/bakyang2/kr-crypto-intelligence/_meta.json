@@ -3,9 +3,15 @@
   "slug": "kr-crypto-intelligence",
   "displayName": "Kr Crypto Intelligence",
   "latest": {
-    "version": "1.2.3",
-    "publishedAt": 1776183887019,
-    "commit": "https://github.com/openclaw/skills/commit/e590c26a6d43d522c1f5b4df48e5e20483c26374"
+    "version": "1.2.6",
+    "publishedAt": 1776216757001,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.2.3",
+      "publishedAt": 1776183887019,
+      "commit": "https://github.com/openclaw/skills/commit/e590c26a6d43d522c1f5b4df48e5e20483c26374"
+    }
+  ]
 }
