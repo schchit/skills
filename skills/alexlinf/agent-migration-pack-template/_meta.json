@@ -1,0 +1,11 @@
+{
+  "owner": "alexlinf",
+  "slug": "agent-migration-pack-template",
+  "displayName": "Agent Migration Pack Template",
+  "latest": {
+    "version": "1.0.5",
+    "publishedAt": 1776067091588,
+    "commit": null
+  },
+  "history": []
+}
