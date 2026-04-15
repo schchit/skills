@@ -1,0 +1,11 @@
+{
+  "owner": "d9g",
+  "slug": "github-fetch",
+  "displayName": "GitHub 稳定获取",
+  "latest": {
+    "version": "2.1.0",
+    "publishedAt": 1776050546683,
+    "commit": null
+  },
+  "history": []
+}
