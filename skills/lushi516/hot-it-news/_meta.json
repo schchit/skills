@@ -3,9 +3,15 @@
   "slug": "hot-it-news",
   "displayName": "hot-it-news",
   "latest": {
-    "version": "0.1.1",
-    "publishedAt": 1776063886068,
-    "commit": "https://github.com/openclaw/skills/commit/8b171688e8be0bd6537e657a383f294403c85ee1"
+    "version": "1.1.2",
+    "publishedAt": 1776170268802,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.1",
+      "publishedAt": 1776063886068,
+      "commit": "https://github.com/openclaw/skills/commit/8b171688e8be0bd6537e657a383f294403c85ee1"
+    }
+  ]
 }
