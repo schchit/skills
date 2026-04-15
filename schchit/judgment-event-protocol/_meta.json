@@ -1,0 +1,16 @@
+{
+  "owner": "schchit",
+  "slug": "judgment-event-protocol",
+  "displayName": "Judgment Event Protocol",
+  "version": "0.1.0",
+  "description": "Minimal verifiable log format for agent decisions. Record tamper-proof judgment, delegation, termination, and verification events using JCS and Ed25519.",
+  "tags": ["jep", "judgment", "provenance", "audit", "accountability", "jcs", "ed25519"],
+  "author": {
+    "name": "Yuqiang",
+    "homepage": "https://github.com/hjs-spec"
+  },
+  "license": "Apache-2.0",
+  "requires": {
+    "bins": ["python3", "pip"]
+  }
+}
